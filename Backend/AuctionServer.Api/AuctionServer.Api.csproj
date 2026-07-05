@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AuctionServer.Modules.Identity\AuctionServer.Modules.Identity.csproj" />
+    <ProjectReference Include="..\AuctionServer.Modules.Wallets\AuctionServer.Modules.Wallets.csproj" />
+    <ProjectReference Include="..\AuctionServer.Modules.Inventory\AuctionServer.Modules.Inventory.csproj" />
+    <ProjectReference Include="..\AuctionServer.Modules.Auctions\AuctionServer.Modules.Auctions.csproj" />
+  </ItemGroup>
+
+</Project>
