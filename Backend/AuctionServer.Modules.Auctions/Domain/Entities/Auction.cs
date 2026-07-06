@@ -1,6 +1,6 @@
 namespace AuctionServer.Modules.Auctions.Domain.Entities;
 
-public class Auction
+public sealed class Auction
 {
     public Guid PublicAuctionId { get; init; }
     public int AuctionId { get; init; }
