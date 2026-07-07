@@ -1,5 +1,6 @@
 using System.Data;
-namespace AuctionServer.Modules.Auctions.Application.Interfaces.Repository;
+
+namespace AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 
 public interface ISqlConnectionFactory
 {

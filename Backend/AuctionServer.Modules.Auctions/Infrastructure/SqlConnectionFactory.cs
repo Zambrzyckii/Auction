@@ -1,5 +1,6 @@
-using AuctionServer.Modules.Auctions.Application.Interfaces.Repository;
 using System.Data;
+using AuctionServer.Modules.Auctions.Application.Interfaces;
+using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 using Npgsql;
 
 namespace AuctionServer.Modules.Auctions.Infrastructure;

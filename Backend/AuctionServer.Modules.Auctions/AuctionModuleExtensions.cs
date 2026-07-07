@@ -1,6 +1,7 @@
-using AuctionServer.Modules.Auctions.Application.Interfaces.Repository;
+using AuctionServer.Modules.Auctions.Application.Interfaces;
+using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Auctions.Infrastructure;
-using AuctionServer.Modules.Auctions.Infrastructure.Repositories;
+using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

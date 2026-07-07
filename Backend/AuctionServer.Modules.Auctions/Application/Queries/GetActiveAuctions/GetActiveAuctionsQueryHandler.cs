@@ -1,5 +1,6 @@
 using System.Data;
-using AuctionServer.Modules.Auctions.Application.Interfaces.Repository;
+using AuctionServer.Modules.Auctions.Application.Interfaces;
+using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 using Dapper;
 using MediatR;
 

@@ -1,14 +1,16 @@
-using AuctionServer.Modules.Auctions.Application.Interfaces.Repository;
+using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Auctions.Domain.Entities;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
+using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 
-namespace AuctionServer.Modules.Auctions.Infrastructure.Repositories;
+namespace AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 
 public class AuctionRepository(AppDbContext context) : IAuctionRepository
 {
-    public async Task SaveAuctionAsync(Auction auction, CancellationToken token)
+    public async Task SaveAuctionAndOutboxAsync(Auction auction,OutboxMessage outboxMessage, CancellationToken token)
     {
+        context.OutboxMessages.Add(outboxMessage);
         await context.SaveChangesAsync(token);
     }
 
