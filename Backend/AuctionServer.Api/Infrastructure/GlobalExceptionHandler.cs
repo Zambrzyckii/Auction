@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
 using AuctionServer.Shared.Integration.Exceptions;
 
 namespace AuctionServer.Api.Infrastructure;
