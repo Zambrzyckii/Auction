@@ -1,41 +1,29 @@
-var builder = WebApplication.CreateBuilder(args);
+using MediatR;
+using AuctionServer.Modules.Auctions;
+using AuctionServer.Modules.Auctions.Application.Commands.PlaceBid;
+using AuctionServer.Modules.Auctions.Application.Queries.GetActiveAuctions;
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(AuctionModuleExtensions).Assembly));
+builder.Services.AddAuctionModule(connectionString);
+
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapGet("/api/auctions", async (int limit, ISender sender) => 
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var result = await sender.Send(new GetActiveAuctionsQuery(limit));
+    return Results.Ok(result);
+});
 
-app.MapGet("/weatherforecast", () =>
+app.MapPost("/api/auctions/{id}/bid", async (Guid id, decimal amount, ISender sender) => 
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    await sender.Send(new PlaceBidCommand(id, amount));
+    return Results.Ok();
+});
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

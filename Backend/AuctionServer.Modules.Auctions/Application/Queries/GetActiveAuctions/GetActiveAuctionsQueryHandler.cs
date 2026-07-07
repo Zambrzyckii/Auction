@@ -1,12 +1,13 @@
 using System.Data;
 using AuctionServer.Modules.Auctions.Application.Interfaces.Repository;
 using Dapper;
+using MediatR;
 
 namespace AuctionServer.Modules.Auctions.Application.Queries.GetActiveAuctions;
 
-public class GetActiveAuctionsQueryHandler(ISqlConnectionFactory sqlFactory)
+public class GetActiveAuctionsQueryHandler(ISqlConnectionFactory sqlFactory) : IRequestHandler<GetActiveAuctionsQuery, List<AuctionQueryDto>>
 {
-    public async Task<List<AuctionQueryDto>> GetAuctionPageAsync(GetActiveAuctionsQuery query)
+    public async Task<List<AuctionQueryDto>> Handle(GetActiveAuctionsQuery query, CancellationToken cancellationToken)
     {
         using IDbConnection connection = sqlFactory.CreateConnection();
 
