@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="AuctionServer.Modules.Auctions.Tests\AuctionServer.Modules.Auctions.Tests.csproj" />
   <Project Path="AuctionServer.Modules.Auctions/AuctionServer.Modules.Auctions.csproj" />
   <Project Path="AuctionServer.Modules.Identity/AuctionServer.Modules.Identity.csproj" />
   <Project Path="AuctionServer.Modules.Inventory/AuctionServer.Modules.Inventory.csproj" />

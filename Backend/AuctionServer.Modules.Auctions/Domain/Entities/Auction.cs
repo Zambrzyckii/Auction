@@ -13,4 +13,9 @@ public sealed class Auction
         if (amount <= CurrentPrice) return;
         CurrentPrice = amount;
     }
+
+    public void CloseAuction()
+    {
+        IsClosed = true;
+    }
 }
