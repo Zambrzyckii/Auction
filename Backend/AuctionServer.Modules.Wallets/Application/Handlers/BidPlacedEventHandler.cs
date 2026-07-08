@@ -16,6 +16,6 @@ public sealed class BidPlacedEventHandler(IWalletRepository repository) : INotif
             var previousWinnerWallet = await repository.GetUserWalletByIdAsync(notification.PreviousWinningUserId.Value, token);
             previousWinnerWallet!.UnlockFunds(notification.PreviousPrice.Value);
         }
-        await repository.SaveUserFundsAsync(token);
+        await repository.SaveUserFundsAsync(CancellationToken.None);
     }
 }
