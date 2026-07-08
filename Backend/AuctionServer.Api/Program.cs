@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Auctions;
 using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Api.Infrastructure;
+using AuctionServer.Modules.Wallets.Presentation;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -14,6 +15,7 @@ builder.Services.AddProblemDetails();
 var app = builder.Build();
 
 app.MapAuctionEndpoints();
+app.MapWalletEndpoints();
 
 app.Run();
 
