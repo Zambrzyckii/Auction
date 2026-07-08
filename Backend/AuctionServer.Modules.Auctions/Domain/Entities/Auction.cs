@@ -1,16 +1,27 @@
+using AuctionServer.Modules.Auctions.Domain.Exceptions;
+
 namespace AuctionServer.Modules.Auctions.Domain.Entities;
 
 public sealed class Auction
 {
     public Guid PublicAuctionId { get; init; }
+    
+    public Guid SellerUserId { get; init; }
+    public Guid ItemId { get; init; }
+    public Guid? CurrentWinningUserId { get; private set; }
     public int AuctionId { get; init; }
     public decimal CurrentPrice { get; private set; } = 1;
-    public bool IsClosed { get; private set; } = false;
+    public bool IsClosed { get; private set; }
 
-    public void ApplyNewBid(decimal amount)
+    public void ApplyNewBid(Guid bidderId, decimal amount)
     {
         if (IsClosed) return;
         if (amount <= CurrentPrice) return;
+
+        if (bidderId == SellerUserId) throw new AuctionExceptions.CannotBidOwnItemException();
+        if (bidderId == CurrentWinningUserId) return;
+
+        CurrentWinningUserId = bidderId;
         CurrentPrice = amount;
     }
 

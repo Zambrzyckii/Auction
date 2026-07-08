@@ -2,4 +2,4 @@ using MediatR;
 
 namespace AuctionServer.Modules.Auctions.Application.Commands.PlaceBid;
 
-public record PlaceBidCommand(Guid PublicAuctionId, decimal NewPrice) : IRequest;
+public record PlaceBidCommand(Guid PublicAuctionId,Guid BidderId, decimal NewPrice) : IRequest;
