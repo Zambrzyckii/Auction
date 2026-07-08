@@ -6,4 +6,6 @@ public interface IWalletRepository
 {
     public Task SaveUserFundsAsync(CancellationToken token);
     public Task<Wallet?> GetUserWalletByIdAsync(Guid userPublicId, CancellationToken token);
+
+    public Task<Wallet?> GetUserWalletByIdAsyncReadOnly(Guid userPublicId, CancellationToken token);
 }

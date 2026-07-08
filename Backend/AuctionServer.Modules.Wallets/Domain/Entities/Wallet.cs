@@ -9,6 +9,7 @@ public sealed class Wallet
     public decimal LockedFunds { get; private set; }
 
     public bool IsSuspendedWallet { get; private set; }
+    public Guid Version { get; private set; } = Guid.NewGuid();
     
     public void LockFunds(decimal amount)
     {
@@ -16,8 +17,22 @@ public sealed class Wallet
 
         AvailableFunds -= amount;
         LockedFunds += amount;
+        Version = Guid.NewGuid();
     }
 
+    public void UnlockFunds(decimal amount)
+    {
+        LockedFunds -= amount;
+        AvailableFunds += amount;
+        Version = Guid.NewGuid();
+    }
+    
     public void SuspendAccount() => IsSuspendedWallet = true;
     public void UnsuspendAccount() => IsSuspendedWallet = false;
+
+    public void AddFunds(decimal amount)
+    {
+        AvailableFunds += amount;
+        Version = Guid.NewGuid();
+    }
 }

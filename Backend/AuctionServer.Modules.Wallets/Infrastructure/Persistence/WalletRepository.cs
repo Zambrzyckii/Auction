@@ -18,4 +18,11 @@ public class WalletRepository(AppDbContext context) : IWalletRepository
         if (userWallet is null) throw new WalletExceptions.UserWithThisIdDontHaveWallet(userPublicId);
         return userWallet;
     }
+
+    public async Task<Wallet?> GetUserWalletByIdAsyncReadOnly(Guid userPublicId, CancellationToken token)
+    {
+        var userWallet = await context.Wallets.AsNoTracking().SingleOrDefaultAsync(u => userPublicId == u.UserId, token);
+        if (userWallet is null) throw new WalletExceptions.UserWithThisIdDontHaveWallet(userPublicId);
+        return userWallet;
+    }
 }

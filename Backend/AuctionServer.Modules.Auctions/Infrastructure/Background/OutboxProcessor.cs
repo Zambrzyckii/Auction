@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
