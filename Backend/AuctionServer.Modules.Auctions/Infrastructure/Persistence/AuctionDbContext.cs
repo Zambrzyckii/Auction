@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AuctionDbContext(DbContextOptions<AuctionDbContext> options) : DbContext(options)
 {
     public DbSet<Auction> Auctions { get; set; }
     public DbSet<OutboxMessage> OutboxMessages { get; set; }

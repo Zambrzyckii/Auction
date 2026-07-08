@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 
-public class WalletRepository(AppDbContext context) : IWalletRepository
+public class WalletRepository(WalletDbContext context) : IWalletRepository
 {
     public async Task SaveUserFundsAsync(CancellationToken token)
     {

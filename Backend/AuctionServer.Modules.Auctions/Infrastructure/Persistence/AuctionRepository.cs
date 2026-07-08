@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 
-public class AuctionRepository(AppDbContext context) : IAuctionRepository
+public class AuctionRepository(AuctionDbContext context) : IAuctionRepository
 {
     public async Task SaveAuctionAndOutboxAsync(Auction auction,OutboxMessage outboxMessage, CancellationToken token)
     {

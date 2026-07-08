@@ -14,7 +14,7 @@ public class OutboxProcessor(IServiceProvider serviceProvider) : BackgroundServi
         while (!stoppingToken.IsCancellationRequested)
         {
             using var scope = serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var context = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();
             var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
 
             var messages = context.OutboxMessages.Where(m => m.ProcessedOn == null).ToList();

@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class WalletDbContext(DbContextOptions<WalletDbContext> options) : DbContext(options)
 {
     public DbSet<Wallet> Wallets { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -12,5 +12,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Wallet>().HasIndex(wallet => wallet.UserId).IsUnique()
             .HasFilter("\"IsSuspendedWallet\" = false");
         modelBuilder.Entity<Wallet>().Property(w => w.Version).IsConcurrencyToken();
+        
+        modelBuilder.ApplyConfigurationsFromAssembly(GetType().Assembly);
     }
 }

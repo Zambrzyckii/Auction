@@ -11,7 +11,7 @@ public static class AuctionModuleExtensions
 {
     public static IServiceCollection AddAuctionModule(this IServiceCollection services, string dbConnectionString)
     {
-        services.AddDbContext<AppDbContext>(options =>
+        services.AddDbContext<AuctionDbContext>(options =>
         {
             options.UseNpgsql(dbConnectionString);
         });

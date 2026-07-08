@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace AuctionServer.Modules.Auctions.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
+    [DbContext(typeof(AuctionDbContext))]
     [Migration("20260707073128_InitialAuctions")]
     partial class InitialAuctions
     {
