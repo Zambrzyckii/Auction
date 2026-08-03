@@ -10,7 +10,7 @@ public class AuctionTests
         var auction = new Auction();
         decimal newValidBid = 100m;
         
-        auction.ApplyNewBid(newValidBid);
+        auction.ApplyNewBid(Guid.NewGuid(), newValidBid);
         
         Assert.Equal(newValidBid, auction.CurrentPrice);
     }
@@ -20,10 +20,10 @@ public class AuctionTests
     {
         var auction = new Auction();
         decimal currentBid = 100m;
-        auction.ApplyNewBid(currentBid);
+        auction.ApplyNewBid(Guid.NewGuid(),currentBid);
         
         decimal newLowerBid = 10m;
-        auction.ApplyNewBid(newLowerBid);
+        auction.ApplyNewBid(Guid.NewGuid(),newLowerBid);
         
         Assert.Equal(auction.CurrentPrice, currentBid); 
     }
@@ -33,10 +33,10 @@ public class AuctionTests
     {
         var auction = new Auction();
         var currentBid = 100m;
-        auction.ApplyNewBid(currentBid);
+        auction.ApplyNewBid(Guid.NewGuid(),currentBid);
         auction.CloseAuction();
         var newBidAfterClosingAuction = 200m;
-        auction.ApplyNewBid(newBidAfterClosingAuction);
+        auction.ApplyNewBid(Guid.NewGuid(),newBidAfterClosingAuction);
         
         Assert.Equal(auction.CurrentPrice, currentBid);
     }

@@ -1,10 +1,18 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=7bce0476_002Dcfc9_002D435f_002Dbb82_002D5699524e601c/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice #2" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=7bce0476_002Dcfc9_002D435f_002Dbb82_002D5699524e601c/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice #2" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
   &lt;TestAncestor&gt;
-    &lt;TestId&gt;xUnit::D64475EA-3334-4041-90DA-B015708CB825::net10.0::AuctionServer.Modules.Auction.Tests.Domain.Entities.AuctionTests.ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::5614F94B-BCA5-9658-AD80-BB678AD763AC::net10.0::AuctionServer.Modules.Auctions.Tests.Domain.Entities.AuctionTests.ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::65423F8F-C99E-98F5-1FDD-861495BA43C9::net10.0::AuctionServer.Modules.Wallets.Tests.Domain.Entities.WalletTests.AddFunds_WhenDepositIsFine_ShouldUpdateAvailableFunds&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::65423F8F-C99E-98F5-1FDD-861495BA43C9::net10.0::AuctionServer.Modules.Wallets.Tests.Domain.Entities.WalletTests.LockFunds_NotEnoughFunds_ShouldThrowException&lt;/TestId&gt;
+    &lt;TestId&gt;xUnit::65423F8F-C99E-98F5-1FDD-861495BA43C9::net10.0::AuctionServer.Modules.Wallets.Tests.Domain.Entities.WalletTests&lt;/TestId&gt;
   &lt;/TestAncestor&gt;
 &lt;/SessionState&gt;</s:String>
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=90f54c3c_002D0d65_002D462d_002D8efc_002Db3b92e72f830/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=81591772_002Dd33b_002D455a_002Dbcd4_002Dd7e5a7df5ee6/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="AuctionTests" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+  &lt;TestAncestor&gt;
+    &lt;TestId&gt;xUnit::5614F94B-BCA5-9658-AD80-BB678AD763AC::net10.0::AuctionServer.Modules.Auctions.Tests.Domain.Entities.AuctionTests&lt;/TestId&gt;
+  &lt;/TestAncestor&gt;
+&lt;/SessionState&gt;</s:String>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=90f54c3c_002D0d65_002D462d_002D8efc_002Db3b92e72f830/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
   &lt;TestAncestor&gt;
     &lt;TestId&gt;xUnit::5614F94B-BCA5-9658-AD80-BB678AD763AC::net10.0::AuctionServer.Modules.Auctions.Tests.Domain.Entities.AuctionTests&lt;/TestId&gt;
   &lt;/TestAncestor&gt;

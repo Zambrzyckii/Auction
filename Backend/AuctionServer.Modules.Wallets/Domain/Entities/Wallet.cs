@@ -13,6 +13,7 @@ public sealed class Wallet
     
     public void LockFunds(decimal amount)
     {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
         if (AvailableFunds < amount) throw new WalletExceptions.InsufficientFundsException();
 
         AvailableFunds -= amount;
@@ -22,6 +23,9 @@ public sealed class Wallet
 
     public void UnlockFunds(decimal amount)
     {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
+        if (LockedFunds < amount) throw new WalletExceptions.InsufficientLockedFundsException();
+
         LockedFunds -= amount;
         AvailableFunds += amount;
         Version = Guid.NewGuid();
@@ -32,6 +36,8 @@ public sealed class Wallet
 
     public void AddFunds(decimal amount)
     {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
+
         AvailableFunds += amount;
         Version = Guid.NewGuid();
     }

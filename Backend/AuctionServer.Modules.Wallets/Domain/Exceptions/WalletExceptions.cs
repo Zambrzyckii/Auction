@@ -1,9 +1,15 @@
+using AuctionServer.Shared.Integration.Exceptions;
+
 namespace AuctionServer.Modules.Wallets.Domain.Exceptions;
 
 public static class WalletExceptions
 {
-    public class InsufficientFundsException() : ApplicationException("Not enough funds on account");
+    public class InsufficientFundsException() : AppException("Not enough funds on account", 400);
+
+    public class InsufficientLockedFundsException() : AppException("Not enough locked funds on account",400);
+
+    public class InvalidAmountException() : AppException("Amount must be greater than zero",400);
 
     public class UserWithThisIdDontHaveWallet(Guid publicUserId)
-        : ApplicationException($"User with this ID {publicUserId} doesnt exists");
+        : AppException($"User with this ID {publicUserId} doesnt exists", 404);
 }
