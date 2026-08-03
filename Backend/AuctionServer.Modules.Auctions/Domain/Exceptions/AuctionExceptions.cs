@@ -1,4 +1,3 @@
-using AuctionServer.Shared.Integration.Exceptions;
 namespace AuctionServer.Modules.Auctions.Domain.Exceptions;
 
 public static class AuctionExceptions

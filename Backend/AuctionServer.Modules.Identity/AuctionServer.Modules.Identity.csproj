@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AuctionServer.Shared.Integration\AuctionServer.Shared.Integration.csproj" />
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
   </ItemGroup>
 
   <PropertyGroup>
