@@ -21,8 +21,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AuctionServer.Api\AuctionServer.Api.csproj" />
-      <ProjectReference Include="..\AuctionServer.Modules.Wallets\AuctionServer.Modules.Wallets.csproj" />
+      <ProjectReference Include="..\..\src\AuctionServer.Api\AuctionServer.Api.csproj" />
+      <ProjectReference Include="..\..\src\AuctionServer.Modules.Wallets\AuctionServer.Modules.Wallets.csproj" />
     </ItemGroup>
 
 </Project>

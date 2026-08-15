@@ -20,7 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AuctionServer.Modules.Auctions\AuctionServer.Modules.Auctions.csproj" />
+      <ProjectReference Include="..\..\src\AuctionServer.Modules.Auctions\AuctionServer.Modules.Auctions.csproj" />
     </ItemGroup>
 
 </Project>
