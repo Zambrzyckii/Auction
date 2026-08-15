@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -21,11 +22,12 @@ public static class AuctionEndpoints
             return Results.Ok(result);
         });
 
-        group.MapPost("/{id:guid}/bid", async (Guid id, PlaceBidRequest request, ISender sender) =>
+        group.MapPost("/{id:guid}/bid", async (Guid id, PlaceBidRequest request, ClaimsPrincipal user, ISender sender) =>
         {
-            await sender.Send(new PlaceBidCommand(id, request.BidderId, request.Amount));
+            var bidderId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new PlaceBidCommand(id, bidderId, request.Amount));
             return Results.Ok();
-        });
+        }).RequireAuthorization();
 
         return app;
     }

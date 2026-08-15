@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Identity.Application.Interfaces;
 using AuctionServer.Modules.Identity.Domain.Entities;
 using AuctionServer.Modules.Identity.Domain.Exceptions;
+using AuctionServer.Modules.Identity.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 

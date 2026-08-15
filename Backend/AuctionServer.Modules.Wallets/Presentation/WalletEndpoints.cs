@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -20,11 +21,12 @@ public static class WalletEndpoints
             return Results.Ok(result);
         });
 
-        group.MapPost("/{id:guid}/funds", async (Guid id, AddFundsRequest request, ISender sender) =>
+        group.MapPost("/funds", async (AddFundsRequest request, ClaimsPrincipal user, ISender sender) =>
         {
-            await sender.Send(new AddFundsCommand(id, request.Amount));
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new AddFundsCommand(userId, request.Amount));
             return Results.Ok();
-        });
+        }).RequireAuthorization();
 
         return app;
     }

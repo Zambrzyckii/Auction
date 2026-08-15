@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Identity.Domain.Entities;
+using AuctionServer.Modules.Identity.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Identity.Infrastructure.Persistence;
