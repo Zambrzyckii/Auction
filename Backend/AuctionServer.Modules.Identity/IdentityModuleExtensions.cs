@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Identity.Application.Interfaces;
+using AuctionServer.Modules.Identity.Infrastructure.Background;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,8 @@ public static class IdentityModuleExtensions
         services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IAuthRepository, AuthRepository>();
+
+        services.AddHostedService<OutboxProcessor>();
         
         return services;
     }

@@ -1,6 +1,6 @@
 using System.Text.Json;
-using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
-using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
+using AuctionServer.Modules.Identity.Infrastructure.Outbox;
+using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AuctionServer.Modules.Auctions.Infrastructure.Background;
+namespace AuctionServer.Modules.Identity.Infrastructure.Background;
 
 public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxProcessor> logger) : BackgroundService
 {
@@ -36,7 +36,7 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
     private async Task ProcessPendingMessagesAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
 
         var messages = await context.OutboxMessages
@@ -68,7 +68,7 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
 
     private static INotification DeserializeEvent(OutboxMessage message) => message.Type switch
     {
-        nameof(BidPlacedEvent) => JsonSerializer.Deserialize<BidPlacedEvent>(message.Content)
+        nameof(UserRegisteredEvent) => JsonSerializer.Deserialize<BidPlacedEvent>(message.Content)
                                   ?? throw new JsonException($"Empty payload in outbox message {message.Id}"),
         _ => throw new NotSupportedException($"Unknown outbox message type: {message.Type}")
     };

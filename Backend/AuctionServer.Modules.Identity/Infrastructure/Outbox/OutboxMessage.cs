@@ -1,4 +1,4 @@
-namespace AuctionServer.Modules.Identity.Infrastructure.Persistence;
+namespace AuctionServer.Modules.Identity.Infrastructure.Outbox;
 
 public sealed class OutboxMessage
 {
