@@ -13,7 +13,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "OutboxMessages",
+                name: "IdentityOutboxMessages",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
@@ -24,7 +24,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_OutboxMessages", x => x.Id);
+                    table.PrimaryKey("PK_IdentityOutboxMessages", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -59,7 +59,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "OutboxMessages");
+                name: "IdentityOutboxMessages");
 
             migrationBuilder.DropTable(
                 name: "Users");

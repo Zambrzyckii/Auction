@@ -11,5 +11,5 @@ public static class AuctionExceptions
     public class AlreadyHighestBidderException() : AppException("Bidder is already the highest bidder", 400);
     public class AuctionNotFoundException(Guid publicAuctionId) : AppException($"Auction {publicAuctionId} not found", 404);
     public class AuctionAlreadyExistException() : AppException("Auction already exist", 409);
-    public class AuctionInvalidExtendDateException() : AppException("Extend date is invalid", 400);
+    public class InvalidAuctionEndDateException() : AppException("End date must be at least one minute in the future", 400);
 }

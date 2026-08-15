@@ -74,7 +74,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Identity.Infrastructure.Persistence.OutboxMessage", b =>
+            modelBuilder.Entity("AuctionServer.Modules.Identity.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -96,7 +96,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OutboxMessages");
+                    b.ToTable("IdentityOutboxMessages", (string)null);
                 });
 #pragma warning restore 612, 618
         }

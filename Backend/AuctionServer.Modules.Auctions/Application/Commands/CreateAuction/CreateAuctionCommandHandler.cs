@@ -9,7 +9,7 @@ public sealed class CreateAuctionCommandHandler(IAuctionRepository repository) :
     public async Task<Guid> Handle(CreateAuctionCommand request, CancellationToken cancellationToken)
     {
 
-        var auctionToCreate = Auction.Create(request.SellerId, request.ItemId, request.StartingPrice, request.EndsOn);
+        var auctionToCreate = Auction.Create(request.SellerId, request.ItemId, request.StartingPrice, request.EndsOn.UtcDateTime);
         
         await repository.CreateAuctionAsync(auctionToCreate, cancellationToken);
 

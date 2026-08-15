@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(IdentityDbContext))]
-    [Migration("20260815103833_Initial_Identity")]
+    [Migration("20260815123208_Initial_Identity")]
     partial class Initial_Identity
     {
         /// <inheritdoc />
@@ -77,7 +77,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Identity.Infrastructure.Persistence.OutboxMessage", b =>
+            modelBuilder.Entity("AuctionServer.Modules.Identity.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -99,7 +99,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OutboxMessages");
+                    b.ToTable("IdentityOutboxMessages", (string)null);
                 });
 #pragma warning restore 612, 618
         }
