@@ -7,4 +7,5 @@ public interface IAuctionRepository
 {
     public Task SaveChangesWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
     public Task<Auction> GetAuctionByIdAsync(Guid publicAuctionId, CancellationToken token);
+    public Task CreateAuctionAsync(Auction auction, CancellationToken token);
 }

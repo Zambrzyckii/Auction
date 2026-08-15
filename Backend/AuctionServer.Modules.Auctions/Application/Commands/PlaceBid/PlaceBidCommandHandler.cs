@@ -6,7 +6,7 @@ using MediatR;
 
 namespace AuctionServer.Modules.Auctions.Application.Commands.PlaceBid;
 
-public class PlaceBidCommandHandler(IAuctionRepository repository) : IRequestHandler<PlaceBidCommand>
+public sealed class PlaceBidCommandHandler(IAuctionRepository repository) : IRequestHandler<PlaceBidCommand>
 {
     public async Task Handle(PlaceBidCommand command, CancellationToken token)
     {

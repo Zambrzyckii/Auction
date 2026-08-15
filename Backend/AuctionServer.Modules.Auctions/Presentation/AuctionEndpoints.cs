@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AuctionServer.Modules.Auctions.Application.Commands.CreateAuction;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -29,6 +30,14 @@ public static class AuctionEndpoints
             return Results.Ok();
         }).RequireAuthorization();
 
+        group.MapPost("/", async (CreateAuctionRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var sellerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var id = await sender.Send(new CreateAuctionCommand(sellerId, request.ItemId, request.StartingPrice,
+                request.EndsOn));
+            return Results.Created($"/api/auctions/{id}", new { PublicAuctionId = id });
+        }).RequireAuthorization();
+        
         return app;
     }
 }

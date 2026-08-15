@@ -12,5 +12,5 @@ public static class WalletExceptions
 
     public class UserWithThisIdDontHaveWallet(Guid publicUserId)
         : AppException($"User with this ID {publicUserId} doesnt exists", 404);
-    public class WalletAlreadyExistException() : AppException("Wallet already exists",400);
+    public class WalletAlreadyExistException() : AppException("Wallet already exists",409);
 }
