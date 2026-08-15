@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Identity.Domain;
 using AuctionServer.Modules.Identity.Domain.Entities;
-using AuctionServer.Modules.Identity.Infrastructure.Persistence;
+using AuctionServer.Modules.Identity.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Identity.Application.Interfaces;
 

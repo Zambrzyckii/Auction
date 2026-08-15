@@ -1,9 +1,14 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text;
 using AuctionServer.Modules.Wallets.Application.Queries.GetWallet;
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;
 
@@ -29,14 +34,30 @@ public class WalletApiSmokeTests(CustomApi factory) : IClassFixture<CustomApi>
     {
         var userId = await SeedWalletAsync(100m);
         var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(userId));
 
-        var postResponse = await client.PostAsJsonAsync($"/api/wallets/{userId}/funds", new { amount = 150m });
+        var postResponse = await client.PostAsJsonAsync("/api/wallets/funds", new { amount = 150m });
 
         Assert.Equal(HttpStatusCode.OK, postResponse.StatusCode);
         var dto = await client.GetFromJsonAsync<WalletDto>($"/api/wallets/{userId}");
         Assert.NotNull(dto);
         Assert.Equal(250m, dto.AvailableFunds);
         Assert.Equal(0m, dto.LockedFunds);
+    }
+
+    private static string CreateTokenFor(Guid userId)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(CustomApi.TestJwtKey);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())]),
+            Issuer = "AuctionServer",
+            Audience = "AuctionServer.Client",
+            Expires = DateTime.UtcNow.AddMinutes(15),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+        return tokenHandler.WriteToken(tokenHandler.CreateToken(tokenDescriptor));
     }
 
     private async Task<Guid> SeedWalletAsync(decimal availableFunds)

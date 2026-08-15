@@ -68,7 +68,7 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
 
     private static INotification DeserializeEvent(OutboxMessage message) => message.Type switch
     {
-        nameof(UserRegisteredEvent) => JsonSerializer.Deserialize<BidPlacedEvent>(message.Content)
+        nameof(UserRegisteredEvent) => JsonSerializer.Deserialize<UserRegisteredEvent>(message.Content)
                                   ?? throw new JsonException($"Empty payload in outbox message {message.Id}"),
         _ => throw new NotSupportedException($"Unknown outbox message type: {message.Type}")
     };

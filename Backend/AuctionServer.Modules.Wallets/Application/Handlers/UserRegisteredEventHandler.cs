@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Domain.Entities;
+using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Shared.Integration.Events;
 using MediatR;
 
@@ -10,6 +11,12 @@ public sealed class UserRegisteredEventHandler(IWalletRepository repository) : I
     public async Task Handle(UserRegisteredEvent notification, CancellationToken token)
     {
         var wallet = new Wallet { UserId = notification.PublicUserId };
-        await repository.AddWalletAsync(wallet, token);
+        try
+        {
+            await repository.AddWalletAsync(wallet, token);
+        }
+        catch (WalletExceptions.WalletAlreadyExistException)
+        {
+        }
     }
 }

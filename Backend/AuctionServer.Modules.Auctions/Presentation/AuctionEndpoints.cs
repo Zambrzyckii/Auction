@@ -25,7 +25,7 @@ public static class AuctionEndpoints
         group.MapPost("/{id:guid}/bid", async (Guid id, PlaceBidRequest request, ClaimsPrincipal user, ISender sender) =>
         {
             var bidderId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            await sender.Send(new PlaceBidCommand(id, request.BidderId, request.Amount));
+            await sender.Send(new PlaceBidCommand(id, bidderId, request.Amount));
             return Results.Ok();
         }).RequireAuthorization();
 
