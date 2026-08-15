@@ -8,7 +8,7 @@ public class AddFundsCommandHandler(IWalletRepository repository) : IRequestHand
     public async Task Handle(AddFundsCommand request, CancellationToken token)
     {
         var userWallet = await repository.GetUserWalletByIdAsync(request.PublicUserId, token);
-        userWallet!.AddFunds(request.Amount);
+        userWallet.AddFunds(request.Amount);
         await repository.SaveUserFundsAsync(CancellationToken.None);
     }
 }

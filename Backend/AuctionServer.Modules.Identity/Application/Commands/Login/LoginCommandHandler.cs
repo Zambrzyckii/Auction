@@ -13,7 +13,7 @@ public sealed class LoginCommandHandler(IAuthRepository repository, IConfigurati
 {
     public async Task<string> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await repository.GetUserByEmailAsync(request.Email);
+        var user = await repository.GetUserByEmailAsync(request.Email, cancellationToken);
         if (user is null) throw new IdentityException.InvalidCredentialsException("Invalid credentials provided");
 
         var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);

@@ -21,7 +21,7 @@ public class CustomApi : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await _dbContainer.StartAsync();
 
-        Environment.SetEnvironmentVariable("ConnectionStrings__efaultConnection", _dbContainer.GetConnectionString());
+        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", _dbContainer.GetConnectionString());
 
         using var scope = Services.CreateScope();
         var walletContext = scope.ServiceProvider.GetRequiredService<WalletDbContext>();

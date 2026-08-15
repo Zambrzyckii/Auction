@@ -19,7 +19,7 @@ public sealed class User(string email, string passwordHash, string username, str
     public void ChangeRole(Role newRole) => UserRoles = newRole;
     public void DeleteThisUser() => IsDeleted = true;
 
-    public void UpdateCredentials(string? username, string? surname, string? name)
+    public void UpdateCredentials(string username, string surname, string name)
     {
         Username = username;
         Surname = surname;

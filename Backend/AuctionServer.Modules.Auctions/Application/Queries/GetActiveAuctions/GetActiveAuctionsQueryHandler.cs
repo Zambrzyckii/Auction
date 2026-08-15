@@ -13,13 +13,14 @@ public class GetActiveAuctionsQueryHandler(ISqlConnectionFactory sqlFactory) : I
         using IDbConnection connection = sqlFactory.CreateConnection();
 
         const string sql = """
-                           SELECT PublicAuctionId, CurrentPrice
-                           FROM Auctions
-                           WHERE IsClosed = false
-                           LIMIT @Limit
+                           SELECT "PublicAuctionId", "CurrentPrice"
+                           FROM "Auctions"
+                           WHERE "IsClosed" = false
+                           LIMIT @Limit;
                            """;
-        var results = await connection.QueryAsync<AuctionQueryDto>(sql,
-            new { query.Limit });
+
+        var command = new CommandDefinition(sql, new { query.Limit }, cancellationToken: cancellationToken);
+        var results = await connection.QueryAsync<AuctionQueryDto>(command);
         return results.ToList();
     }
 }

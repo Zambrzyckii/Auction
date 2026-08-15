@@ -2,8 +2,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AuctionServer.Shared.Integration\AuctionServer.Shared.Integration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0-preview.5.26302.115" />
+    <PackageReference Include="MediatR" Version="14.2.0" />
   </ItemGroup>
 
   <PropertyGroup>

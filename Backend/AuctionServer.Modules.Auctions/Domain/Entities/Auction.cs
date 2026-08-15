@@ -15,11 +15,11 @@ public sealed class Auction
 
     public void ApplyNewBid(Guid bidderId, decimal amount)
     {
-        if (IsClosed) return;
-        if (amount <= CurrentPrice) return;
+        if (IsClosed) throw new AuctionExceptions.AuctionClosedException();
+        if (amount <= CurrentPrice) throw new AuctionExceptions.InvalidBidException();
 
         if (bidderId == SellerUserId) throw new AuctionExceptions.CannotBidOwnItemException();
-        if (bidderId == CurrentWinningUserId) return;
+        if (bidderId == CurrentWinningUserId) throw new AuctionExceptions.AlreadyHighestBidderException();
 
         CurrentWinningUserId = bidderId;
         CurrentPrice = amount;

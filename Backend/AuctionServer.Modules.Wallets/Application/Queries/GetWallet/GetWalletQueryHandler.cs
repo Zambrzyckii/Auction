@@ -9,6 +9,6 @@ public class GetWalletQueryHandler(IWalletRepository repository) : IRequestHandl
     {
         var wallet = await repository.GetUserWalletByIdAsyncReadOnly(request.UserId, token);
 
-        return new WalletDto(wallet!.AvailableFunds, wallet.LockedFunds);
+        return new WalletDto(wallet.AvailableFunds, wallet.LockedFunds);
     }
 }

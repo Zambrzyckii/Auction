@@ -4,7 +4,7 @@ using AuctionServer.Shared.Integration.Exceptions;
 
 namespace AuctionServer.Api.Infrastructure;
 
-public class GlobalExceptionHandler : IExceptionHandler
+public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken token)
     {
@@ -22,8 +22,10 @@ public class GlobalExceptionHandler : IExceptionHandler
             return true;
         }
         
-        context.Response.StatusCode = 500;
-        await context.Response.WriteAsJsonAsync(new { Error = "Unhandled error occured" }, token);
+        logger.LogError(exception, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await context.Response.WriteAsJsonAsync(new { Error = "Unhandled error occurred" }, token);
+
         return true;
     }
 }

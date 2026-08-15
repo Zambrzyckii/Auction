@@ -1,9 +1,12 @@
+using AuctionServer.Shared.Integration.Exceptions;
+
 namespace AuctionServer.Modules.Auctions.Domain.Exceptions;
 
 public static class AuctionExceptions
 {
-    public class InvalidBidException() : ApplicationException("Price must be higher than current price");
-    public class AuctionClosedException() : ApplicationException("Auction must be active offer");
-    public class CannotBidOwnItemException() : ApplicationException("Cannot bid own item");
-    public class AuctionNotFoundException(Guid publicAuctionId) : ApplicationException($"Auction {publicAuctionId} not found");
+    public class InvalidBidException() : AppException("Price must be higher than current price",400);
+    public class AuctionClosedException() : AppException("This auction is closed", 400);
+    public class CannotBidOwnItemException() : AppException("Cannot bid own item", 400);
+    public class AlreadyHighestBidderException() : AppException("Bidder is already the highest bidder", 400);
+    public class AuctionNotFoundException(Guid publicAuctionId) : AppException($"Auction {publicAuctionId} not found", 404);
 }

@@ -12,7 +12,6 @@ public class AuctionDbContext(DbContextOptions<AuctionDbContext> options) : DbCo
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<Auction>().HasIndex(auction => auction.AuctionId).IsUnique()
-            .HasFilter("\"IsClosed\" = false");
+        modelBuilder.ApplyConfigurationsFromAssembly(GetType().Assembly);
     }
 }
