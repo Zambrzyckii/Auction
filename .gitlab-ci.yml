@@ -1,0 +1,23 @@
+image: mcr.microsoft.com/dotnet/sdk:10.0
+
+services:
+    - docker:dind
+
+variables:
+    DOCKER_HOST: "tcp//docker:2375"
+    DOCKER_TLS_CERTDIRL: ""
+    TESTCONTAINERS_HOST_OVERRIDE: "docker"
+
+stages:
+    - build
+    - test
+
+build: 
+    stage: build
+    script:
+        - dotnet build Backend/AuctionServer.slnx
+
+unit-tests:
+    stage: test
+    script:
+        - dotnet test Backend/AuctionServer.Modules.Wallets.Tests
