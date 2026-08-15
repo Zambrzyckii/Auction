@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
+using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -40,6 +41,19 @@ public class WalletRepository(WalletDbContext context) : IWalletRepository
                                           })
         {
             throw new WalletExceptions.WalletAlreadyExistException();
+        }
+    }
+
+    public async Task SaveUserFundsWithInboxAsync(ProcessedMessage message, CancellationToken token)
+    {
+        context.ProcessedMessages.Add(message);
+        try
+        {
+            await context.SaveChangesAsync(token);
+        }
+        catch (Exception e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new WalletExceptions.EventAlreadyProcessedException();
         }
     }
 }

@@ -4,6 +4,7 @@ namespace AuctionServer.Modules.Auctions.Domain.Entities;
 
 public sealed class Auction
 {
+    private static readonly TimeSpan AntiSnipingWindow = TimeSpan.FromSeconds(30);
     public Guid PublicAuctionId { get; init; } = Guid.NewGuid();
     
     public Guid SellerUserId { get; init; }
@@ -13,7 +14,7 @@ public sealed class Auction
     public decimal CurrentPrice { get; private set; } = 1;
     public bool IsClosed { get; private set; }
     public DateTime EndsOn { get; private set; } = DateTime.UtcNow.AddMinutes(1);
-
+    public Guid Version { get; private set; } = Guid.NewGuid();
     public void ApplyNewBid(Guid bidderId, decimal amount)
     {
         if (IsClosed) throw new AuctionExceptions.AuctionClosedException();
@@ -24,6 +25,8 @@ public sealed class Auction
 
         CurrentWinningUserId = bidderId;
         CurrentPrice = amount;
+        if (EndsOn < DateTime.UtcNow + AntiSnipingWindow) EndsOn += AntiSnipingWindow;
+        Version = Guid.NewGuid();
     }
     
     public static Auction Create(Guid sellerId, Guid itemId, decimal startingPrice, DateTime endsOn)
@@ -36,5 +39,6 @@ public sealed class Auction
     public void CloseAuction()
     {
         IsClosed = true;
+        Version = Guid.NewGuid();
     }
 }
