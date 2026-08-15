@@ -45,7 +45,7 @@ public sealed class Wallet
     public void SpendLockedFunds(decimal amount)
     {
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
-        if (LockedFunds < amount) throw new WalletExceptions.InsufficientFundsException();
+        if (LockedFunds < amount) throw new WalletExceptions.InsufficientLockedFundsException();
         
         LockedFunds -= amount;
         Version = Guid.NewGuid();

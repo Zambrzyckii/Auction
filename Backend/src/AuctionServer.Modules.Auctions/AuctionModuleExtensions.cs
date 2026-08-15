@@ -21,6 +21,7 @@ public static class AuctionModuleExtensions
         services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(dbConnectionString));
         services.AddScoped<IAuctionRepository, AuctionRepository>();
         services.AddHostedService<OutboxProcessor>();
+        services.AddHostedService<AuctionCloser>();
         return services;
     }
 }

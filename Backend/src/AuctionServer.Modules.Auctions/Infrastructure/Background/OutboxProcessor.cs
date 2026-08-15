@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AuctionServer.Modules.Auctions.Domain.Entities;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
@@ -70,6 +71,8 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
     {
         nameof(BidPlacedEvent) => JsonSerializer.Deserialize<BidPlacedEvent>(message.Content)
                                   ?? throw new JsonException($"Empty payload in outbox message {message.Id}"),
+        nameof(AuctionFinishedEvent) => JsonSerializer.Deserialize<AuctionFinishedEvent>(message.Content) 
+                                        ?? throw new JsonException($"Empty payload in outbox message {message.Id}"),
         _ => throw new NotSupportedException($"Unknown outbox message type: {message.Type}")
     };
 }
