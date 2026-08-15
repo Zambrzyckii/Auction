@@ -12,7 +12,7 @@ public static class WalletModuleExtensions
         services.AddDbContext<WalletDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IWalletRepository, WalletRepository>();
-
+        
         return services;
     }
 }

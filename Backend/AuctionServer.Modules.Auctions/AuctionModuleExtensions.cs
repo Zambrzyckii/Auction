@@ -1,6 +1,8 @@
 using AuctionServer.Modules.Auctions.Application.Interfaces;
 using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Auctions.Infrastructure;
+using AuctionServer.Modules.Auctions.Infrastructure.Background;
+using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +20,7 @@ public static class AuctionModuleExtensions
 
         services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(dbConnectionString));
         services.AddScoped<IAuctionRepository, AuctionRepository>();
+        services.AddHostedService<OutboxProcessor>();
         return services;
     }
 }
