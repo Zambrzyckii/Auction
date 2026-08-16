@@ -17,7 +17,7 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
         {
             try
             {
-                await CLoseExpiredAuctionAsync(stoppingToken);
+                await CloseExpiredAuctionAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -32,7 +32,7 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
         }
     }
 
-    private async Task CLoseExpiredAuctionAsync(CancellationToken stoppingToken)
+    private async Task CloseExpiredAuctionAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();

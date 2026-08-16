@@ -51,7 +51,7 @@ public class WalletRepository(WalletDbContext context) : IWalletRepository
         {
             await context.SaveChangesAsync(token);
         }
-        catch (Exception e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             throw new WalletExceptions.EventAlreadyProcessedException();
         }

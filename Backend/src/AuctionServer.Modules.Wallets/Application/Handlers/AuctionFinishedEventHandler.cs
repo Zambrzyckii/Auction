@@ -22,7 +22,7 @@ public sealed class AuctionFinishedEventHandler(IWalletRepository repository) : 
 
         try
         {
-            await repository.SaveUserFundsWithInboxAsync(processedMessage, cancellationToken);
+            await repository.SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None);
         }
         catch (WalletExceptions.EventAlreadyProcessedException)
         {
