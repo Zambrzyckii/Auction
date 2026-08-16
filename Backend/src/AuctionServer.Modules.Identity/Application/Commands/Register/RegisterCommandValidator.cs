@@ -11,6 +11,6 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
         RuleFor(x => x.Username).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Surname).NotEmpty().MaximumLength(30);
-        RuleFor(x => x.Birthday).LessThan(DateOnly.FromDateTime(DateTime.UtcNow));
+        RuleFor(x => x.Birthday).LessThan(_ => DateOnly.FromDateTime(DateTime.UtcNow));
     }
 }

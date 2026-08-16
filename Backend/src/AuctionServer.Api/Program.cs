@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using AuctionServer.Modules.Auctions;
 using AuctionServer.Modules.Auctions.Presentation;
@@ -13,7 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
+ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -55,13 +56,13 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapAuctionEndpoints();
 app.MapWalletEndpoints();
 app.MapIdentityEndpoints();
-
 app.Run();
 
 public partial class Program;
