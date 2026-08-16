@@ -26,3 +26,5 @@ integration-tests:
   stage: test
   script:
     - dotnet test Backend/tests/AuctionServer.Modules.Wallets.Tests
+    - dotnet test Backend/tests/AuctionServer.Modules.Identity.Tests
+    - dotnet test Backend/tests/AuctionServer.Modules.Inventory.Tests

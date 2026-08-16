@@ -10,8 +10,6 @@ public class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<Item>().HasIndex(item => item.Id).IsUnique()
-            .HasFilter("\"IsSoldToOfficialShop\" = false");
         modelBuilder.Entity<Item>().Property(i => i.Version).IsConcurrencyToken();
         
         modelBuilder.ApplyConfigurationsFromAssembly(GetType().Assembly);

@@ -6,5 +6,7 @@
   <Project Path="src/AuctionServer.Modules.Identity/AuctionServer.Modules.Identity.csproj" />
   <Project Path="src/AuctionServer.Modules.Inventory/AuctionServer.Modules.Inventory.csproj" />
   <Project Path="tests/AuctionServer.Modules.Wallets.Tests/AuctionServer.Modules.Wallets.Tests.csproj" />
+  <Project Path="tests/AuctionServer.Modules.Identity.Tests/AuctionServer.Modules.Identity.Tests.csproj" />
+  <Project Path="tests/AuctionServer.Modules.Inventory.Tests/AuctionServer.Modules.Inventory.Tests.csproj" />
   <Project Path="src/AuctionServer.Modules.Wallets/AuctionServer.Modules.Wallets.csproj" />
 </Solution>
