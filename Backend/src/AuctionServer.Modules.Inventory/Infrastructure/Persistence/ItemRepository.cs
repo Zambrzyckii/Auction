@@ -19,14 +19,13 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
     public async Task<List<Item>> GetUserSelectedItemsAsync(Guid ownerUserId, IReadOnlyList<Guid> publicItemIds, CancellationToken token)
     {
         var userItems = await context.Items.Where(inventory => inventory.OwnerUserId == ownerUserId && publicItemIds.Contains(inventory.PublicItemId)).ToListAsync(token);
-        if (userItems.Count <= 0) throw new InventoryException.UserOrItemDoesntExistException();
+        if (userItems.Count != publicItemIds.Count) throw new InventoryException.UserOrItemDoesntExistException();
         return userItems;
     }
 
     public async Task<List<Item>> GetUserItemsReadOnlyAsync(Guid ownerUserId, CancellationToken token)
     {
-        var userItems = await context.Items.Where(inventory => inventory.OwnerUserId == ownerUserId).AsNoTracking<Item>().ToListAsync(token);
-        if (userItems.Count <= 0) throw new InventoryException.UserOrItemDoesntExistException();
+        var userItems = await context.Items.Where(inventory => inventory.OwnerUserId == ownerUserId).AsNoTracking().ToListAsync(token);
         return userItems;
     }
 
@@ -37,7 +36,7 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         {
             await context.SaveChangesAsync(token);
         }
-        catch (DbUpdateConcurrencyException e) when (e.InnerException is PostgresException
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
                                                      {
                                                          SqlState: PostgresErrorCodes.UniqueViolation
                                                      })
@@ -53,7 +52,7 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         {
             await context.SaveChangesAsync(token);
         }
-        catch (DbUpdateConcurrencyException e) when (e.InnerException is PostgresException
+        catch (DbUpdateException e) when (e.InnerException is PostgresException
                                                      {
                                                          SqlState: PostgresErrorCodes.UniqueViolation
                                                      })

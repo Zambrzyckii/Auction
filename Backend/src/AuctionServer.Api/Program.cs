@@ -5,6 +5,7 @@ using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Api.Infrastructure;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Presentation;
+using AuctionServer.Modules.Inventory;
 using AuctionServer.Modules.Wallets;
 using AuctionServer.Modules.Wallets.Presentation;
 using AuctionServer.Shared.Integration.Validators;
@@ -47,10 +48,17 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
 });
 
+builder.Services.AddValidatorsFromAssembly(typeof(InventoryModuleExtension).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(InventoryModuleExtension).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+});
 
 builder.Services.AddAuctionModule(connectionString!);
 builder.Services.AddWalletsModule(connectionString!);
 builder.Services.AddIdentityModule(connectionString!);
+builder.Services.AddInventoryModule(connectionString!);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
