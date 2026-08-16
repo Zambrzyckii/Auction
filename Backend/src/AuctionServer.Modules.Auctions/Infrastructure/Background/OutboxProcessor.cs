@@ -41,7 +41,7 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
         var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
 
         var messages = await context.OutboxMessages
-            .Where(m => m.ProcessedOn == null)
+            .Where(m => m.ProcessedOn == null && !m.IsDead && (m.NextAttemptOn == null || m.NextAttemptOn <= DateTime.UtcNow))
             .OrderBy(m => m.CreatedOn)
             .Take(20)
             .ToListAsync(stoppingToken);
@@ -60,6 +60,8 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
             }
             catch (Exception e)
             {
+                message.FailedAttempt(e.Message);
+                if(message.AttemptCount > 5) message.MarkMessageAsDead();
                 logger.LogError(e, "Failed to process outbox message {MessageId}", message.Id);
             }
 
