@@ -4,3 +4,5 @@ public abstract class AppException(string message, int statusCode) : Exception(m
 {
     public int StatusCode { get; } = statusCode;
 }
+
+public class RequestValidationException(string message) : AppException(message, 400);

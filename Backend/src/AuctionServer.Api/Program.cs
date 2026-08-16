@@ -6,6 +6,8 @@ using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Presentation;
 using AuctionServer.Modules.Wallets;
 using AuctionServer.Modules.Wallets.Presentation;
+using AuctionServer.Shared.Integration.Validators;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -23,9 +25,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(AuctionModuleExtensions).Assembly));
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(WalletModuleExtensions).Assembly));
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(IdentityModuleExtensions).Assembly));
+builder.Services.AddValidatorsFromAssembly(typeof(AuctionModuleExtensions).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(AuctionModuleExtensions).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+});
+
+builder.Services.AddValidatorsFromAssembly(typeof(WalletModuleExtensions).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(WalletModuleExtensions).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+});
+
+builder.Services.AddValidatorsFromAssembly(typeof(IdentityModuleExtensions).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(IdentityModuleExtensions).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+});
+
+
 builder.Services.AddAuctionModule(connectionString!);
 builder.Services.AddWalletsModule(connectionString!);
 builder.Services.AddIdentityModule(connectionString!);
