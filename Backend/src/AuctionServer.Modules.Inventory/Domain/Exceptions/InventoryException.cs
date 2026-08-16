@@ -11,4 +11,6 @@ public class InventoryException
     public class IngredientsOwnerMismatchException() : AppException("All ingredients must belong to the same owner", 400);
     public class IngredientsRarityMismatchException() : AppException("All ingredients must share the same rarity", 400);
     public class CannotCraftFromLegendaryException() : AppException("Legendary items cannot be used as crafting ingredients", 400);
+    public class UserOrItemDoesntExistException() : AppException("User or item with provided id doesn't exist", 404);
+    public class ItemAlreadyExistInInventoryException() : AppException("You already own provided item", 409);
 }
