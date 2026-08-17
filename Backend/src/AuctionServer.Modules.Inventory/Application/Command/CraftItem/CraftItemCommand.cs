@@ -3,4 +3,4 @@ using MediatR;
 
 namespace AuctionServer.Modules.Inventory.Application.Command.CraftItem;
 
-public record CraftItemCommand(List<Item> ingredients) : IRequest<Item>; 
+public record CraftItemCommand(Guid OwnerId, IReadOnlyList<Guid> IngredientsIds) : IRequest; 
