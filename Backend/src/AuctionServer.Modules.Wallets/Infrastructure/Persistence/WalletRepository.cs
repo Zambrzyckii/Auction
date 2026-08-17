@@ -56,4 +56,9 @@ public class WalletRepository(WalletDbContext context) : IWalletRepository
             throw new WalletExceptions.EventAlreadyProcessedException();
         }
     }
+
+    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
+    {
+        return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
+    }
 }

@@ -11,7 +11,8 @@ public sealed class AuctionFinishedEventHandler(IWalletRepository repository) : 
     public async Task Handle(AuctionFinishedEvent notification, CancellationToken cancellationToken)
     {
         if (notification.WinnerUserId is null || notification.FinalPrice is null) return;
-
+        if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
+        
         var winnerWallet = await repository.GetUserWalletByIdAsync(notification.WinnerUserId.Value, cancellationToken);
         var sellerWallet = await repository.GetUserWalletByIdAsync(notification.SellerUserId, cancellationToken);
         

@@ -1,5 +1,4 @@
 using AuctionServer.Modules.Wallets.Application.Handlers;
-using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
 using Microsoft.EntityFrameworkCore;
@@ -39,17 +38,14 @@ public class AuctionFinishedEventHandlerTests(WalletsPostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Handle_WhenEventIsDeliveredTwice_ShouldNotSettleTwice()
+    public async Task Handle_WhenEventIsDeliveredTwice_ShouldSettleOnlyOnce()
     {
         var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m);
         var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
         var notification = CreateEvent(winnerId, sellerId, 100m);
 
         await HandleAsync(notification);
-        // Redelivery is currently rejected by the domain guard (no locked funds left),
-        // not by the inbox — the inbox only wins when the wallet mutations still succeed.
-        await Assert.ThrowsAsync<WalletExceptions.InsufficientLockedFundsException>(
-            () => HandleAsync(notification));
+        await HandleAsync(notification);
 
         var winner = await fixture.GetWalletAsync(winnerId);
         var seller = await fixture.GetWalletAsync(sellerId);
