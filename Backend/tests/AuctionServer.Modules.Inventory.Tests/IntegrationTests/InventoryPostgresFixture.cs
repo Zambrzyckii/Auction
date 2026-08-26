@@ -25,9 +25,7 @@ public sealed class InventoryPostgresFixture : IAsyncLifetime
     {
         await _dbContainer.StartAsync();
         await using var context = CreateContext();
-        // The Inventory module has no EF migrations yet, so the schema is created from the model.
-        // Switch to MigrateAsync once the first migration exists.
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
     }
 
     public async Task DisposeAsync() => await _dbContainer.DisposeAsync();
@@ -40,12 +38,26 @@ public sealed class InventoryPostgresFixture : IAsyncLifetime
         return new InventoryDbContext(options);
     }
 
-    public async Task<Item> SeedItemAsync(Guid ownerId, ItemRarity rarity = ItemRarity.Common)
+    public async Task<Item> SeedItemAsync(Guid ownerId, ItemRarity rarity = ItemRarity.Common,
+        ItemStatus status = ItemStatus.Available)
     {
         await using var context = CreateContext();
         var item = Item.Create(ownerId, "Seeded Item", rarity);
+        switch (status)
+        {
+            case ItemStatus.LockedForAuction: item.LockItem(); break;
+            case ItemStatus.SoldToShop: item.SellToOfficialShop(); break;
+            case ItemStatus.Consumed:
+                throw new ArgumentException("Consumed items can only be produced by crafting", nameof(status));
+        }
         context.Items.Add(item);
         await context.SaveChangesAsync();
         return item;
+    }
+
+    public async Task<Item> GetItemAsync(Guid publicItemId)
+    {
+        await using var context = CreateContext();
+        return await context.Items.AsNoTracking().SingleAsync(i => i.PublicItemId == publicItemId);
     }
 }

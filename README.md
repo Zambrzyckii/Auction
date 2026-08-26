@@ -86,14 +86,16 @@ Non-negotiable module rules:
 - Domain implemented: item rarity tiers, rarity-based price rolls, a state machine
   (`Available / LockedForAuction / SoldToShop / Consumed`), crafting (sacrifice 3 same-rarity items → 1 random
   item of the next tier), selling to an official shop
-- Repository done; commands/queries and host wiring are the current work
+- Repository, command/query handlers (craft, sell to shop, list), validators, transactional outbox and the first
+  migration done; shop sales already pay out through Wallets (`ItemSoldToShopEvent`). HTTP endpoints are the
+  current work
 
 **Planned next:**
 
 - Item ↔ auction integration (reservation saga: auction pending until the item is locked)
 - Funds reservation for bids (same saga pattern) — today a bid is accepted before funds are verified
 - Bid history table + auction detail endpoint
-- Starter item pack on registration; shop payouts through Wallets
+- Starter item pack on registration
 - RabbitMQ as the event transport (drop-in replacement for the in-process publisher)
 - Angular frontend, AI market bots, API gateway (empty top-level dirs are placeholders for these)
 

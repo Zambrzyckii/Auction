@@ -2,6 +2,7 @@ using AuctionServer.Modules.Inventory.Application.Interfaces;
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
+using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -66,6 +67,12 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
 
     public async Task SaveAsync(CancellationToken token)
     {
+        await context.SaveChangesAsync(token);
+    }
+
+    public async Task SaveChangesWithOutboxAsync(OutboxMessage message, CancellationToken token)
+    {
+        context.OutboxMessages.Add(message);
         await context.SaveChangesAsync(token);
     }
 }

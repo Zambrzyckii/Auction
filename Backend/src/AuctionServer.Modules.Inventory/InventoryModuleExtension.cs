@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Inventory.Application.Interfaces;
+using AuctionServer.Modules.Inventory.Infrastructure.Background;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ public static class InventoryModuleExtension
         });
 
         services.AddScoped<IItemRepository, ItemRepository>();
+        services.AddHostedService<OutboxProcessor>();
 
         return services;
     }
