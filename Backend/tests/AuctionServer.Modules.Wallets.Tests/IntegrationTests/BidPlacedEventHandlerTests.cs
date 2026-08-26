@@ -15,7 +15,7 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
 
         await using var context = fixture.CreateContext();
         var handler = new BidPlacedEventHandler(new WalletRepository(context));
-        var bidEvent = new BidPlacedEvent(Guid.NewGuid(), userId, null, 100m, null);
+        var bidEvent = new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, null, 100m, null);
         await handler.Handle(bidEvent, CancellationToken.None);
 
         var wallet = await fixture.GetWalletAsync(userId);
@@ -33,13 +33,13 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(auctionId, firstUserId, null, 100m, null), CancellationToken.None);
+            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, firstUserId, null, 100m, null), CancellationToken.None);
         }
 
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(auctionId, secondUserId, firstUserId, 150m, 100m), CancellationToken.None);
+            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, secondUserId, firstUserId, 150m, 100m), CancellationToken.None);
         }
 
         var previousWinner = await fixture.GetWalletAsync(firstUserId);
@@ -60,13 +60,13 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(auctionId, userId, null, 100m, null), CancellationToken.None);
+            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, userId, null, 100m, null), CancellationToken.None);
         }
 
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(auctionId, userId, userId, 150m, 100m), CancellationToken.None);
+            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, userId, userId, 150m, 100m), CancellationToken.None);
         }
 
         var wallet = await fixture.GetWalletAsync(userId);
@@ -84,14 +84,14 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(auctionId, firstUserId, null, 100m, null), CancellationToken.None);
+            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, firstUserId, null, 100m, null), CancellationToken.None);
         }
 
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
             await Assert.ThrowsAsync<WalletExceptions.InsufficientFundsException>(
-                () => handler.Handle(new BidPlacedEvent(auctionId, secondUserId, firstUserId, 200m, 100m), CancellationToken.None));
+                () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, secondUserId, firstUserId, 200m, 100m), CancellationToken.None));
         }
 
         var previousWinner = await fixture.GetWalletAsync(firstUserId);
@@ -113,14 +113,14 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(auctionId, firstUserId, null, 100m, null), CancellationToken.None);
+            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, firstUserId, null, 100m, null), CancellationToken.None);
         }
 
         await using (var context = fixture.CreateContext())
         {
             var handler = new BidPlacedEventHandler(new WalletRepository(context));
             await Assert.ThrowsAsync<WalletExceptions.UserWithThisIdDontHaveWallet>(
-                () => handler.Handle(new BidPlacedEvent(auctionId, missingUserId, firstUserId, 150m, 100m), CancellationToken.None));
+                () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, missingUserId, firstUserId, 150m, 100m), CancellationToken.None));
         }
 
         var previousWinner = await fixture.GetWalletAsync(firstUserId);
@@ -138,7 +138,7 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         await using var context = fixture.CreateContext();
         var handler = new BidPlacedEventHandler(new WalletRepository(context));
         await Assert.ThrowsAsync<WalletExceptions.UserWithThisIdDontHaveWallet>(
-            () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), secondUserId, missingUserId, 150m, 100m), CancellationToken.None));
+            () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), secondUserId, missingUserId, 150m, 100m), CancellationToken.None));
 
         var newWinner = await fixture.GetWalletAsync(secondUserId);
         Assert.Equal(500m, newWinner.AvailableFunds);
@@ -155,7 +155,7 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         await using var context = fixture.CreateContext();
         var handler = new BidPlacedEventHandler(new WalletRepository(context));
         await Assert.ThrowsAsync<WalletExceptions.InvalidAmountException>(
-            () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), userId, null, newPrice, null), CancellationToken.None));
+            () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, null, newPrice, null), CancellationToken.None));
 
         var wallet = await fixture.GetWalletAsync(userId);
         Assert.Equal(500m, wallet.AvailableFunds);

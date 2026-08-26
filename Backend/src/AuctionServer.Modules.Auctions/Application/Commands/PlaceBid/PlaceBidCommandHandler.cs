@@ -15,11 +15,12 @@ public sealed class PlaceBidCommandHandler(IAuctionRepository repository) : IReq
         var previousWinnerId = currentAuction.CurrentWinningUserId;
         currentAuction.ApplyNewBid(command.BidderId, command.NewPrice);
 
+        var eventId = Guid.NewGuid();
         var outboxMessage = new OutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = eventId,
             Type = nameof(BidPlacedEvent),
-            Content = JsonSerializer.Serialize(new BidPlacedEvent(currentAuction.PublicAuctionId, command.BidderId,
+            Content = JsonSerializer.Serialize(new BidPlacedEvent(eventId, currentAuction.PublicAuctionId, command.BidderId,
                 previousWinnerId, command.NewPrice, previousPrice))
         };
 

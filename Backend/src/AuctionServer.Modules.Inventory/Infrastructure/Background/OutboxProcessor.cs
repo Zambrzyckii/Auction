@@ -1,8 +1,6 @@
-using System.Text.Json;
 using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
-using MediatR;
+using AuctionServer.Shared.Integration.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -37,7 +35,7 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
-        var publisher = scope.ServiceProvider.GetRequiredService<IPublisher>();
+        var eventPublisher = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
 
         var messages = await context.OutboxMessages
             .Where(m => m.ProcessedOn == null && !m.IsDead && (m.NextAttemptOn == null || m.NextAttemptOn <= DateTime.UtcNow))
@@ -49,8 +47,7 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
         {
             try
             {
-                var domainEvent = DeserializeEvent(message);
-                await publisher.Publish(domainEvent, stoppingToken);
+                await eventPublisher.PublishAsync(message.Id, message.Type, message.Content, stoppingToken);
                 message.MarkAsProcessed();
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -67,11 +64,4 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
             await context.SaveChangesAsync(stoppingToken);
         }
     }
-
-    private static INotification DeserializeEvent(OutboxMessage message) => message.Type switch
-    {
-        nameof(ItemSoldToShopEvent) => JsonSerializer.Deserialize<ItemSoldToShopEvent>(message.Content)
-                                       ?? throw new JsonException($"Empty payload in outbox message {message.Id}"),
-        _ => throw new NotSupportedException($"Unknown outbox message type: {message.Type}")
-    };
 }

@@ -18,10 +18,11 @@ public class RegisterCommandHandler(IAuthRepository repository) : IRequestHandle
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
         var newUser = new User(request.Email, hashedPassword, request.Username, request.Name, request.Surname, request.Birthday);
 
-        var registeredEvent = new UserRegisteredEvent(newUser.PublicUserId, newUser.Email);
+        var eventId = Guid.NewGuid();
+        var registeredEvent = new UserRegisteredEvent(eventId, newUser.PublicUserId, newUser.Email);
         var outboxMessage = new OutboxMessage
         {
-            Id = Guid.NewGuid(),
+            Id = eventId,
             Type = nameof(UserRegisteredEvent),
             Content = JsonSerializer.Serialize(registeredEvent)
         };
