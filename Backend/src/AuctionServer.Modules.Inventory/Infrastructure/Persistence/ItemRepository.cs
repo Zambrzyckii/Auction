@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Inventory.Application.Interfaces;
 using AuctionServer.Modules.Inventory.Domain.Entities;
+using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -25,10 +26,12 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
 
     public async Task<List<Item>> GetUserItemsReadOnlyAsync(Guid ownerUserId, CancellationToken token)
     {
-        var userItems = await context.Items.Where(inventory => inventory.OwnerUserId == ownerUserId).AsNoTracking().ToListAsync(token);
+        var userItems = await context.Items.Where(inventory => inventory.OwnerUserId == ownerUserId 
+                                                               && inventory.Status != ItemStatus.Consumed 
+                                                               && inventory.Status != ItemStatus.SoldToShop).AsNoTracking().ToListAsync(token);
         return userItems;
     }
-
+    
     public async Task AddItemAsync(Item item, CancellationToken token)
     {
         await context.Items.AddAsync(item, token);

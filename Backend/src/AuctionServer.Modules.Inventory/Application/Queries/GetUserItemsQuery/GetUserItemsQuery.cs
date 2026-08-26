@@ -1,6 +1,5 @@
+using MediatR;
+
 namespace AuctionServer.Modules.Inventory.Application.Queries.GetUserItemsQuery;
 
-public class GetUserItemsQuery
-{
-    
-}
+public record GetUserItemsQuery(Guid OwnerId) : IRequest<List<UserItemsDto>>;
