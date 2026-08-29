@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Auctions.Domain.Entities;
+using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
 
 namespace AuctionServer.Modules.Auctions.Tests.Domain.Entities;
@@ -18,7 +19,7 @@ public class AuctionFactoryTests
         Assert.Equal(itemId, auction.ItemId);
         Assert.Equal(75m, auction.CurrentPrice);
         Assert.Equal(endsOn, auction.EndsOn);
-        Assert.False(auction.IsClosed);
+        Assert.Equal(AuctionStatus.Active, auction.Status);
         Assert.Null(auction.CurrentWinningUserId);
     }
 

@@ -1,6 +1,7 @@
 using System.Data;
 using AuctionServer.Modules.Auctions.Application.Interfaces;
 using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
+using AuctionServer.Modules.Auctions.Domain.Enums;
 using Dapper;
 using MediatR;
 
@@ -15,11 +16,11 @@ public class GetActiveAuctionsQueryHandler(ISqlConnectionFactory sqlFactory) : I
         const string sql = """
                            SELECT "PublicAuctionId", "CurrentPrice"
                            FROM "Auctions"
-                           WHERE "IsClosed" = false
+                           WHERE "Status" = @Active
                            LIMIT @Limit;
                            """;
 
-        var command = new CommandDefinition(sql, new { query.Limit }, cancellationToken: cancellationToken);
+        var command = new CommandDefinition(sql, new { query.Limit, Active = (int)AuctionStatus.Active }, cancellationToken: cancellationToken);
         var results = await connection.QueryAsync<AuctionQueryDto>(command);
         return results.ToList();
     }

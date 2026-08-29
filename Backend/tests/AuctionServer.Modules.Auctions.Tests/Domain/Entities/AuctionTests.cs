@@ -5,10 +5,13 @@ namespace AuctionServer.Modules.Auctions.Tests.Domain.Entities;
 
 public class AuctionTests
 {
+    private static Auction CreateAuction() =>
+        Auction.Create(Guid.NewGuid(), Guid.NewGuid(), 1m, DateTime.UtcNow.AddMinutes(10));
+
     [Fact]
     public void ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice()
     {
-        var auction = new Auction();
+        var auction = CreateAuction();
         decimal newValidBid = 100m;
         
         auction.ApplyNewBid(Guid.NewGuid(), newValidBid);
@@ -19,7 +22,7 @@ public class AuctionTests
     [Fact]
     public void ApplyNewBid_WhenAmountIsLower_ShouldThrowInvalidBidException()
     {
-        var auction = new Auction();
+        var auction = CreateAuction();
         decimal currentBid = 100m;
         auction.ApplyNewBid(Guid.NewGuid(),currentBid);
 
@@ -32,7 +35,7 @@ public class AuctionTests
     [Fact]
     public void ApplyNewBid_WhenAuctionIsClosed_ShouldThrowAuctionClosedException()
     {
-        var auction = new Auction();
+        var auction = CreateAuction();
         var currentBid = 100m;
         auction.ApplyNewBid(Guid.NewGuid(),currentBid);
         auction.CloseAuction();

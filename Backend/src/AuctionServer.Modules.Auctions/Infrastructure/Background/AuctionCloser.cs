@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
@@ -38,7 +39,7 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
         var context = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();
 
         var expiredAuctions = await context.Auctions
-            .Where(a => !a.IsClosed && a.EndsOn <= DateTime.UtcNow)
+            .Where(a => a.Status == AuctionStatus.Active && a.EndsOn <= DateTime.UtcNow)
             .Take(20)
             .ToListAsync(stoppingToken);
 

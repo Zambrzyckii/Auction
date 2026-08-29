@@ -4,17 +4,20 @@ using System.Collections.Generic;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace AuctionServer.Modules.Auctions.Migrations
+namespace AuctionServer.Modules.Auctions.Infrastructure.Migrations
 {
     [DbContext(typeof(AuctionDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829120847_Add_Auction_Status_And_Item_Snapshot")]
+    partial class Add_Auction_Status_And_Item_Snapshot
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

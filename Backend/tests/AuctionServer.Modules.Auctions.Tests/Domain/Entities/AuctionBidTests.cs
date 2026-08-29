@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Auctions.Domain.Entities;
+using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
 
 namespace AuctionServer.Modules.Auctions.Tests.Domain.Entities;
@@ -68,7 +69,7 @@ public class AuctionBidTests
 
         auction.CloseAuction();
 
-        Assert.True(auction.IsClosed);
+        Assert.Equal(AuctionStatus.Closed, auction.Status);
         Assert.NotEqual(versionBefore, auction.Version);
     }
 }
