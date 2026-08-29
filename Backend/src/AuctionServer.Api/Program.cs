@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using AuctionServer.Modules.Auctions;
 using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Api.Infrastructure;
+using AuctionServer.Api.Infrastructure.Authentication;
 using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Presentation;
@@ -28,11 +29,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
         ValidIssuer = builder.Configuration["Jwt:Issuer"],
         ValidAudience = builder.Configuration["Jwt:Audience"]
-    });
+    })
+    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationOptions.SchemeName, options => options.ApiKey = builder.Configuration["Bots:ApiKey"]);
 
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Bot", policy => policy.RequireRole("Bot"));
+    options.AddPolicy("BotProvisioning", policy =>
+    {
+        policy.AuthenticationSchemes.Add(ApiKeyAuthenticationOptions.SchemeName);
+        policy.RequireAuthenticatedUser();
+    });
 });
 
 builder.Services.AddValidatorsFromAssembly(typeof(AuctionModuleExtensions).Assembly);
