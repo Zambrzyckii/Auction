@@ -13,7 +13,7 @@ public static class WalletModuleExtensions
         if (startingFunds <= 0)
             throw new ArgumentOutOfRangeException(nameof(startingFunds), startingFunds,
                 "Starting funds must be greater than zero");
-        
+
         services.AddDbContext<WalletDbContext>(options => options.UseNpgsql(connectionString));
         services.AddSingleton(new WalletsOptions(startingFunds));
         services.AddScoped<IWalletRepository, WalletRepository>();

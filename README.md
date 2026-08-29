@@ -44,7 +44,8 @@ Non-negotiable module rules:
 ### The main flow (implemented and verified end-to-end)
 
 1. **Register** → Identity stores the user and writes `UserRegisteredEvent` to its **outbox** in the same
-   transaction; a background processor publishes it; Wallets reacts and creates the user's wallet.
+   transaction; a background processor publishes it; Wallets reacts and creates the user's wallet
+   credited with the configured starting balance (`Wallets:StartingFunds`).
 2. **Login** → JWT with the user's public id; endpoints resolve the caller from claims, never from the body.
 3. **Create auction** → validated request (FluentValidation pipeline), factory-method invariants,
    one active auction per item enforced by a filtered unique index.
@@ -75,7 +76,7 @@ Non-negotiable module rules:
 **Done (works today, covered by the flow above):**
 
 - Identity: registration, login, JWT with a role claim (`User` / `Bot`), soft-deleted users, password hashing
-- Wallets: wallet-per-user auto-creation, add funds (bot-only), lock/unlock/spend, settlement inbox
+- Wallets: wallet-per-user auto-creation with configured starting funds, add funds (bot-only), lock/unlock/spend, settlement inbox
 - Auctions: create, list (Dapper read model), bid with anti-sniping, background auto-close, outbox with
   dead-letter + backoff
 - Request validation pipeline (FluentValidation + MediatR behavior) with a consistent 400 error contract
@@ -89,7 +90,7 @@ Non-negotiable module rules:
 - Repository, command/query handlers (craft, sell to shop, list), validators, transactional outbox, first
   migration and HTTP endpoints (`/api/inventory`: list, craft, sell) done; shop sales already pay out through
   Wallets (`ItemSoldToShopEvent`). Bot-only mint endpoint
-  (`POST /api/inventory/items`) done; bot accounts are not seeded yet and players get no starting funds
+  (`POST /api/inventory/items`) done; bot accounts are not provisioned yet
 
 **Planned next:**
 
