@@ -11,6 +11,7 @@ public interface IItemRepository
     Task<List<Item>> GetUserItemsReadOnlyAsync(Guid ownerUserId, CancellationToken token);
     Task AddItemAsync(Item item, CancellationToken token);
     Task AddItemsAsync(List<Item> items, CancellationToken token);
+    Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
     Task SaveAsync(CancellationToken token);
     Task SaveChangesWithOutboxAsync(OutboxMessage message, CancellationToken token);
     Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token);

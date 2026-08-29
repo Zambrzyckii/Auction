@@ -71,6 +71,11 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         await context.SaveChangesAsync(token);
     }
 
+    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
+    {
+        return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
+    }
+
     public async Task SaveChangesWithOutboxAsync(OutboxMessage message, CancellationToken token)
     {
         context.OutboxMessages.Add(message);
