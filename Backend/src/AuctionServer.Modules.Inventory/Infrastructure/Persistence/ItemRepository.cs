@@ -2,6 +2,7 @@ using AuctionServer.Modules.Inventory.Application.Interfaces;
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
+using AuctionServer.Modules.Inventory.Infrastructure.Inbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -74,5 +75,33 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
     {
         context.OutboxMessages.Add(message);
         await context.SaveChangesAsync(token);
+    }
+
+    public async Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token)
+    {
+        context.ProcessedMessages.Add(message);
+        try
+        {
+            await context.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new InventoryException.EventAlreadyProcessedException();
+        }
+    }
+
+    public async Task SaveChangesWithInboxAndOutboxAsync(ProcessedMessage inboxMessage, OutboxMessage outboxMessage,
+        CancellationToken token)
+    {
+        context.ProcessedMessages.Add(inboxMessage);
+        context.OutboxMessages.Add(outboxMessage);
+        try
+        {
+            await context.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new InventoryException.EventAlreadyProcessedException();
+        }
     }
 }

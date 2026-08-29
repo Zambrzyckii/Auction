@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Inventory.Domain.Entities;
+using AuctionServer.Modules.Inventory.Infrastructure.Inbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Inventory.Application.Interfaces;
@@ -12,4 +13,8 @@ public interface IItemRepository
     Task AddItemsAsync(List<Item> items, CancellationToken token);
     Task SaveAsync(CancellationToken token);
     Task SaveChangesWithOutboxAsync(OutboxMessage message, CancellationToken token);
+    Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token);
+
+    Task SaveChangesWithInboxAndOutboxAsync(ProcessedMessage inboxMessage, OutboxMessage outboxMessage,
+        CancellationToken token);
 }

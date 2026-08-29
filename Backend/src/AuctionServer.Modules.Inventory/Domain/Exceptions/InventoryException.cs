@@ -13,4 +13,5 @@ public class InventoryException
     public class CannotCraftFromLegendaryException() : AppException("Legendary items cannot be used as crafting ingredients", 400);
     public class UserOrItemDoesntExistException() : AppException("User or item with provided id doesn't exist", 404);
     public class ItemAlreadyExistInInventoryException() : AppException("You already own provided item", 409);
+    public class EventAlreadyProcessedException() : AppException("Event was already processed", 409);
 }
