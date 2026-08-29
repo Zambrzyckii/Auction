@@ -1,10 +1,10 @@
 using FluentValidation;
 
-namespace AuctionServer.Modules.Identity.Application.Commands.Register;
+namespace AuctionServer.Modules.Identity.Application.Commands.RegisterBot;
 
-public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand>
+public sealed class RegisterBotCommandValidator : AbstractValidator<RegisterBotCommand>
 {
-    public RegisterCommandValidator()
+    public RegisterBotCommandValidator()
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
         //Password min 8 characters length, 1 number, 1 capital letter
