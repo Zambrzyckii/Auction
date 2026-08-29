@@ -1,4 +1,6 @@
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
+using AuctionServer.Modules.Wallets.Domain.Exceptions;
+using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
 using AuctionServer.Shared.Integration.Events;
 using MediatR;
 
@@ -8,6 +10,8 @@ public sealed class BidPlacedEventHandler(IWalletRepository repository) : INotif
 {
     public async Task Handle(BidPlacedEvent notification, CancellationToken token)
     {
+        if (await repository.WasEventProcessedAsync(notification.EventId, token)) return;
+        
         var newWinnerWallet = await repository.GetUserWalletByIdAsync(notification.NewWinningUserId, token);
         newWinnerWallet.LockFunds(notification.NewPrice);
 
@@ -16,6 +20,15 @@ public sealed class BidPlacedEventHandler(IWalletRepository repository) : INotif
             var previousWinnerWallet = await repository.GetUserWalletByIdAsync(notification.PreviousWinningUserId.Value, token);
             previousWinnerWallet.UnlockFunds(notification.PreviousPrice.Value);
         }
-        await repository.SaveUserFundsAsync(CancellationToken.None);
+
+        var processedMessage = new ProcessedMessage { EventId = notification.EventId };
+
+        try
+        {
+            await repository.SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None);
+        }
+        catch (WalletExceptions.EventAlreadyProcessedException)
+        {
+        }
     }
 }

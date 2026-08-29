@@ -60,8 +60,8 @@ Non-negotiable module rules:
 
 - **Transactional outbox** in every publishing module — an event row and the state change commit together;
   a poller publishes pending rows.
-- **Inbox (idempotent consumer)** for financial handlers — duplicate deliveries hit a primary-key violation
-  and roll back cleanly.
+- **Inbox (idempotent consumer)** for financial handlers — duplicate deliveries are detected up front, and a
+  concurrent duplicate hits a primary-key violation and rolls back cleanly.
 - **Dead-lettering with exponential backoff** — failing outbox messages retry with growing delays
   (10 s → 20 s → 40 s → 80 s), keep their error history in the row, and are parked as dead after 5 attempts
   instead of retrying forever.
@@ -86,9 +86,9 @@ Non-negotiable module rules:
 - Domain implemented: item rarity tiers, rarity-based price rolls, a state machine
   (`Available / LockedForAuction / SoldToShop / Consumed`), crafting (sacrifice 3 same-rarity items → 1 random
   item of the next tier), selling to an official shop
-- Repository, command/query handlers (craft, sell to shop, list), validators, transactional outbox and the first
-  migration done; shop sales already pay out through Wallets (`ItemSoldToShopEvent`). HTTP endpoints are the
-  current work
+- Repository, command/query handlers (craft, sell to shop, list), validators, transactional outbox, first
+  migration and HTTP endpoints (`/api/inventory`: list, craft, sell) done; shop sales already pay out through
+  Wallets (`ItemSoldToShopEvent`). Nothing creates items yet — provisioning comes with the roles work
 
 **Planned next:**
 

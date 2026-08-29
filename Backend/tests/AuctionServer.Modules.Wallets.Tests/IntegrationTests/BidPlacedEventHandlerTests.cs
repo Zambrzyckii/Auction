@@ -2,6 +2,7 @@ using AuctionServer.Modules.Wallets.Application.Handlers;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
+using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;
 
@@ -21,6 +22,32 @@ public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
         var wallet = await fixture.GetWalletAsync(userId);
         Assert.Equal(400m, wallet.AvailableFunds);
         Assert.Equal(100m, wallet.LockedFunds);
+    }
+
+    [Fact]
+    public async Task Handle_WhenEventIsDeliveredTwice_ShouldLockFundsOnlyOnce()
+    {
+        var userId = await fixture.SeedWalletAsync(150m);
+        var bidEvent = new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, null, 100m, null);
+
+        await using (var context = fixture.CreateContext())
+        {
+            var handler = new BidPlacedEventHandler(new WalletRepository(context));
+            await handler.Handle(bidEvent, CancellationToken.None);
+        }
+
+        await using (var context = fixture.CreateContext())
+        {
+            var handler = new BidPlacedEventHandler(new WalletRepository(context));
+            await handler.Handle(bidEvent, CancellationToken.None);
+        }
+
+        var wallet = await fixture.GetWalletAsync(userId);
+        Assert.Equal(50m, wallet.AvailableFunds);
+        Assert.Equal(100m, wallet.LockedFunds);
+
+        await using var verifyContext = fixture.CreateContext();
+        Assert.True(await verifyContext.ProcessedMessages.AnyAsync(m => m.EventId == bidEvent.EventId));
     }
 
     [Fact]
