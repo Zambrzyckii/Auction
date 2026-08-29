@@ -19,6 +19,7 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var startingFunds = builder.Configuration.GetValue<decimal?>("Wallets:StartingFunds") ?? throw new InvalidOperationException("Missing configuration value 'Wallets:StartingFunds'");
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -63,7 +64,7 @@ builder.Services.AddMediatR(cfg =>
 });
 
 builder.Services.AddAuctionModule(connectionString!);
-builder.Services.AddWalletsModule(connectionString!);
+builder.Services.AddWalletsModule(connectionString!, startingFunds);
 builder.Services.AddIdentityModule(connectionString!);
 builder.Services.AddInventoryModule(connectionString!);
 builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
