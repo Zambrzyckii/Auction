@@ -26,7 +26,7 @@ public static class WalletEndpoints
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new AddFundsCommand(userId, request.Amount));
             return Results.Ok();
-        }).RequireAuthorization();
+        }).RequireAuthorization("Bot");
 
         return app;
     }

@@ -29,7 +29,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidAudience = builder.Configuration["Jwt:Audience"]
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Bot", policy => policy.RequireRole("Bot"));
+});
 
 builder.Services.AddValidatorsFromAssembly(typeof(AuctionModuleExtensions).Assembly);
 builder.Services.AddMediatR(cfg =>

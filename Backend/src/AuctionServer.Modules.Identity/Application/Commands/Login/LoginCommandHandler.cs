@@ -31,6 +31,7 @@ public sealed class LoginCommandHandler(IAuthRepository repository, IConfigurati
             Subject = new ClaimsIdentity([
                 new Claim(ClaimTypes.Name, user.Email),
                 new Claim(ClaimTypes.NameIdentifier, user.PublicUserId.ToString()),
+                new Claim(ClaimTypes.Role, user.UserRoles.ToString())
             ]),
             Issuer = configuration["Jwt:Issuer"],
             Audience = configuration["Jwt:Audience"],

@@ -74,8 +74,8 @@ Non-negotiable module rules:
 
 **Done (works today, covered by the flow above):**
 
-- Identity: registration, login, JWT, soft-deleted users, password hashing
-- Wallets: wallet-per-user auto-creation, add funds, lock/unlock/spend, settlement inbox
+- Identity: registration, login, JWT with a role claim (`User` / `Bot`), soft-deleted users, password hashing
+- Wallets: wallet-per-user auto-creation, add funds (bot-only), lock/unlock/spend, settlement inbox
 - Auctions: create, list (Dapper read model), bid with anti-sniping, background auto-close, outbox with
   dead-letter + backoff
 - Request validation pipeline (FluentValidation + MediatR behavior) with a consistent 400 error contract
@@ -88,7 +88,8 @@ Non-negotiable module rules:
   item of the next tier), selling to an official shop
 - Repository, command/query handlers (craft, sell to shop, list), validators, transactional outbox, first
   migration and HTTP endpoints (`/api/inventory`: list, craft, sell) done; shop sales already pay out through
-  Wallets (`ItemSoldToShopEvent`). Nothing creates items yet — provisioning comes with the roles work
+  Wallets (`ItemSoldToShopEvent`). Bot-only mint endpoint
+  (`POST /api/inventory/items`) done; bot accounts are not seeded yet and players get no starting funds
 
 **Planned next:**
 

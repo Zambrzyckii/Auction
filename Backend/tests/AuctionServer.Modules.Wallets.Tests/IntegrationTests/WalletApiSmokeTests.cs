@@ -45,13 +45,28 @@ public class WalletApiSmokeTests(CustomApi factory) : IClassFixture<CustomApi>
         Assert.Equal(0m, dto.LockedFunds);
     }
 
-    private static string CreateTokenFor(Guid userId)
+    [Fact]
+    public async Task AddFunds_WhenCallerIsNotBot_ShouldReturnForbiddenAndChangeNothing()
+    {
+        var userId = await SeedWalletAsync(100m);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(userId, role: "User"));
+
+        var postResponse = await client.PostAsJsonAsync("/api/wallets/funds", new { amount = 150m });
+
+        Assert.Equal(HttpStatusCode.Forbidden, postResponse.StatusCode);
+        var dto = await client.GetFromJsonAsync<WalletDto>($"/api/wallets/{userId}");
+        Assert.NotNull(dto);
+        Assert.Equal(100m, dto.AvailableFunds);
+    }
+
+    private static string CreateTokenFor(Guid userId, string role = "Bot")
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(CustomApi.TestJwtKey);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
-            Subject = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())]),
+            Subject = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role)]),
             Issuer = "AuctionServer",
             Audience = "AuctionServer.Client",
             Expires = DateTime.UtcNow.AddMinutes(15),

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AuctionServer.Modules.Inventory.Application.Command.CraftItem;
+using AuctionServer.Modules.Inventory.Application.Command.GrantItem;
 using AuctionServer.Modules.Inventory.Application.Command.SellItemToShop;
 using AuctionServer.Modules.Inventory.Application.Queries.GetUserItemsQuery;
 using AuctionServer.Modules.Inventory.Presentation.Request;
@@ -22,7 +23,7 @@ public static class InventoryEndpoints
             var result = await sender.Send(new GetUserItemsQuery(userId));
             return Results.Ok(result);
         });
-        
+
         group.MapPost("/craft", async (CraftItemRequest request, ClaimsPrincipal user, ISender sender) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -36,6 +37,14 @@ public static class InventoryEndpoints
             await sender.Send(new SellItemToShopCommand(userId, id));
             return Results.Ok();
         });
+
+        group.MapPost("/items", async (GrantItemRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var id = await sender.Send(new GrantItemCommand(userId, request.Name, request.Rarity));
+            return Results.Created($"/api/inventory/{id}", new { PublicItemId = id });
+        }).RequireAuthorization("Bot");
+
         return app;
     }
 }
