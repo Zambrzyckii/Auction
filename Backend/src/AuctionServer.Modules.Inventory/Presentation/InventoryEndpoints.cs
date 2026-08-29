@@ -10,16 +10,16 @@ using Microsoft.AspNetCore.Routing;
 
 namespace AuctionServer.Modules.Inventory.Presentation;
 
-public static class InventoryEndpoint
+public static class InventoryEndpoints
 {
-    public static IEndpointRouteBuilder MapInventoryEnpoints(this IEndpointRouteBuilder app)
+    public static IEndpointRouteBuilder MapInventoryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/inventory").RequireAuthorization();;
+        var group = app.MapGroup("/api/inventory").RequireAuthorization();
 
         group.MapGet("/", async (ClaimsPrincipal user, ISender sender) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var result = await sender.Send((new GetUserItemsQuery(userId)));
+            var result = await sender.Send(new GetUserItemsQuery(userId));
             return Results.Ok(result);
         });
         

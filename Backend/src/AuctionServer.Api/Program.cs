@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Json.Serialization;
 using AuctionServer.Modules.Auctions;
 using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Api.Infrastructure;
@@ -7,6 +8,7 @@ using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Presentation;
 using AuctionServer.Modules.Inventory;
+using AuctionServer.Modules.Inventory.Presentation;
 using AuctionServer.Modules.Wallets;
 using AuctionServer.Modules.Wallets.Presentation;
 using AuctionServer.Shared.Integration.Messaging;
@@ -64,6 +66,8 @@ builder.Services.AddInventoryModule(connectionString!);
 builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
 
@@ -71,6 +75,7 @@ app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapInventoryEndpoints();
 app.MapAuctionEndpoints();
 app.MapWalletEndpoints();
 app.MapIdentityEndpoints();
