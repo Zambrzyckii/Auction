@@ -39,7 +39,7 @@ public sealed class Auction
     {
         if (startingPrice <= 0) throw new AuctionExceptions.InvalidStartingPriceException();
         if (endsOn < DateTime.UtcNow.AddMinutes(1)) throw new AuctionExceptions.InvalidAuctionEndDateException();
-        return new Auction { SellerUserId = sellerId, ItemId = itemId, CurrentPrice = startingPrice, EndsOn = endsOn, Status = AuctionStatus.Active };
+        return new Auction { SellerUserId = sellerId, ItemId = itemId, CurrentPrice = startingPrice, EndsOn = endsOn, Status = AuctionStatus.Pending };
     }
 
     public void CloseAuction()

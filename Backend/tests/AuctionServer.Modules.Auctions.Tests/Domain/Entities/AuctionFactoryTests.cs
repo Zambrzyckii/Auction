@@ -19,7 +19,8 @@ public class AuctionFactoryTests
         Assert.Equal(itemId, auction.ItemId);
         Assert.Equal(75m, auction.CurrentPrice);
         Assert.Equal(endsOn, auction.EndsOn);
-        Assert.Equal(AuctionStatus.Active, auction.Status);
+        Assert.Equal(AuctionStatus.Pending, auction.Status);
+        Assert.Null(auction.ItemName);
         Assert.Null(auction.CurrentWinningUserId);
     }
 

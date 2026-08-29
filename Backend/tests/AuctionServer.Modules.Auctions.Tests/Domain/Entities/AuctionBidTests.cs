@@ -6,8 +6,12 @@ namespace AuctionServer.Modules.Auctions.Tests.Domain.Entities;
 
 public class AuctionBidTests
 {
-    private static Auction CreateAuction(Guid? sellerId = null, decimal startingPrice = 50m) =>
-        Auction.Create(sellerId ?? Guid.NewGuid(), Guid.NewGuid(), startingPrice, DateTime.UtcNow.AddMinutes(10));
+    private static Auction CreateAuction(Guid? sellerId = null, decimal startingPrice = 50m)
+    {
+        var auction = Auction.Create(sellerId ?? Guid.NewGuid(), Guid.NewGuid(), startingPrice, DateTime.UtcNow.AddMinutes(10));
+        auction.Activate("Seeded Item", "Common", 10m);
+        return auction;
+    }
 
     [Fact]
     public void ApplyNewBid_WhenSellerBidsOwnAuction_ShouldThrow()

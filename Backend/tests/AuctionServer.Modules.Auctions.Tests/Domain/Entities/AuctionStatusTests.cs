@@ -7,10 +7,14 @@ namespace AuctionServer.Modules.Auctions.Tests.Domain.Entities;
 public class AuctionStatusTests
 {
     private static Auction CreatePending() =>
-        new() { SellerUserId = Guid.NewGuid(), ItemId = Guid.NewGuid() };
-
-    private static Auction CreateActive() =>
         Auction.Create(Guid.NewGuid(), Guid.NewGuid(), 10m, DateTime.UtcNow.AddMinutes(10));
+
+    private static Auction CreateActive()
+    {
+        var auction = CreatePending();
+        auction.Activate("Seeded Item", "Common", 10m);
+        return auction;
+    }
 
     [Fact]
     public void Activate_WhenPending_ShouldStoreSnapshotSetActiveAndRegenerateVersion()

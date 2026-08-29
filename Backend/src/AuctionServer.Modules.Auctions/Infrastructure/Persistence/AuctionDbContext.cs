@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Auctions.Domain.Entities;
+using AuctionServer.Modules.Auctions.Infrastructure.Inbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ public class AuctionDbContext(DbContextOptions<AuctionDbContext> options) : DbCo
 {
     public DbSet<Auction> Auctions { get; set; }
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
+    public DbSet<ProcessedMessage> ProcessedMessages { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

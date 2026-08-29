@@ -15,4 +15,5 @@ public static class AuctionExceptions
     public class InvalidAuctionEndDateException() : AppException("End date must be at least one minute in the future", 400);
     public class AuctionNotActiveException(AuctionStatus status) : AppException($"Auction is not active, current status: {status}", 400);
     public class InvalidAuctionStateTransitionException(AuctionStatus status, string action) : AppException($"Cannot {action} an auction in status {status}", 409);
+    public class EventAlreadyProcessedException() : AppException("Event was already processed", 409);
 }

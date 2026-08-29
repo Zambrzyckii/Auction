@@ -5,8 +5,12 @@ namespace AuctionServer.Modules.Auctions.Tests.Domain.Entities;
 
 public class AuctionTests
 {
-    private static Auction CreateAuction() =>
-        Auction.Create(Guid.NewGuid(), Guid.NewGuid(), 1m, DateTime.UtcNow.AddMinutes(10));
+    private static Auction CreateAuction()
+    {
+        var auction = Auction.Create(Guid.NewGuid(), Guid.NewGuid(), 1m, DateTime.UtcNow.AddMinutes(10));
+        auction.Activate("Seeded Item", "Common", 10m);
+        return auction;
+    }
 
     [Fact]
     public void ApplyNewBid_WhenAmountIsHigher_ShouldUpdateCurrentPrice()
