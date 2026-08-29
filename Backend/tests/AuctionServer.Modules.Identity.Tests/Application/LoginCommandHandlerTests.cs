@@ -50,6 +50,20 @@ public class LoginCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIsBot_ShouldReturnTokenValidForTwentyFourHours()
+    {
+        var user = CreateUser();
+        user.ChangeRole(Role.Bot);
+        var handler = new LoginCommandHandler(new FakeAuthRepository(user), CreateConfiguration());
+
+        var tokenString = await handler.Handle(new LoginCommand(user.Email, Password), CancellationToken.None);
+
+        var token = new JwtSecurityTokenHandler().ReadJwtToken(tokenString);
+        Assert.Contains(token.Claims, c => c.Value == nameof(Role.Bot));
+        Assert.InRange(token.ValidTo, DateTime.UtcNow.AddHours(24).AddMinutes(-1), DateTime.UtcNow.AddHours(24).AddMinutes(1));
+    }
+
+    [Fact]
     public async Task Handle_WhenUserDoesNotExist_ShouldThrowInvalidCredentials()
     {
         var handler = new LoginCommandHandler(new FakeAuthRepository(null), CreateConfiguration());

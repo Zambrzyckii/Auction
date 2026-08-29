@@ -26,4 +26,14 @@ public class UserTests
 
         Assert.True(user.IsDeleted);
     }
+
+    [Fact]
+    public void ChangeRole_ShouldUpdateUserRoles()
+    {
+        var user = CreateUser();
+
+        user.ChangeRole(Role.Bot);
+
+        Assert.Equal(Role.Bot, user.UserRoles);
+    }
 }

@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Identity.Application.Commands.Login;
 using AuctionServer.Modules.Identity.Application.Commands.Register;
+using AuctionServer.Modules.Identity.Application.Commands.RegisterBot;
 using AuctionServer.Modules.Identity.Presentation.Request;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -18,7 +19,7 @@ public static class IdentityEndpoints
         {
             await sender.Send(new RegisterCommand(request.Email, request.Password, request.Username, request.Name,
                 request.Surname, request.Birthday));
-            return Results.Ok();
+            return Results.Created();
         });
 
         group.MapPost("/login", async (LoginRequest request, ISender sender) =>
@@ -26,6 +27,13 @@ public static class IdentityEndpoints
             var token = await sender.Send(new LoginCommand(request.Email, request.Password));
             return Results.Ok(new { Token = token });
         });
+        
+        group.MapPost("/bots", async (RegisterBotRequest request, ISender sender) =>
+        {
+            var id = await sender.Send(new RegisterBotCommand(request.Email, request.Password, request.Username, 
+                request.Name, request.Surname, request.Birthday));
+            return Results.Created($"/api/users/{id}", new { PublicUserId = id });
+        }).RequireAuthorization("BotProvisioning");
         
         return app;
     }

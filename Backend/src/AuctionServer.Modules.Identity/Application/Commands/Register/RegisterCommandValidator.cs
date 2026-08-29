@@ -7,7 +7,7 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
     public RegisterCommandValidator()
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
-        //Password min 8 characters length, 1 number, 1 capital letter
+        // Password: min 8 chars, lowercase, uppercase, digit and special character
         RuleFor(x => x.Password).NotEmpty().MinimumLength(8).Matches(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$");
         RuleFor(x => x.Username).NotEmpty().MaximumLength(30);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(30);

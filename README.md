@@ -17,7 +17,7 @@ strict module boundaries, event-driven communication between modules, and correc
 | Data access | EF Core 10 (writes) + Dapper (read path in Auctions) |
 | Messaging (in-process) | MediatR — commands, queries and integration events |
 | Validation | FluentValidation via a MediatR pipeline behavior |
-| Auth | JWT bearer, BCrypt password hashing, claims-based identity |
+| Auth | JWT bearer (+ API-key scheme for bot provisioning), BCrypt password hashing, claims-based identity |
 | Testing | xUnit; Testcontainers for integration tests against real PostgreSQL |
 | CI | GitLab CI — build, unit tests, integration tests (docker-in-docker) |
 
@@ -25,8 +25,8 @@ strict module boundaries, event-driven communication between modules, and correc
 
 ```
 Backend/src
-├── AuctionServer.Api                  host: DI wiring, JWT auth, global error handling
-├── AuctionServer.Modules.Identity     register / login, JWT issuing, user outbox
+├── AuctionServer.Api                  host: DI wiring, JWT + API-key auth, global error handling
+├── AuctionServer.Modules.Identity     register / login / bot provisioning, JWT issuing, user outbox
 ├── AuctionServer.Modules.Wallets      virtual funds: available/locked balance, settlement inbox
 ├── AuctionServer.Modules.Auctions     auctions & bidding, background closer, outbox
 ├── AuctionServer.Modules.Inventory    items, crafting, shop (work in progress)
@@ -46,7 +46,7 @@ Non-negotiable module rules:
 1. **Register** → Identity stores the user and writes `UserRegisteredEvent` to its **outbox** in the same
    transaction; a background processor publishes it; Wallets reacts and creates the user's wallet
    credited with the configured starting balance (`Wallets:StartingFunds`).
-2. **Login** → JWT with the user's public id; endpoints resolve the caller from claims, never from the body.
+2. **Login** → JWT with the user's public id and role (15 min for players, 24 h for bots); endpoints resolve the caller from claims, never from the body.
 3. **Create auction** → validated request (FluentValidation pipeline), factory-method invariants,
    one active auction per item enforced by a filtered unique index.
 4. **Bid** → optimistic concurrency (`Version` token) resolves closer-vs-bidder races; bidding near the end
@@ -75,7 +75,8 @@ Non-negotiable module rules:
 
 **Done (works today, covered by the flow above):**
 
-- Identity: registration, login, JWT with a role claim (`User` / `Bot`), soft-deleted users, password hashing
+- Identity: registration, login, JWT with a role claim (`User` / `Bot`), bot account provisioning
+  (`POST /api/users/bots`, API-key protected), soft-deleted users, password hashing
 - Wallets: wallet-per-user auto-creation with configured starting funds, add funds (bot-only), lock/unlock/spend, settlement inbox
 - Auctions: create, list (Dapper read model), bid with anti-sniping, background auto-close, outbox with
   dead-letter + backoff
@@ -90,7 +91,7 @@ Non-negotiable module rules:
 - Repository, command/query handlers (craft, sell to shop, list), validators, transactional outbox, first
   migration and HTTP endpoints (`/api/inventory`: list, craft, sell) done; shop sales already pay out through
   Wallets (`ItemSoldToShopEvent`). Bot-only mint endpoint
-  (`POST /api/inventory/items`) done; bot accounts are not provisioned yet
+  (`POST /api/inventory/items`) done; bot accounts are provisioned through `POST /api/users/bots`
 
 **Planned next:**
 
@@ -113,6 +114,7 @@ dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
   "Host=localhost;Port=6767;Database=AuctionDb;Username=<user>;Password=<pass>" \
   --project src/AuctionServer.Api
 dotnet user-secrets set "Jwt:Key" "<random-string-min-32-chars>" --project src/AuctionServer.Api
+dotnet user-secrets set "Bots:ApiKey" "<random-string>" --project src/AuctionServer.Api
 
 # 3. Migrations (per module context; see Backend/CLAUDE.md for the full list)
 dotnet ef database update --project src/AuctionServer.Modules.Identity \
