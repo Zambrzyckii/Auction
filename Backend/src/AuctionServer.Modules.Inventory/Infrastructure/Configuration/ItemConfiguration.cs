@@ -10,6 +10,7 @@ internal sealed class ItemConfiguration : IEntityTypeConfiguration<Item>
     {
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => x.PublicItemId).IsUnique();
+        builder.HasIndex(x => x.LockedForAuctionId).IsUnique();
         builder.Property(x => x.OfficialPrice).IsRequired().HasPrecision(18, 2);
         builder.ToTable("InventoryItems");
     }

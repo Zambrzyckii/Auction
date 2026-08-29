@@ -12,6 +12,11 @@ public static class IntegrationEventTypes
         [nameof(BidPlacedEvent)] = typeof(BidPlacedEvent),
         [nameof(AuctionFinishedEvent)] = typeof(AuctionFinishedEvent),
         [nameof(ItemSoldToShopEvent)] = typeof(ItemSoldToShopEvent),
+        [nameof(ItemLockRequestedEvent)] = typeof(ItemLockRequestedEvent),
+        [nameof(ItemLockedEvent)] = typeof(ItemLockedEvent),
+        [nameof(ItemLockRejectedEvent)] = typeof(ItemLockRejectedEvent),
+        [nameof(AuctionActivatedEvent)] = typeof(AuctionActivatedEvent),
+        [nameof(AuctionSettledEvent)] = typeof(AuctionSettledEvent),
     };
 
     public static INotification Deserialize(string type, string content)

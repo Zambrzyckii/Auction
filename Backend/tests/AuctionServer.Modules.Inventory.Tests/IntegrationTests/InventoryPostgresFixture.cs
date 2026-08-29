@@ -39,13 +39,13 @@ public sealed class InventoryPostgresFixture : IAsyncLifetime
     }
 
     public async Task<Item> SeedItemAsync(Guid ownerId, ItemRarity rarity = ItemRarity.Common,
-        ItemStatus status = ItemStatus.Available)
+        ItemStatus status = ItemStatus.Available, Guid? lockedForAuctionId = null)
     {
         await using var context = CreateContext();
         var item = Item.Create(ownerId, "Seeded Item", rarity);
         switch (status)
         {
-            case ItemStatus.LockedForAuction: item.LockItem(); break;
+            case ItemStatus.LockedForAuction: item.LockForAuction(lockedForAuctionId ?? Guid.NewGuid()); break;
             case ItemStatus.SoldToShop: item.SellToOfficialShop(); break;
             case ItemStatus.Consumed:
                 throw new ArgumentException("Consumed items can only be produced by crafting", nameof(status));

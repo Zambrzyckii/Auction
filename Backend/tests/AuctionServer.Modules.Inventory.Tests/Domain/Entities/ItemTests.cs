@@ -126,7 +126,7 @@ public class ItemTests
     {
         var ownerId = Guid.NewGuid();
         var ingredients = CreateIngredients(ItemRarity.Common, ownerId);
-        ingredients[0].LockItem();
+        ingredients[0].LockForAuction(Guid.NewGuid());
 
         Assert.Throws<InventoryException.ItemNotAvailableException>(() => Item.Craft(ingredients));
     }
@@ -152,49 +152,49 @@ public class ItemTests
     }
 
     [Fact]
-    public void LockItem_WhenAvailable_ShouldLockAndRegenerateVersion()
+    public void LockForAuction_WhenAvailable_ShouldLockAndRegenerateVersion()
     {
         var item = CreateItem();
         var versionBefore = item.Version;
 
-        item.LockItem();
+        item.LockForAuction(Guid.NewGuid());
 
         Assert.Equal(ItemStatus.LockedForAuction, item.Status);
         Assert.NotEqual(versionBefore, item.Version);
     }
 
     [Fact]
-    public void LockItem_WhenAlreadyLocked_ShouldThrow()
+    public void LockForAuction_WhenAlreadyLocked_ShouldThrow()
     {
         var item = CreateItem();
-        item.LockItem();
+        item.LockForAuction(Guid.NewGuid());
 
-        Assert.Throws<InventoryException.ItemNotAvailableException>(() => item.LockItem());
+        Assert.Throws<InventoryException.ItemNotAvailableException>(() => item.LockForAuction(Guid.NewGuid()));
     }
 
     [Fact]
-    public void LockItem_WhenSoldToShop_ShouldThrow()
+    public void LockForAuction_WhenSoldToShop_ShouldThrow()
     {
         var item = CreateItem();
         item.SellToOfficialShop();
 
-        Assert.Throws<InventoryException.ItemNotAvailableException>(() => item.LockItem());
+        Assert.Throws<InventoryException.ItemNotAvailableException>(() => item.LockForAuction(Guid.NewGuid()));
     }
 
     [Fact]
-    public void LockItem_WhenConsumed_ShouldThrow()
+    public void LockForAuction_WhenConsumed_ShouldThrow()
     {
         var ingredients = CreateIngredients(ItemRarity.Common, Guid.NewGuid());
         Item.Craft(ingredients);
 
-        Assert.Throws<InventoryException.ItemNotAvailableException>(() => ingredients[0].LockItem());
+        Assert.Throws<InventoryException.ItemNotAvailableException>(() => ingredients[0].LockForAuction(Guid.NewGuid()));
     }
 
     [Fact]
     public void UnlockItem_WhenLocked_ShouldMakeAvailableAndRegenerateVersion()
     {
         var item = CreateItem();
-        item.LockItem();
+        item.LockForAuction(Guid.NewGuid());
         var versionBefore = item.Version;
 
         item.UnlockItem();
@@ -236,7 +236,7 @@ public class ItemTests
     public void SellToOfficialShop_WhenLocked_ShouldThrow()
     {
         var item = CreateItem();
-        item.LockItem();
+        item.LockForAuction(Guid.NewGuid());
 
         Assert.Throws<InventoryException.ItemNotAvailableException>(() => item.SellToOfficialShop());
     }
@@ -248,5 +248,60 @@ public class ItemTests
         item.SellToOfficialShop();
 
         Assert.Throws<InventoryException.ItemNotAvailableException>(() => item.SellToOfficialShop());
+    }
+
+    [Fact]
+    public void LockForAuction_WhenAvailable_ShouldStoreAuctionId()
+    {
+        var item = CreateItem();
+        var auctionId = Guid.NewGuid();
+
+        item.LockForAuction(auctionId);
+
+        Assert.Equal(auctionId, item.LockedForAuctionId);
+    }
+
+    [Fact]
+    public void UnlockItem_WhenLocked_ShouldClearAuctionId()
+    {
+        var item = CreateItem();
+        item.LockForAuction(Guid.NewGuid());
+
+        item.UnlockItem();
+
+        Assert.Null(item.LockedForAuctionId);
+    }
+
+    [Fact]
+    public void TransferTo_WhenLocked_ShouldChangeOwnerMakeAvailableClearLockAndRegenerateVersion()
+    {
+        var item = CreateItem();
+        item.LockForAuction(Guid.NewGuid());
+        var versionBefore = item.Version;
+        var winnerId = Guid.NewGuid();
+
+        item.TransferTo(winnerId);
+
+        Assert.Equal(winnerId, item.OwnerUserId);
+        Assert.Equal(ItemStatus.Available, item.Status);
+        Assert.Null(item.LockedForAuctionId);
+        Assert.NotEqual(versionBefore, item.Version);
+    }
+
+    [Fact]
+    public void TransferTo_WhenAvailable_ShouldThrowItemNotLocked()
+    {
+        var item = CreateItem();
+
+        Assert.Throws<InventoryException.ItemNotLockedException>(() => item.TransferTo(Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void TransferTo_WhenSoldToShop_ShouldThrowItemNotLocked()
+    {
+        var item = CreateItem();
+        item.SellToOfficialShop();
+
+        Assert.Throws<InventoryException.ItemNotLockedException>(() => item.TransferTo(Guid.NewGuid()));
     }
 }

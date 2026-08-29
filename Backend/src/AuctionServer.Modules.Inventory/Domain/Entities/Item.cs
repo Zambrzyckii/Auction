@@ -15,6 +15,7 @@ public sealed class Item
     public ItemStatus Status { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
     public decimal OfficialPrice { get; private set; }
+    public Guid? LockedForAuctionId { get; private set; }
 
     public static Item Create(Guid ownerUserId, string name, ItemRarity rarity)
     {
@@ -49,10 +50,11 @@ public sealed class Item
         return Create(first.OwnerUserId, $"Crafted {craftedRarity} Item", craftedRarity);
     }
 
-    public void LockItem()
+    public void LockForAuction(Guid publicAuctionId)
     {
         EnsureAvailable();
         Status = ItemStatus.LockedForAuction;
+        LockedForAuctionId = publicAuctionId;
         Version = Guid.NewGuid();
     }
 
@@ -60,6 +62,16 @@ public sealed class Item
     {
         if (Status != ItemStatus.LockedForAuction) throw new InventoryException.ItemNotLockedException();
         Status = ItemStatus.Available;
+        LockedForAuctionId = null;
+        Version = Guid.NewGuid();
+    }
+
+    public void TransferTo(Guid newOwnerId)
+    {
+        if (Status != ItemStatus.LockedForAuction) throw new InventoryException.ItemNotLockedException();
+        OwnerUserId = newOwnerId;
+        Status = ItemStatus.Available;
+        LockedForAuctionId = null;
         Version = Guid.NewGuid();
     }
 
