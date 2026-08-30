@@ -20,11 +20,12 @@ build:
 unit-tests:
   stage: test
   script:
-    - dotnet test Backend/tests/AuctionServer.Modules.Auctions.Tests
+    - dotnet test Backend/tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedName!~IntegrationTests"
 
 integration-tests:
   stage: test
   script:
+    - dotnet test Backend/tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedName~IntegrationTests"
     - dotnet test Backend/tests/AuctionServer.Modules.Wallets.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Identity.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Inventory.Tests
