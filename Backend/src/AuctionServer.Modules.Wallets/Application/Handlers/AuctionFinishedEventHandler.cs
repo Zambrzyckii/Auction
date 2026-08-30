@@ -1,6 +1,8 @@
+using System.Text.Json;
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
+using AuctionServer.Modules.Wallets.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events;
 using MediatR;
 
@@ -20,10 +22,18 @@ public sealed class AuctionFinishedEventHandler(IWalletRepository repository) : 
         sellerWallet.AddFunds(notification.FinalPrice.Value);
 
         var processedMessage = new ProcessedMessage { EventId = notification.EventId };
+        var eventId = Guid.NewGuid();
+        var outboxMessage = new OutboxMessage
+        {
+            Id = eventId,
+            Type = nameof(AuctionSettledEvent),
+            Content = JsonSerializer.Serialize(new AuctionSettledEvent(
+                eventId, notification.PublicAuctionId, notification.SellerUserId, notification.WinnerUserId.Value, notification.FinalPrice.Value))
+        };
 
         try
         {
-            await repository.SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None);
+            await repository.SaveUserFundsWithInboxAndOutboxAsync(processedMessage, outboxMessage, CancellationToken.None);
         }
         catch (WalletExceptions.EventAlreadyProcessedException)
         {

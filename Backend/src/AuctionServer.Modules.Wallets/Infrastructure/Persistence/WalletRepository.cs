@@ -74,7 +74,7 @@ public class WalletRepository(WalletDbContext context) : IWalletRepository
         }
         catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            throw new WalletExceptions.WalletAlreadyExistException();
+            throw new WalletExceptions.EventAlreadyProcessedException();
         }
     }
 }
