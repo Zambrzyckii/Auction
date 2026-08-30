@@ -18,4 +18,6 @@ public interface IItemRepository
 
     Task SaveChangesWithInboxAndOutboxAsync(ProcessedMessage inboxMessage, OutboxMessage outboxMessage,
         CancellationToken token);
+
+    Task<Item> GetItemLockedForAuctionAsync(Guid publicAuctionId, CancellationToken token);
 }

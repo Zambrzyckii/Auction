@@ -109,4 +109,11 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
             throw new InventoryException.EventAlreadyProcessedException();
         }
     }
+
+    public async Task<Item> GetItemLockedForAuctionAsync(Guid publicAuctionId, CancellationToken token)
+    {
+        var item = await context.Items.SingleOrDefaultAsync(i => i.LockedForAuctionId == publicAuctionId, token);
+        if (item is null) throw new InventoryException.UserOrItemDoesntExistException();
+        return item;
+    }
 }
