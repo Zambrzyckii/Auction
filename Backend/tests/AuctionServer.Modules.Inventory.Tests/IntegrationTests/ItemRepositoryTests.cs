@@ -119,4 +119,29 @@ public class ItemRepositoryTests(InventoryPostgresFixture fixture)
         Assert.Equal(ItemRarity.Epic, saved.Rarity);
         Assert.Equal(ownerId, saved.OwnerUserId);
     }
+
+    [Fact]
+    public async Task GetItemLockedForAuctionAsync_WhenItemIsLocked_ShouldReturnTrackedEntity()
+    {
+        var auctionId = Guid.NewGuid();
+        var seeded = await fixture.SeedItemAsync(Guid.NewGuid(), status: ItemStatus.LockedForAuction, lockedForAuctionId: auctionId);
+
+        await using var context = fixture.CreateContext();
+        var repository = new ItemRepository(context);
+        var item = await repository.GetItemLockedForAuctionAsync(auctionId, CancellationToken.None);
+
+        Assert.Equal(seeded.PublicItemId, item.PublicItemId);
+        var entry = Assert.Single(context.ChangeTracker.Entries<Item>());
+        Assert.Equal(EntityState.Unchanged, entry.State);
+    }
+
+    [Fact]
+    public async Task GetItemLockedForAuctionAsync_WhenNoItemIsLocked_ShouldThrow()
+    {
+        await using var context = fixture.CreateContext();
+        var repository = new ItemRepository(context);
+
+        await Assert.ThrowsAsync<InventoryException.UserOrItemDoesntExistException>(
+            () => repository.GetItemLockedForAuctionAsync(Guid.NewGuid(), CancellationToken.None));
+    }
 }
