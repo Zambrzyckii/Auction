@@ -1,0 +1,31 @@
+flowchart LR
+
+    Push["git push to gitlab.com<br/>job image mcr.microsoft.com/dotnet/sdk:10.0"]:::client
+
+    subgraph S1 ["stage: build"]
+        Build["build<br/>dotnet build Backend/AuctionServer.slnx"]:::host
+    end
+
+    subgraph S2 ["stage: test"]
+        Unit["unit-tests (offline tests only)<br/>Auctions.Tests --filter FullyQualifiedName!~IntegrationTests"]:::host
+        Integ["integration-tests<br/>Auctions.Tests ~IntegrationTests,<br/>then the whole Wallets, Identity and Inventory test projects"]:::host
+    end
+
+    Dind["service docker:dind<br/>DOCKER_HOST=tcp://docker:2375<br/>TESTCONTAINERS_HOST_OVERRIDE=docker"]:::shared
+    Pg[("Testcontainers postgres:latest<br/>one container per test fixture")]:::db
+
+    Push --> Build --> Unit
+    Build --> Integ --> Dind --> Pg
+
+    style S1 fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    style S2 fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+
+    classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    classDef identity  fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F
+    classDef wallets   fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B
+    classDef auctions  fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E
+    classDef inventory fill:#FFE4E6,stroke:#E11D48,stroke-width:2px,color:#881337
+    classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
+    classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
+    classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

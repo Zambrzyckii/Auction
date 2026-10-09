@@ -1,0 +1,71 @@
+erDiagram
+    IDENTITY__Users {
+        integer Id PK "identity column"
+        uuid PublicUserId "copied into other modules, no index"
+        varchar Email UK "max 64"
+        text PasswordHash "BCrypt"
+        varchar Username "max 32"
+        varchar Name "max 32"
+        varchar Surname "max 32"
+        date Birthday
+        boolean IsDeleted "global query filter"
+        integer UserRoles "Admin=0 User=1 Bot=2"
+    }
+    WALLETS__Wallets {
+        uuid UserId PK "equals Users.PublicUserId"
+        numeric AvailableFunds "18,2"
+        numeric LockedFunds "18,2"
+        boolean IsSuspendedWallet "unique UserId where false"
+        uuid Version "concurrency token"
+    }
+    AUCTIONS__Auctions {
+        integer AuctionId PK "identity column"
+        uuid PublicAuctionId UK
+        uuid SellerUserId
+        uuid ItemId "unique while Status IN (0, 1)"
+        uuid CurrentWinningUserId "nullable"
+        numeric CurrentPrice "18,2"
+        integer Status "Pending=0 Active=1 Closed=2 Cancelled=3"
+        text ItemName "snapshot, nullable"
+        text ItemRarity "snapshot, nullable"
+        numeric ItemOfficialPrice "snapshot, nullable"
+        text CancellationReason "nullable"
+        timestamptz EndsOn
+        uuid Version "concurrency token"
+    }
+    INVENTORY__InventoryItems {
+        integer Id PK "identity column"
+        uuid PublicItemId UK
+        uuid OwnerUserId
+        text Name
+        integer Rarity "Common=0 Rare=1 Epic=2 Legendary=3"
+        integer Status "Available=0 LockedForAuction=1 SoldToShop=2 Consumed=3"
+        numeric OfficialPrice "18,2"
+        uuid LockedForAuctionId UK "nullable"
+        uuid Version "concurrency token"
+    }
+    IDENTITY__IdentityOutboxMessages {
+        uuid Id PK
+    }
+    WALLETS__WalletsOutboxMessages {
+        uuid Id PK
+    }
+    WALLETS__WalletsProcessedMessages {
+        uuid EventId PK
+    }
+    AUCTIONS__OutboxMessages {
+        uuid Id PK "the only table without a module prefix"
+    }
+    AUCTIONS__AuctionsProcessedMessages {
+        uuid EventId PK
+    }
+    INVENTORY__InventoryOutboxMessages {
+        uuid Id PK
+    }
+    INVENTORY__InventoryProcessedMessages {
+        uuid EventId PK
+    }
+    IDENTITY__Users ||..|| WALLETS__Wallets : "UserId = PublicUserId, no FK"
+    IDENTITY__Users ||..o{ AUCTIONS__Auctions : "SellerUserId and CurrentWinningUserId, no FK"
+    IDENTITY__Users ||..o{ INVENTORY__InventoryItems : "OwnerUserId, no FK"
+    INVENTORY__InventoryItems |o..o| AUCTIONS__Auctions : "ItemId = PublicItemId and LockedForAuctionId = PublicAuctionId, no FK"

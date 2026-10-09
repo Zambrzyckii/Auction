@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant AC as AuctionCloser
+    participant ADB as Auctions tables
+    participant AOP as Auctions OutboxProcessor
+    participant WH as Wallets - AuctionFinishedEventHandler
+    participant WDB as Wallets tables
+    participant WOP as Wallets OutboxProcessor
+    participant IH as Inventory - AuctionFinishedEventHandler / AuctionSettledEventHandler
+    participant IDB as Inventory tables
+
+    loop every 3 s
+        AC->>ADB: Auctions with Status = Active and EndsOn in the past, max 20
+    end
+    AC->>ADB: Auction.CloseAuction + OutboxMessages(AuctionFinishedEvent) per auction, one SaveChangesAsync per batch
+    AOP->>WH: Publish(AuctionFinishedEvent) - the Wallets handler runs first
+    alt WinnerUserId present
+        WH->>WDB: WasEventProcessedAsync(EventId)
+        WH->>WH: winner.SpendLockedFunds(FinalPrice), seller.AddFunds(FinalPrice)
+        WH->>WDB: UPDATE Wallets x2 + WalletsProcessedMessages + WalletsOutboxMessages(AuctionSettledEvent)
+    else no winner
+        WH-->>AOP: return without changes
+    end
+    AOP->>IH: the same event - the Inventory handler runs second
+    alt no winner
+        IH->>IDB: GetItemLockedForAuctionAsync, Item.UnlockItem + InventoryProcessedMessages
+    else WinnerUserId present
+        IH-->>AOP: return without changes
+    end
+    WOP->>IH: Publish(AuctionSettledEvent) on the next Wallets poll
+    IH->>IDB: GetItemLockedForAuctionAsync, Item.TransferTo(WinnerUserId) + InventoryProcessedMessages
+    Note over WH,IH: the item moves only after the money moved

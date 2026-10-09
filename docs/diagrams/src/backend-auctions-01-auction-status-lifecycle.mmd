@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> Pending: Auction.Create (POST /api/auctions)
+    Pending --> Active: Activate(itemName, itemRarity, itemOfficialPrice) on ItemLockedEvent
+    Pending --> Cancelled: Cancel(reason) on ItemLockRejectedEvent
+    Active --> Active: ApplyNewBid (POST /api/auctions/{id}/bid), EndsOn += 30 s inside the anti-sniping window
+    Active --> Closed: CloseAuction by AuctionCloser when EndsOn is in the past
+    Closed --> [*]
+    Cancelled --> [*]
+    note right of Pending
+        any other transition throws
+        InvalidAuctionStateTransitionException (409)
+    end note

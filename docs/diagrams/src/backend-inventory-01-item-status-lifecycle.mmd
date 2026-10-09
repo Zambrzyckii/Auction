@@ -1,0 +1,13 @@
+stateDiagram-v2
+    [*] --> Available: Item.Create (POST /api/inventory/items) or Item.Craft
+    Available --> LockedForAuction: LockForAuction(publicAuctionId) on ItemLockRequestedEvent
+    LockedForAuction --> Available: UnlockItem on AuctionFinishedEvent without a winner
+    LockedForAuction --> Available: TransferTo(winner) on AuctionSettledEvent, OwnerUserId changes
+    Available --> SoldToShop: SellToOfficialShop (POST /api/inventory/{id}/sell)
+    Available --> Consumed: Consume as one of three crafting ingredients
+    SoldToShop --> [*]
+    Consumed --> [*]
+    note right of Available
+        GET /api/inventory omits
+        SoldToShop and Consumed items
+    end note

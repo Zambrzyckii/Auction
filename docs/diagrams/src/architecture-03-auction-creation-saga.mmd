@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant C as Client
+    participant A as Auctions - AuctionEndpoints + CreateAuctionCommandHandler
+    participant ADB as Auctions tables
+    participant AOP as Auctions OutboxProcessor
+    participant I as Inventory - ItemLockRequestedEventHandler
+    participant IDB as Inventory tables
+    participant IOP as Inventory OutboxProcessor
+    participant L as Auctions - ItemLockedEventHandler / ItemLockRejectedEventHandler
+
+    C->>A: POST /api/auctions {itemId, startingPrice, endsOn} with a JWT
+    A->>A: ValidationBehaviour, then Auction.Create with Status = Pending
+    A->>ADB: INSERT Auctions + OutboxMessages(ItemLockRequestedEvent) in one SaveChangesAsync
+    A-->>C: 201 {publicAuctionId}
+    AOP->>ADB: every 3 s: due outbox rows, max 20
+    AOP->>I: IIntegrationEventPublisher, MediatR Publish(ItemLockRequestedEvent)
+    I->>IDB: WasEventProcessedAsync(EventId)
+    I->>I: GetUserItemAsync(SellerUserId, PublicItemId), Item.LockForAuction(PublicAuctionId)
+    I->>IDB: UPDATE InventoryItems + InventoryProcessedMessages + InventoryOutboxMessages(reply) in one SaveChangesAsync
+    IOP->>L: Publish(ItemLockedEvent or ItemLockRejectedEvent) on the next Inventory poll
+    alt ItemLockedEvent
+        L->>ADB: Auction.Activate(ItemName, ItemRarity, OfficialPrice) + AuctionsProcessedMessages + OutboxMessages(AuctionActivatedEvent)
+    else ItemLockRejectedEvent
+        L->>ADB: Auction.Cancel(Reason) + AuctionsProcessedMessages
+    end
+    Note over AOP,IOP: creation to activation takes up to two polling cycles of 3 s each

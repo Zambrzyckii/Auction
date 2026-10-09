@@ -1,0 +1,16 @@
+stateDiagram-v2
+    [*] --> Pending: row inserted together with the state change
+    Pending --> Processed: PublishAsync succeeded, MarkAsProcessed
+    Pending --> Backoff: handler threw, FailedAttempt (wait 20 / 40 / 80 / 160 s)
+    Backoff --> Pending: NextAttemptOn reached
+    Pending --> Dead: fifth failure, AttemptCount becomes 6, MarkMessageAsDead
+    Processed --> [*]
+    Dead --> [*]: excluded from the poll, no automatic replay
+    note right of Pending
+        ProcessedOn null, IsDead false
+        AttemptCount starts at 1
+    end note
+    note right of Dead
+        IsDead true
+        Errors keeps every message
+    end note

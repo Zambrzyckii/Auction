@@ -1,0 +1,33 @@
+flowchart LR
+
+    subgraph P ["producing module - one SaveChangesAsync"]
+        State["entity change<br/>e.g. Auction.CloseAuction"]:::auctions --- Out["outbox row<br/>Id = EventId, Type, Content (JSON)"]:::auctions
+    end
+
+    Out --> Proc["OutboxProcessor (BackgroundService)<br/>every 3 s: ProcessedOn null, not IsDead,<br/>NextAttemptOn null or past, ORDER BY CreatedOn, max 20"]:::auctions
+    Proc --> Pub["IIntegrationEventPublisher<br/>InProcessEventPublisher"]:::host
+    Pub --> Reg["IntegrationEventTypes.Deserialize<br/>9 registered event types"]:::shared
+    Reg --> Med["MediatR IPublisher.Publish<br/>handlers one after another, registration order"]:::host
+
+    subgraph Cn ["consuming module - one SaveChangesAsync"]
+        Chk["WasEventProcessedAsync(EventId)"]:::wallets --> Dom["domain change<br/>e.g. Wallet.SpendLockedFunds"]:::wallets --> Inb["inbox row<br/>ProcessedMessage, EventId is the primary key"]:::wallets --- Reply["reply outbox row (optional)<br/>e.g. AuctionSettledEvent"]:::wallets
+    end
+
+    Med --> Chk
+    Chk -.->|"already processed: return"| Ok["MarkAsProcessed<br/>ProcessedOn = now"]:::shared
+    Med -->|"handler completed"| Ok
+    Med -->|"handler threw"| Fail["FailedAttempt<br/>AttemptCount++, Errors += message,<br/>NextAttemptOn = now + 2^AttemptCount x 5 s,<br/>IsDead when AttemptCount is above 5"]:::shared
+    Fail -.->|"retry when due"| Proc
+
+    style P fill:#F0F9FF,stroke:#0284C7,stroke-width:2px,color:#0C4A6E
+    style Cn fill:#F0FDF4,stroke:#059669,stroke-width:2px,color:#064E3B
+
+    classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    classDef identity  fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F
+    classDef wallets   fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B
+    classDef auctions  fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E
+    classDef inventory fill:#FFE4E6,stroke:#E11D48,stroke-width:2px,color:#881337
+    classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
+    classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
+    classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

@@ -1,0 +1,32 @@
+flowchart TB
+
+    subgraph Host ["AuctionServer.Api - ProjectReference to the four modules"]
+        Program["Program.cs<br/>DI, authentication schemes and policies,<br/>MediatR + FluentValidation registered per module assembly"]:::host
+        ApiInfra["Infrastructure/<br/>ApiKeyAuthenticationHandler, GlobalExceptionHandler,<br/>Messaging/InProcessEventPublisher"]:::host
+    end
+
+    subgraph Modules ["one module = one csproj with Presentation/ Application/ Domain/ Infrastructure/"]
+        Identity["Modules.Identity<br/>IdentityDbContext, OutboxProcessor"]:::identity
+        Wallets["Modules.Wallets<br/>WalletDbContext, OutboxProcessor"]:::wallets
+        Auctions["Modules.Auctions<br/>AuctionDbContext, OutboxProcessor, AuctionCloser"]:::auctions
+        Inventory["Modules.Inventory<br/>InventoryDbContext, OutboxProcessor"]:::inventory
+    end
+
+    Shared["AuctionServer.Shared.Integration<br/>Events/ (9 records), AppException, IIntegrationEventPublisher,<br/>IntegrationEventTypes, ValidationBehaviour"]:::shared
+
+    Program --> Identity & Wallets & Auctions & Inventory
+    Identity & Wallets & Auctions & Inventory --> Shared
+    ApiInfra -.->|"implements IIntegrationEventPublisher"| Shared
+
+    style Host fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    style Modules fill:#F8FAFC,stroke:#475569,stroke-width:2px,color:#0F172A
+
+    classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    classDef identity  fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F
+    classDef wallets   fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B
+    classDef auctions  fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E
+    classDef inventory fill:#FFE4E6,stroke:#E11D48,stroke-width:2px,color:#881337
+    classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
+    classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
+    classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

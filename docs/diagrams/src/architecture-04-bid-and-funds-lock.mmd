@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant C as Client
+    participant A as Auctions - PlaceBidCommandHandler
+    participant ADB as Auctions tables
+    participant AOP as Auctions OutboxProcessor
+    participant W as Wallets - BidPlacedEventHandler
+    participant WDB as Wallets tables
+
+    C->>A: POST /api/auctions/{id}/bid {amount} with a JWT
+    A->>ADB: GetAuctionByIdAsync (tracked entity)
+    A->>A: Auction.ApplyNewBid: Active, not ended, Amount above CurrentPrice, not the seller, not the current winner
+    A->>A: EndsOn += 30 s when less than AntiSnipingWindow remains, new Version
+    A->>ADB: UPDATE Auctions + OutboxMessages(BidPlacedEvent) in one SaveChangesAsync
+    alt Version conflict with AuctionCloser
+        A-->>C: 409 {error: Data corrupted, try again}
+    else saved
+        A-->>C: 200
+    end
+    AOP->>W: Publish(BidPlacedEvent) on the next poll
+    W->>WDB: WasEventProcessedAsync(EventId)
+    W->>W: new winner: Wallet.LockFunds(NewPrice)
+    W->>W: previous winner: Wallet.UnlockFunds(PreviousPrice), only when PreviousWinningUserId is set
+    W->>WDB: UPDATE Wallets + WalletsProcessedMessages with CancellationToken.None
+    alt InsufficientFundsException
+        W--xAOP: handler throws: FailedAttempt, retry after 20 / 40 / 80 / 160 s, dead after the 5th failure
+        Note over A,W: the auction keeps the new leader although no funds were locked
+    end
