@@ -18,8 +18,8 @@ public sealed class AuctionFinishedEventHandler(IWalletRepository repository) : 
         var winnerWallet = await repository.GetUserWalletByIdAsync(notification.WinnerUserId.Value, cancellationToken);
         var sellerWallet = await repository.GetUserWalletByIdAsync(notification.SellerUserId, cancellationToken);
         
-        winnerWallet.SpendLockedFunds(notification.FinalPrice.Value);
-        sellerWallet.AddFunds(notification.FinalPrice.Value);
+        var amount = winnerWallet.ConsumeLock(notification.PublicAuctionId);
+        sellerWallet.AddFunds(amount);
 
         var processedMessage = new ProcessedMessage { EventId = notification.EventId };
         var eventId = Guid.NewGuid();
@@ -28,7 +28,7 @@ public sealed class AuctionFinishedEventHandler(IWalletRepository repository) : 
             Id = eventId,
             Type = nameof(AuctionSettledEvent),
             Content = JsonSerializer.Serialize(new AuctionSettledEvent(
-                eventId, notification.PublicAuctionId, notification.SellerUserId, notification.WinnerUserId.Value, notification.FinalPrice.Value))
+                eventId, notification.PublicAuctionId, notification.SellerUserId, notification.WinnerUserId.Value, amount))
         };
 
         try

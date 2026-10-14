@@ -67,19 +67,19 @@ public class AuctionStatusTests
     }
 
     [Fact]
-    public void ApplyNewBid_WhenPending_ShouldThrowAuctionNotActive()
+    public void RequestBid_WhenPending_ShouldThrowAuctionNotActive()
     {
         var auction = CreatePending();
 
-        Assert.Throws<AuctionExceptions.AuctionNotActiveException>(() => auction.ApplyNewBid(Guid.NewGuid(), 100m));
+        Assert.Throws<AuctionExceptions.AuctionNotActiveException>(() => auction.RequestBid(Guid.NewGuid(), 100m));
     }
 
     [Fact]
-    public void ApplyNewBid_WhenCancelled_ShouldThrowAuctionClosed()
+    public void RequestBid_WhenCancelled_ShouldThrowAuctionClosed()
     {
         var auction = CreatePending();
         auction.Cancel("rejected");
 
-        Assert.Throws<AuctionExceptions.AuctionClosedException>(() => auction.ApplyNewBid(Guid.NewGuid(), 100m));
+        Assert.Throws<AuctionExceptions.AuctionClosedException>(() => auction.RequestBid(Guid.NewGuid(), 100m));
     }
 }

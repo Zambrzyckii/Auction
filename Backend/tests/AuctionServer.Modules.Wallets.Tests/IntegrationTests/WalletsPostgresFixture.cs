@@ -37,13 +37,13 @@ public sealed class WalletsPostgresFixture : IAsyncLifetime
         return new WalletDbContext(options);
     }
 
-    public async Task<Guid> SeedWalletAsync(decimal availableFunds, decimal lockedFunds = 0m)
+    public async Task<Guid> SeedWalletAsync(decimal availableFunds, decimal lockedFunds = 0m, Guid? lockedForAuctionId = null)
     {
         await using var context = CreateContext();
         var wallet = new Wallet { UserId = Guid.NewGuid() };
         var totalFunds = availableFunds + lockedFunds;
         if (totalFunds > 0) wallet.AddFunds(totalFunds);
-        if (lockedFunds > 0) wallet.LockFunds(lockedFunds);
+        if (lockedFunds > 0) wallet.LockFunds(lockedForAuctionId ?? Guid.NewGuid(), lockedFunds);
         context.Wallets.Add(wallet);
         await context.SaveChangesAsync();
         return wallet.UserId;

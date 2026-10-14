@@ -6,7 +6,6 @@ public static class WalletExceptions
 {
     public class InsufficientFundsException() : AppException("Not enough funds on account", 400);
 
-    public class InsufficientLockedFundsException() : AppException("Not enough locked funds on account", 400);
 
     public class InvalidAmountException() : AppException("Amount must be greater than zero", 400);
 

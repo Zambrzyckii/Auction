@@ -36,10 +36,10 @@ public class WalletConcurrencyTests(WalletsPostgresFixture fixture)
         var firstWallet = await firstContext.Wallets.SingleAsync(w => w.UserId == userId);
         var secondWallet = await secondContext.Wallets.SingleAsync(w => w.UserId == userId);
 
-        firstWallet.LockFunds(100m);
+        firstWallet.LockFunds(Guid.NewGuid(), 100m);
         await firstContext.SaveChangesAsync();
 
-        secondWallet.LockFunds(50m);
+        secondWallet.LockFunds(Guid.NewGuid(), 50m);
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => secondContext.SaveChangesAsync());
 
         var persisted = await fixture.GetWalletAsync(userId);

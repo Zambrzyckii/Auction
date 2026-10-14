@@ -15,25 +15,7 @@ public sealed class Wallet
     
     public IReadOnlyCollection<FundsLock> FundsLocks => _fundsLocks;
     
-    public void LockFunds(decimal amount)
-    {
-        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
-        if (AvailableFunds < amount) throw new WalletExceptions.InsufficientFundsException();
 
-        AvailableFunds -= amount;
-        LockedFunds += amount;
-        Version = Guid.NewGuid();
-    }
-
-    public void UnlockFunds(decimal amount)
-    {
-        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
-        if (LockedFunds < amount) throw new WalletExceptions.InsufficientLockedFundsException();
-
-        LockedFunds -= amount;
-        AvailableFunds += amount;
-        Version = Guid.NewGuid();
-    }
     
     public void SuspendAccount() => IsSuspendedWallet = true;
     public void UnsuspendAccount() => IsSuspendedWallet = false;
@@ -46,14 +28,6 @@ public sealed class Wallet
         Version = Guid.NewGuid();
     }
 
-    public void SpendLockedFunds(decimal amount)
-    {
-        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
-        if (LockedFunds < amount) throw new WalletExceptions.InsufficientLockedFundsException();
-        
-        LockedFunds -= amount;
-        Version = Guid.NewGuid();
-    }
     
     public void LockFunds(Guid publicAuctionId, decimal amount)
     {
@@ -77,12 +51,13 @@ public sealed class Wallet
         Version = Guid.NewGuid();
     }
 
-    public void ConsumeLock(Guid publicAuctionId)
+    public decimal ConsumeLock(Guid publicAuctionId)
     {
         var fundsLock = GetActiveLock(publicAuctionId);
         fundsLock.Consume();
         LockedFunds -= fundsLock.Amount;
         Version = Guid.NewGuid();
+        return fundsLock.Amount;
     }
 
     private FundsLock GetActiveLock(Guid publicAuctionId) =>

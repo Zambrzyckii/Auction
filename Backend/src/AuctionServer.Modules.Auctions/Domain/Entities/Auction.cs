@@ -23,20 +23,6 @@ public sealed class Auction
     public DateTime CreatedOn { get; init; } = DateTime.UtcNow;
     public Guid? PendingBidderId { get; private set; }
     public decimal? PendingBidAmount { get; private set; }
-    public void ApplyNewBid(Guid bidderId, decimal amount)
-    {
-        if (Status is AuctionStatus.Pending) throw new AuctionExceptions.AuctionNotActiveException(Status);
-        if (Status is not AuctionStatus.Active) throw new AuctionExceptions.AuctionClosedException();
-        if (DateTime.UtcNow >= EndsOn) throw new AuctionExceptions.AuctionClosedException();
-        if (amount <= CurrentPrice) throw new AuctionExceptions.InvalidBidException();
-        if (bidderId == SellerUserId) throw new AuctionExceptions.CannotBidOwnItemException();
-        if (bidderId == CurrentWinningUserId) throw new AuctionExceptions.AlreadyHighestBidderException();
-
-        CurrentWinningUserId = bidderId;
-        CurrentPrice = amount;
-        if (EndsOn < DateTime.UtcNow + AntiSnipingWindow) EndsOn += AntiSnipingWindow;
-        Version = Guid.NewGuid();
-    }
     
     public static Auction Create(Guid sellerId, Guid itemId, decimal startingPrice, DateTime endsOn)
     {

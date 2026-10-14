@@ -22,9 +22,10 @@ public class AuctionFinishedEventHandlerTests(WalletsPostgresFixture fixture)
     [Fact]
     public async Task Handle_WhenAuctionHasWinner_ShouldSettleFundsAndStoreInboxRow()
     {
-        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m);
+        var auctionId = Guid.NewGuid();
+        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m, lockedForAuctionId: auctionId);
         var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
-        var notification = CreateEvent(winnerId, sellerId, 100m);
+        var notification = CreateEvent(winnerId, sellerId, 100m, auctionId);
 
         await HandleAsync(notification);
 
@@ -41,9 +42,10 @@ public class AuctionFinishedEventHandlerTests(WalletsPostgresFixture fixture)
     [Fact]
     public async Task Handle_WhenEventIsDeliveredTwice_ShouldSettleOnlyOnce()
     {
-        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m);
+        var auctionId = Guid.NewGuid();
+        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m, lockedForAuctionId: auctionId);
         var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
-        var notification = CreateEvent(winnerId, sellerId, 100m);
+        var notification = CreateEvent(winnerId, sellerId, 100m, auctionId);
 
         await HandleAsync(notification);
         await HandleAsync(notification);
@@ -73,9 +75,9 @@ public class AuctionFinishedEventHandlerTests(WalletsPostgresFixture fixture)
     [Fact]
     public async Task Handle_WhenAuctionHasWinner_ShouldStoreAuctionSettledEventInOutbox()
     {
-        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m);
-        var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
         var auctionId = Guid.NewGuid();
+        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m, lockedForAuctionId: auctionId);
+        var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
         var notification = CreateEvent(winnerId, sellerId, 100m, auctionId);
 
         await HandleAsync(notification);
@@ -95,9 +97,9 @@ public class AuctionFinishedEventHandlerTests(WalletsPostgresFixture fixture)
     [Fact]
     public async Task Handle_WhenEventIsDeliveredTwice_ShouldStoreSingleOutboxRow()
     {
-        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m);
-        var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
         var auctionId = Guid.NewGuid();
+        var winnerId = await fixture.SeedWalletAsync(availableFunds: 400m, lockedFunds: 100m, lockedForAuctionId: auctionId);
+        var sellerId = await fixture.SeedWalletAsync(availableFunds: 0m);
         var notification = CreateEvent(winnerId, sellerId, 100m, auctionId);
 
         await HandleAsync(notification);
