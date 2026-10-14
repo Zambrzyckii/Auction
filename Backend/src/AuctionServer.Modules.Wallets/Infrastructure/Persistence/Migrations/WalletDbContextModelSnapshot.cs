@@ -104,6 +104,44 @@ namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence.Migrations
 
                     b.ToTable("WalletsOutboxMessages", (string)null);
                 });
+
+            modelBuilder.Entity("AuctionServer.Modules.Wallets.Domain.Entities.Wallet", b =>
+                {
+                    b.OwnsMany("AuctionServer.Modules.Wallets.Domain.Entities.FundsLock", "FundsLocks", b1 =>
+                        {
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id"));
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)");
+
+                            b1.Property<Guid>("PublicAuctionId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Status")
+                                .HasColumnType("integer");
+
+                            b1.Property<Guid>("WalletUserId")
+                                .HasColumnType("uuid");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("WalletUserId", "PublicAuctionId")
+                                .IsUnique()
+                                .HasFilter("\"Status\" = 0");
+
+                            b1.ToTable("WalletsFundsLocks", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("WalletUserId");
+                        });
+
+                    b.Navigation("FundsLocks");
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -1,3 +1,4 @@
+using AuctionServer.Modules.Wallets.Domain.Enums;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 
 namespace AuctionServer.Modules.Wallets.Domain.Entities;
@@ -10,6 +11,9 @@ public sealed class Wallet
 
     public bool IsSuspendedWallet { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
+    private readonly List<FundsLock> _fundsLocks = [];
+    
+    public IReadOnlyCollection<FundsLock> FundsLocks => _fundsLocks;
     
     public void LockFunds(decimal amount)
     {
@@ -50,4 +54,38 @@ public sealed class Wallet
         LockedFunds -= amount;
         Version = Guid.NewGuid();
     }
+    
+    public void LockFunds(Guid publicAuctionId, decimal amount)
+    {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
+        if (AvailableFunds < amount) throw new WalletExceptions.InsufficientFundsException();
+        if (_fundsLocks.Any(l => l.PublicAuctionId == publicAuctionId && l.Status == FundsLockStatus.Active))
+            throw new WalletExceptions.LockAlreadyExistsException();
+
+        _fundsLocks.Add(new FundsLock { PublicAuctionId = publicAuctionId, Amount = amount });
+        AvailableFunds -= amount;
+        LockedFunds += amount;
+        Version = Guid.NewGuid();
+    }
+
+    public void ReleaseLock(Guid publicAuctionId)
+    {
+        var fundsLock = GetActiveLock(publicAuctionId);
+        fundsLock.Release();
+        LockedFunds -= fundsLock.Amount;
+        AvailableFunds += fundsLock.Amount;
+        Version = Guid.NewGuid();
+    }
+
+    public void ConsumeLock(Guid publicAuctionId)
+    {
+        var fundsLock = GetActiveLock(publicAuctionId);
+        fundsLock.Consume();
+        LockedFunds -= fundsLock.Amount;
+        Version = Guid.NewGuid();
+    }
+
+    private FundsLock GetActiveLock(Guid publicAuctionId) =>
+        _fundsLocks.SingleOrDefault(l => l.PublicAuctionId == publicAuctionId && l.Status == FundsLockStatus.Active)
+        ?? throw new WalletExceptions.LockNotFoundException(publicAuctionId);
 }
