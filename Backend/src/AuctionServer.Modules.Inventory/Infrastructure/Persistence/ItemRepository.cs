@@ -66,6 +66,20 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         } 
     }
 
+    public async Task AddItemsWithInboxAsync(List<Item> items, ProcessedMessage inboxMessage, CancellationToken token)
+    {
+        await context.Items.AddRangeAsync(items, token);
+        context.ProcessedMessages.Add(inboxMessage);
+        try
+        {
+            await context.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new InventoryException.EventAlreadyProcessedException();
+        }
+    }
+
     public async Task SaveAsync(CancellationToken token)
     {
         await context.SaveChangesAsync(token);

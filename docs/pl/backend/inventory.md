@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/inventory.md](../../en/backend/inventory.md)
 
-`AuctionServer.Modules.Inventory` odpowiada za przedmioty zbierane przez graczy: tworzy przedmioty z ceną zależną od rzadkości, craftuje trzy przedmioty jednego poziomu w jeden kolejnego, sprzedaje przedmioty do oficjalnego sklepu oraz blokuje, odblokowuje i przenosi przedmioty na rzecz sagi aukcyjnej. Wystawia cztery endpointy pod `/api/inventory`, wszystkie wymagające JWT.
+`AuctionServer.Modules.Inventory` odpowiada za przedmioty zbierane przez graczy: tworzy przedmioty z ceną zależną od rzadkości, craftuje trzy przedmioty jednego poziomu w jeden kolejnego, sprzedaje przedmioty do oficjalnego sklepu, przyznaje każdemu nowemu graczowi konfigurowalny pakiet startowy oraz blokuje, odblokowuje i przenosi przedmioty na rzecz sagi aukcyjnej. Wystawia cztery endpointy pod `/api/inventory`, wszystkie wymagające JWT.
 
 ## Przegląd
 
@@ -11,11 +11,11 @@
 | Endpointy | [`Presentation/InventoryEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Presentation/InventoryEndpoints.cs), rekordy żądań `CraftItemRequest`, `GrantItemRequest` |
 | Komendy | `Application/Command/CraftItem/`, `Application/Command/GrantItem/`, `Application/Command/SellItemToShop/` (komenda, handler, walidator w każdym) |
 | Zapytania | `Application/Queries/GetUserItemsQuery/` (zapytanie, handler, `UserItemsDto`) |
-| Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionSettledEventHandler.cs` |
+| Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs` |
 | Domena | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
 | Infrastruktura | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
-[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) rejestruje `InventoryDbContext` z Npgsql, `IItemRepository` jako scoped i hosted service `OutboxProcessor`; `MapInventoryEndpoints` mapuje grupę z `RequireAuthorization()` na samej grupie.
+[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) rejestruje `InventoryDbContext` z Npgsql, `IItemRepository` jako scoped, hosted service `OutboxProcessor` i singleton `InventoryOptions` z przedmiotami startowymi przekazanymi z `Program.cs` (wpis z pustą nazwą jest odrzucany na starcie); `MapInventoryEndpoints` mapuje grupę z `RequireAuthorization()` na samej grupie.
 
 ## Uruchomienie
 
@@ -30,7 +30,7 @@ Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/sr
 
 ## Konfiguracja
 
-Moduł nie ma kluczy konfiguracji; jego reguły to stałe w [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` jest losowana raz przy tworzeniu przez `Random.Shared.Next` (górna granica wyłączona), crafting potrzebuje dokładnie `CraftIngredientsCount = 3` składników, a wycraftowany przedmiot nazywa się `Crafted {rarity} Item`.
+Moduł ma jeden klucz konfiguracji: `Inventory:StarterItems`, listę wpisów `{ Name, Rarity }` przyznawanych każdemu nowemu graczowi przy rejestracji (domyślnie w `appsettings.json` trzy przedmioty `Common`; pusta lista wyłącza pakiet). Pozostałe reguły to stałe w [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` jest losowana raz przy tworzeniu przez `Random.Shared.Next` (górna granica wyłączona), crafting potrzebuje dokładnie `CraftIngredientsCount = 3` składników, a wycraftowany przedmiot nazywa się `Crafted {rarity} Item`.
 
 | Rzadkość | Wartość | Losowana cena oficjalna |
 |---|---|---|
@@ -62,7 +62,7 @@ Diagram pokazuje cztery statusy przedmiotu i metody, które między nimi przecho
 | `LockedForAuctionId` | `uuid`, nullowalna, unikalna | `PublicAuctionId` trzymające blokadę; nulle nie kolidują, więc tylko jeden przedmiot na aukcję |
 | `Version` | `uuid` | token współbieżności |
 
-Moduł posiada też `InventoryOutboxMessages` i `InventoryProcessedMessages`, opisane w [messaging.md](messaging.md). W [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs) `GetUserItemAsync` i `GetItemLockedForAuctionAsync` rzucają `UserOrItemDoesntExistException` (404), gdy nic nie pasuje, `GetUserSelectedItemsAsync` rzuca to samo, gdy znaleziono mniej przedmiotów niż id, a `AddItemAsync` mapuje naruszenie unikalności na `ItemAlreadyExistInInventoryException` (409); `AddItemsAsync` i `SaveAsync` istnieją w interfejsie, ale nie mają wywołań.
+Moduł posiada też `InventoryOutboxMessages` i `InventoryProcessedMessages`, opisane w [messaging.md](messaging.md). W [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs) `GetUserItemAsync` i `GetItemLockedForAuctionAsync` rzucają `UserOrItemDoesntExistException` (404), gdy nic nie pasuje, `GetUserSelectedItemsAsync` rzuca to samo, gdy znaleziono mniej przedmiotów niż id, `AddItemAsync` mapuje naruszenie unikalności na `ItemAlreadyExistInInventoryException` (409), a `AddItemsWithInboxAsync` zapisuje przedmioty startowe razem z wierszem inboxa w jednej transakcji i mapuje naruszenie unikalności na `EventAlreadyProcessedException`; `AddItemsAsync` i `SaveAsync` istnieją w interfejsie, ale nie mają wywołań.
 
 ## API
 
@@ -93,11 +93,13 @@ Walidacja działa przed handlerami: `CraftItemCommandValidator` wymaga dokładni
 |---|---|---|
 | konsumowane | `ItemLockRequestedEvent` | `ItemLockRequestedEventHandler`: `GetUserItemAsync` plus `LockForAuction`, odpowiada `ItemLockedEvent` albo, przy `UserOrItemDoesntExistException` / `ItemNotAvailableException`, `ItemLockRejectedEvent` z komunikatem jako `Reason` |
 | konsumowane | `AuctionFinishedEvent` | `AuctionFinishedEventHandler`: tylko gdy `WinnerUserId` jest null, `GetItemLockedForAuctionAsync` plus `UnlockItem` |
+| konsumowane | `AuctionCancelledEvent` | `AuctionCancelledEventHandler`: `FindItemLockedForAuctionAsync` plus `UnlockItem`; brak blokady jest poprawnym wynikiem |
 | konsumowane | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
+| konsumowane | `UserRegisteredEvent` | `UserRegisteredEventHandler`: jedno `Item.Create` na wpis `Inventory:StarterItems`, zapis atomowy z wierszem inboxa |
 | publikowane | `ItemLockedEvent`, `ItemLockRejectedEvent` | odpowiedzi zapisywane w tym samym `SaveChangesAsync` co blokada i wiersz inboxa |
 | publikowane | `ItemSoldToShopEvent` | `SellItemToShopCommandHandler`; `Id` wiersza outboxa i `EventId` zdarzenia to dwa różne Guidy |
 
-Wszyscy trzej konsumenci używają tabeli inboxa `InventoryProcessedMessages`; nieznany przedmiot lub aukcja wewnątrz konsumenta to 404, który propaguje do outboxa producenta i jest ponawiany.
+Wszystkich pięciu konsumentów używa tabeli inboxa `InventoryProcessedMessages`; w konsumentach aukcyjnych nieznany przedmiot lub aukcja to 404, który propaguje do outboxa producenta i jest ponawiany.
 
 ## Decyzje
 
@@ -105,6 +107,7 @@ Wszyscy trzej konsumenci używają tabeli inboxa `InventoryProcessedMessages`; n
 - Crafting zużywa trzy przedmioty `Available` jednej rzadkości należące do wołającego i tworzy jeden przedmiot kolejnego poziomu; `Legendary` nie może być składnikiem, co ogranicza drabinkę.
 - Przedmiot zmienia właściciela tylko w `TransferTo`, wyzwalanym przez `AuctionSettledEvent`, więc przedmiot przechodzi po tym, jak Wallets przesunie pieniądze.
 - Blokada jest zapisana na przedmiocie (`LockedForAuctionId`, unikalna), co pozwala konsumentom znaleźć przedmiot dla aukcji bez żadnych danych Auctions i zapobiega zablokowaniu dwóch przedmiotów dla jednej aukcji.
+- Pakiet startowy konsumuje `UserRegisteredEvent`, tak jak Wallets tworzy portfel; w odróżnieniu od portfela przedmioty nie mają naturalnego klucza unikalnego, więc idempotencję daje wiersz inboxa zapisany w tej samej transakcji co przedmioty.
 
 ## Powiązane dokumenty
 

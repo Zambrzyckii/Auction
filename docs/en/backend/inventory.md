@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/inventory.md](../../pl/backend/inventory.md)
 
-`AuctionServer.Modules.Inventory` owns the items players collect: it mints items with a rarity-based price, crafts three items of one tier into one of the next, sells items to the official shop, and locks, unlocks and transfers items on behalf of the auction saga. It exposes four endpoints under `/api/inventory`, all of which require a JWT.
+`AuctionServer.Modules.Inventory` owns the items players collect: it mints items with a rarity-based price, crafts three items of one tier into one of the next, sells items to the official shop, grants a configurable starter pack to every new player, and locks, unlocks and transfers items on behalf of the auction saga. It exposes four endpoints under `/api/inventory`, all of which require a JWT.
 
 ## Overview
 
@@ -11,11 +11,11 @@
 | Endpoints | [`Presentation/InventoryEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Presentation/InventoryEndpoints.cs), request records `CraftItemRequest`, `GrantItemRequest` |
 | Commands | `Application/Command/CraftItem/`, `Application/Command/GrantItem/`, `Application/Command/SellItemToShop/` (command, handler, validator each) |
 | Queries | `Application/Queries/GetUserItemsQuery/` (query, handler, `UserItemsDto`) |
-| Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionSettledEventHandler.cs` |
+| Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs` |
 | Domain | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
 | Infrastructure | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
-[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) registers `InventoryDbContext` with Npgsql, `IItemRepository` as scoped and the `OutboxProcessor` hosted service; `MapInventoryEndpoints` maps the group with `RequireAuthorization()` on the group itself.
+[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) registers `InventoryDbContext` with Npgsql, `IItemRepository` as scoped, the `OutboxProcessor` hosted service and an `InventoryOptions` singleton carrying the starter items passed from `Program.cs` (an entry with an empty name is rejected at startup); `MapInventoryEndpoints` maps the group with `RequireAuthorization()` on the group itself.
 
 ## Running
 
@@ -30,7 +30,7 @@ Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/s
 
 ## Configuration
 
-The module has no configuration keys; its rules are constants in [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` is rolled once at creation with `Random.Shared.Next` (upper bound exclusive), crafting needs exactly `CraftIngredientsCount = 3` ingredients, and a crafted item is named `Crafted {rarity} Item`.
+The module has one configuration key: `Inventory:StarterItems`, a list of `{ Name, Rarity }` entries granted to every new player on registration (the default in `appsettings.json` is three `Common` items; an empty list disables the pack). The remaining rules are constants in [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` is rolled once at creation with `Random.Shared.Next` (upper bound exclusive), crafting needs exactly `CraftIngredientsCount = 3` ingredients, and a crafted item is named `Crafted {rarity} Item`.
 
 | Rarity | Value | Rolled official price |
 |---|---|---|
@@ -62,7 +62,7 @@ The diagram shows the four statuses of an item and the methods that move between
 | `LockedForAuctionId` | `uuid`, nullable, unique | the `PublicAuctionId` holding the lock; nulls do not collide, so only one item per auction |
 | `Version` | `uuid` | concurrency token |
 
-The module also owns `InventoryOutboxMessages` and `InventoryProcessedMessages`, described in [messaging.md](messaging.md). In [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs), `GetUserItemAsync` and `GetItemLockedForAuctionAsync` throw `UserOrItemDoesntExistException` (404) when nothing matches, `GetUserSelectedItemsAsync` throws the same when fewer items than ids are found, and `AddItemAsync` maps a unique violation to `ItemAlreadyExistInInventoryException` (409); `AddItemsAsync` and `SaveAsync` exist on the interface but have no callers.
+The module also owns `InventoryOutboxMessages` and `InventoryProcessedMessages`, described in [messaging.md](messaging.md). In [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs), `GetUserItemAsync` and `GetItemLockedForAuctionAsync` throw `UserOrItemDoesntExistException` (404) when nothing matches, `GetUserSelectedItemsAsync` throws the same when fewer items than ids are found, `AddItemAsync` maps a unique violation to `ItemAlreadyExistInInventoryException` (409), and `AddItemsWithInboxAsync` saves the starter items together with the inbox row in one transaction and maps a unique violation to `EventAlreadyProcessedException`; `AddItemsAsync` and `SaveAsync` exist on the interface but have no callers.
 
 ## API
 
@@ -93,11 +93,13 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 |---|---|---|
 | consumed | `ItemLockRequestedEvent` | `ItemLockRequestedEventHandler`: `GetUserItemAsync` plus `LockForAuction`, replies with `ItemLockedEvent` or, on `UserOrItemDoesntExistException` / `ItemNotAvailableException`, with `ItemLockRejectedEvent` carrying the message as `Reason` |
 | consumed | `AuctionFinishedEvent` | `AuctionFinishedEventHandler`: only when `WinnerUserId` is null, `GetItemLockedForAuctionAsync` plus `UnlockItem` |
+| consumed | `AuctionCancelledEvent` | `AuctionCancelledEventHandler`: `FindItemLockedForAuctionAsync` plus `UnlockItem`; a missing lock is a valid outcome |
 | consumed | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
+| consumed | `UserRegisteredEvent` | `UserRegisteredEventHandler`: one `Item.Create` per `Inventory:StarterItems` entry, saved atomically with the inbox row |
 | published | `ItemLockedEvent`, `ItemLockRejectedEvent` | replies written in the same `SaveChangesAsync` as the lock and the inbox row |
 | published | `ItemSoldToShopEvent` | `SellItemToShopCommandHandler`; the outbox row `Id` and the event `EventId` are two different Guids |
 
-All three consumers use the inbox table `InventoryProcessedMessages`; an unknown item or auction inside a consumer is a 404 that propagates to the producer's outbox and is retried.
+All five consumers use the inbox table `InventoryProcessedMessages`; in the auction consumers an unknown item or auction is a 404 that propagates to the producer's outbox and is retried.
 
 ## Decisions
 
@@ -105,6 +107,7 @@ All three consumers use the inbox table `InventoryProcessedMessages`; an unknown
 - Crafting consumes three `Available` items of one rarity owned by the caller and creates one item of the next tier; `Legendary` cannot be an ingredient, which caps the ladder.
 - An item changes owner only in `TransferTo`, triggered by `AuctionSettledEvent`, so the item moves after Wallets has moved the money.
 - The lock is recorded on the item (`LockedForAuctionId`, unique), which lets the consumers find the item for an auction without any Auctions data and prevents two items from being locked for one auction.
+- The starter pack consumes `UserRegisteredEvent`, mirroring how Wallets creates the wallet; unlike a wallet, items have no natural unique key, so idempotency comes from the inbox row saved in the same transaction as the items.
 
 ## Related documents
 

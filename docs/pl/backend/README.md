@@ -82,7 +82,8 @@ Ustawienia są czytane przez `IConfiguration`, więc każdy klucz może pochodzi
 | `Jwt:Issuer` | `AuctionServer` | nie | — | walidacja bearera i wystawianie tokenu |
 | `Jwt:Audience` | `AuctionServer.Client` | nie | — | walidacja bearera i wystawianie tokenu |
 | `Bots:ApiKey` | brak | do provisioningu botów | `POST /api/users/bots` odpowiada 401 z pustym ciałem; powód z handlera, `API key authentication is not configured`, nie trafia do odpowiedzi | [`ApiKeyAuthenticationHandler`](../../../Backend/src/AuctionServer.Api/Infrastructure/Authentication/ApiKeyAuthenticationHandler.cs) |
-| `Wallets:StartingFunds` | `300` | tak, większy od zera | start rzuca `InvalidOperationException`; wartość zero lub mniejsza rzuca `ArgumentOutOfRangeException` w `AddWalletsModule` | `WalletsOptions`, konsumowane przez `UserRegisteredEventHandler` |
+| `Wallets:StartingFunds` | `300` | tak, większy od zera | start rzuca `InvalidOperationException`; wartość zero lub mniejsza rzuca `ArgumentOutOfRangeException` w `AddWalletsModule` | `WalletsOptions`, konsumowane przez `UserRegisteredEventHandler` z Wallets |
+| `Inventory:StarterItems` | trzy przedmioty `Common` | nie | brak lub pusta lista wyłącza pakiet startowy; wpis z pustą nazwą rzuca `ArgumentException` w `AddInventoryModule` | `InventoryOptions`, konsumowane przez `UserRegisteredEventHandler` z Inventory |
 | `Logging:LogLevel` | `Information`, `Microsoft.AspNetCore` na `Warning` | nie | — | domyślni dostawcy logowania |
 
 `Backend/.env.example` wymienia `DB_USER` i `DB_PASSWORD`, ale żaden kod nie czyta pliku `.env`; powyższy connection string to jedyne ustawienie bazy, które zna host.

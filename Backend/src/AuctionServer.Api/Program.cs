@@ -12,6 +12,7 @@ using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Modules.Identity.Presentation;
 using AuctionServer.Modules.Inventory;
+using AuctionServer.Modules.Inventory.Application;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Modules.Inventory.Presentation;
 using AuctionServer.Modules.Wallets;
@@ -27,6 +28,7 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var startingFunds = builder.Configuration.GetValue<decimal?>("Wallets:StartingFunds") ?? throw new InvalidOperationException("Missing configuration value 'Wallets:StartingFunds'");
+var starterItems = builder.Configuration.GetSection("Inventory:StarterItems").Get<List<StarterItemDefinition>>() ?? [];
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -80,7 +82,7 @@ builder.Services.AddMediatR(cfg =>
 builder.Services.AddAuctionModule(connectionString!);
 builder.Services.AddWalletsModule(connectionString!, startingFunds);
 builder.Services.AddIdentityModule(connectionString!);
-builder.Services.AddInventoryModule(connectionString!);
+builder.Services.AddInventoryModule(connectionString!, starterItems);
 builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
