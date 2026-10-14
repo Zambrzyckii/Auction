@@ -56,7 +56,6 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 
 TODO(human): order the items below by priority and add one sentence per item saying why it comes next; edit only this English file, the Polish twin is translated afterwards.
 
-- Funds reservation per bid: a bid stored as `Pending` that becomes the leader only after Wallets confirms a per-bid lock, mirroring the item-lock saga (designed on 2026-08-30, not implemented).
 - Bid history: a table of bids per auction and `GET /api/auctions/{id}/bids`.
 - Starter item pack granted on registration.
 - RabbitMQ as the event transport behind `IIntegrationEventPublisher`.

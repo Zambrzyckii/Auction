@@ -27,7 +27,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests                          
 dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedName!~IntegrationTests"   # tylko offline, jak w jobie CI unit-tests
 ```
 
-Migracje są rozdzielone między dwa foldery: [`Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Migrations) zawiera `20260707073128_InitialAuctions` i snapshot modelu `AppDbContextModelSnapshot.cs`, a [`Infrastructure/Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) siedem późniejszych: `Sync_Auctions_Fix`, `Align_Auctions_With_Configuration`, `Add_EndsOn_And_ItemId_Index`, `Add_Auction_Version`, `Add_Outbox_DeadLetter_And_Backoff`, `Add_Auction_Status_And_Item_Snapshot` (edytowana ręcznie, zawiera wywołanie `migrationBuilder.Sql`) i `Add_Auctions_Inbox`. Nowe migracje trzeba tworzyć z `--output-dir Infrastructure/Migrations`, żeby trafiły obok pozostałych.
+Migracje są rozdzielone między dwa foldery: [`Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Migrations) zawiera `20260707073128_InitialAuctions` i snapshot modelu `AppDbContextModelSnapshot.cs`, a [`Infrastructure/Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) dziewięć późniejszych: `Sync_Auctions_Fix`, `Align_Auctions_With_Configuration`, `Add_EndsOn_And_ItemId_Index`, `Add_Auction_Version`, `Add_Outbox_DeadLetter_And_Backoff`, `Add_Auction_Status_And_Item_Snapshot` (edytowana ręcznie, zawiera wywołanie `migrationBuilder.Sql`) , `Add_Auctions_Inbox`, `Add_Auction_CreatedOn` i `Add_Auction_Pending_Bid`. Nowe migracje trzeba tworzyć z `--output-dir Infrastructure/Migrations`, żeby trafiły obok pozostałych.
 
 ## Konfiguracja
 
@@ -35,7 +35,7 @@ Moduł nie ma własnych kluczy konfiguracji; connection string dostaje z `AddAuc
 
 | Reguła | Wartość | Gdzie |
 |---|---|---|
-| okno anty-snajperskie | 30 s (`AntiSnipingWindow`) | `Auction.ApplyNewBid` |
+| okno anty-snajperskie | 30 s (`AntiSnipingWindow`) | `Auction.RequestBid` |
 | interwał i partia closera | co 3 s, do 20 aukcji | `AuctionCloser` |
 | interwał i partia odpytywania outboxa | co 3 s, do 20 wierszy | `OutboxProcessor` |
 | `EndsOn` akceptowane przez walidator | później niż teraz i wcześniej niż teraz + 30 dni | `CreateAuctionCommandValidator` |
@@ -52,7 +52,7 @@ Diagram pokazuje cztery statusy aukcji i metody, które między nimi przechodzą
   <img alt="Diagram: cykl życia statusu aukcji" src="../../diagrams/backend-auctions-01-auction-status-lifecycle.svg">
 </picture>
 
-Każda metoda przejścia najpierw woła `EnsureStatus`, więc nieoczekiwany status rzuca `InvalidAuctionStateTransitionException` (409), zamiast po cichu nadpisać dane; `ApplyNewBid` ma własne sprawdzenia i zostawia status `Active`. Wartości enuma są przechowywane jako liczby całkowite i są częścią filtrowanego indeksu unikalnego `"Status" IN (0, 1)` (`Pending` i `Active`), więc przenumerowanie `AuctionStatus` zmieniłoby, które aukcje liczą się jako otwarte.
+Każda metoda przejścia najpierw woła `EnsureStatus`, więc nieoczekiwany status rzuca `InvalidAuctionStateTransitionException` (409), zamiast po cichu nadpisać dane; `RequestBid` i `ConfirmPendingBid` mają własne sprawdzenia i zostawiają status `Active`. Wartości enuma są przechowywane jako liczby całkowite i są częścią filtrowanego indeksu unikalnego `"Status" IN (0, 1)` (`Pending` i `Active`), więc przenumerowanie `AuctionStatus` zmieniłoby, które aukcje liczą się jako otwarte.
 
 | Kolumna | Typ | Uwagi |
 |---|---|---|
@@ -66,6 +66,8 @@ Każda metoda przejścia najpierw woła `EnsureStatus`, więc nieoczekiwany stat
 | `ItemName`, `ItemRarity`, `ItemOfficialPrice` | `text`, `text`, `numeric(18,2)`, wszystkie nullowalne | snapshot przedmiotu kopiowany przez `Activate` z `ItemLockedEvent` |
 | `CancellationReason` | `text`, nullowalna | `Reason` z `ItemLockRejectedEvent` |
 | `EndsOn` | `timestamptz` | wydłużane o 30 s przez późne oferty |
+| `CreatedOn` | `timestamptz` | ustawiane przy utworzeniu; `AuctionCloser` anuluje aukcje `Pending` dłużej niż 10 minut |
+| `PendingBidderId`, `PendingBidAmount` | `uuid`, `numeric(18,2)`, oba nullable | oferta w locie sagi rezerwacji środków; czyszczona przy potwierdzeniu lub odrzuceniu |
 | `Version` | `uuid` | token współbieżności, generowany na nowo przez każdą metodę mutującą |
 
 Moduł posiada też `OutboxMessages` (jego outbox, jedyna tabela bez prefiksu modułu) i `AuctionsProcessedMessages` (jego inbox); obie są opisane w [messaging.md](messaging.md).

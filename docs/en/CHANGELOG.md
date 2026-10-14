@@ -4,6 +4,7 @@
 >
 > Milestone-level entries, newest first; each entry is dated by the day the work was done.
 
+- **2026-10-14** — **Funds reservation saga**: pessimistic pending bid on `Auction` (`RequestBid`/`ConfirmPendingBid`/`RejectPendingBid`), `Wallet` as a DDD aggregate with a per-bid `FundsLock` ledger (`WalletsFundsLocks` table), four new funds events with `BidPlacedEvent` repurposed as the confirmation, settlement consumes the winner's lock, amount-based wallet methods and `ApplyNewBid` removed, integration tests for the whole loop.
 - **2026-10-14** — **Pending auction timeout**: `CreatedOn` on `Auction` (migration `Add_Auction_CreatedOn`), `AuctionCloser` cancels auctions stuck in `Pending` for over 10 minutes and emits `AuctionCancelledEvent`, an Inventory handler unlocks a still-locked item and treats a missing lock as a valid outcome, integration tests for the new handler.
 - **2026-10-07** — **Documentation set**: bilingual `docs/en` and `docs/pl` (architecture, backend chapters, standing documents, ADRs, planned modules), 13 Mermaid diagrams rendered to SVG, root README rewritten as a front door with a Polish twin; the previous `docs/` folder moved out of the repository.
 - **2026-08-30** — **Settlement chain completed**: Wallets outbox and `AuctionSettledEvent`, Inventory handlers for `AuctionFinishedEvent` (unlock) and `AuctionSettledEvent` (transfer), `GET /api/auctions/{id}`, Auctions integration tests; the funds reservation saga for bids designed but not implemented.

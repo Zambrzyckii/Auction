@@ -91,7 +91,7 @@ A consuming module keeps a `ProcessedMessages` table with a single meaningful co
 | `AuctionFinishedEventHandler` | Inventory | `SaveChangesWithInboxAsync` | none |
 | `AuctionSettledEventHandler` | Inventory | `SaveChangesWithInboxAsync` | none |
 
-Only `EventAlreadyProcessedException` is caught. A missing aggregate (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), a domain rule (`InsufficientFundsException`, `InsufficientLockedFundsException`, `ItemNotLockedException`, `InvalidAuctionStateTransitionException`) and a `DbUpdateConcurrencyException` all propagate to the producer's `OutboxProcessor`, where they count as a failed attempt. The intent is visible failure: a message that cannot be applied ends up dead with its reason recorded instead of being skipped.
+Only `EventAlreadyProcessedException` is caught. A missing aggregate (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), a domain rule (`InsufficientFundsException`, `LockNotFoundException`, `ItemNotLockedException`, `InvalidAuctionStateTransitionException`) and a `DbUpdateConcurrencyException` all propagate to the producer's `OutboxProcessor`, where they count as a failed attempt. The intent is visible failure: a message that cannot be applied ends up dead with its reason recorded instead of being skipped.
 
 ## Publisher seam
 

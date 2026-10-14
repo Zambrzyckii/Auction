@@ -56,7 +56,6 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 
 Kolejność i uzasadnienia ustali właściciel w wersji angielskiej; ta lista zostanie wtedy przetłumaczona 1:1.
 
-- Rezerwacja środków per oferta: oferta zapisywana jako `Pending`, która zostaje liderem dopiero po potwierdzeniu przez Wallets blokady per oferta, na wzór sagi blokady przedmiotu (zaprojektowana 2026-08-30, niezaimplementowana).
 - Historia ofert: tabela ofert per aukcja i `GET /api/auctions/{id}/bids`.
 - Pakiet startowy przedmiotów przyznawany przy rejestracji.
 - RabbitMQ jako transport zdarzeń za `IIntegrationEventPublisher`.

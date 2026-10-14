@@ -6,7 +6,7 @@
 
 ## Status
 
-The backend is complete for the main flow: four modules (Identity, Wallets, Auctions, Inventory), 13 endpoints, 10 integration events, 217 test methods and a GitLab CI pipeline. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started; the funds reservation saga for bids is designed and not implemented. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: four modules (Identity, Wallets, Auctions, Inventory), 13 endpoints, 14 integration events, 230 test methods and a GitLab CI pipeline. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 

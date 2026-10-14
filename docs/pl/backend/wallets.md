@@ -45,21 +45,22 @@ Brak wartości zatrzymuje host (`Missing configuration value 'Wallets:StartingFu
 | `IsSuspendedWallet` | `boolean` | ustawiane tylko przez `SuspendAccount`, które nie ma wywołań; indeks unikalny na `UserId` jest filtrowany po `"IsSuspendedWallet" = false`, ale `UserId` jest też kluczem głównym, więc ten indeks nie dodaje żadnego ograniczenia |
 | `Version` | `uuid` | token współbieżności, generowany na nowo przez każdą metodę pieniężną |
 
-Moduł posiada też `WalletsOutboxMessages` i `WalletsProcessedMessages`, opisane w [messaging.md](messaging.md). Niezmienniki żyją w encji:
+Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `WalletUserId`, `PublicAuctionId`, `Amount`, `Status` z `Active = 0`, `Released = 1`, `Consumed = 2`; indeks unikalny na `WalletUserId, PublicAuctionId` filtrowany na `"Status" = 0` pilnuje jednej aktywnej blokady na aukcję w portfelu), oraz `WalletsOutboxMessages` i `WalletsProcessedMessages`, opisane w [messaging.md](messaging.md). `Wallet` jest korzeniem agregatu: księga to kolekcja owned w EF, a każda blokada zmienia się wyłącznie przez metodę `Wallet`. Niezmienniki żyją w encji:
 
 | Metoda | Reguła | Efekt |
 |---|---|---|
 | `AddFunds(amount)` | `amount > 0` | `AvailableFunds += amount` |
-| `LockFunds(amount)` | `amount > 0`, `AvailableFunds >= amount` | przenosi `amount` z dostępnych do zablokowanych |
-| `UnlockFunds(amount)` | `amount > 0`, `LockedFunds >= amount` | przenosi `amount` z zablokowanych z powrotem do dostępnych |
-| `SpendLockedFunds(amount)` | `amount > 0`, `LockedFunds >= amount` | `LockedFunds -= amount`; pieniądze opuszczają portfel |
+| `LockFunds(auctionId, amount)` | `amount > 0`, `AvailableFunds >= amount`, brak aktywnej blokady dla aukcji | dodaje `Active` `FundsLock` i przenosi `amount` z dostępnych do zablokowanych |
+| `ReleaseLock(auctionId)` | istnieje aktywna blokada dla aukcji | oznacza ją `Released` i przenosi jej kwotę z powrotem do dostępnych |
+| `ConsumeLock(auctionId)` | istnieje aktywna blokada dla aukcji | oznacza ją `Consumed`, zmniejsza `LockedFunds`; pieniądze opuszczają portfel; zwraca kwotę |
 | `SuspendAccount()`, `UnsuspendAccount()` | — | przełączają `IsSuspendedWallet`; brak wywołań w `src/` |
 
 | Wyjątek | Status | Komunikat |
 |---|---|---|
 | `InvalidAmountException` | 400 | `Amount must be greater than zero` |
 | `InsufficientFundsException` | 400 | `Not enough funds on account` |
-| `InsufficientLockedFundsException` | 400 | `Not enough locked funds on account` |
+| `LockNotFoundException` | 404 | `No active funds lock for auction {id}` |
+| `LockAlreadyExistsException` | 409 | `Funds lock for this auction already exists` |
 | `UserWithThisIdDontHaveWallet` | 404 | `User with this ID {id} doesnt exists` |
 | `WalletAlreadyExistException` | 409 | `Wallet already exists` |
 | `EventAlreadyProcessedException` | 409 | `Event was already processed`; rzucany przez repozytorium i łapany przez handlery zdarzeń |
@@ -78,10 +79,13 @@ Moduł posiada też `WalletsOutboxMessages` i `WalletsProcessedMessages`, opisan
 | Kierunek | Zdarzenie | Handler i efekt |
 |---|---|---|
 | konsumowane | `UserRegisteredEvent` | `UserRegisteredEventHandler` tworzy `Wallet { UserId = PublicUserId }`, woła `AddFunds(StartingFunds)` i zapisuje przez `AddWalletAsync`; naruszenie unikalności staje się `WalletAlreadyExistException`, który jest połykany, więc dla tego zdarzenia nie ma wiersza inboxa |
-| konsumowane | `BidPlacedEvent` | `BidPlacedEventHandler` blokuje `NewPrice` na portfelu nowego zwycięzcy i, gdy `PreviousWinningUserId` i `PreviousPrice` są ustawione, odblokowuje `PreviousPrice` na portfelu poprzedniego zwycięzcy; jeden `SaveUserFundsWithInboxAsync` |
-| konsumowane | `AuctionFinishedEvent` | `AuctionFinishedEventHandler` kończy, gdy `WinnerUserId` lub `FinalPrice` jest null; w przeciwnym razie `winner.SpendLockedFunds(FinalPrice)`, `seller.AddFunds(FinalPrice)` i wiersz outboxa `AuctionSettledEvent` w jednym `SaveUserFundsWithInboxAndOutboxAsync` |
+| konsumowane | `FundsLockRequestedEvent` | `FundsLockRequestedEventHandler` woła `LockFunds(PublicAuctionId, Amount)` i odpowiada z outboxa `FundsLockedEvent` albo `FundsLockRejectedEvent` przy braku środków lub zduplikowanej blokadzie; jeden `SaveUserFundsWithInboxAndOutboxAsync` |
+| konsumowane | `BidPlacedEvent` | potwierdzenie oferty z Auctions; `BidPlacedEventHandler` zwalnia blokadę poprzedniego lidera (`ReleaseLock(PublicAuctionId)`), gdy `PreviousWinningUserId` jest ustawione; jeden `SaveUserFundsWithInboxAsync` |
+| konsumowane | `FundsUnlockRequestedEvent` | `FundsUnlockRequestedEventHandler` zwalnia blokadę potwierdzoną za późno; brak blokady to poprawny wynik; jeden `SaveUserFundsWithInboxAsync` |
+| konsumowane | `AuctionFinishedEvent` | `AuctionFinishedEventHandler` kończy, gdy `WinnerUserId` lub `FinalPrice` jest null; w przeciwnym razie `winner.ConsumeLock(PublicAuctionId)`, `seller.AddFunds` ze skonsumowaną kwotą i wiersz outboxa `AuctionSettledEvent` w jednym `SaveUserFundsWithInboxAndOutboxAsync` |
 | konsumowane | `ItemSoldToShopEvent` | `ItemSoldToShopEventHandler` woła `AddFunds(Price)` na portfelu właściciela; `SaveUserFundsWithInboxAsync` |
 | publikowane | `AuctionSettledEvent` | zapisywane przez `AuctionFinishedEventHandler`; konsumowane przez Inventory, które przenosi przedmiot |
+| publikowane | `FundsLockedEvent`, `FundsLockRejectedEvent` | zapisywane przez `FundsLockRequestedEventHandler`; konsumowane przez Auctions, które potwierdza albo odrzuca ofertę oczekującą |
 
 Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota też startuje ze `StartingFunds`; zdarzenie nie niesie roli.
 
@@ -91,7 +95,7 @@ Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota te
 - `Version` to token współbieżności generowany na nowo przy każdej metodzie pieniężnej, więc dwie równoległe zmiany jednego portfela kończą się jednym `DbUpdateConcurrencyException`; testy współbieżności przypinają to zachowanie.
 - Wszystkie zapisy pieniężne przekazują `CancellationToken.None` do `SaveChangesAsync`, więc klient, który rozłączy się w trakcie żądania, nie zostawi zmiany zastosowanej w połowie.
 - Odczyty i zapisy używają EF Core (CQS); ścieżka odczytu Dapperem istnieje tylko w Auctions.
-- Środki są blokowane po przyjęciu oferty, a `LockedFunds` to jedna zagregowana liczba bez powiązania z ofertą, dlatego oferta bez pokrycia zostawia pieniądze poprzedniego lidera zablokowane; rezerwacja per oferta jest planowana, zobacz [../VISION.md](../VISION.md).
+- Środki są blokowane, zanim oferta zacznie prowadzić: każda blokada to wiersz `FundsLock` powiązany z jedną aukcją, `LockedFunds` zawsze równa się sumie aktywnych blokad, a zwolnienie i rozliczenie biorą kwotę z księgi, więc błędne zdarzenie nie przeniesie złej kwoty.
 
 ## Powiązane dokumenty
 
