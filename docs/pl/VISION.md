@@ -54,9 +54,20 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 
 ## 6. Planowane dalej
 
-2026-10-14 właściciel ustalił priorytety i wszedł pierwszy pakiet: Docker Compose, endpoint historii ofert i wymagania wstępne frontendu (CORS, OpenAPI, `/health`, autoryzacja portfela). Co dalej, jedną z pozycji backendu poniżej czy start frontendu Angular, zdecyduje właściciel w wersji angielskiej; ta lista zostanie wtedy przetłumaczona 1:1.
+2026-10-14 właściciel ustalił priorytety i wszedł pierwszy pakiet: Docker Compose, endpoint historii ofert i wymagania wstępne frontendu (CORS, OpenAPI, `/health`, autoryzacja portfela).
 
-- Pakiet startowy przedmiotów przyznawany przy rejestracji.
+Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular backend rośnie dalej o funkcje rozgrywki, w kolejności poniżej. Kolejność stawia dwie małe funkcje na początku i trzyma trzy funkcje ruszające pieniądzem (4-6) razem, bo każda z nich tworzy lub niszczy pieniądz, więc źródła i zlewy ekonomii gry trzeba zaprojektować jako całość.
+
+1. **Pakiet startowy** przyznawany przy rejestracji, zdefiniowany w konfiguracji (mały, ta partia).
+2. **Przelewy między graczami** z append-only historią przelewów (małe, ta partia).
+3. **Aukcje magazynów-niespodzianek**: magazyn o losowej zawartości, pokazywany przed licytacją tylko jako celowo zwodnicze widełki wartości, żeby magazyny nie były gwarantowanym zarobkiem (duże, wymaga generatora zawartości i projektu wyceny).
+4. **Bank** udzielający pożyczek z oprocentowaniem (średni, wymaga zadania okresowego w stylu `AuctionCloser` i świadomego projektu ekonomii, bo pożyczki tworzą pieniądz).
+5. **Lombard**, w którym gracz zatrudnia dobrze wyszkolone boty dla pasywnego dochodu (średni, też tworzy pieniądz, zależy od decyzji ekonomicznych z punktu 4).
+6. **Kasyno** z prostymi zabawowymi grami jak ruletka i blackjack (średnie, źródła i zlewy bilansowane razem z punktami 4 i 5).
+7. **Profile użytkowników**: znajomi, avatar, podpięte prawdziwe konta społecznościowe i opcja profilu prywatnego, który ukrywa wszystko poza zdjęciem profilowym (średnie, dotyka danych osobowych, więc prywatność jest częścią projektu od początku).
+
+Planowane nadal po nich:
+
 - RabbitMQ jako transport zdarzeń za `IIntegrationEventPublisher`.
 - Frontend Angular, boty rynkowe AI i API gateway.
 

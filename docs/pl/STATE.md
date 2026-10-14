@@ -31,7 +31,7 @@
 
 ## Następny krok
 
-2026-10-14 weszły Compose, endpoint historii ofert i wymagania wstępne frontendu (CORS, OpenAPI, `/health`, autoryzacja portfela); następna decyzja właściciela w [VISION.md](VISION.md) to wybór między pozostałymi pozycjami backendu a startem frontendu Angular.
+2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki; roadmapa siedmiu pozycji jest w [VISION.md](VISION.md), a pierwsza partia (pakiet startowy, przelewy między graczami) jest w toku.
 
 ## Powiązane dokumenty
 

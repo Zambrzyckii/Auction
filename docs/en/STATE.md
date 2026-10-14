@@ -31,7 +31,7 @@
 
 ## Next step
 
-On 2026-10-14 the Compose setup, the bid history endpoint and the frontend prerequisites (CORS, OpenAPI, `/health`, wallet authorization) shipped; the owner's next decision in [VISION.md](VISION.md) is between the remaining backend items and starting the Angular frontend.
+On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend; the seven-item roadmap is in [VISION.md](VISION.md), and the first batch (starter item pack, player-to-player transfers) is in progress.
 
 ## Related documents
 

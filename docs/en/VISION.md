@@ -56,9 +56,18 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 
 On 2026-10-14 the owner prioritized and shipped the first batch: Docker Compose, the bid history endpoint and the frontend prerequisites (CORS, OpenAPI, `/health`, wallet authorization).
 
-TODO(human): decide what comes next, one of the backend items below or starting the Angular frontend, and add one sentence saying why; edit only this English file, the Polish twin is translated afterwards.
+Later the same day the owner decided to keep growing the backend with gameplay features before starting the Angular frontend, in the order below. The order puts the two small features first and keeps the three money-moving features (4-6) together, because each of them creates or destroys money and the game economy needs its sources and sinks designed as one piece.
 
-- Starter item pack granted on registration.
+1. **Starter item pack** granted on registration, defined in configuration (small, this batch).
+2. **Player-to-player money transfers** with an append-only transfer history (small, this batch).
+3. **Mystery warehouse auctions**: a warehouse with random content, shown before bidding only as a deliberately misleading value range, so warehouses are not a guaranteed profit (large, needs a content generator and a valuation design).
+4. **Bank** granting loans with interest (medium, needs a periodic job in the style of `AuctionCloser` and a deliberate economy design, because loans create money).
+5. **Pawnshop** where a player hires well-trained bots for passive income (medium, also creates money, depends on the economy decisions of item 4).
+6. **Casino** with simple playful games such as roulette and blackjack (medium, sources and sinks balanced together with items 4 and 5).
+7. **User profiles**: friends, avatar, linked real-world social accounts and a private-profile option that hides everything except the profile picture (medium, touches personal data, so privacy is part of the design from the start).
+
+Still planned after these:
+
 - RabbitMQ as the event transport behind `IIntegrationEventPublisher`.
 - Angular frontend, AI market bots and the API gateway.
 
