@@ -2,16 +2,16 @@
 
 > English version. Polish 1:1 counterpart: [../pl/STATE.md](../pl/STATE.md)
 >
-> Last updated: 2026-10-09
+> Last updated: 2026-10-14
 
 ## Phase
 
-**Backend complete for the main flow, no other module started.** The last code commit is `e684e33` from 2026-08-30 (69 commits since 2026-07-06); since then the only change is this documentation set. Register, login, create auction, bid, close and settle work end to end inside one process, with the known gaps listed below.
+**Backend complete for the main flow, no other module started.** On 2026-10-14 the pending-auction timeout with its Inventory compensation landed. Before that the last code commit was `e684e33` from 2026-08-30. Register, login, create auction, bid, close and settle work end to end inside one process, with the known gaps listed below.
 
 ## What exists
 
-- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions and Inventory and the contracts project `Shared.Integration`; 13 endpoints, 9 integration events, 11 tables, four `OutboxProcessor`s and `AuctionCloser`.
-- Tests: four xUnit projects, 214 test methods (115 offline, 99 integration through Testcontainers), none crossing a module boundary.
+- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions and Inventory and the contracts project `Shared.Integration`; 13 endpoints, 10 integration events, 11 tables, four `OutboxProcessor`s and `AuctionCloser`.
+- Tests: four xUnit projects, 217 test methods (115 offline, 102 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` with `build`, `unit-tests` and `integration-tests`.
 - Documentation: `docs/en` and `docs/pl` with this set of pages and 13 rendered diagrams; root `README.md` and `README.pl.md`.
 - Not in the repository: frontend, bots, gateway, message broker, Dockerfile, Compose file.
