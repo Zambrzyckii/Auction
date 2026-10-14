@@ -20,4 +20,6 @@ public interface IItemRepository
         CancellationToken token);
 
     Task<Item> GetItemLockedForAuctionAsync(Guid publicAuctionId, CancellationToken token);
+
+    Task<Item?> FindItemLockedForAuctionAsync(Guid publicAuctionId, CancellationToken token);
 }

@@ -116,4 +116,7 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         if (item is null) throw new InventoryException.UserOrItemDoesntExistException();
         return item;
     }
+
+    public async Task<Item?> FindItemLockedForAuctionAsync(Guid publicAuctionId, CancellationToken token) =>
+        await context.Items.SingleOrDefaultAsync(i => i.LockedForAuctionId == publicAuctionId, token);
 }
