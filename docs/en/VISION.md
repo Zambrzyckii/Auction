@@ -47,9 +47,9 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 ## 5. What exists today
 
 - Identity: registration, login, JWT with a role claim, bot provisioning with an API key, soft-deleted users, BCrypt.
-- Wallets: automatic wallet with configured starting funds, bot-only top-up, lock, unlock and spend of funds, settlement with an inbox and an outbox.
+- Wallets: automatic wallet with configured starting funds, bot-only top-up, lock, unlock and spend of funds, player-to-player transfers with an append-only history, settlement with an inbox and an outbox.
 - Auctions: creation as `Pending` until Inventory locks the item, listing, detail and bid history through Dapper, bidding with anti-sniping, background closing, outbox with retry and dead letters, inbox.
-- Inventory: items with rarity-based prices, crafting, selling to the shop, locking and transferring items for auctions, inbox and outbox.
+- Inventory: items with rarity-based prices, crafting, selling to the shop, a configurable starter pack on registration, locking and transferring items for auctions, inbox and outbox.
 - Cross-cutting: FluentValidation pipeline, global error contract, optimistic concurrency, GitLab CI with Testcontainers.
 
 ## 6. Planned next
@@ -58,8 +58,8 @@ On 2026-10-14 the owner prioritized and shipped the first batch: Docker Compose,
 
 Later the same day the owner decided to keep growing the backend with gameplay features before starting the Angular frontend, in the order below. The order puts the two small features first and keeps the three money-moving features (4-6) together, because each of them creates or destroys money and the game economy needs its sources and sinks designed as one piece.
 
-1. **Starter item pack** granted on registration, defined in configuration (small, this batch).
-2. **Player-to-player money transfers** with an append-only transfer history (small, this batch).
+1. **Starter item pack** granted on registration, defined in configuration (small, shipped 2026-10-14).
+2. **Player-to-player money transfers** with an append-only transfer history (small, shipped 2026-10-14).
 3. **Mystery warehouse auctions**: a warehouse with random content, shown before bidding only as a deliberately misleading value range, so warehouses are not a guaranteed profit (large, needs a content generator and a valuation design).
 4. **Bank** granting loans with interest (medium, needs a periodic job in the style of `AuctionCloser` and a deliberate economy design, because loans create money).
 5. **Pawnshop** where a player hires well-trained bots for passive income (medium, also creates money, depends on the economy decisions of item 4).

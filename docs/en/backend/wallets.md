@@ -2,16 +2,16 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/wallets.md](../../pl/backend/wallets.md)
 
-`AuctionServer.Modules.Wallets` keeps the virtual money: one wallet per user with an available and a locked balance, created automatically on registration, charged and credited by the auction and shop events, and exposed through two endpoints under `/api/wallets`. It is the only module with both an inbox and an outbox that replies to an event with another event.
+`AuctionServer.Modules.Wallets` keeps the virtual money: one wallet per user with an available and a locked balance, created automatically on registration, charged and credited by the auction and shop events, moved between players through transfers with an append-only history, and exposed through four endpoints under `/api/wallets`. It is the only module with both an inbox and an outbox that replies to an event with another event.
 
 ## Overview
 
 | Area | Files |
 |---|---|
-| Endpoints | [`Presentation/WalletEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Presentation/WalletEndpoints.cs), request record `AddFundsRequest` |
-| Commands and queries | `Application/Command/AddFunds/` (command, handler, validator), `Application/Queries/GetWallet/` (query, handler, `WalletDto`), `Application/WalletsOptions.cs` |
+| Endpoints | [`Presentation/WalletEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Presentation/WalletEndpoints.cs), request records `AddFundsRequest`, `TransferRequest` |
+| Commands and queries | `Application/Command/AddFunds/` and `Application/Command/TransferFunds/` (command, handler, validator each), `Application/Queries/GetWallet/` (query, handler, `WalletDto`), `Application/Queries/GetWalletTransfers/` (query, handler, `TransferDto`), `Application/WalletsOptions.cs` |
 | Event handlers | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs` |
-| Domain | [`Domain/Entities/Wallet.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Entities/Wallet.cs), [`Domain/Exceptions/WalletExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Exceptions/WalletExceptions.cs) |
+| Domain | [`Domain/Entities/Wallet.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Entities/Wallet.cs), `Domain/Entities/Transfer.cs`, [`Domain/Exceptions/WalletExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Exceptions/WalletExceptions.cs) |
 | Infrastructure | `Persistence/` (`WalletDbContext`, `WalletRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
 [`WalletModuleExtensions.AddWalletsModule`](../../../Backend/src/AuctionServer.Modules.Wallets/WalletModuleExtensions.cs) takes the connection string and the starting funds, rejects a non-positive amount with `ArgumentOutOfRangeException`, registers `WalletDbContext`, the `OutboxProcessor` hosted service, a `WalletsOptions` singleton and `IWalletRepository` as scoped. The module is CQS rather than CQRS: reads use the tracked-free `GetUserWalletByIdAsyncReadOnly` (`AsNoTracking`), writes load a tracked wallet with `GetUserWalletByIdAsync` and save through one of the repository's save methods.
@@ -25,7 +25,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Wallets --startup-
 dotnet test tests/AuctionServer.Modules.Wallets.Tests
 ```
 
-Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Wallets/Infrastructure/Persistence/Migrations): `20260708083704_Initial_Wallets`, `20260815151947_Add_Wallets_Inbox` and `20260830054657_Add_Wallets_Outbox`. The test project contains the only concurrency tests in the solution (`WalletConcurrencyTests`: two contexts change the same wallet and the second save throws) and an API smoke test (`WalletApiSmokeTests`: `POST /funds` returns 200 for a `Bot` token and 403 for a `User` token).
+Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Wallets/Infrastructure/Persistence/Migrations): `20260708083704_Initial_Wallets`, `20260815151947_Add_Wallets_Inbox`, `20260830054657_Add_Wallets_Outbox`, `20261014072728_Add_Wallets_Funds_Locks` and `20261014093258_Add_Wallets_Transfers`. The test project contains the only concurrency tests in the solution (`WalletConcurrencyTests`: two contexts change the same wallet and the second save throws) and an API smoke test (`WalletApiSmokeTests`: `POST /funds` returns 200 for a `Bot` token and 403 for a `User` token).
 
 ## Configuration
 
@@ -45,11 +45,12 @@ A missing value stops the host (`Missing configuration value 'Wallets:StartingFu
 | `IsSuspendedWallet` | `boolean` | set only by `SuspendAccount`, which has no caller; the unique index on `UserId` is filtered on `"IsSuspendedWallet" = false`, but `UserId` is also the primary key, so that index adds no constraint |
 | `Version` | `uuid` | concurrency token, regenerated by every money method |
 
-The module also owns `WalletsFundsLocks`, the per-bid lock ledger (`Id`, `WalletUserId`, `PublicAuctionId`, `Amount`, `Status` with `Active = 0`, `Released = 1`, `Consumed = 2`; a unique index on `WalletUserId, PublicAuctionId` filtered on `"Status" = 0` keeps one active lock per auction per wallet), plus `WalletsOutboxMessages` and `WalletsProcessedMessages`, described in [messaging.md](messaging.md). `Wallet` is the aggregate root: the ledger is an EF owned collection and every lock changes only through a `Wallet` method. The invariants live in the entity:
+The module also owns `WalletsFundsLocks`, the per-bid lock ledger (`Id`, `WalletUserId`, `PublicAuctionId`, `Amount`, `Status` with `Active = 0`, `Released = 1`, `Consumed = 2`; a unique index on `WalletUserId, PublicAuctionId` filtered on `"Status" = 0` keeps one active lock per auction per wallet), `WalletsTransfers`, the append-only transfer history (`Id`, indexed `SenderUserId` and `RecipientUserId`, `Amount`, `SentOn`; written in the same transaction as the two balance changes and deliberately outside the aggregate, because no invariant reads it and a row belongs to two wallets at once), plus `WalletsOutboxMessages` and `WalletsProcessedMessages`, described in [messaging.md](messaging.md). `Wallet` is the aggregate root: the ledger is an EF owned collection and every lock changes only through a `Wallet` method. The invariants live in the entity:
 
 | Method | Rule | Effect |
 |---|---|---|
 | `AddFunds(amount)` | `amount > 0` | `AvailableFunds += amount` |
+| `Withdraw(amount)` | `amount > 0`, `AvailableFunds >= amount` | `AvailableFunds -= amount`; locked funds are untouched |
 | `LockFunds(auctionId, amount)` | `amount > 0`, `AvailableFunds >= amount`, no active lock for the auction | adds an `Active` `FundsLock` and moves `amount` from available to locked |
 | `ReleaseLock(auctionId)` | an active lock for the auction exists | marks it `Released` and moves its amount back to available |
 | `ConsumeLock(auctionId)` | an active lock for the auction exists | marks it `Consumed`, shrinks `LockedFunds`; the money leaves the wallet; returns the amount |
@@ -70,9 +71,11 @@ The module also owns `WalletsFundsLocks`, the per-bid lock ledger (`Id`, `Wallet
 | Method and route | Auth | Request | Response | Handler |
 |---|---|---|---|---|
 | `GET /api/wallets/{id}` | JWT, owner only | `id` is the user's `PublicUserId` and must equal the caller's `NameIdentifier` claim | 200 `{ availableFunds, lockedFunds }` (`WalletDto`), 401 without a token, 403 for someone else's wallet, 404 when no wallet exists | `GetWalletQueryHandler` |
+| `GET /api/wallets/{id}/transfers` | JWT, owner only | `id` must equal the caller's `NameIdentifier` claim | 200 with a list of `TransferDto` (`senderUserId`, `recipientUserId`, `amount`, `sentOn`), newest first; 401, 403 and 404 as above | `GetWalletTransfersQueryHandler` |
 | `POST /api/wallets/funds` | JWT with the `Bot` policy | `{ amount }`, greater than zero | 200 with an empty body; credits the caller's own wallet | `AddFundsCommandHandler` |
+| `POST /api/wallets/transfers` | JWT | `{ recipientUserId, amount }`; the sender is the caller | 200 with an empty body; 400 for a non-positive amount, a self-transfer or insufficient funds, 404 for a recipient without a wallet | `TransferFundsCommandHandler` |
 
-`AddFundsCommandHandler` takes the wallet id from the `NameIdentifier` claim, calls `AddFunds` and saves with `CancellationToken.None`. There is no endpoint that moves money between users; every other balance change comes from an event.
+`AddFundsCommandHandler` takes the wallet id from the `NameIdentifier` claim, calls `AddFunds` and saves with `CancellationToken.None`. `TransferFundsCommandHandler` loads both tracked wallets (404 for an unknown recipient), calls `Withdraw` on the sender and `AddFunds` on the recipient and saves them together with the `Transfer` history row in one `SaveChangesAsync`; a self-transfer never reaches the handler because the validator rejects it. Every other balance change comes from an event.
 
 ## Events
 
@@ -96,6 +99,7 @@ Bots are registered through the same `UserRegisteredEvent`, so a bot wallet also
 - All money writes pass `CancellationToken.None` to `SaveChangesAsync`, so a client that disconnects mid-request cannot leave a half-applied change.
 - Reads and writes both use EF Core (CQS); the Dapper read path exists only in Auctions.
 - Funds are locked before a bid can lead: every lock is a `FundsLock` row tied to one auction, `LockedFunds` always equals the sum of active locks, and release and settlement take the amount from the ledger, so a malformed event cannot move the wrong amount.
+- A transfer is one local transaction inside the module (two tracked wallets plus the history row in a single save) and publishes no integration event, because no other module reacts to it; the history is append-only and spends only `AvailableFunds`, never locked money.
 
 ## Related documents
 

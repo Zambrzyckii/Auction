@@ -50,6 +50,13 @@ erDiagram
         numeric Amount "18,2"
         integer Status "Active=0 Released=1 Consumed=2"
     }
+    WALLETS__WalletsTransfers {
+        integer Id PK "identity column"
+        uuid SenderUserId "indexed"
+        uuid RecipientUserId "indexed"
+        numeric Amount "18,2"
+        timestamptz SentOn "appended with the balance changes"
+    }
     INVENTORY__InventoryItems {
         integer Id PK "identity column"
         uuid PublicItemId UK
@@ -84,6 +91,7 @@ erDiagram
     }
     AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
+    WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
     AUCTIONS__Auctions |o..o{ WALLETS__WalletsFundsLocks : "PublicAuctionId, no FK"
     IDENTITY__Users ||..|| WALLETS__Wallets : "UserId = PublicUserId, no FK"
     IDENTITY__Users ||..o{ AUCTIONS__Auctions : "SellerUserId and CurrentWinningUserId, no FK"

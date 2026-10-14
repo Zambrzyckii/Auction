@@ -12,6 +12,8 @@ public interface IWalletRepository
     public Task<Wallet> GetUserWalletByIdAsyncReadOnly(Guid userPublicId, CancellationToken token);
 
     public Task AddWalletAsync(Wallet wallet, CancellationToken token);
+    public Task SaveTransferAsync(Transfer transfer, CancellationToken token);
+    public Task<List<Transfer>> GetUserTransfersReadOnlyAsync(Guid userPublicId, CancellationToken token);
     public Task SaveUserFundsWithInboxAsync(ProcessedMessage message, CancellationToken token);
     public Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
     public Task SaveUserFundsWithInboxAndOutboxAsync(ProcessedMessage message, OutboxMessage outboxMessage, CancellationToken token);

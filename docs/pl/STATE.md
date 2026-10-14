@@ -6,12 +6,12 @@
 
 ## Faza
 
-**Backend kompletny dla głównego przepływu, żaden inny moduł nierozpoczęty.** 2026-10-14 wszedł timeout aukcji oczekującej i saga rezerwacji środków dla ofert. Wcześniej ostatnim commitem z kodem był `e684e33` z 2026-08-30. Rejestracja, logowanie, utworzenie aukcji, oferta, zamknięcie i rozliczenie działają od początku do końca w jednym procesie, ze znanymi lukami wymienionymi niżej; cały łańcuch, łącznie z obiema sagami, został 2026-10-14 zweryfikowany ręcznie na stacku Compose.
+**Backend kompletny dla głównego przepływu, żaden inny moduł nierozpoczęty.** 2026-10-14 wszedł timeout aukcji oczekującej i saga rezerwacji środków dla ofert, a tego samego dnia pierwsza partia rozgrywkowa: pakiet startowy i przelewy między graczami. Wcześniej ostatnim commitem z kodem był `e684e33` z 2026-08-30. Rejestracja, logowanie, utworzenie aukcji, oferta, zamknięcie i rozliczenie działają od początku do końca w jednym procesie, ze znanymi lukami wymienionymi niżej; cały łańcuch, łącznie z obiema sagami, został 2026-10-14 zweryfikowany ręcznie na stacku Compose.
 
 ## Co istnieje
 
-- `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions i Inventory oraz projekt kontraktów `Shared.Integration`; 14 endpointów, 14 zdarzeń integracyjnych, 13 tabel, cztery `OutboxProcessor`y i `AuctionCloser`.
-- Testy: cztery projekty xUnit, 241 metod testowych (119 offline, 122 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
+- `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions i Inventory oraz projekt kontraktów `Shared.Integration`; 16 endpointów, 14 zdarzeń integracyjnych, 14 tabel, cztery `OutboxProcessor`y i `AuctionCloser`.
+- Testy: cztery projekty xUnit, 263 metody testowe (127 offline, 136 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
 - CI: `.gitlab-ci.yml` z `build`, `unit-tests` i `integration-tests`.
 - Dokumentacja: `docs/en` i `docs/pl` z tym zestawem stron i 13 wyrenderowanymi diagramami; główne `README.md` i `README.pl.md`.
 - `Backend/Dockerfile` i `compose.yaml` w korzeniu (API + PostgreSQL, migracje aplikowane na starcie za flagą `Database:MigrateOnStartup`).
@@ -31,7 +31,7 @@
 
 ## Następny krok
 
-2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki; roadmapa siedmiu pozycji jest w [VISION.md](VISION.md), a pierwsza partia (pakiet startowy, przelewy między graczami) jest w toku.
+2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki, a pierwsza partia (pakiet startowy, przelewy między graczami) weszła tego samego dnia; następne w roadmapie [VISION.md](VISION.md) są aukcje magazynów-niespodzianek.
 
 ## Powiązane dokumenty
 

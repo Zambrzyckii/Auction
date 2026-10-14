@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using AuctionServer.Modules.Wallets.Application.Queries.GetWallet;
+using AuctionServer.Modules.Wallets.Application.Queries.GetWalletTransfers;
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,6 +86,64 @@ public class WalletApiSmokeTests(CustomApi factory)
         Assert.Equal(100m, dto.AvailableFunds);
     }
 
+    [Fact]
+    public async Task Transfer_WhenAnonymous_ShouldReturnUnauthorized()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/wallets/transfers", new { recipientUserId = Guid.NewGuid(), amount = 10m });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Transfer_WhenRequestIsValid_ShouldMoveFundsAndRecordHistory()
+    {
+        var senderId = await SeedWalletAsync(200m);
+        var recipientId = await SeedWalletAsync(0m);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(senderId, role: "User"));
+
+        var response = await client.PostAsJsonAsync("/api/wallets/transfers", new { recipientUserId = recipientId, amount = 80m });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var sender = await client.GetFromJsonAsync<WalletDto>($"/api/wallets/{senderId}");
+        Assert.NotNull(sender);
+        Assert.Equal(120m, sender.AvailableFunds);
+        var transfers = await client.GetFromJsonAsync<List<TransferDto>>($"/api/wallets/{senderId}/transfers");
+        Assert.NotNull(transfers);
+        var transfer = Assert.Single(transfers);
+        Assert.Equal(recipientId, transfer.RecipientUserId);
+        Assert.Equal(80m, transfer.Amount);
+    }
+
+    [Fact]
+    public async Task Transfer_WhenRecipientIsTheSender_ShouldReturnBadRequestAndChangeNothing()
+    {
+        var senderId = await SeedWalletAsync(100m);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(senderId, role: "User"));
+
+        var response = await client.PostAsJsonAsync("/api/wallets/transfers", new { recipientUserId = senderId, amount = 10m });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var dto = await client.GetFromJsonAsync<WalletDto>($"/api/wallets/{senderId}");
+        Assert.NotNull(dto);
+        Assert.Equal(100m, dto.AvailableFunds);
+    }
+
+    [Fact]
+    public async Task GetTransfers_WhenCallerIsNotTheOwner_ShouldReturnForbidden()
+    {
+        var userId = await SeedWalletAsync(100m);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(Guid.NewGuid(), role: "User"));
+
+        var response = await client.GetAsync($"/api/wallets/{userId}/transfers");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
     private static string CreateTokenFor(Guid userId, string role = "Bot")
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -105,7 +164,7 @@ public class WalletApiSmokeTests(CustomApi factory)
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<WalletDbContext>();
         var wallet = new Wallet { UserId = Guid.NewGuid() };
-        wallet.AddFunds(availableFunds);
+        if (availableFunds > 0) wallet.AddFunds(availableFunds);
         context.Wallets.Add(wallet);
         await context.SaveChangesAsync();
         return wallet.UserId;

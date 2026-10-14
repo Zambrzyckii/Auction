@@ -4,6 +4,7 @@
 >
 > Milestone-level entries, newest first; each entry is dated by the day the work was done.
 
+- **2026-10-14** — **Player-to-player transfers**: `Wallet.Withdraw` spending only available funds, append-only `WalletsTransfers` history written in the same transaction as both balance changes (migration `Add_Wallets_Transfers`), `POST /api/wallets/transfers` and owner-only `GET /api/wallets/{id}/transfers`, nineteen new test methods from the domain up to API smoke tests.
 - **2026-10-14** — **Starter item pack**: Inventory consumes `UserRegisteredEvent` and grants every new player the items configured under `Inventory:StarterItems` (default three `Common` items, an empty list disables the pack), saved atomically with an inbox row through the new `AddItemsWithInboxAsync`, three new integration tests.
 - **2026-10-14** — **Frontend prerequisites**: CORS policy fed by `Cors:AllowedOrigins` (default `http://localhost:4200`), OpenAPI document at `/openapi/v1.json`, `/health` backed by a `SELECT 1` database check, `GET /api/wallets/{id}` restricted to the authenticated owner (401/403), new host smoke tests and the Wallets `CustomApi` fixture shared through one xUnit collection because it sets process-wide environment variables.
 - **2026-10-14** — **Bid history**: append-only `AuctionsBids` table written by `FundsLockedEventHandler` in the same transaction as the bid confirmation, `GET /api/auctions/{id}/bids` through Dapper (confirmed bids only, newest first, 404 for an unknown auction), migration `Add_Auctions_Bids`, six new integration tests.

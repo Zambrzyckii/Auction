@@ -45,6 +45,20 @@ public class WalletRepository(WalletDbContext context) : IWalletRepository
         }
     }
 
+    public async Task SaveTransferAsync(Transfer transfer, CancellationToken token)
+    {
+        context.Transfers.Add(transfer);
+        await context.SaveChangesAsync(token);
+    }
+
+    public async Task<List<Transfer>> GetUserTransfersReadOnlyAsync(Guid userPublicId, CancellationToken token)
+    {
+        return await context.Transfers.AsNoTracking()
+            .Where(t => t.SenderUserId == userPublicId || t.RecipientUserId == userPublicId)
+            .OrderByDescending(t => t.SentOn).ThenByDescending(t => t.Id)
+            .ToListAsync(token);
+    }
+
     public async Task SaveUserFundsWithInboxAsync(ProcessedMessage message, CancellationToken token)
     {
         context.ProcessedMessages.Add(message);

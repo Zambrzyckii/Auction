@@ -38,7 +38,7 @@ Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints a
 | Module | Route prefix | DbContext | Tables | Background services | Tests |
 |---|---|---|---|---|---|
 | [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
-| [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
+| [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsTransfers`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `AuctionsBids`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
 
@@ -137,7 +137,7 @@ The sequence below shows the background closer ending an auction and the settlem
 
 ## Data model
 
-The diagram shows the thirteen tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
+The diagram shows the fourteen tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
@@ -152,6 +152,7 @@ All four `DbContext`s point at the same database and share the default `__EFMigr
 | `IdentityOutboxMessages` | Identity | outbox for `UserRegisteredEvent` |
 | `Wallets` | Wallets | one row per user keyed by `PublicUserId`; `AvailableFunds`, `LockedFunds`, `Version` |
 | `WalletsFundsLocks` | Wallets | per-bid funds-lock ledger owned by the `Wallet` aggregate; unique (`WalletUserId`, `PublicAuctionId`) while `Status = 0` |
+| `WalletsTransfers` | Wallets | append-only player-to-player transfer history, one row per transfer, written with the two balance changes |
 | `WalletsOutboxMessages`, `WalletsProcessedMessages` | Wallets | outbox for the saga replies and `AuctionSettledEvent`, inbox |
 | `Auctions` | Auctions | auctions with the item snapshot; unique `PublicAuctionId`, unique `ItemId` while `Status IN (0, 1)`, `Version` |
 | `AuctionsBids` | Auctions | append-only bid history, one row per confirmed bid, written together with the confirmation |

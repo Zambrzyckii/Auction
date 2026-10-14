@@ -8,6 +8,7 @@ namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 public class WalletDbContext(DbContextOptions<WalletDbContext> options) : DbContext(options)
 {
     public DbSet<Wallet> Wallets { get; set; }
+    public DbSet<Transfer> Transfers { get; set; }
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
     public DbSet<ProcessedMessage> ProcessedMessages { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)

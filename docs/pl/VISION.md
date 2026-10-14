@@ -47,9 +47,9 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 ## 5. Co istnieje dziś
 
 - Identity: rejestracja, logowanie, JWT z claimem roli, provisioning botów kluczem API, miękko usuwani użytkownicy, BCrypt.
-- Wallets: automatyczny portfel ze skonfigurowanymi środkami startowymi, doładowanie tylko dla botów, blokowanie, odblokowywanie i wydawanie środków, rozliczenie z inboxem i outboxem.
+- Wallets: automatyczny portfel ze skonfigurowanymi środkami startowymi, doładowanie tylko dla botów, blokowanie, odblokowywanie i wydawanie środków, przelewy między graczami z append-only historią, rozliczenie z inboxem i outboxem.
 - Auctions: tworzenie jako `Pending` do czasu blokady przedmiotu przez Inventory, lista, szczegóły i historia ofert przez Dapper, licytacja z ochroną anty-snajperską, zamykanie w tle, outbox z ponowieniami i martwymi wiadomościami, inbox.
-- Inventory: przedmioty z cenami zależnymi od rzadkości, crafting, sprzedaż do sklepu, blokowanie i przenoszenie przedmiotów dla aukcji, inbox i outbox.
+- Inventory: przedmioty z cenami zależnymi od rzadkości, crafting, sprzedaż do sklepu, konfigurowalny pakiet startowy przy rejestracji, blokowanie i przenoszenie przedmiotów dla aukcji, inbox i outbox.
 - Przekrojowo: pipeline FluentValidation, globalny kontrakt błędów, optymistyczna współbieżność, GitLab CI z Testcontainers.
 
 ## 6. Planowane dalej
@@ -58,8 +58,8 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 
 Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular backend rośnie dalej o funkcje rozgrywki, w kolejności poniżej. Kolejność stawia dwie małe funkcje na początku i trzyma trzy funkcje ruszające pieniądzem (4-6) razem, bo każda z nich tworzy lub niszczy pieniądz, więc źródła i zlewy ekonomii gry trzeba zaprojektować jako całość.
 
-1. **Pakiet startowy** przyznawany przy rejestracji, zdefiniowany w konfiguracji (mały, ta partia).
-2. **Przelewy między graczami** z append-only historią przelewów (małe, ta partia).
+1. **Pakiet startowy** przyznawany przy rejestracji, zdefiniowany w konfiguracji (mały, wszedł 2026-10-14).
+2. **Przelewy między graczami** z append-only historią przelewów (małe, weszły 2026-10-14).
 3. **Aukcje magazynów-niespodzianek**: magazyn o losowej zawartości, pokazywany przed licytacją tylko jako celowo zwodnicze widełki wartości, żeby magazyny nie były gwarantowanym zarobkiem (duże, wymaga generatora zawartości i projektu wyceny).
 4. **Bank** udzielający pożyczek z oprocentowaniem (średni, wymaga zadania okresowego w stylu `AuctionCloser` i świadomego projektu ekonomii, bo pożyczki tworzą pieniądz).
 5. **Lombard**, w którym gracz zatrudnia dobrze wyszkolone boty dla pasywnego dochodu (średni, też tworzy pieniądz, zależy od decyzji ekonomicznych z punktu 4).

@@ -38,7 +38,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 | Moduł | Prefiks tras | DbContext | Tabele | Serwisy tła | Testy |
 |---|---|---|---|---|---|
 | [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
-| [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
+| [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsTransfers`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `AuctionsBids`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
 
@@ -137,7 +137,7 @@ Sekwencja poniżej pokazuje closer w tle kończący aukcję oraz łańcuch rozli
 
 ## Model danych
 
-Diagram pokazuje trzynaście tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
+Diagram pokazuje czternaście tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
@@ -152,6 +152,7 @@ Wszystkie cztery `DbContext`y wskazują tę samą bazę i dzielą domyślną tab
 | `IdentityOutboxMessages` | Identity | outbox dla `UserRegisteredEvent` |
 | `Wallets` | Wallets | jeden wiersz na użytkownika z kluczem `PublicUserId`; `AvailableFunds`, `LockedFunds`, `Version` |
 | `WalletsFundsLocks` | Wallets | księga blokad środków per oferta, własność agregatu `Wallet`; unikalne (`WalletUserId`, `PublicAuctionId`) dopóki `Status = 0` |
+| `WalletsTransfers` | Wallets | append-only historia przelewów między graczami, jeden wiersz na przelew, zapisywany razem z dwiema zmianami sald |
 | `WalletsOutboxMessages`, `WalletsProcessedMessages` | Wallets | outbox dla odpowiedzi sagi i `AuctionSettledEvent`, inbox |
 | `Auctions` | Auctions | aukcje ze snapshotem przedmiotu; unikalny `PublicAuctionId`, unikalny `ItemId` dopóki `Status IN (0, 1)`, `Version` |
 | `AuctionsBids` | Auctions | append-only historia ofert, jeden wiersz na potwierdzoną ofertę, zapisywany razem z potwierdzeniem |

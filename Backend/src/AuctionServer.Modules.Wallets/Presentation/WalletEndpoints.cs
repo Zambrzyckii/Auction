@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using MediatR;
 using AuctionServer.Modules.Wallets.Application.Command.AddFunds;
+using AuctionServer.Modules.Wallets.Application.Command.TransferFunds;
 using AuctionServer.Modules.Wallets.Application.Queries.GetWallet;
+using AuctionServer.Modules.Wallets.Application.Queries.GetWalletTransfers;
 using AuctionServer.Modules.Wallets.Presentation.Request;
 
 namespace AuctionServer.Modules.Wallets.Presentation;
@@ -23,12 +25,27 @@ public static class WalletEndpoints
             return Results.Ok(result);
         }).RequireAuthorization();
 
+        group.MapGet("/{id:guid}/transfers", async (Guid id, ClaimsPrincipal user, ISender sender) =>
+        {
+            var callerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (callerId != id) return Results.Forbid();
+            var result = await sender.Send(new GetWalletTransfersQuery(id));
+            return Results.Ok(result);
+        }).RequireAuthorization();
+
         group.MapPost("/funds", async (AddFundsRequest request, ClaimsPrincipal user, ISender sender) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new AddFundsCommand(userId, request.Amount));
             return Results.Ok();
         }).RequireAuthorization("Bot");
+
+        group.MapPost("/transfers", async (TransferRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var callerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new TransferFundsCommand(callerId, request.RecipientUserId, request.Amount));
+            return Results.Ok();
+        }).RequireAuthorization();
 
         return app;
     }

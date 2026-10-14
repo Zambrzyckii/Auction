@@ -14,9 +14,6 @@ public sealed class Wallet
     private readonly List<FundsLock> _fundsLocks = [];
     
     public IReadOnlyCollection<FundsLock> FundsLocks => _fundsLocks;
-    
-
-    
     public void SuspendAccount() => IsSuspendedWallet = true;
     public void UnsuspendAccount() => IsSuspendedWallet = false;
 
@@ -25,6 +22,15 @@ public sealed class Wallet
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
 
         AvailableFunds += amount;
+        Version = Guid.NewGuid();
+    }
+
+    public void Withdraw(decimal amount)
+    {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
+        if (AvailableFunds < amount) throw new WalletExceptions.InsufficientFundsException();
+
+        AvailableFunds -= amount;
         Version = Guid.NewGuid();
     }
 
