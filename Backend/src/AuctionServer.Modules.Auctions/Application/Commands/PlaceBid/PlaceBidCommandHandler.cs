@@ -11,20 +11,17 @@ public sealed class PlaceBidCommandHandler(IAuctionRepository repository) : IReq
     public async Task Handle(PlaceBidCommand command, CancellationToken token)
     {
         var currentAuction = await repository.GetAuctionByIdAsync(command.PublicAuctionId, token);
-        var previousPrice = currentAuction.CurrentPrice;
-        var previousWinnerId = currentAuction.CurrentWinningUserId;
-        currentAuction.ApplyNewBid(command.BidderId, command.NewPrice);
+        currentAuction.RequestBid(command.BidderId, command.NewPrice);
 
         var eventId = Guid.NewGuid();
         var outboxMessage = new OutboxMessage
         {
             Id = eventId,
-            Type = nameof(BidPlacedEvent),
-            Content = JsonSerializer.Serialize(new BidPlacedEvent(eventId, currentAuction.PublicAuctionId, command.BidderId,
-                previousWinnerId, command.NewPrice, previousPrice))
+            Type = nameof(FundsLockRequestedEvent),
+            Content = JsonSerializer.Serialize(new FundsLockRequestedEvent(eventId, currentAuction.PublicAuctionId,
+                command.BidderId, command.NewPrice))
         };
 
         await repository.SaveChangesWithOutboxAsync(outboxMessage, token);
     }
-
 }
