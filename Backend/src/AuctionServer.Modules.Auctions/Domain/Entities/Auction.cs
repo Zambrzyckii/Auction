@@ -20,6 +20,7 @@ public sealed class Auction
     public string? CancellationReason { get; private set; }
     public DateTime EndsOn { get; private set; } = DateTime.UtcNow.AddMinutes(1);
     public Guid Version { get; private set; } = Guid.NewGuid();
+    public DateTime CreatedOn { get; init; } = DateTime.UtcNow;
     public void ApplyNewBid(Guid bidderId, decimal amount)
     {
         if (Status is AuctionStatus.Pending) throw new AuctionExceptions.AuctionNotActiveException(Status);

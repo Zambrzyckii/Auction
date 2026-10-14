@@ -12,6 +12,8 @@ namespace AuctionServer.Modules.Auctions.Infrastructure.Background;
 
 public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<AuctionCloser> logger) : BackgroundService
 {
+    private static readonly TimeSpan PendingActivationTimeout = TimeSpan.FromMinutes(10);
+    private const string TimeoutReason = "Activation timed out";
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -19,6 +21,7 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
             try
             {
                 await CloseExpiredAuctionAsync(stoppingToken);
+                await CancelTimedOutPendingAuctionAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -59,5 +62,33 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
         }
 
         if (expiredAuctions.Count > 0) await context.SaveChangesAsync(stoppingToken);
+    }
+
+    private async Task CancelTimedOutPendingAuctionAsync(CancellationToken stoppingToken)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();
+
+        var deadline = DateTime.UtcNow - PendingActivationTimeout;
+        var timedOutAuctions = await context.Auctions
+            .Where(a => a.Status == AuctionStatus.Pending && a.CreatedOn <= deadline)
+            .Take(20)
+            .ToListAsync(stoppingToken);
+
+        foreach (var auction in timedOutAuctions)
+        {
+            auction.Cancel(TimeoutReason);
+
+            var eventId = Guid.NewGuid();
+            context.OutboxMessages.Add(new OutboxMessage
+            {
+                Id = eventId,
+                Type = nameof(AuctionCancelledEvent),
+                Content = JsonSerializer.Serialize(new AuctionCancelledEvent(eventId, auction.PublicAuctionId,
+                    auction.ItemId, TimeoutReason))
+            });
+        }
+
+        if (timedOutAuctions.Count > 0) await context.SaveChangesAsync(stoppingToken);
     }
 }

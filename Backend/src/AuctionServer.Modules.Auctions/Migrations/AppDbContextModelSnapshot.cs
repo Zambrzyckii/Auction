@@ -34,6 +34,9 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.Property<string>("CancellationReason")
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal>("CurrentPrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
