@@ -42,7 +42,9 @@ Nazwy folderów nie są idealnie jednolite: Auctions i Identity używają `Appli
 
 ## Uruchomienie
 
-Host potrzebuje osiągalnego PostgreSQL, trzech sekretów i schematu wszystkich czterech modułów; nic nie aplikuje migracji na starcie. Do kroku z migracjami wymagane jest narzędzie `dotnet ef`.
+Ścieżka na jedną komendę to plik Compose w korzeniu repozytorium: `docker compose up -d` buduje obraz hosta ([`Backend/Dockerfile`](../../../Backend/Dockerfile)), stawia `postgres:16-alpine` (port hosta 5436) i API na `http://localhost:8080` z kluczami tylko deweloperskimi, a host aplikuje migracje wszystkich czterech modułów przed obsługą ruchu, bo Compose ustawia `Database__MigrateOnStartup=true` (flaga domyślnie `false` w [`appsettings.json`](../../../Backend/src/AuctionServer.Api/appsettings.json)).
+
+Ręczna ścieżka poniżej uruchamia hosta ze źródeł: potrzebuje osiągalnego PostgreSQL, trzech sekretów i schematu wszystkich czterech modułów. Do kroku z migracjami wymagane jest narzędzie `dotnet ef`.
 
 ```bash
 # 1. PostgreSQL (zadziała dowolna instancja; ta nasłuchuje na 6767)

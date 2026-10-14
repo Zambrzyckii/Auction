@@ -10,29 +10,11 @@ The backend is complete for the main flow: four modules (Identity, Wallets, Auct
 
 ## Quick start
 
-Starting the system takes four steps today, because there is no Compose file yet and migrations are not applied at startup. Requirements are listed below; all `dotnet` commands run from `Backend/`.
-
 ```bash
-# 1. PostgreSQL
-docker run -d --name auction_db -p 6767:5432 -e POSTGRES_USER=<user> -e POSTGRES_PASSWORD=<pass> -e POSTGRES_DB=AuctionDb postgres:16-alpine
-
-# 2. Secrets
-cd Backend
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=6767;Database=AuctionDb;Username=<user>;Password=<pass>" --project src/AuctionServer.Api
-dotnet user-secrets set "Jwt:Key" "<random string, at least 32 characters>" --project src/AuctionServer.Api
-dotnet user-secrets set "Bots:ApiKey" "<random string>" --project src/AuctionServer.Api
-
-# 3. Schema, one command per module context
-dotnet ef database update --project src/AuctionServer.Modules.Identity --startup-project src/AuctionServer.Api --context IdentityDbContext
-dotnet ef database update --project src/AuctionServer.Modules.Wallets --startup-project src/AuctionServer.Api --context WalletDbContext
-dotnet ef database update --project src/AuctionServer.Modules.Auctions --startup-project src/AuctionServer.Api --context AuctionDbContext
-dotnet ef database update --project src/AuctionServer.Modules.Inventory --startup-project src/AuctionServer.Api --context InventoryDbContext
-
-# 4. Run
-dotnet run --project src/AuctionServer.Api        # http://localhost:5244
+docker compose up -d        # PostgreSQL + the API on http://localhost:8080, migrations applied at startup
 ```
 
-Then `POST /api/users/register`, `POST /api/users/login` and call the rest with the returned token; the endpoints are listed in [docs/en/backend/README.md](docs/en/backend/README.md).
+Then `POST /api/users/register`, `POST /api/users/login` and call the rest with the returned token; the endpoints are listed in [docs/en/backend/README.md](docs/en/backend/README.md). The manual, IDE-friendly path (local PostgreSQL, user secrets, migrations per module, `dotnet run`) is described in [docs/en/backend/README.md#running](docs/en/backend/README.md#running).
 
 <details>
 <summary>Tests</summary>

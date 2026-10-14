@@ -2,20 +2,25 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using AuctionServer.Modules.Auctions;
+using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Api.Infrastructure;
 using AuctionServer.Api.Infrastructure.Authentication;
 using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Modules.Identity;
+using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Modules.Identity.Presentation;
 using AuctionServer.Modules.Inventory;
+using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Modules.Inventory.Presentation;
 using AuctionServer.Modules.Wallets;
+using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Modules.Wallets.Presentation;
 using AuctionServer.Shared.Integration.Messaging;
 using AuctionServer.Shared.Integration.Validators;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -82,6 +87,15 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
+
+if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<WalletDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<AuctionDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<InventoryDbContext>().Database.MigrateAsync();
+}
 
 app.UseExceptionHandler();
 app.UseAuthentication();

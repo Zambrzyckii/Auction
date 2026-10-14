@@ -1,0 +1,6 @@
+**/bin/
+**/obj/
+.idea/
+.env
+.env.example
+Dockerfile

@@ -14,18 +14,19 @@
 - Testy: cztery projekty xUnit, 230 metod testowych (119 offline, 111 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
 - CI: `.gitlab-ci.yml` z `build`, `unit-tests` i `integration-tests`.
 - Dokumentacja: `docs/en` i `docs/pl` z tym zestawem stron i 13 wyrenderowanymi diagramami; główne `README.md` i `README.pl.md`.
-- Poza repozytorium: frontend, boty, gateway, broker wiadomości, Dockerfile, plik Compose.
+- `Backend/Dockerfile` i `compose.yaml` w korzeniu (API + PostgreSQL, migracje aplikowane na starcie za flagą `Database:MigrateOnStartup`).
+- Poza repozytorium: frontend, boty, gateway, broker wiadomości.
 
 ## Środowisko deweloperskie
 
 - .NET SDK 10.0.301 i `dotnet-ef` 10.0.9; każdy projekt celuje w `net10.0`.
-- Docker dla lokalnego PostgreSQL i dla Testcontainers (`postgres:latest` w testach, `postgres:16-alpine` sugerowany do uruchomień lokalnych).
+- Docker dla lokalnego PostgreSQL i dla Testcontainers (`postgres:latest` w testach, `postgres:16-alpine` w `compose.yaml`); `docker compose up -d` stawia cały system na `http://localhost:8080`.
 - Node.js 26 i Python 3 tylko do przerenderowania diagramów (`docs/diagrams/render.py`).
 - IDE: Rider (`Backend/.idea/` jest ignorowany, `AuctionServer.sln.DotSettings.user` jest śledzony).
 
 ## Znane luki
 
-- Brak CORS, OpenAPI, health checków i migracji na starcie; bez dwóch pierwszych nie da się podłączyć klienta przeglądarkowego.
+- Brak CORS, OpenAPI i health checków; bez dwóch pierwszych nie da się podłączyć klienta przeglądarkowego.
 - `GET /api/wallets/{id}` jest anonimowy; pełna lista jest w [ARCHITECTURE.md](ARCHITECTURE.md#znane-ograniczenia).
 
 ## Następny krok

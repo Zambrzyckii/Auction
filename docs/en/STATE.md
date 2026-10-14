@@ -14,18 +14,19 @@
 - Tests: four xUnit projects, 230 test methods (119 offline, 111 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` with `build`, `unit-tests` and `integration-tests`.
 - Documentation: `docs/en` and `docs/pl` with this set of pages and 13 rendered diagrams; root `README.md` and `README.pl.md`.
-- Not in the repository: frontend, bots, gateway, message broker, Dockerfile, Compose file.
+- `Backend/Dockerfile` and a root `compose.yaml` (API + PostgreSQL, migrations applied at startup behind `Database:MigrateOnStartup`).
+- Not in the repository: frontend, bots, gateway, message broker.
 
 ## Development environment
 
 - .NET SDK 10.0.301 and `dotnet-ef` 10.0.9; every project targets `net10.0`.
-- Docker for the local PostgreSQL and for Testcontainers (`postgres:latest` in tests, `postgres:16-alpine` suggested for local runs).
+- Docker for the local PostgreSQL and for Testcontainers (`postgres:latest` in tests, `postgres:16-alpine` in `compose.yaml`); `docker compose up -d` starts the whole system on `http://localhost:8080`.
 - Node.js 26 and Python 3 only for re-rendering diagrams (`docs/diagrams/render.py`).
 - IDE: Rider (`Backend/.idea/` is ignored, `AuctionServer.sln.DotSettings.user` is tracked).
 
 ## Known gaps
 
-- No CORS, no OpenAPI, no health checks, no migrations at startup; a browser client cannot be connected without the first two.
+- No CORS, no OpenAPI, no health checks; a browser client cannot be connected without the first two.
 - `GET /api/wallets/{id}` is anonymous; the full list is in [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
 
 ## Next step

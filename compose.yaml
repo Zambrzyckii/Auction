@@ -1,0 +1,35 @@
+# Local development only: the credentials and keys below guard nothing but this machine.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: auction
+      POSTGRES_PASSWORD: auction
+      POSTGRES_DB: auctionserver
+    # 5436 on the host: 5432 is usually a locally installed PostgreSQL,
+    # the API reaches the container through the compose network anyway
+    ports:
+      - "5436:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auction -d auctionserver"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: ./Backend
+    ports:
+      - "8080:8080"
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=auctionserver;Username=auction;Password=auction"
+      Jwt__Key: "local-dev-signing-key-at-least-32-chars-long"
+      Bots__ApiKey: "local-dev-bot-api-key"
+      Database__MigrateOnStartup: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -10,29 +10,11 @@ Backend jest kompletny dla głównego przepływu: cztery moduły (Identity, Wall
 
 ## Szybki start
 
-Uruchomienie systemu to dziś cztery kroki, bo nie ma jeszcze pliku Compose, a migracje nie są aplikowane na starcie. Wymagania są wymienione niżej; wszystkie komendy `dotnet` uruchamia się z `Backend/`.
-
 ```bash
-# 1. PostgreSQL
-docker run -d --name auction_db -p 6767:5432 -e POSTGRES_USER=<user> -e POSTGRES_PASSWORD=<pass> -e POSTGRES_DB=AuctionDb postgres:16-alpine
-
-# 2. Sekrety
-cd Backend
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=6767;Database=AuctionDb;Username=<user>;Password=<pass>" --project src/AuctionServer.Api
-dotnet user-secrets set "Jwt:Key" "<losowy ciąg, co najmniej 32 znaki>" --project src/AuctionServer.Api
-dotnet user-secrets set "Bots:ApiKey" "<losowy ciąg>" --project src/AuctionServer.Api
-
-# 3. Schemat, jedna komenda na kontekst modułu
-dotnet ef database update --project src/AuctionServer.Modules.Identity --startup-project src/AuctionServer.Api --context IdentityDbContext
-dotnet ef database update --project src/AuctionServer.Modules.Wallets --startup-project src/AuctionServer.Api --context WalletDbContext
-dotnet ef database update --project src/AuctionServer.Modules.Auctions --startup-project src/AuctionServer.Api --context AuctionDbContext
-dotnet ef database update --project src/AuctionServer.Modules.Inventory --startup-project src/AuctionServer.Api --context InventoryDbContext
-
-# 4. Uruchomienie
-dotnet run --project src/AuctionServer.Api        # http://localhost:5244
+docker compose up -d        # PostgreSQL + API na http://localhost:8080, migracje aplikowane na starcie
 ```
 
-Potem `POST /api/users/register`, `POST /api/users/login` i reszta wywołań ze zwróconym tokenem; endpointy są wymienione w [docs/pl/backend/README.md](docs/pl/backend/README.md).
+Potem `POST /api/users/register`, `POST /api/users/login` i reszta wywołań ze zwróconym tokenem; endpointy są wymienione w [docs/pl/backend/README.md](docs/pl/backend/README.md). Ręczna ścieżka pod IDE (lokalny PostgreSQL, user secrets, migracje per moduł, `dotnet run`) jest opisana w [docs/pl/backend/README.md#uruchomienie](docs/pl/backend/README.md#uruchomienie).
 
 <details>
 <summary>Testy</summary>

@@ -2,11 +2,11 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/infrastructure.md](../en/infrastructure.md)
 
-Ten moduł jeszcze nie istnieje: repozytorium nie zawiera folderu `Infrastructure/`, Dockerfile, pliku Compose ani konfiguracji brokera czy gatewaya. Jedyna istniejąca infrastruktura to pipeline GitLab CI, opisany w [ARCHITECTURE.md](ARCHITECTURE.md#build-i-ci).
+Większość tej warstwy jeszcze nie istnieje: repozytorium nie zawiera folderu `Infrastructure/` ani konfiguracji brokera czy gatewaya. Istnieje pipeline GitLab CI, opisany w [ARCHITECTURE.md](ARCHITECTURE.md#build-i-ci), oraz [`Backend/Dockerfile`](../../Backend/Dockerfile) i [`compose.yaml`](../../compose.yaml) w korzeniu, które stawiają API i PostgreSQL jedną komendą.
 
 ## Status
 
-Planowana. Poprzednie README rezerwowało `Infrastructure/` na „RabbitMQ / gateway / compose setup", a usunięta notatka projektowa (`AGENTS.md`) wskazuje API gateway jako jedyny punkt wejścia i RabbitMQ jako broker wiadomości.
+Rozpoczęta 2026-10-14 plikiem Compose; broker i gateway pozostają planowane. Poprzednie README rezerwowało `Infrastructure/` na „RabbitMQ / gateway / compose setup", a usunięta notatka projektowa (`AGENTS.md`) wskazuje API gateway jako jedyny punkt wejścia i RabbitMQ jako broker wiadomości; gdy powstaną, ich usługi dołączą do `compose.yaml`.
 
 ## Projekt docelowy
 
@@ -20,14 +20,12 @@ Planowana. Poprzednie README rezerwowało `Infrastructure/` na „RabbitMQ / gat
 |---|---|
 | szew transportu | `IIntegrationEventPublisher.PublishAsync(messageId, type, content)` to jedyne miejsce, w którym zdarzenia opuszczają moduł; `IntegrationEventTypes` zamienia `type` i `content` z powrotem na typowane zdarzenie |
 | konfiguracja ze środowiska | każde ustawienie jest czytane przez `IConfiguration`, więc `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` i `Wallets__StartingFunds` można wstrzyknąć jako zmienne środowiskowe |
-| odtwarzalna baza | schemat jest w pełni opisany czterema zestawami migracji, aplikowanymi przez `dotnet ef database update` per kontekst |
+| odtwarzalna baza | schemat jest w pełni opisany czterema zestawami migracji, aplikowanymi przez `dotnet ef database update` per kontekst albo na starcie, gdy `Database:MigrateOnStartup` jest `true` (Compose to ustawia) |
 | baza CI | `.gitlab-ci.yml` buduje i testuje przy każdym pushu w oficjalnym obrazie SDK z docker-in-docker |
 
 ## Czego brakuje
 
-- Brak Dockerfile dla hosta i pliku Compose, więc uruchomienie systemu to wciąż ręczne kroki z [backend/README.md](backend/README.md#uruchomienie).
 - Brak endpointu health check, który mógłby odpytywać orkiestrator kontenerów albo gateway.
-- Brak migracji na starcie, więc kontener potrzebowałby osobnego kroku migracji.
 - Brak publishera AMQP i konsumenta po stronie hosta; [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md) opisuje, czego wymaga wymiana.
 - Pipeline CI nie ma stage'u deploy, artefaktów ani budowania obrazu.
 
