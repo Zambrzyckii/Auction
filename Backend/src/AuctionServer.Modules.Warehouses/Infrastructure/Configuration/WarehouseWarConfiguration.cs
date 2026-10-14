@@ -18,5 +18,13 @@ internal sealed class WarehouseWarConfiguration : IEntityTypeConfiguration<Wareh
         builder.Property(x => x.EntryFee).HasPrecision(18, 2);
         builder.Property(x => x.CurrentPrice).HasPrecision(18, 2);
         builder.Property(x => x.Version).IsConcurrencyToken();
+        builder.OwnsMany(x => x.Participants, participant =>
+        {
+            participant.ToTable("WarehousesParticipants");
+            participant.WithOwner().HasForeignKey("WarehouseWarId");
+            participant.HasKey(x => x.Id);
+            participant.HasIndex("WarehouseWarId", nameof(WarehouseParticipant.UserId)).IsUnique();
+        });
+        builder.Navigation(x => x.Participants).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

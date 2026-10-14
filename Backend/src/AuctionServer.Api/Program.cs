@@ -21,6 +21,7 @@ using AuctionServer.Modules.Wallets.Presentation;
 using AuctionServer.Modules.Warehouses;
 using AuctionServer.Modules.Warehouses.Application.Options;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
+using AuctionServer.Modules.Warehouses.Presentation;
 using AuctionServer.Shared.Integration.Messaging;
 using AuctionServer.Shared.Integration.Validators;
 using FluentValidation;
@@ -130,6 +131,7 @@ app.MapInventoryEndpoints();
 app.MapAuctionEndpoints();
 app.MapWalletEndpoints();
 app.MapIdentityEndpoints();
+app.MapWarehouseEndpoints();
 app.Run();
 
 public partial class Program;

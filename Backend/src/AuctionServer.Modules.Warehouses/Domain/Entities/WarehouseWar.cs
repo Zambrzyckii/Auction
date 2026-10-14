@@ -17,8 +17,12 @@ public sealed class WarehouseWar
     public Guid? CurrentLeaderId { get; private set; }
     public DateTime? BiddingStartsOn { get; private set; }
     public DateTime? BiddingEndsOn { get; private set; }
+    public string? CancellationReason { get; private set; }
     public DateTime CreatedOn { get; init; } = DateTime.UtcNow;
     public Guid Version { get; private set; } = Guid.NewGuid();
+    private readonly List<WarehouseParticipant> _participants = [];
+
+    public IReadOnlyCollection<WarehouseParticipant> Participants => _participants;
 
     public static WarehouseWar Create(string tier, decimal entryFee)
     {
@@ -39,4 +43,60 @@ public sealed class WarehouseWar
         Status = WarehouseWarStatus.Open;
         Version = Guid.NewGuid();
     }
+
+    public void Join(Guid userId, int maxPlayers)
+    {
+        if (Status != WarehouseWarStatus.Open) throw new WarehouseExceptions.WarNotOpenException(Status);
+        if (BiddingStartsOn is not null && BiddingStartsOn <= DateTime.UtcNow)
+            throw new WarehouseExceptions.JoinCountdownFinishedException();
+        if (_participants.Any(p => p.UserId == userId)) throw new WarehouseExceptions.AlreadyParticipantException();
+        if (_participants.Count >= maxPlayers) throw new WarehouseExceptions.WarehouseFullException();
+
+        _participants.Add(new WarehouseParticipant { UserId = userId });
+        Version = Guid.NewGuid();
+    }
+
+    public void Leave(Guid userId)
+    {
+        if (Status != WarehouseWarStatus.Open) throw new WarehouseExceptions.WarNotOpenException(Status);
+        if (BiddingStartsOn is not null && BiddingStartsOn <= DateTime.UtcNow)
+            throw new WarehouseExceptions.JoinCountdownFinishedException();
+
+        _participants.Remove(GetParticipant(userId));
+        Version = Guid.NewGuid();
+    }
+
+    public void ConfirmParticipant(Guid userId, int minPlayers, int maxPlayers, TimeSpan joinCountdown)
+    {
+        if (Status != WarehouseWarStatus.Open) throw new WarehouseExceptions.WarNotOpenException(Status);
+
+        GetParticipant(userId).Activate();
+
+        var activeCount = _participants.Count(p => p.State == ParticipantState.Active);
+        
+        if (activeCount >= maxPlayers) BiddingStartsOn = DateTime.UtcNow;
+        else if(activeCount >= minPlayers && BiddingStartsOn is null) BiddingStartsOn = DateTime.UtcNow + joinCountdown;
+        
+        Version = Guid.NewGuid();
+    }
+
+    public void RemoveParticipant(Guid userId)
+    {
+        _participants.Remove(GetParticipant(userId));
+        Version = Guid.NewGuid();
+    }
+
+    public void Cancel(string reason)
+    {
+        if (Status is WarehouseWarStatus.Settled or WarehouseWarStatus.Cancelled)
+            throw new WarehouseExceptions.InvalidWarStateTransitionException(Status, WarehouseWarStatus.Cancelled);
+
+        Status = WarehouseWarStatus.Cancelled;
+        CancellationReason = reason;
+        Version = Guid.NewGuid();
+    }
+
+    private WarehouseParticipant GetParticipant(Guid userId) =>
+        _participants.SingleOrDefault(p => p.UserId == userId)
+        ?? throw new WarehouseExceptions.ParticipantNotFoundException();
 }

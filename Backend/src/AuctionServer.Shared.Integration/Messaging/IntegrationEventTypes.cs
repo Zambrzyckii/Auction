@@ -23,7 +23,10 @@ public static class IntegrationEventTypes
         [nameof(FundsLockRequestedEvent)] = typeof(FundsLockRequestedEvent),
         [nameof(FundsUnlockRequestedEvent)] = typeof(FundsUnlockRequestedEvent),
         [nameof(WarehouseStockRequestedEvent)] = typeof(WarehouseStockRequestedEvent),
-        [nameof(WarehouseStockedEvent)] = typeof(WarehouseStockedEvent)
+        [nameof(WarehouseStockedEvent)] = typeof(WarehouseStockedEvent),
+        [nameof(WarehouseEntryLockRequestedEvent)] = typeof(WarehouseEntryLockRequestedEvent),
+        [nameof(WarehouseEntryLockedEvent)] = typeof(WarehouseEntryLockedEvent),
+        [nameof(WarehouseEntryLockRejectedEvent)] = typeof(WarehouseEntryLockRejectedEvent)
     };
 
     public static INotification Deserialize(string type, string content)

@@ -69,6 +69,9 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("BiddingStartsOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
 
@@ -168,6 +171,39 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("WarehousesOutboxMessages", (string)null);
+                });
+
+            modelBuilder.Entity("AuctionServer.Modules.Warehouses.Domain.Entities.WarehouseWar", b =>
+                {
+                    b.OwnsMany("AuctionServer.Modules.Warehouses.Domain.Entities.WarehouseParticipant", "Participants", b1 =>
+                        {
+                            b1.Property<int>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("integer");
+
+                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id"));
+
+                            b1.Property<int>("State")
+                                .HasColumnType("integer");
+
+                            b1.Property<Guid>("UserId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("WarehouseWarId")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("WarehouseWarId", "UserId")
+                                .IsUnique();
+
+                            b1.ToTable("WarehousesParticipants", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("WarehouseWarId");
+                        });
+
+                    b.Navigation("Participants");
                 });
 #pragma warning restore 612, 618
         }

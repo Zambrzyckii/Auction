@@ -40,7 +40,39 @@ public sealed class WarehouseKeeper(IServiceProvider serviceProvider, ILogger<Wa
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<WarehouseDbContext>();
+        await CancelExpiredLobbiesAsync(context, token);
         await RefillPoolAsync(context, token);
+    }
+
+    private async Task CancelExpiredLobbiesAsync(WarehouseDbContext context, CancellationToken token)
+    {
+        var cutoff = DateTime.UtcNow - options.LobbyTimeout;
+        var expired = await context.Wars
+            .Where(w => w.CreatedOn < cutoff &&
+                        (w.Status == WarehouseWarStatus.Stocking ||
+                         (w.Status == WarehouseWarStatus.Open && w.BiddingStartsOn == null)))
+            .ToListAsync(token);
+        if (expired.Count == 0) return;
+
+        foreach (var war in expired)
+        {
+            var reason = war.Status == WarehouseWarStatus.Stocking ? "Stock quote timed out" : "Lobby timed out";
+            war.Cancel(reason);
+
+            foreach (var participant in war.Participants.Where(p => p.State == ParticipantState.Active))
+            {
+                var eventId = Guid.NewGuid();
+                context.OutboxMessages.Add(new OutboxMessage
+                {
+                    Id = eventId,
+                    Type = nameof(FundsUnlockRequestedEvent),
+                    Content = JsonSerializer.Serialize(
+                        new FundsUnlockRequestedEvent(eventId, war.PublicWarehouseId, participant.UserId))
+                });
+            }
+        }
+
+        await context.SaveChangesAsync(token);
     }
 
     private async Task RefillPoolAsync(WarehouseDbContext context, CancellationToken token)

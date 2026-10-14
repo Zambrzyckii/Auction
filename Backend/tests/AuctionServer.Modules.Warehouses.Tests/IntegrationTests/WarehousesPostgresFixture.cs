@@ -51,4 +51,15 @@ public sealed class WarehousesPostgresFixture : IAsyncLifetime
         await using var context = CreateContext();
         return await context.Wars.AsNoTracking().SingleAsync(w => w.PublicWarehouseId == publicWarehouseId);
     }
+
+    public async Task<WarehouseWar> SeedOpenWarAsync(params Guid[] participantIds)
+    {
+        await using var context = CreateContext();
+        var war = WarehouseWar.Create("Small", 500m);
+        war.OpenLobby(totalValue: 350m, estimateMin: 200m, estimateMax: 600m);
+        foreach (var userId in participantIds) war.Join(userId, maxPlayers: 5);
+        context.Wars.Add(war);
+        await context.SaveChangesAsync();
+        return war;
+    }
 }
