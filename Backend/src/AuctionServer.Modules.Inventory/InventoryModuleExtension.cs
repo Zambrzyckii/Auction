@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Inventory.Application;
+using AuctionServer.Modules.Inventory.Application.Options;
 using AuctionServer.Modules.Inventory.Application.Interfaces;
 using AuctionServer.Modules.Inventory.Infrastructure.Background;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;

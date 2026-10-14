@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Inventory.Application;
+using AuctionServer.Modules.Inventory.Application.Options;
 using AuctionServer.Modules.Inventory.Application.Handlers;
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Enums;

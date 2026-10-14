@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Inventory.Application.Interfaces;
+using AuctionServer.Modules.Inventory.Application.Options;
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
 using AuctionServer.Modules.Inventory.Infrastructure.Inbox;

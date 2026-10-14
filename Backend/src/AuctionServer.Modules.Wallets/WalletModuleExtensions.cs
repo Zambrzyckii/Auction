@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Wallets.Application;
+using AuctionServer.Modules.Wallets.Application.Options;
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Infrastructure.Background;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;

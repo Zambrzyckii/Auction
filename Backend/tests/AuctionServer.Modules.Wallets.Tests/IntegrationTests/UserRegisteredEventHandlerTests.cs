@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Wallets.Application;
+using AuctionServer.Modules.Wallets.Application.Options;
 using AuctionServer.Modules.Wallets.Application.Handlers;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;

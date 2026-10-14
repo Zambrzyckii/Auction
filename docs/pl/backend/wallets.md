@@ -9,7 +9,7 @@
 | Obszar | Pliki |
 |---|---|
 | Endpointy | [`Presentation/WalletEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Presentation/WalletEndpoints.cs), rekordy żądań `AddFundsRequest`, `TransferRequest` |
-| Komendy i zapytania | `Application/Command/AddFunds/` i `Application/Command/TransferFunds/` (komenda, handler, walidator w każdym), `Application/Queries/GetWallet/` (zapytanie, handler, `WalletDto`), `Application/Queries/GetWalletTransfers/` (zapytanie, handler, `TransferDto`), `Application/WalletsOptions.cs` |
+| Komendy i zapytania | `Application/Command/AddFunds/` i `Application/Command/TransferFunds/` (komenda, handler, walidator w każdym), `Application/Queries/GetWallet/` (zapytanie, handler, `WalletDto`), `Application/Queries/GetWalletTransfers/` (zapytanie, handler, `TransferDto`), `Application/Options/WalletsOptions.cs` |
 | Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs` |
 | Domena | [`Domain/Entities/Wallet.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Entities/Wallet.cs), `Domain/Entities/Transfer.cs`, [`Domain/Exceptions/WalletExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Exceptions/WalletExceptions.cs) |
 | Infrastruktura | `Persistence/` (`WalletDbContext`, `WalletRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |

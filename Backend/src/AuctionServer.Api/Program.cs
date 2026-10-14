@@ -12,7 +12,7 @@ using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Modules.Identity.Presentation;
 using AuctionServer.Modules.Inventory;
-using AuctionServer.Modules.Inventory.Application;
+using AuctionServer.Modules.Inventory.Application.Options;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Modules.Inventory.Presentation;
 using AuctionServer.Modules.Wallets;

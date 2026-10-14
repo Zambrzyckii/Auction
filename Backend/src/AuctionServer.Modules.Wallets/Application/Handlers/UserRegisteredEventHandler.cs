@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
+using AuctionServer.Modules.Wallets.Application.Options;
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Shared.Integration.Events;
