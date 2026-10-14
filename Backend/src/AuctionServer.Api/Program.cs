@@ -6,6 +6,7 @@ using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Api.Infrastructure;
 using AuctionServer.Api.Infrastructure.Authentication;
+using AuctionServer.Api.Infrastructure.Health;
 using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
@@ -81,6 +82,12 @@ builder.Services.AddWalletsModule(connectionString!, startingFunds);
 builder.Services.AddIdentityModule(connectionString!);
 builder.Services.AddInventoryModule(connectionString!);
 builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+    policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+        .AllowAnyHeader()
+        .AllowAnyMethod()));
+builder.Services.AddOpenApi();
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -98,9 +105,12 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 }
 
 app.UseExceptionHandler();
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapOpenApi();
+app.MapHealthChecks("/health");
 app.MapInventoryEndpoints();
 app.MapAuctionEndpoints();
 app.MapWalletEndpoints();

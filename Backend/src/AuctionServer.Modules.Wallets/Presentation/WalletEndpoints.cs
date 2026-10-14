@@ -15,11 +15,13 @@ public static class WalletEndpoints
     {
         var group = app.MapGroup("/api/wallets");
 
-        group.MapGet("/{id:guid}", async (Guid id, ISender sender) =>
+        group.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal user, ISender sender) =>
         {
+            var callerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (callerId != id) return Results.Forbid();
             var result = await sender.Send(new GetWalletQuery(id));
             return Results.Ok(result);
-        });
+        }).RequireAuthorization();
 
         group.MapPost("/funds", async (AddFundsRequest request, ClaimsPrincipal user, ISender sender) =>
         {

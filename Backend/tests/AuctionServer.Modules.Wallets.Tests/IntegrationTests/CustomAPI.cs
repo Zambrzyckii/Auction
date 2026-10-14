@@ -8,6 +8,14 @@ using Testcontainers.PostgreSql;
 
 namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;
 
+// CustomApi sets process-wide environment variables, so every test class using it
+// must share one instance through this collection instead of IClassFixture.
+[CollectionDefinition(HostIntegrationCollection.Name)]
+public sealed class HostIntegrationCollection : ICollectionFixture<CustomApi>
+{
+    public const string Name = "HostIntegration";
+}
+
 public class CustomApi : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string TestJwtKey = "integration-tests-signing-key-1234567890";

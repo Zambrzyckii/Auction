@@ -11,10 +11,11 @@
 ## Co istnieje
 
 - `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions i Inventory oraz projekt kontraktów `Shared.Integration`; 14 endpointów, 14 zdarzeń integracyjnych, 13 tabel, cztery `OutboxProcessor`y i `AuctionCloser`.
-- Testy: cztery projekty xUnit, 236 metod testowych (119 offline, 117 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
+- Testy: cztery projekty xUnit, 241 metod testowych (119 offline, 122 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
 - CI: `.gitlab-ci.yml` z `build`, `unit-tests` i `integration-tests`.
 - Dokumentacja: `docs/en` i `docs/pl` z tym zestawem stron i 13 wyrenderowanymi diagramami; główne `README.md` i `README.pl.md`.
 - `Backend/Dockerfile` i `compose.yaml` w korzeniu (API + PostgreSQL, migracje aplikowane na starcie za flagą `Database:MigrateOnStartup`).
+- CORS dla skonfigurowanych originów frontendu (`Cors:AllowedOrigins`), dokument OpenAPI pod `/openapi/v1.json` i `/health` ze sprawdzeniem bazy.
 - Poza repozytorium: frontend, boty, gateway, broker wiadomości.
 
 ## Środowisko deweloperskie
@@ -26,12 +27,11 @@
 
 ## Znane luki
 
-- Brak CORS, OpenAPI i health checków; bez dwóch pierwszych nie da się podłączyć klienta przeglądarkowego.
-- `GET /api/wallets/{id}` jest anonimowy; pełna lista jest w [ARCHITECTURE.md](ARCHITECTURE.md#znane-ograniczenia).
+- Nic już nie blokuje klienta przeglądarkowego; pozostałe mniejsze ograniczenia są wymienione w [ARCHITECTURE.md](ARCHITECTURE.md#znane-ograniczenia).
 
 ## Następny krok
 
-Saga rezerwacji środków weszła 2026-10-14; kolejność pozostałych pozycji [VISION.md](VISION.md) czeka na decyzję właściciela w tamtym dokumencie.
+2026-10-14 weszły Compose, endpoint historii ofert i wymagania wstępne frontendu (CORS, OpenAPI, `/health`, autoryzacja portfela); następna decyzja właściciela w [VISION.md](VISION.md) to wybór między pozostałymi pozycjami backendu a startem frontendu Angular.
 
 ## Powiązane dokumenty
 

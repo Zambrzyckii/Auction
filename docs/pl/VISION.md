@@ -54,12 +54,11 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 
 ## 6. Planowane dalej
 
-Kolejność i uzasadnienia ustali właściciel w wersji angielskiej; ta lista zostanie wtedy przetłumaczona 1:1.
+2026-10-14 właściciel ustalił priorytety i wszedł pierwszy pakiet: Docker Compose, endpoint historii ofert i wymagania wstępne frontendu (CORS, OpenAPI, `/health`, autoryzacja portfela). Co dalej, jedną z pozycji backendu poniżej czy start frontendu Angular, zdecyduje właściciel w wersji angielskiej; ta lista zostanie wtedy przetłumaczona 1:1.
 
 - Pakiet startowy przedmiotów przyznawany przy rejestracji.
 - RabbitMQ jako transport zdarzeń za `IIntegrationEventPublisher`.
 - Frontend Angular, boty rynkowe AI i API gateway.
-- Docker Compose dla hosta i PostgreSQL, żeby projekt startował jedną komendą.
 
 ## 7. Zasady projektu
 

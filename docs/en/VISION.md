@@ -54,12 +54,13 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 
 ## 6. Planned next
 
-TODO(human): order the items below by priority and add one sentence per item saying why it comes next; edit only this English file, the Polish twin is translated afterwards.
+On 2026-10-14 the owner prioritized and shipped the first batch: Docker Compose, the bid history endpoint and the frontend prerequisites (CORS, OpenAPI, `/health`, wallet authorization).
+
+TODO(human): decide what comes next, one of the backend items below or starting the Angular frontend, and add one sentence saying why; edit only this English file, the Polish twin is translated afterwards.
 
 - Starter item pack granted on registration.
 - RabbitMQ as the event transport behind `IIntegrationEventPublisher`.
 - Angular frontend, AI market bots and the API gateway.
-- Docker Compose for the host and PostgreSQL, so the project starts with one command.
 
 ## 7. Ground rules
 

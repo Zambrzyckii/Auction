@@ -25,7 +25,7 @@ Rozpoczęta 2026-10-14 plikiem Compose; broker i gateway pozostają planowane. P
 
 ## Czego brakuje
 
-- Brak endpointu health check, który mógłby odpytywać orkiestrator kontenerów albo gateway.
+- Usługa `api` w `compose.yaml` nie ma kontenerowego healthchecka: obraz runtime nie zawiera klienta HTTP, którym można by odpytać `/health`, więc orkiestrator musi odpytywać endpoint z zewnątrz.
 - Brak publishera AMQP i konsumenta po stronie hosta; [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md) opisuje, czego wymaga wymiana.
 - Pipeline CI nie ma stage'u deploy, artefaktów ani budowania obrazu.
 

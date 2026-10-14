@@ -25,7 +25,7 @@ Started on 2026-10-14 with the Compose file; the broker and the gateway remain p
 
 ## What is missing
 
-- No health check endpoint for a container orchestrator or a gateway to probe.
+- The `api` service in `compose.yaml` has no container healthcheck: the runtime image ships no HTTP client to probe `/health` with, so an orchestrator has to probe the endpoint from outside.
 - No AMQP publisher and no host-side consumer; [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md) describes what the swap involves.
 - The CI pipeline has no deploy stage, no artifacts and no image build.
 

@@ -69,11 +69,11 @@ dotnet run --project src/AuctionServer.Api
 dotnet test AuctionServer.slnx
 ```
 
-The first useful call is `POST /api/users/register`, followed by `POST /api/users/login` to obtain a token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) still contains the project-template request to `/weatherforecast/`, which does not exist.
+Besides the business endpoints the host serves `/health` (a `SELECT 1` against the database) and the OpenAPI document at `/openapi/v1.json`. The first useful call is `POST /api/users/register`, followed by `POST /api/users/login` to obtain a token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) still contains the project-template request to `/weatherforecast/`, which does not exist.
 
 ## Configuration
 
-Settings are read through `IConfiguration`, so every key can come from `appsettings.json`, user secrets or an environment variable with `__` as the separator (`ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey`), which is how the integration tests and a container would supply them.
+Settings are read through `IConfiguration`, so every key can come from `appsettings.json`, user secrets or an environment variable with `__` as the separator (`ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey`), which is how the integration tests and a container would supply them. `Cors:AllowedOrigins` (an array, default `http://localhost:4200`) feeds the CORS policy and `Database:MigrateOnStartup` (default `false`) applies all four modules' migrations before the host serves traffic.
 
 | Key | Default | Required | When missing | Used by |
 |---|---|---|---|---|

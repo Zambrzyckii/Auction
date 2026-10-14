@@ -18,16 +18,14 @@ Planned. The previous README named it "Angular frontend" and the deleted design 
 
 | Need | Available today |
 |---|---|
-| public browsing without login | `GET /api/auctions?limit=N` (active auctions ordered by `EndsOn`), `GET /api/auctions/{id}` (any status, with `CancellationReason`), `GET /api/wallets/{id}` |
+| public browsing without login | `GET /api/auctions?limit=N` (active auctions ordered by `EndsOn`), `GET /api/auctions/{id}` (any status, with `CancellationReason`), `GET /api/auctions/{id}/bids` (confirmed bids, newest first) |
 | accounts | `POST /api/users/register`, `POST /api/users/login` returning `{ token }` with the role claim inside |
 | actions behind a bearer token | `POST /api/auctions`, `POST /api/auctions/{id}/bid`, `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | machine-readable responses | camelCase property names, enums serialized as strings, `201` responses with the new id and a `Location` header, one error shape `{ "error": "..." }` for domain and validation errors (binding errors return an empty 400 in Production) |
 
 ## What is missing
 
-- No CORS policy in the host, so a browser on another origin is blocked until one is added.
-- No OpenAPI document (the package is referenced but not registered), so a client cannot be generated from a specification.
-- No bid history and no push channel: the client has to poll `GET /api/auctions/{id}` to see price changes, and a freshly created auction stays `Pending` for up to two outbox polling cycles before it appears in the list.
+- No push channel: the client has to poll `GET /api/auctions/{id}` to see price changes, and a freshly created auction stays `Pending` for up to two outbox polling cycles before it appears in the list.
 - No endpoint lists a user's own auctions or the auctions they currently lead.
 
 ## Views (routes)
@@ -35,7 +33,7 @@ Planned. The previous README named it "Angular frontend" and the deleted design 
 | Candidate view | Backend endpoints it would use |
 |---|---|
 | auction list | `GET /api/auctions` |
-| auction detail with bidding | `GET /api/auctions/{id}`, `POST /api/auctions/{id}/bid` |
+| auction detail with bidding | `GET /api/auctions/{id}`, `GET /api/auctions/{id}/bids`, `POST /api/auctions/{id}/bid` |
 | list an item for sale | `GET /api/inventory`, `POST /api/auctions` |
 | inventory with crafting and shop | `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | wallet | `GET /api/wallets/{id}` with the user's own `PublicUserId` taken from the token |
@@ -44,7 +42,7 @@ Planned. The previous README named it "Angular frontend" and the deleted design 
 ## Decisions
 
 - Angular was named as the frontend framework in the original design note; the version and the tooling are open.
-- In the target design the frontend talks only to the gateway; until the gateway exists it would call the host directly, which first needs CORS and OpenAPI on the host side ([ARCHITECTURE.md](ARCHITECTURE.md#known-limitations)).
+- In the target design the frontend talks only to the gateway; until the gateway exists it calls the host directly, which is possible since 2026-10-14: the host has CORS for `http://localhost:4200`, the OpenAPI document at `/openapi/v1.json` and `/health`.
 
 ## Related documents
 

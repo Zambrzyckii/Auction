@@ -18,16 +18,14 @@ Planowany. Poprzednie README nazywało go „Angular frontend", a usunięta nota
 
 | Potrzeba | Dostępne dziś |
 |---|---|
-| publiczne przeglądanie bez logowania | `GET /api/auctions?limit=N` (aktywne aukcje uporządkowane po `EndsOn`), `GET /api/auctions/{id}` (dowolny status, z `CancellationReason`), `GET /api/wallets/{id}` |
+| publiczne przeglądanie bez logowania | `GET /api/auctions?limit=N` (aktywne aukcje uporządkowane po `EndsOn`), `GET /api/auctions/{id}` (dowolny status, z `CancellationReason`), `GET /api/auctions/{id}/bids` (potwierdzone oferty, najnowsze najpierw) |
 | konta | `POST /api/users/register`, `POST /api/users/login` zwracający `{ token }` z claimem roli w środku |
 | akcje za bearer tokenem | `POST /api/auctions`, `POST /api/auctions/{id}/bid`, `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | odpowiedzi czytelne maszynowo | nazwy właściwości w camelCase, enumy serializowane jako stringi, odpowiedzi `201` z nowym id i nagłówkiem `Location`, jeden kształt błędu `{ "error": "..." }` dla błędów domenowych i walidacji (błędy bindowania dają w Production puste 400) |
 
 ## Czego brakuje
 
-- Brak polityki CORS w hoście, więc przeglądarka z innego origin jest blokowana, dopóki ktoś jej nie doda.
-- Brak dokumentu OpenAPI (pakiet jest referencowany, ale nie zarejestrowany), więc klienta nie da się wygenerować ze specyfikacji.
-- Brak historii ofert i brak kanału push: klient musi odpytywać `GET /api/auctions/{id}`, żeby zobaczyć zmiany ceny, a świeżo utworzona aukcja pozostaje `Pending` do dwóch cykli odpytywania outboxa, zanim pojawi się na liście.
+- Brak kanału push: klient musi odpytywać `GET /api/auctions/{id}`, żeby zobaczyć zmiany ceny, a świeżo utworzona aukcja pozostaje `Pending` do dwóch cykli odpytywania outboxa, zanim pojawi się na liście.
 - Żaden endpoint nie listuje własnych aukcji użytkownika ani aukcji, w których aktualnie prowadzi.
 
 ## Widoki (trasy)
@@ -35,7 +33,7 @@ Planowany. Poprzednie README nazywało go „Angular frontend", a usunięta nota
 | Kandydat na widok | Endpointy backendu, których by używał |
 |---|---|
 | lista aukcji | `GET /api/auctions` |
-| szczegóły aukcji z licytacją | `GET /api/auctions/{id}`, `POST /api/auctions/{id}/bid` |
+| szczegóły aukcji z licytacją | `GET /api/auctions/{id}`, `GET /api/auctions/{id}/bids`, `POST /api/auctions/{id}/bid` |
 | wystawienie przedmiotu na sprzedaż | `GET /api/inventory`, `POST /api/auctions` |
 | ekwipunek z craftingiem i sklepem | `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | portfel | `GET /api/wallets/{id}` z własnym `PublicUserId` użytkownika wziętym z tokenu |
@@ -44,7 +42,7 @@ Planowany. Poprzednie README nazywało go „Angular frontend", a usunięta nota
 ## Decyzje
 
 - Angular został wskazany jako framework frontendu w pierwotnej notatce projektowej; wersja i narzędzia są otwarte.
-- W projekcie docelowym frontend rozmawia tylko z gatewayem; dopóki gateway nie istnieje, wołałby host bezpośrednio, co najpierw wymaga CORS i OpenAPI po stronie hosta ([ARCHITECTURE.md](ARCHITECTURE.md#znane-ograniczenia)).
+- W projekcie docelowym frontend rozmawia tylko z gatewayem; dopóki gateway nie istnieje, woła host bezpośrednio, co od 2026-10-14 jest możliwe: host ma CORS dla `http://localhost:4200`, dokument OpenAPI pod `/openapi/v1.json` i `/health`.
 
 ## Powiązane dokumenty
 

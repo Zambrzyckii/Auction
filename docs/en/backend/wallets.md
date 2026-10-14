@@ -69,7 +69,7 @@ The module also owns `WalletsFundsLocks`, the per-bid lock ledger (`Id`, `Wallet
 
 | Method and route | Auth | Request | Response | Handler |
 |---|---|---|---|---|
-| `GET /api/wallets/{id}` | anonymous | `id` is the user's `PublicUserId` | 200 `{ availableFunds, lockedFunds }` (`WalletDto`), 404 when no wallet exists | `GetWalletQueryHandler` |
+| `GET /api/wallets/{id}` | JWT, owner only | `id` is the user's `PublicUserId` and must equal the caller's `NameIdentifier` claim | 200 `{ availableFunds, lockedFunds }` (`WalletDto`), 401 without a token, 403 for someone else's wallet, 404 when no wallet exists | `GetWalletQueryHandler` |
 | `POST /api/wallets/funds` | JWT with the `Bot` policy | `{ amount }`, greater than zero | 200 with an empty body; credits the caller's own wallet | `AddFundsCommandHandler` |
 
 `AddFundsCommandHandler` takes the wallet id from the `NameIdentifier` claim, calls `AddFunds` and saves with `CancellationToken.None`. There is no endpoint that moves money between users; every other balance change comes from an event.

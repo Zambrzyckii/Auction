@@ -11,10 +11,11 @@
 ## What exists
 
 - `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions and Inventory and the contracts project `Shared.Integration`; 14 endpoints, 14 integration events, 13 tables, four `OutboxProcessor`s and `AuctionCloser`.
-- Tests: four xUnit projects, 236 test methods (119 offline, 117 integration through Testcontainers), none crossing a module boundary.
+- Tests: four xUnit projects, 241 test methods (119 offline, 122 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` with `build`, `unit-tests` and `integration-tests`.
 - Documentation: `docs/en` and `docs/pl` with this set of pages and 13 rendered diagrams; root `README.md` and `README.pl.md`.
 - `Backend/Dockerfile` and a root `compose.yaml` (API + PostgreSQL, migrations applied at startup behind `Database:MigrateOnStartup`).
+- CORS for the configured frontend origins (`Cors:AllowedOrigins`), the OpenAPI document at `/openapi/v1.json` and `/health` with a database check.
 - Not in the repository: frontend, bots, gateway, message broker.
 
 ## Development environment
@@ -26,12 +27,11 @@
 
 ## Known gaps
 
-- No CORS, no OpenAPI, no health checks; a browser client cannot be connected without the first two.
-- `GET /api/wallets/{id}` is anonymous; the full list is in [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
+- Nothing blocks a browser client any more; the remaining smaller limitations are listed in [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
 
 ## Next step
 
-The funds reservation saga shipped on 2026-10-14; the order of the remaining [VISION.md](VISION.md) items awaits the owner's decision in that document.
+On 2026-10-14 the Compose setup, the bid history endpoint and the frontend prerequisites (CORS, OpenAPI, `/health`, wallet authorization) shipped; the owner's next decision in [VISION.md](VISION.md) is between the remaining backend items and starting the Angular frontend.
 
 ## Related documents
 

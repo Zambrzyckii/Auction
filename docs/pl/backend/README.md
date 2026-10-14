@@ -69,11 +69,11 @@ dotnet run --project src/AuctionServer.Api
 dotnet test AuctionServer.slnx
 ```
 
-Pierwsze użyteczne wywołanie to `POST /api/users/register`, a potem `POST /api/users/login`, żeby dostać token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) wciąż zawiera szablonowe żądanie do `/weatherforecast/`, które nie istnieje.
+Poza endpointami biznesowymi host serwuje `/health` (`SELECT 1` na bazie) i dokument OpenAPI pod `/openapi/v1.json`. Pierwsze użyteczne wywołanie to `POST /api/users/register`, a potem `POST /api/users/login`, żeby dostać token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) wciąż zawiera szablonowe żądanie do `/weatherforecast/`, które nie istnieje.
 
 ## Konfiguracja
 
-Ustawienia są czytane przez `IConfiguration`, więc każdy klucz może pochodzić z `appsettings.json`, user secrets albo zmiennej środowiskowej z separatorem `__` (`ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey`), i tak dostarczają je testy integracyjne oraz dostarczałby kontener.
+Ustawienia są czytane przez `IConfiguration`, więc każdy klucz może pochodzić z `appsettings.json`, user secrets albo zmiennej środowiskowej z separatorem `__` (`ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey`), i tak dostarczają je testy integracyjne oraz dostarczałby kontener. `Cors:AllowedOrigins` (tablica, domyślnie `http://localhost:4200`) zasila politykę CORS, a `Database:MigrateOnStartup` (domyślnie `false`) aplikuje migracje wszystkich czterech modułów, zanim host zacznie obsługiwać ruch.
 
 | Klucz | Domyślnie | Wymagany | Gdy brak | Używany przez |
 |---|---|---|---|---|

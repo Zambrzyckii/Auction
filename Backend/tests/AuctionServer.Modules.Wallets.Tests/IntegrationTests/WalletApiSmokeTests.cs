@@ -12,13 +12,15 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;
 
-public class WalletApiSmokeTests(CustomApi factory) : IClassFixture<CustomApi>
+[Collection(HostIntegrationCollection.Name)]
+public class WalletApiSmokeTests(CustomApi factory)
 {
     [Fact]
-    public async Task GetWallet_WhenWalletExists_ShouldReturnOkWithFunds()
+    public async Task GetWallet_WhenCallerIsTheOwner_ShouldReturnOkWithFunds()
     {
         var userId = await SeedWalletAsync(250m);
         var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(userId, role: "User"));
 
         var response = await client.GetAsync($"/api/wallets/{userId}");
 
@@ -27,6 +29,29 @@ public class WalletApiSmokeTests(CustomApi factory) : IClassFixture<CustomApi>
         Assert.NotNull(dto);
         Assert.Equal(250m, dto.AvailableFunds);
         Assert.Equal(0m, dto.LockedFunds);
+    }
+
+    [Fact]
+    public async Task GetWallet_WhenAnonymous_ShouldReturnUnauthorized()
+    {
+        var userId = await SeedWalletAsync(100m);
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/wallets/{userId}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetWallet_WhenCallerIsNotTheOwner_ShouldReturnForbidden()
+    {
+        var userId = await SeedWalletAsync(100m);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", CreateTokenFor(Guid.NewGuid(), role: "User"));
+
+        var response = await client.GetAsync($"/api/wallets/{userId}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]

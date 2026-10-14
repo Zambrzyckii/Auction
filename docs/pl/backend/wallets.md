@@ -69,7 +69,7 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 
 | Metoda i trasa | Auth | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|---|
-| `GET /api/wallets/{id}` | anonimowy | `id` to `PublicUserId` użytkownika | 200 `{ availableFunds, lockedFunds }` (`WalletDto`), 404 gdy portfel nie istnieje | `GetWalletQueryHandler` |
+| `GET /api/wallets/{id}` | JWT, tylko właściciel | `id` to `PublicUserId` użytkownika i musi równać się claimowi `NameIdentifier` wołającego | 200 `{ availableFunds, lockedFunds }` (`WalletDto`), 401 bez tokenu, 403 dla cudzego portfela, 404 gdy portfel nie istnieje | `GetWalletQueryHandler` |
 | `POST /api/wallets/funds` | JWT z polityką `Bot` | `{ amount }`, większe od zera | 200 z pustym ciałem; zasila własny portfel wołającego | `AddFundsCommandHandler` |
 
 `AddFundsCommandHandler` bierze id portfela z claimu `NameIdentifier`, woła `AddFunds` i zapisuje z `CancellationToken.None`. Nie ma endpointu przenoszącego pieniądze między użytkownikami; każda inna zmiana salda pochodzi ze zdarzenia.
