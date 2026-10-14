@@ -25,7 +25,6 @@
 
 ## Znane luki
 
-- Dwa diagramy sekwencji architektury dla licytacji i rozliczenia wciąż pokazują przepływ sprzed sagi; tekst obok nich jest aktualny.
 - Brak CORS, OpenAPI, health checków i migracji na starcie; bez dwóch pierwszych nie da się podłączyć klienta przeglądarkowego.
 - `GET /api/wallets/{id}` jest anonimowy; pełna lista jest w [ARCHITECTURE.md](ARCHITECTURE.md#znane-ograniczenia).
 

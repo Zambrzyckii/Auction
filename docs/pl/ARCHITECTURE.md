@@ -38,7 +38,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 | Moduł | Prefiks tras | DbContext | Tabele | Serwisy tła | Testy |
 |---|---|---|---|---|---|
 | [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
-| [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
+| [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
 
@@ -105,7 +105,7 @@ Sekwencja poniżej pokazuje, jak nowa aukcja jest zapisywana jako `Pending`, jak
 
 ### Licytacja i blokada środków
 
-Sekwencja poniżej pokazuje sagę rezerwacji środków: oferta staje się ofertą oczekującą, Wallets blokuje pieniądze, a dopiero potwierdzenie awansuje lidera. Diagram wciąż pokazuje stary, synchroniczny przepływ; kroki poniżej są aktualne.
+Sekwencja poniżej pokazuje sagę rezerwacji środków: oferta staje się ofertą oczekującą, Wallets blokuje pieniądze, a dopiero potwierdzenie awansuje lidera.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-04-bid-and-funds-lock.dark.svg">
@@ -137,7 +137,7 @@ Sekwencja poniżej pokazuje closer w tle kończący aukcję oraz łańcuch rozli
 
 ## Model danych
 
-Diagram pokazuje jedenaście tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
+Diagram pokazuje dwanaście tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
@@ -151,7 +151,8 @@ Wszystkie cztery `DbContext`y wskazują tę samą bazę i dzielą domyślną tab
 | `Users` | Identity | konta; unikalny `Email`, miękkie usuwanie przez globalny filtr zapytań na `IsDeleted`, `UserRoles` przechowywane jako liczba całkowita |
 | `IdentityOutboxMessages` | Identity | outbox dla `UserRegisteredEvent` |
 | `Wallets` | Wallets | jeden wiersz na użytkownika z kluczem `PublicUserId`; `AvailableFunds`, `LockedFunds`, `Version` |
-| `WalletsOutboxMessages`, `WalletsProcessedMessages` | Wallets | outbox dla `AuctionSettledEvent`, inbox |
+| `WalletsFundsLocks` | Wallets | księga blokad środków per oferta, własność agregatu `Wallet`; unikalne (`WalletUserId`, `PublicAuctionId`) dopóki `Status = 0` |
+| `WalletsOutboxMessages`, `WalletsProcessedMessages` | Wallets | outbox dla odpowiedzi sagi i `AuctionSettledEvent`, inbox |
 | `Auctions` | Auctions | aukcje ze snapshotem przedmiotu; unikalny `PublicAuctionId`, unikalny `ItemId` dopóki `Status IN (0, 1)`, `Version` |
 | `OutboxMessages` | Auctions | outbox; jedyna tabela bez prefiksu modułu |
 | `AuctionsProcessedMessages` | Auctions | inbox |

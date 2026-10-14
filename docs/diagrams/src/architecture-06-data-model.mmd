@@ -25,13 +25,23 @@ erDiagram
         uuid ItemId "unique while Status IN (0, 1)"
         uuid CurrentWinningUserId "nullable"
         numeric CurrentPrice "18,2"
+        uuid PendingBidderId "nullable, one bid in flight"
+        numeric PendingBidAmount "nullable"
         integer Status "Pending=0 Active=1 Closed=2 Cancelled=3"
         text ItemName "snapshot, nullable"
         text ItemRarity "snapshot, nullable"
         numeric ItemOfficialPrice "snapshot, nullable"
         text CancellationReason "nullable"
+        timestamptz CreatedOn "pending-activation timeout"
         timestamptz EndsOn
         uuid Version "concurrency token"
+    }
+    WALLETS__WalletsFundsLocks {
+        integer Id PK "identity column"
+        uuid WalletUserId FK "cascade delete"
+        uuid PublicAuctionId "unique with WalletUserId while Status = 0"
+        numeric Amount "18,2"
+        integer Status "Active=0 Released=1 Consumed=2"
     }
     INVENTORY__InventoryItems {
         integer Id PK "identity column"
@@ -65,6 +75,8 @@ erDiagram
     INVENTORY__InventoryProcessedMessages {
         uuid EventId PK
     }
+    WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
+    AUCTIONS__Auctions |o..o{ WALLETS__WalletsFundsLocks : "PublicAuctionId, no FK"
     IDENTITY__Users ||..|| WALLETS__Wallets : "UserId = PublicUserId, no FK"
     IDENTITY__Users ||..o{ AUCTIONS__Auctions : "SellerUserId and CurrentWinningUserId, no FK"
     IDENTITY__Users ||..o{ INVENTORY__InventoryItems : "OwnerUserId, no FK"

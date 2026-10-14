@@ -1,27 +1,33 @@
 sequenceDiagram
     participant C as Client
     participant A as Auctions - PlaceBidCommandHandler
+    participant AH as Auctions - FundsLocked / FundsLockRejected handlers
     participant ADB as Auctions tables
     participant AOP as Auctions OutboxProcessor
-    participant W as Wallets - BidPlacedEventHandler
+    participant W as Wallets - FundsLockRequested / BidPlaced / FundsUnlockRequested handlers
     participant WDB as Wallets tables
+    participant WOP as Wallets OutboxProcessor
 
     C->>A: POST /api/auctions/{id}/bid {amount} with a JWT
     A->>ADB: GetAuctionByIdAsync (tracked entity)
-    A->>A: Auction.ApplyNewBid: Active, not ended, Amount above CurrentPrice, not the seller, not the current winner
-    A->>A: EndsOn += 30 s when less than AntiSnipingWindow remains, new Version
-    A->>ADB: UPDATE Auctions + OutboxMessages(BidPlacedEvent) in one SaveChangesAsync
-    alt Version conflict with AuctionCloser
-        A-->>C: 409 {error: Data corrupted, try again}
-    else saved
-        A-->>C: 200
-    end
-    AOP->>W: Publish(BidPlacedEvent) on the next poll
+    A->>A: Auction.RequestBid: Active, not ended, amount above CurrentPrice, not the seller, not the leader, no pending bid (else 409)
+    A->>A: EndsOn += 30 s when less than AntiSnipingWindow remains, PendingBidderId + PendingBidAmount set, new Version
+    A->>ADB: UPDATE Auctions + OutboxMessages(FundsLockRequestedEvent) in one SaveChangesAsync
+    A-->>C: 200 - the bid is requested, not yet confirmed
+    AOP->>W: Publish(FundsLockRequestedEvent) on the next poll
     W->>WDB: WasEventProcessedAsync(EventId)
-    W->>W: new winner: Wallet.LockFunds(NewPrice)
-    W->>W: previous winner: Wallet.UnlockFunds(PreviousPrice), only when PreviousWinningUserId is set
-    W->>WDB: UPDATE Wallets + WalletsProcessedMessages with CancellationToken.None
-    alt InsufficientFundsException
-        W--xAOP: handler throws: FailedAttempt, retry after 20 / 40 / 80 / 160 s, dead after the 5th failure
-        Note over A,W: the auction keeps the new leader although no funds were locked
+    W->>W: Wallet.LockFunds(auctionId, amount): new Active row in the FundsLock ledger
+    alt funds locked
+        W->>WDB: UPDATE Wallets + WalletsFundsLocks + inbox + WalletsOutboxMessages(FundsLockedEvent)
+    else InsufficientFunds or LockAlreadyExists
+        W->>WDB: inbox + WalletsOutboxMessages(FundsLockRejectedEvent)
     end
+    WOP->>AH: Publish(FundsLockedEvent) on the next Wallets poll
+    alt auction still Active
+        AH->>ADB: Auction.ConfirmPendingBid: bidder becomes leader + OutboxMessages(BidPlacedEvent) + inbox
+    else auction no longer Active
+        AH->>ADB: Auction.RejectPendingBid + OutboxMessages(FundsUnlockRequestedEvent) + inbox
+    end
+    AOP->>W: Publish(BidPlacedEvent): ReleaseLock on the previous leader, amount from the ledger
+    AOP->>W: Publish(FundsUnlockRequestedEvent): ReleaseLock, a missing lock is a valid outcome
+    Note over C,WOP: FundsLockRejectedEvent only clears the pending bid - a bid becomes visible after ~3-9 s (two outbox polls)

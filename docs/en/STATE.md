@@ -25,7 +25,6 @@
 
 ## Known gaps
 
-- The two architecture sequence diagrams for bidding and settlement still show the pre-saga flow; the text next to them is current.
 - No CORS, no OpenAPI, no health checks, no migrations at startup; a browser client cannot be connected without the first two.
 - `GET /api/wallets/{id}` is anonymous; the full list is in [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
 

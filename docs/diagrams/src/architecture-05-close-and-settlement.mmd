@@ -15,8 +15,8 @@ sequenceDiagram
     AOP->>WH: Publish(AuctionFinishedEvent) - the Wallets handler runs first
     alt WinnerUserId present
         WH->>WDB: WasEventProcessedAsync(EventId)
-        WH->>WH: winner.SpendLockedFunds(FinalPrice), seller.AddFunds(FinalPrice)
-        WH->>WDB: UPDATE Wallets x2 + WalletsProcessedMessages + WalletsOutboxMessages(AuctionSettledEvent)
+        WH->>WH: amount = winner.ConsumeLock(auctionId) from the FundsLock ledger, seller.AddFunds(amount)
+        WH->>WDB: UPDATE Wallets x2 + WalletsFundsLocks + WalletsProcessedMessages + WalletsOutboxMessages(AuctionSettledEvent with the amount)
     else no winner
         WH-->>AOP: return without changes
     end
