@@ -18,6 +18,9 @@ using AuctionServer.Modules.Inventory.Presentation;
 using AuctionServer.Modules.Wallets;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Modules.Wallets.Presentation;
+using AuctionServer.Modules.Warehouses;
+using AuctionServer.Modules.Warehouses.Application.Options;
+using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Messaging;
 using AuctionServer.Shared.Integration.Validators;
 using FluentValidation;
@@ -29,6 +32,7 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var startingFunds = builder.Configuration.GetValue<decimal?>("Wallets:StartingFunds") ?? throw new InvalidOperationException("Missing configuration value 'Wallets:StartingFunds'");
 var starterItems = builder.Configuration.GetSection("Inventory:StarterItems").Get<List<StarterItemDefinition>>() ?? [];
+var warehousesOptions = builder.Configuration.GetSection("Warehouses").Get<WarehousesOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Warehouses'");
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -79,10 +83,18 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
 });
 
+builder.Services.AddValidatorsFromAssembly(typeof(WarehouseModuleExtensions).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(WarehouseModuleExtensions).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+});
+
 builder.Services.AddAuctionModule(connectionString!);
 builder.Services.AddWalletsModule(connectionString!, startingFunds);
 builder.Services.AddIdentityModule(connectionString!);
 builder.Services.AddInventoryModule(connectionString!, starterItems);
+builder.Services.AddWarehousesModule(connectionString!, warehousesOptions);
 builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
@@ -104,6 +116,7 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await scope.ServiceProvider.GetRequiredService<WalletDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<AuctionDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<InventoryDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<WarehouseDbContext>().Database.MigrateAsync();
 }
 
 app.UseExceptionHandler();

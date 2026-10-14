@@ -9,4 +9,6 @@
   <Project Path="tests/AuctionServer.Modules.Identity.Tests/AuctionServer.Modules.Identity.Tests.csproj" />
   <Project Path="tests/AuctionServer.Modules.Inventory.Tests/AuctionServer.Modules.Inventory.Tests.csproj" />
   <Project Path="src/AuctionServer.Modules.Wallets/AuctionServer.Modules.Wallets.csproj" />
+  <Project Path="src/AuctionServer.Modules.Warehouses/AuctionServer.Modules.Warehouses.csproj" />
+  <Project Path="tests/AuctionServer.Modules.Warehouses.Tests/AuctionServer.Modules.Warehouses.Tests.csproj" />
 </Solution>

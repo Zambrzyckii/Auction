@@ -21,7 +21,9 @@ public static class IntegrationEventTypes
         [nameof(FundsLockedEvent)] = typeof(FundsLockedEvent),
         [nameof(FundsLockRejectedEvent)] = typeof(FundsLockRejectedEvent),
         [nameof(FundsLockRequestedEvent)] = typeof(FundsLockRequestedEvent),
-        [nameof(FundsUnlockRequestedEvent)] = typeof(FundsUnlockRequestedEvent)
+        [nameof(FundsUnlockRequestedEvent)] = typeof(FundsUnlockRequestedEvent),
+        [nameof(WarehouseStockRequestedEvent)] = typeof(WarehouseStockRequestedEvent),
+        [nameof(WarehouseStockedEvent)] = typeof(WarehouseStockedEvent)
     };
 
     public static INotification Deserialize(string type, string content)
