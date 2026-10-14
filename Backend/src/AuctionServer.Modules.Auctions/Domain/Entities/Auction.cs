@@ -21,6 +21,8 @@ public sealed class Auction
     public DateTime EndsOn { get; private set; } = DateTime.UtcNow.AddMinutes(1);
     public Guid Version { get; private set; } = Guid.NewGuid();
     public DateTime CreatedOn { get; init; } = DateTime.UtcNow;
+    public Guid? PendingBidderId { get; private set; }
+    public decimal? PendingBidAmount { get; private set; }
     public void ApplyNewBid(Guid bidderId, decimal amount)
     {
         if (Status is AuctionStatus.Pending) throw new AuctionExceptions.AuctionNotActiveException(Status);
@@ -71,5 +73,41 @@ public sealed class Auction
     private void EnsureStatus(AuctionStatus expected, string action)
     {
         if (Status != expected) throw new AuctionExceptions.InvalidAuctionStateTransitionException(Status, action);
+    }
+
+    public void RequestBid(Guid bidderId, decimal amount)
+    {
+        if (Status is AuctionStatus.Pending) throw new AuctionExceptions.AuctionNotActiveException(Status);
+        if (Status is not AuctionStatus.Active) throw new AuctionExceptions.AuctionClosedException();
+        if (DateTime.UtcNow >= EndsOn) throw new AuctionExceptions.AuctionClosedException();
+        if (amount <= CurrentPrice) throw new AuctionExceptions.InvalidBidException();
+        if (bidderId == SellerUserId) throw new AuctionExceptions.CannotBidOwnItemException();
+        if (bidderId == CurrentWinningUserId) throw new AuctionExceptions.AlreadyHighestBidderException();
+        if (PendingBidderId is not null) throw new AuctionExceptions.BidInProgressException();
+
+        PendingBidderId = bidderId;
+        PendingBidAmount = amount;
+        if (EndsOn < DateTime.UtcNow + AntiSnipingWindow) EndsOn += AntiSnipingWindow;
+        Version = Guid.NewGuid();
+    }
+    
+    public void ConfirmPendingBid()
+    {
+        EnsureStatus(AuctionStatus.Active, nameof(ConfirmPendingBid));
+        if (PendingBidderId is null || PendingBidAmount is null) throw new AuctionExceptions.NoPendingBidException();
+
+        CurrentWinningUserId = PendingBidderId;
+        CurrentPrice = PendingBidAmount.Value;
+        PendingBidderId = null;
+        PendingBidAmount = null;
+        Version = Guid.NewGuid();
+    }
+
+    public void RejectPendingBid()
+    {
+        if (PendingBidderId is null) throw new AuctionExceptions.NoPendingBidException();
+        PendingBidderId = null;
+        PendingBidAmount = null;
+        Version = Guid.NewGuid();
     }
 }

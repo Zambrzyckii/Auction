@@ -60,6 +60,12 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.Property<string>("ItemRarity")
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("PendingBidAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("PendingBidderId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("PublicAuctionId")
                         .HasColumnType("uuid");
 
