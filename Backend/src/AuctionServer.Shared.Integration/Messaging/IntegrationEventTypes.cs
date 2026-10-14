@@ -20,7 +20,8 @@ public static class IntegrationEventTypes
         [nameof(AuctionCancelledEvent)] = typeof(AuctionCancelledEvent),
         [nameof(FundsLockedEvent)] = typeof(FundsLockedEvent),
         [nameof(FundsLockRejectedEvent)] = typeof(FundsLockRejectedEvent),
-        [nameof(FundsLockRequestedEvent)] = typeof(FundsLockRequestedEvent)
+        [nameof(FundsLockRequestedEvent)] = typeof(FundsLockRequestedEvent),
+        [nameof(FundsUnlockRequestedEvent)] = typeof(FundsUnlockRequestedEvent)
     };
 
     public static INotification Deserialize(string type, string content)
