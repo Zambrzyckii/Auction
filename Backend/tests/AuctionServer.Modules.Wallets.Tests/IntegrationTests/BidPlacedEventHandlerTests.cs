@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Wallets.Application.Handlers;
+using AuctionServer.Modules.Wallets.Domain.Enums;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events;
@@ -9,183 +10,88 @@ namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;
 [Collection(WalletsIntegrationCollection.Name)]
 public class BidPlacedEventHandlerTests(WalletsPostgresFixture fixture)
 {
-    [Fact]
-    public async Task Handle_WhenFirstBid_ShouldLockFundsOnNewWinner()
+    private async Task LockForAuctionAsync(Guid userId, Guid auctionId, decimal amount)
     {
-        var userId = await fixture.SeedWalletAsync(500m);
+        await using var context = fixture.CreateContext();
+        var wallet = await context.Wallets.SingleAsync(w => w.UserId == userId);
+        wallet.LockFunds(auctionId, amount);
+        await context.SaveChangesAsync();
+    }
 
+    private async Task HandleAsync(BidPlacedEvent notification)
+    {
         await using var context = fixture.CreateContext();
         var handler = new BidPlacedEventHandler(new WalletRepository(context));
-        var bidEvent = new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, null, 100m, null);
-        await handler.Handle(bidEvent, CancellationToken.None);
-
-        var wallet = await fixture.GetWalletAsync(userId);
-        Assert.Equal(400m, wallet.AvailableFunds);
-        Assert.Equal(100m, wallet.LockedFunds);
+        await handler.Handle(notification, CancellationToken.None);
     }
 
     [Fact]
-    public async Task Handle_WhenEventIsDeliveredTwice_ShouldLockFundsOnlyOnce()
+    public async Task Handle_WhenPreviousWinnerExists_ShouldReleaseOnlyTheirLock()
     {
-        var userId = await fixture.SeedWalletAsync(150m);
-        var bidEvent = new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, null, 100m, null);
-
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(bidEvent, CancellationToken.None);
-        }
-
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(bidEvent, CancellationToken.None);
-        }
-
-        var wallet = await fixture.GetWalletAsync(userId);
-        Assert.Equal(50m, wallet.AvailableFunds);
-        Assert.Equal(100m, wallet.LockedFunds);
-
-        await using var verifyContext = fixture.CreateContext();
-        Assert.True(await verifyContext.ProcessedMessages.AnyAsync(m => m.EventId == bidEvent.EventId));
-    }
-
-    [Fact]
-    public async Task Handle_WhenOutbidByOtherUser_ShouldLockNewWinnerAndUnlockPreviousWinner()
-    {
-        var firstUserId = await fixture.SeedWalletAsync(500m);
-        var secondUserId = await fixture.SeedWalletAsync(500m);
         var auctionId = Guid.NewGuid();
+        var previousWinnerId = await fixture.SeedWalletAsync(500m);
+        await LockForAuctionAsync(previousWinnerId, auctionId, 100m);
+        var newWinnerId = await fixture.SeedWalletAsync(500m);
+        await LockForAuctionAsync(newWinnerId, auctionId, 150m);
+        var notification = new BidPlacedEvent(Guid.NewGuid(), auctionId, newWinnerId, previousWinnerId, 150m, 100m);
 
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, firstUserId, null, 100m, null), CancellationToken.None);
-        }
+        await HandleAsync(notification);
 
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, secondUserId, firstUserId, 150m, 100m), CancellationToken.None);
-        }
-
-        var previousWinner = await fixture.GetWalletAsync(firstUserId);
+        var previousWinner = await fixture.GetWalletAsync(previousWinnerId);
         Assert.Equal(500m, previousWinner.AvailableFunds);
         Assert.Equal(0m, previousWinner.LockedFunds);
+        Assert.Equal(FundsLockStatus.Released, Assert.Single(previousWinner.FundsLocks).Status);
 
-        var newWinner = await fixture.GetWalletAsync(secondUserId);
+        var newWinner = await fixture.GetWalletAsync(newWinnerId);
         Assert.Equal(350m, newWinner.AvailableFunds);
         Assert.Equal(150m, newWinner.LockedFunds);
+        Assert.Equal(FundsLockStatus.Active, Assert.Single(newWinner.FundsLocks).Status);
     }
 
     [Fact]
-    public async Task Handle_WhenUserOutbidsThemself_ShouldLockOnlyTheNewPrice()
+    public async Task Handle_WhenFirstBid_ShouldOnlyStoreInboxRow()
     {
-        var userId = await fixture.SeedWalletAsync(500m);
         var auctionId = Guid.NewGuid();
+        var newWinnerId = await fixture.SeedWalletAsync(500m);
+        await LockForAuctionAsync(newWinnerId, auctionId, 100m);
+        var notification = new BidPlacedEvent(Guid.NewGuid(), auctionId, newWinnerId, null, 100m, null);
 
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, userId, null, 100m, null), CancellationToken.None);
-        }
+        await HandleAsync(notification);
 
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, userId, userId, 150m, 100m), CancellationToken.None);
-        }
-
-        var wallet = await fixture.GetWalletAsync(userId);
-        Assert.Equal(350m, wallet.AvailableFunds);
-        Assert.Equal(150m, wallet.LockedFunds);
-    }
-
-    [Fact]
-    public async Task Handle_WhenNewWinnerHasInsufficientFunds_ShouldThrowAndNotChangeAnyWallet()
-    {
-        var firstUserId = await fixture.SeedWalletAsync(500m);
-        var secondUserId = await fixture.SeedWalletAsync(50m);
-        var auctionId = Guid.NewGuid();
-
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, firstUserId, null, 100m, null), CancellationToken.None);
-        }
-
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await Assert.ThrowsAsync<WalletExceptions.InsufficientFundsException>(
-                () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, secondUserId, firstUserId, 200m, 100m), CancellationToken.None));
-        }
-
-        var previousWinner = await fixture.GetWalletAsync(firstUserId);
-        Assert.Equal(400m, previousWinner.AvailableFunds);
-        Assert.Equal(100m, previousWinner.LockedFunds);
-
-        var failedBidder = await fixture.GetWalletAsync(secondUserId);
-        Assert.Equal(50m, failedBidder.AvailableFunds);
-        Assert.Equal(0m, failedBidder.LockedFunds);
-    }
-
-    [Fact]
-    public async Task Handle_WhenNewWinnerHasNoWallet_ShouldThrowAndNotUnlockPreviousWinner()
-    {
-        var firstUserId = await fixture.SeedWalletAsync(500m);
-        var missingUserId = Guid.NewGuid();
-        var auctionId = Guid.NewGuid();
-
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, firstUserId, null, 100m, null), CancellationToken.None);
-        }
-
-        await using (var context = fixture.CreateContext())
-        {
-            var handler = new BidPlacedEventHandler(new WalletRepository(context));
-            await Assert.ThrowsAsync<WalletExceptions.UserWithThisIdDontHaveWallet>(
-                () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), auctionId, missingUserId, firstUserId, 150m, 100m), CancellationToken.None));
-        }
-
-        var previousWinner = await fixture.GetWalletAsync(firstUserId);
-        Assert.Equal(400m, previousWinner.AvailableFunds);
-        Assert.Equal(100m, previousWinner.LockedFunds);
-        Assert.False(await fixture.WalletExistsAsync(missingUserId));
-    }
-
-    [Fact]
-    public async Task Handle_WhenPreviousWinnerHasNoWallet_ShouldThrowAndNotPersistLockOfNewWinner()
-    {
-        var secondUserId = await fixture.SeedWalletAsync(500m);
-        var missingUserId = Guid.NewGuid();
+        var newWinner = await fixture.GetWalletAsync(newWinnerId);
+        Assert.Equal(400m, newWinner.AvailableFunds);
+        Assert.Equal(100m, newWinner.LockedFunds);
 
         await using var context = fixture.CreateContext();
-        var handler = new BidPlacedEventHandler(new WalletRepository(context));
-        await Assert.ThrowsAsync<WalletExceptions.UserWithThisIdDontHaveWallet>(
-            () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), secondUserId, missingUserId, 150m, 100m), CancellationToken.None));
-
-        var newWinner = await fixture.GetWalletAsync(secondUserId);
-        Assert.Equal(500m, newWinner.AvailableFunds);
-        Assert.Equal(0m, newWinner.LockedFunds);
+        Assert.True(await context.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-100)]
-    public async Task Handle_WhenNewPriceIsNotPositive_ShouldThrowAndNotChangeFunds(decimal newPrice)
+    [Fact]
+    public async Task Handle_WhenEventIsDeliveredTwice_ShouldReleaseOnlyOnce()
     {
-        var userId = await fixture.SeedWalletAsync(500m);
+        var auctionId = Guid.NewGuid();
+        var previousWinnerId = await fixture.SeedWalletAsync(500m);
+        await LockForAuctionAsync(previousWinnerId, auctionId, 100m);
+        var notification = new BidPlacedEvent(Guid.NewGuid(), auctionId, Guid.NewGuid(), previousWinnerId, 150m, 100m);
+
+        await HandleAsync(notification);
+        await HandleAsync(notification);
+
+        var previousWinner = await fixture.GetWalletAsync(previousWinnerId);
+        Assert.Equal(500m, previousWinner.AvailableFunds);
+        Assert.Equal(0m, previousWinner.LockedFunds);
+    }
+
+    [Fact]
+    public async Task Handle_WhenPreviousWinnerHasNoActiveLock_ShouldThrowLockNotFoundException()
+    {
+        var auctionId = Guid.NewGuid();
+        var previousWinnerId = await fixture.SeedWalletAsync(500m);
+        var notification = new BidPlacedEvent(Guid.NewGuid(), auctionId, Guid.NewGuid(), previousWinnerId, 150m, 100m);
+
+        await Assert.ThrowsAsync<WalletExceptions.LockNotFoundException>(() => HandleAsync(notification));
 
         await using var context = fixture.CreateContext();
-        var handler = new BidPlacedEventHandler(new WalletRepository(context));
-        await Assert.ThrowsAsync<WalletExceptions.InvalidAmountException>(
-            () => handler.Handle(new BidPlacedEvent(Guid.NewGuid(), Guid.NewGuid(), userId, null, newPrice, null), CancellationToken.None));
-
-        var wallet = await fixture.GetWalletAsync(userId);
-        Assert.Equal(500m, wallet.AvailableFunds);
-        Assert.Equal(0m, wallet.LockedFunds);
+        Assert.False(await context.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
     }
 }

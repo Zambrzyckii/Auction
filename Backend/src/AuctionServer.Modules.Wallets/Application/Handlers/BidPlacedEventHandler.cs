@@ -11,18 +11,14 @@ public sealed class BidPlacedEventHandler(IWalletRepository repository) : INotif
     public async Task Handle(BidPlacedEvent notification, CancellationToken token)
     {
         if (await repository.WasEventProcessedAsync(notification.EventId, token)) return;
-        
-        var newWinnerWallet = await repository.GetUserWalletByIdAsync(notification.NewWinningUserId, token);
-        newWinnerWallet.LockFunds(notification.NewPrice);
 
-        if (notification is { PreviousWinningUserId: not null, PreviousPrice: not null })
+        if (notification.PreviousWinningUserId is not null)
         {
             var previousWinnerWallet = await repository.GetUserWalletByIdAsync(notification.PreviousWinningUserId.Value, token);
-            previousWinnerWallet.UnlockFunds(notification.PreviousPrice.Value);
+            previousWinnerWallet.ReleaseLock(notification.PublicAuctionId);
         }
 
         var processedMessage = new ProcessedMessage { EventId = notification.EventId };
-
         try
         {
             await repository.SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None);
