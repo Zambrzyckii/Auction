@@ -36,6 +36,13 @@ erDiagram
         timestamptz EndsOn
         uuid Version "concurrency token"
     }
+    AUCTIONS__AuctionsBids {
+        integer Id PK "identity column"
+        uuid PublicAuctionId "indexed"
+        uuid BidderUserId
+        numeric Amount "18,2"
+        timestamptz PlacedOn "appended on ConfirmPendingBid"
+    }
     WALLETS__WalletsFundsLocks {
         integer Id PK "identity column"
         uuid WalletUserId FK "cascade delete"
@@ -75,6 +82,7 @@ erDiagram
     INVENTORY__InventoryProcessedMessages {
         uuid EventId PK
     }
+    AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     AUCTIONS__Auctions |o..o{ WALLETS__WalletsFundsLocks : "PublicAuctionId, no FK"
     IDENTITY__Users ||..|| WALLETS__Wallets : "UserId = PublicUserId, no FK"

@@ -8,6 +8,7 @@ namespace AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 public class AuctionDbContext(DbContextOptions<AuctionDbContext> options) : DbContext(options)
 {
     public DbSet<Auction> Auctions { get; set; }
+    public DbSet<Bid> Bids { get; set; }
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
     public DbSet<ProcessedMessage> ProcessedMessages { get; set; }
 

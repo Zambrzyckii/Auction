@@ -6,7 +6,7 @@
 
 ## Status
 
-Backend jest kompletny dla głównego przepływu: cztery moduły (Identity, Wallets, Auctions, Inventory), 13 endpointów, 14 zdarzeń integracyjnych, 230 metod testowych i pipeline GitLab CI. Frontend Angular, boty AI, API gateway i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
+Backend jest kompletny dla głównego przepływu: cztery moduły (Identity, Wallets, Auctions, Inventory), 14 endpointów, 14 zdarzeń integracyjnych, 236 metod testowych i pipeline GitLab CI. Frontend Angular, boty AI, API gateway i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
 
 ## Szybki start
 

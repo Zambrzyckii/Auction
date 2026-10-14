@@ -91,6 +91,34 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.ToTable("Auctions");
                 });
 
+            modelBuilder.Entity("AuctionServer.Modules.Auctions.Domain.Entities.Bid", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("BidderUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("PlacedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PublicAuctionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublicAuctionId");
+
+                    b.ToTable("AuctionsBids", (string)null);
+                });
+
             modelBuilder.Entity("AuctionServer.Modules.Auctions.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")

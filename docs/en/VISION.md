@@ -48,7 +48,7 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 
 - Identity: registration, login, JWT with a role claim, bot provisioning with an API key, soft-deleted users, BCrypt.
 - Wallets: automatic wallet with configured starting funds, bot-only top-up, lock, unlock and spend of funds, settlement with an inbox and an outbox.
-- Auctions: creation as `Pending` until Inventory locks the item, listing and detail through Dapper, bidding with anti-sniping, background closing, outbox with retry and dead letters, inbox.
+- Auctions: creation as `Pending` until Inventory locks the item, listing, detail and bid history through Dapper, bidding with anti-sniping, background closing, outbox with retry and dead letters, inbox.
 - Inventory: items with rarity-based prices, crafting, selling to the shop, locking and transferring items for auctions, inbox and outbox.
 - Cross-cutting: FluentValidation pipeline, global error contract, optimistic concurrency, GitLab CI with Testcontainers.
 
@@ -56,7 +56,6 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 
 TODO(human): order the items below by priority and add one sentence per item saying why it comes next; edit only this English file, the Polish twin is translated afterwards.
 
-- Bid history: a table of bids per auction and `GET /api/auctions/{id}/bids`.
 - Starter item pack granted on registration.
 - RabbitMQ as the event transport behind `IIntegrationEventPublisher`.
 - Angular frontend, AI market bots and the API gateway.

@@ -4,6 +4,7 @@
 >
 > Milestone-level entries, newest first; each entry is dated by the day the work was done.
 
+- **2026-10-14** — **Bid history**: append-only `AuctionsBids` table written by `FundsLockedEventHandler` in the same transaction as the bid confirmation, `GET /api/auctions/{id}/bids` through Dapper (confirmed bids only, newest first, 404 for an unknown auction), migration `Add_Auctions_Bids`, six new integration tests.
 - **2026-10-14** — **One-command start**: `Backend/Dockerfile` and a root `compose.yaml` (API + `postgres:16-alpine`), migrations of all four modules applied at startup behind the new `Database:MigrateOnStartup` flag (Compose sets it, default stays `false`), architecture diagrams 04-06 re-rendered to the saga flow and the funds-lock ledger.
 - **2026-10-14** — **Funds reservation saga**: pessimistic pending bid on `Auction` (`RequestBid`/`ConfirmPendingBid`/`RejectPendingBid`), `Wallet` as a DDD aggregate with a per-bid `FundsLock` ledger (`WalletsFundsLocks` table), four new funds events with `BidPlacedEvent` repurposed as the confirmation, settlement consumes the winner's lock, amount-based wallet methods and `ApplyNewBid` removed, integration tests for the whole loop.
 - **2026-10-14** — **Pending auction timeout**: `CreatedOn` on `Auction` (migration `Add_Auction_CreatedOn`), `AuctionCloser` cancels auctions stuck in `Pending` for over 10 minutes and emits `AuctionCancelledEvent`, an Inventory handler unlocks a still-locked item and treats a missing lock as a valid outcome, integration tests for the new handler.

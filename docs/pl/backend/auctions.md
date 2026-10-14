@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/auctions.md](../../en/backend/auctions.md)
 
-`AuctionServer.Modules.Auctions` odpowiada za aukcje i oferty: tworzy aukcję jako `Pending`, prosi Inventory o blokadę przedmiotu, przyjmuje oferty z oknem anty-snajperskim, zamyka wygasłe aukcje z serwisu tła i ogłasza wynik do Wallets i Inventory. Zapisy idą przez EF Core, odczyty przez Dapper, a moduł wystawia cztery endpointy pod `/api/auctions`.
+`AuctionServer.Modules.Auctions` odpowiada za aukcje i oferty: tworzy aukcję jako `Pending`, prosi Inventory o blokadę przedmiotu, przyjmuje oferty z oknem anty-snajperskim, zamyka wygasłe aukcje z serwisu tła i ogłasza wynik do Wallets i Inventory. Zapisy idą przez EF Core, odczyty przez Dapper, a moduł wystawia pięć endpointów pod `/api/auctions`.
 
 ## Przegląd
 
@@ -70,7 +70,7 @@ Każda metoda przejścia najpierw woła `EnsureStatus`, więc nieoczekiwany stat
 | `PendingBidderId`, `PendingBidAmount` | `uuid`, `numeric(18,2)`, oba nullable | oferta w locie sagi rezerwacji środków; czyszczona przy potwierdzeniu lub odrzuceniu |
 | `Version` | `uuid` | token współbieżności, generowany na nowo przez każdą metodę mutującą |
 
-Moduł posiada też `OutboxMessages` (jego outbox, jedyna tabela bez prefiksu modułu) i `AuctionsProcessedMessages` (jego inbox); obie są opisane w [messaging.md](messaging.md).
+Moduł posiada też `AuctionsBids` — append-only historię ofert (`Id`, `PublicAuctionId` z indeksem, `BidderUserId`, `Amount`, `PlacedOn`); wiersz dopisuje `FundsLockedEventHandler` w tej samej `SaveChangesAsync` co `ConfirmPendingBid`, więc zapisywane są tylko potwierdzone oferty — oraz `OutboxMessages` (jego outbox, jedyna tabela bez prefiksu modułu) i `AuctionsProcessedMessages` (jego inbox); dwie ostatnie są opisane w [messaging.md](messaging.md).
 
 ## API
 
@@ -78,6 +78,7 @@ Moduł posiada też `OutboxMessages` (jego outbox, jedyna tabela bez prefiksu mo
 |---|---|---|---|---|
 | `GET /api/auctions?limit=N` | anonimowy | parametr zapytania `limit`, wymagany, od 1 do 100 | 200 z listą `ActiveAuctionQueryDto`, tylko aukcje `Active`, uporządkowane po `EndsOn` | `GetActiveAuctionsQueryHandler` |
 | `GET /api/auctions/{id}` | anonimowy | — | 200 z `AuctionByIdQueryDto` dla dowolnego statusu, 404 gdy nieznana | `GetAuctionByIdQueryHandler` |
+| `GET /api/auctions/{id}/bids` | anonimowy | — | 200 z listą `AuctionBidQueryDto` (`bidderUserId`, `amount`, `placedOn`), tylko potwierdzone oferty, najnowsze najpierw; 404 gdy aukcja nieznana | `GetAuctionBidsQueryHandler` |
 | `POST /api/auctions` | JWT | `{ itemId, startingPrice, endsOn }` (`EndsOn` to `DateTimeOffset`) | 201 `{ publicAuctionId }` z `Location: /api/auctions/{id}` | `CreateAuctionCommandHandler` |
 | `POST /api/auctions/{id}/bid` | JWT | `{ amount }` | 200 z pustym ciałem | `PlaceBidCommandHandler` |
 

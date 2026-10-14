@@ -10,8 +10,8 @@
 
 ## Co istnieje
 
-- `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions i Inventory oraz projekt kontraktów `Shared.Integration`; 13 endpointów, 14 zdarzeń integracyjnych, 12 tabel, cztery `OutboxProcessor`y i `AuctionCloser`.
-- Testy: cztery projekty xUnit, 230 metod testowych (119 offline, 111 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
+- `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions i Inventory oraz projekt kontraktów `Shared.Integration`; 14 endpointów, 14 zdarzeń integracyjnych, 13 tabel, cztery `OutboxProcessor`y i `AuctionCloser`.
+- Testy: cztery projekty xUnit, 236 metod testowych (119 offline, 117 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
 - CI: `.gitlab-ci.yml` z `build`, `unit-tests` i `integration-tests`.
 - Dokumentacja: `docs/en` i `docs/pl` z tym zestawem stron i 13 wyrenderowanymi diagramami; główne `README.md` i `README.pl.md`.
 - `Backend/Dockerfile` i `compose.yaml` w korzeniu (API + PostgreSQL, migracje aplikowane na starcie za flagą `Database:MigrateOnStartup`).

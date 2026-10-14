@@ -48,7 +48,7 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 
 - Identity: rejestracja, logowanie, JWT z claimem roli, provisioning botów kluczem API, miękko usuwani użytkownicy, BCrypt.
 - Wallets: automatyczny portfel ze skonfigurowanymi środkami startowymi, doładowanie tylko dla botów, blokowanie, odblokowywanie i wydawanie środków, rozliczenie z inboxem i outboxem.
-- Auctions: tworzenie jako `Pending` do czasu blokady przedmiotu przez Inventory, lista i szczegóły przez Dapper, licytacja z ochroną anty-snajperską, zamykanie w tle, outbox z ponowieniami i martwymi wiadomościami, inbox.
+- Auctions: tworzenie jako `Pending` do czasu blokady przedmiotu przez Inventory, lista, szczegóły i historia ofert przez Dapper, licytacja z ochroną anty-snajperską, zamykanie w tle, outbox z ponowieniami i martwymi wiadomościami, inbox.
 - Inventory: przedmioty z cenami zależnymi od rzadkości, crafting, sprzedaż do sklepu, blokowanie i przenoszenie przedmiotów dla aukcji, inbox i outbox.
 - Przekrojowo: pipeline FluentValidation, globalny kontrakt błędów, optymistyczna współbieżność, GitLab CI z Testcontainers.
 
@@ -56,7 +56,6 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 
 Kolejność i uzasadnienia ustali właściciel w wersji angielskiej; ta lista zostanie wtedy przetłumaczona 1:1.
 
-- Historia ofert: tabela ofert per aukcja i `GET /api/auctions/{id}/bids`.
 - Pakiet startowy przedmiotów przyznawany przy rejestracji.
 - RabbitMQ jako transport zdarzeń za `IIntegrationEventPublisher`.
 - Frontend Angular, boty rynkowe AI i API gateway.

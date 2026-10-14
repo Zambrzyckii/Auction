@@ -40,6 +40,8 @@ public class AuctionRepository(AuctionDbContext context) : IAuctionRepository
         }
     }
 
+    public void AddBid(Bid bid) => context.Bids.Add(bid);
+
     public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
     {
         return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);

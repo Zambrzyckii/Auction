@@ -127,5 +127,43 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
         var auction = await fixture.GetAuctionAsync(seeded.PublicAuctionId);
         Assert.Equal(bidderId, auction.CurrentWinningUserId);
         Assert.Single(await GetBidPlacedEventsAsync(seeded.PublicAuctionId));
+
+        await using var context = fixture.CreateContext();
+        Assert.Single(await context.Bids.Where(b => b.PublicAuctionId == seeded.PublicAuctionId).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Handle_WhenBidIsConfirmed_ShouldAppendBidHistoryRow()
+    {
+        var seeded = await fixture.SeedAuctionAsync(activate: true);
+        var bidderId = Guid.NewGuid();
+        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+
+        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m));
+
+        await using var context = fixture.CreateContext();
+        var bid = await context.Bids.SingleAsync(b => b.PublicAuctionId == seeded.PublicAuctionId);
+        Assert.Equal(bidderId, bid.BidderUserId);
+        Assert.Equal(100m, bid.Amount);
+        Assert.True(bid.PlacedOn <= DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task Handle_WhenAuctionIsNoLongerActive_ShouldNotAppendBidHistoryRow()
+    {
+        var seeded = await fixture.SeedAuctionAsync(activate: true);
+        var bidderId = Guid.NewGuid();
+        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+        await using (var context = fixture.CreateContext())
+        {
+            var auction = await context.Auctions.SingleAsync(a => a.PublicAuctionId == seeded.PublicAuctionId);
+            auction.CloseAuction();
+            await context.SaveChangesAsync();
+        }
+
+        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m));
+
+        await using var verifyContext = fixture.CreateContext();
+        Assert.Empty(await verifyContext.Bids.Where(b => b.PublicAuctionId == seeded.PublicAuctionId).ToListAsync());
     }
 }

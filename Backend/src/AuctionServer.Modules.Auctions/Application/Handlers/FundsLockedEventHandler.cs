@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
+using AuctionServer.Modules.Auctions.Domain.Entities;
 using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
 using AuctionServer.Modules.Auctions.Infrastructure.Inbox;
@@ -26,6 +27,13 @@ public sealed class FundsLockedEventHandler(IAuctionRepository repository) : INo
             var previousPrice = previousWinnerId is null ? (decimal?)null : auction.CurrentPrice;
 
             auction.ConfirmPendingBid();
+
+            repository.AddBid(new Bid
+            {
+                PublicAuctionId = auction.PublicAuctionId,
+                BidderUserId = auction.CurrentWinningUserId!.Value,
+                Amount = auction.CurrentPrice
+            });
 
             outboxMessage = new OutboxMessage
             {

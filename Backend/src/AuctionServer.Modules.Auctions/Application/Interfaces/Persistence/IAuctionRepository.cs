@@ -10,6 +10,7 @@ public interface IAuctionRepository
     public Task<Auction> GetAuctionByIdAsync(Guid publicAuctionId, CancellationToken token);
     public Task CreateAuctionAsync(Auction auction, OutboxMessage outboxMessage, CancellationToken token);
     public Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
+    public void AddBid(Bid bid);
     public Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token);
     public Task SaveChangesWithInboxAndOutboxAsync(ProcessedMessage message, OutboxMessage outboxMessage, CancellationToken token);
 }

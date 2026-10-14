@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using MediatR;
 using AuctionServer.Modules.Auctions.Application.Commands.PlaceBid;
 using AuctionServer.Modules.Auctions.Application.Queries.GetActiveAuctions;
+using AuctionServer.Modules.Auctions.Application.Queries.GetAuctionBids;
 using AuctionServer.Modules.Auctions.Application.Queries.GetAuctionById;
 using AuctionServer.Modules.Auctions.Presentation.Request;
 
@@ -42,6 +43,12 @@ public static class AuctionEndpoints
         group.MapGet("/{id:guid}", async (Guid id, ISender sender) =>
         {
             var result = await sender.Send(new GetAuctionByIdQuery(id));
+            return Results.Ok(result);
+        });
+
+        group.MapGet("/{id:guid}/bids", async (Guid id, ISender sender) =>
+        {
+            var result = await sender.Send(new GetAuctionBidsQuery(id));
             return Results.Ok(result);
         });
         
