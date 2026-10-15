@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Banking.Application.Options;
+using AuctionServer.Modules.Banking.Domain.Entities;
 using AuctionServer.Modules.Banking.Domain.Enums;
 using AuctionServer.Modules.Banking.Infrastructure.Outbox;
 using AuctionServer.Modules.Banking.Infrastructure.Persistence;
@@ -40,7 +41,9 @@ public sealed class BankKeeper(IServiceProvider serviceProvider, ILogger<BankKee
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<BankingDbContext>();
         await RejectStaleApprovalsAsync(context, token);
+        await AbortStuckCollectionsAsync(context, token);
         await CollectMaturedLoansAsync(context, token);
+        await RetryOverdueCollectionsAsync(context, token);
     }
     
     private async Task RejectStaleApprovalsAsync(BankingDbContext context, CancellationToken token)
@@ -61,6 +64,24 @@ public sealed class BankKeeper(IServiceProvider serviceProvider, ILogger<BankKee
         await context.SaveChangesAsync(token);
     }
 
+    private async Task AbortStuckCollectionsAsync(BankingDbContext context, CancellationToken token)
+    {
+        var cutoff = DateTime.UtcNow - options.CollectionPendingTimeout;
+        var stuckLoans = await context.Loans
+            .Where(l => l.Status == LoanStatus.CollectionPending && l.LastCollectionRequestedOn <= cutoff)
+            .Take(50)
+            .ToListAsync(token);
+        if (stuckLoans.Count == 0) return;
+
+        foreach (var loan in stuckLoans)
+        {
+            logger.LogWarning("Aborting stuck collection for loan {PublicLoanId}", loan.PublicLoanId);
+            loan.AbortCollection();
+        }
+
+        await context.SaveChangesAsync(token);
+    }
+
     private async Task CollectMaturedLoansAsync(BankingDbContext context, CancellationToken token)
     {
         var now = DateTime.UtcNow;
@@ -70,7 +91,27 @@ public sealed class BankKeeper(IServiceProvider serviceProvider, ILogger<BankKee
             .ToListAsync(token);
         if (maturedLoans.Count == 0) return;
 
-        foreach (var loan in maturedLoans)
+        EmitCollectionRequests(context, maturedLoans, now);
+        await context.SaveChangesAsync(token);
+    }
+
+    private async Task RetryOverdueCollectionsAsync(BankingDbContext context, CancellationToken token)
+    {
+        var now = DateTime.UtcNow;
+        var cutoff = now - options.CollectionRetryInterval;
+        var overdueLoans = await context.Loans
+            .Where(l => l.Status == LoanStatus.Overdue && l.LastCollectionRequestedOn <= cutoff)
+            .Take(50)
+            .ToListAsync(token);
+        if (overdueLoans.Count == 0) return;
+
+        EmitCollectionRequests(context, overdueLoans, now);
+        await context.SaveChangesAsync(token);
+    }
+
+    private static void EmitCollectionRequests(BankingDbContext context, List<Loan> loans, DateTime now)
+    {
+        foreach (var loan in loans)
         {
             var outstanding = loan.RequestCollection(now);
             var eventId = Guid.NewGuid();
@@ -82,7 +123,5 @@ public sealed class BankKeeper(IServiceProvider serviceProvider, ILogger<BankKee
                     eventId, loan.PublicLoanId, loan.UserId, outstanding))
             });
         }
-
-        await context.SaveChangesAsync(token);
     }
 }

@@ -171,4 +171,43 @@ public class LoanCollectionTests
 
         Assert.Throws<BankingExceptions.InvalidLoanStateTransitionException>(() => loan.ApplyCollection(100m, AtDue));
     }
+
+    [Fact]
+    public void AbortCollection_WhenNeverOverdue_ShouldReturnToActiveWithoutPenalty()
+    {
+        var loan = CreateActiveLoan();
+        loan.RequestCollection(AtDue);
+        var versionBefore = loan.Version;
+
+        loan.AbortCollection();
+
+        Assert.Equal(LoanStatus.Active, loan.Status);
+        Assert.Equal(0m, loan.Penalty);
+        Assert.Null(loan.OverdueSince);
+        Assert.NotEqual(versionBefore, loan.Version);
+    }
+
+    [Fact]
+    public void AbortCollection_WhenPreviouslyOverdue_ShouldReturnToOverdueWithoutNewPenalty()
+    {
+        var loan = CreateActiveLoan();
+        loan.RequestCollection(AtDue);
+        loan.ApplyCollection(100m, AtDue);
+        loan.RequestCollection(AfterDue);
+
+        loan.AbortCollection();
+
+        Assert.Equal(LoanStatus.Overdue, loan.Status);
+        Assert.Equal(24.00m, loan.Penalty);
+        Assert.Equal(AtDue, loan.OverdueSince);
+        Assert.Equal(144m, loan.Outstanding);
+    }
+
+    [Fact]
+    public void AbortCollection_WhenNotCollectionPending_ShouldThrowInvalidTransition()
+    {
+        var loan = CreateActiveLoan();
+
+        Assert.Throws<BankingExceptions.InvalidLoanStateTransitionException>(() => loan.AbortCollection());
+    }
 }

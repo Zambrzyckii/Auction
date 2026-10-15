@@ -116,4 +116,13 @@ public sealed class Loan
 
         Status = LoanStatus.Overdue;
     }
+
+    public void AbortCollection()
+    {
+        if (Status != LoanStatus.CollectionPending)
+            throw new BankingExceptions.InvalidLoanStateTransitionException(Status, LoanStatus.Active);
+
+        Status = OverdueSince == null ? LoanStatus.Active : LoanStatus.Overdue;
+        Version = Guid.NewGuid();
+    }
 }
