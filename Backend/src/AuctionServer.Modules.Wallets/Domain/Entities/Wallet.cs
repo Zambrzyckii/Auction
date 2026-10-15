@@ -22,6 +22,14 @@ public sealed class Wallet
     public void ReceiveTransfer(decimal amount) => Credit(amount, countsTowardTurnover: false);
     public void GrantStartingFunds(decimal amount) => Credit(amount, countsTowardTurnover: false);
 
+    public void DisburseLoan(decimal principal, decimal requiredTurnover)
+    {
+        if (requiredTurnover > LifetimeTurnover)
+            throw new WalletExceptions.InsufficientTurnoverException(requiredTurnover, LifetimeTurnover);
+        
+        Credit(principal, countsTowardTurnover: true);
+    }
+
     private void Credit(decimal amount, bool countsTowardTurnover)
     {
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();

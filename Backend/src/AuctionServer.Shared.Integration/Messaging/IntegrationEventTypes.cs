@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Shared.Integration.Events.Auctions;
+using AuctionServer.Shared.Integration.Events.Banking;
 using AuctionServer.Shared.Integration.Events.Funds;
 using AuctionServer.Shared.Integration.Events.Items;
 using AuctionServer.Shared.Integration.Events.Users;
@@ -31,7 +32,10 @@ public static class IntegrationEventTypes
         [nameof(WarehouseEntryLockRequestedEvent)] = typeof(WarehouseEntryLockRequestedEvent),
         [nameof(WarehouseEntryLockedEvent)] = typeof(WarehouseEntryLockedEvent),
         [nameof(WarehouseEntryLockRejectedEvent)] = typeof(WarehouseEntryLockRejectedEvent),
-        [nameof(WarehouseWonEvent)] = typeof(WarehouseWonEvent)
+        [nameof(WarehouseWonEvent)] = typeof(WarehouseWonEvent),
+        [nameof(LoanRequestedEvent)] = typeof(LoanRequestedEvent),
+        [nameof(LoanApprovedEvent)] = typeof(LoanApprovedEvent),
+        [nameof(LoanRejectedEvent)] = typeof(LoanRejectedEvent)
     };
 
     public static INotification Deserialize(string type, string content)

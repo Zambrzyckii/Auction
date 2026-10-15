@@ -11,4 +11,6 @@
   <Project Path="src/AuctionServer.Modules.Wallets/AuctionServer.Modules.Wallets.csproj" />
   <Project Path="src/AuctionServer.Modules.Warehouses/AuctionServer.Modules.Warehouses.csproj" />
   <Project Path="tests/AuctionServer.Modules.Warehouses.Tests/AuctionServer.Modules.Warehouses.Tests.csproj" />
+  <Project Path="src/AuctionServer.Modules.Banking/AuctionServer.Modules.Banking.csproj" />
+  <Project Path="tests/AuctionServer.Modules.Banking.Tests/AuctionServer.Modules.Banking.Tests.csproj" />
 </Solution>

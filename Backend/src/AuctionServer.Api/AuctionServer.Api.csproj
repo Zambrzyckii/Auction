@@ -26,6 +26,7 @@
     <ProjectReference Include="..\AuctionServer.Modules.Inventory\AuctionServer.Modules.Inventory.csproj" />
     <ProjectReference Include="..\AuctionServer.Modules.Auctions\AuctionServer.Modules.Auctions.csproj" />
     <ProjectReference Include="..\AuctionServer.Modules.Warehouses\AuctionServer.Modules.Warehouses.csproj" />
+    <ProjectReference Include="..\AuctionServer.Modules.Banking\AuctionServer.Modules.Banking.csproj" />
   </ItemGroup>
 
 </Project>

@@ -30,3 +30,4 @@ integration-tests:
     - dotnet test Backend/tests/AuctionServer.Modules.Identity.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Inventory.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Warehouses.Tests
+    - dotnet test Backend/tests/AuctionServer.Modules.Banking.Tests

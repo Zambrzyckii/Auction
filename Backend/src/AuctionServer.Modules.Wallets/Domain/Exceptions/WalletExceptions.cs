@@ -17,4 +17,6 @@ public static class WalletExceptions
     public class LockNotFoundException(Guid publicAuctionId)
         : AppException($"No active funds lock for auction {publicAuctionId}", 404);
     public class LockAlreadyExistsException() : AppException("Funds lock for this auction already exists", 409);
+    public class InsufficientTurnoverException(decimal required, decimal current)
+        : AppException($"Lifetime turnover {current} is below the required {required}", 409);
 }
