@@ -20,7 +20,7 @@ Started on 2026-10-14 with the Compose file; the broker and the gateway remain p
 |---|---|
 | a transport seam | `IIntegrationEventPublisher.PublishAsync(messageId, type, content)` is the single place where events leave a module; `IntegrationEventTypes` turns `type` and `content` back into a typed event |
 | configuration from the environment | every setting is read through `IConfiguration`, so `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` and `Wallets__StartingFunds` can be injected as environment variables |
-| a reproducible database | the schema is fully described by the four migration sets, applied with `dotnet ef database update` per context or at startup when `Database:MigrateOnStartup` is `true` (Compose sets it) |
+| a reproducible database | the schema is fully described by the six migration sets, applied with `dotnet ef database update` per context or at startup when `Database:MigrateOnStartup` is `true` (Compose sets it) |
 | a CI baseline | `.gitlab-ci.yml` builds and tests on every push inside the official SDK image with docker-in-docker |
 
 ## What is missing

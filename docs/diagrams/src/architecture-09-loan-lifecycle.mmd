@@ -1,0 +1,24 @@
+stateDiagram-v2
+    [*] --> PendingApproval: Loan.Create (POST /api/bank/loans), TotalDue frozen
+    PendingApproval --> Active: Approve(now) on LoanApprovedEvent, DueOn = now + Term
+    PendingApproval --> Rejected: Reject(reason) on LoanRejectedEvent
+    PendingApproval --> Rejected: Reject("Approval timed out") by BankKeeper after ApprovalTimeout
+    Active --> CollectionPending: RequestCollection by BankKeeper at DueOn or by POST repayments
+    Overdue --> CollectionPending: RequestCollection retried every CollectionRetryInterval
+    CollectionPending --> Repaid: ApplyCollection covers the whole Outstanding
+    CollectionPending --> Active: partial collection requested before DueOn, no penalty
+    CollectionPending --> Overdue: partial collection at or past DueOn, one-time penalty on the remainder
+    CollectionPending --> Active: AbortCollection by BankKeeper after CollectionPendingTimeout, never overdue before
+    CollectionPending --> Overdue: AbortCollection by BankKeeper after CollectionPendingTimeout, OverdueSince already set
+    Repaid --> [*]
+    Rejected --> [*]
+    note right of PendingApproval
+        filtered unique index keeps one loan
+        per user while Status IN (0, 1, 2, 3)
+        (Rejected and Repaid free the slot)
+    end note
+    note right of Overdue
+        penalty charged exactly once,
+        guarded by OverdueSince == null,
+        new loans blocked until Repaid
+    end note

@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/messaging.md](../../pl/backend/messaging.md)
 
-`AuctionServer.Shared.Integration` is the only project every module references, and the outbox and inbox tables are the only way modules influence each other. This chapter describes the shared project, the outbox row and its processor, the retry and dead-letter policy, the inbox pattern on the consuming side, the publisher seam that a message broker would replace, and the catalog of the twenty integration events.
+`AuctionServer.Shared.Integration` is the only project every module references, and the outbox and inbox tables are the only way modules influence each other. This chapter describes the shared project, the outbox row and its processor, the retry and dead-letter policy, the inbox pattern on the consuming side, the publisher seam that a message broker would replace, and the catalog of the twenty-five integration events.
 
 ## Overview
 
@@ -10,7 +10,7 @@
 
 | Folder | Contents |
 |---|---|
-| `Events/` | twenty `record` types implementing MediatR `INotification`, plus the `WarehouseStockItem` payload record, grouped by subject into `Auctions/`, `Funds/`, `Items/`, `Users/` and `Warehouses/`; every event record starts with `Guid EventId` |
+| `Events/` | twenty-five `record` types implementing MediatR `INotification`, plus the `WarehouseStockItem` payload record, grouped by subject into `Auctions/`, `Banking/`, `Funds/`, `Items/`, `Users/` and `Warehouses/`; every event record starts with `Guid EventId` |
 | `Exceptions/` | `AppException(message, statusCode)`, the abstract base of every domain exception, and `RequestValidationException` (400) |
 | `Messaging/` | `IIntegrationEventPublisher` (the publisher seam) and `IntegrationEventTypes` (the name-to-type registry used to deserialize outbox rows) |
 | `Validators/` | `ValidationBehaviour<,>`, the MediatR pipeline behavior that runs FluentValidation validators before a handler |
@@ -26,7 +26,7 @@ The diagram shows one event travelling from the producing module's transaction t
   <img alt="Outbox to inbox diagram" src="../../diagrams/backend-messaging-01-outbox-to-inbox.svg">
 </picture>
 
-Every module owns a copy of [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) and of [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); the five copies differ only in the `DbContext` they use and, in Identity, in two public setters (`Errors`, `IsDead`) and a non-sealed processor class. The tables are `OutboxMessages` (Auctions, no `ToTable` call), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages` and `WarehousesOutboxMessages`.
+Every module owns a copy of [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) and of [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); the six copies differ only in the `DbContext` they use and, in Identity, in two public setters (`Errors`, `IsDead`) and a non-sealed processor class. The tables are `OutboxMessages` (Auctions, no `ToTable` call), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages`, `WarehousesOutboxMessages` and `BankingOutboxMessages`.
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -63,7 +63,7 @@ The diagram shows the states of one outbox row.
 | 4th | 5 | 160 s |
 | 5th | 6 | none, the row is marked dead |
 
-A dead row keeps its full `Errors` history, and nothing in the code base replays it; reviving one means resetting `IsDead` by hand. The four tables can be inspected with a plain query, for example:
+A dead row keeps its full `Errors` history, and nothing in the code base replays it; reviving one means resetting `IsDead` by hand. The six tables can be inspected with a plain query, for example:
 
 ```sql
 SELECT "Id", "Type", "AttemptCount", "Errors" FROM "OutboxMessages" WHERE "IsDead";
@@ -71,7 +71,7 @@ SELECT "Id", "Type", "AttemptCount", "Errors" FROM "OutboxMessages" WHERE "IsDea
 
 ## Inbox
 
-A consuming module keeps a `ProcessedMessages` table with a single meaningful column, `EventId` (the primary key), plus `ProcessedOn`; the entity is [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs) and the tables are `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages` and `WarehousesProcessedMessages`. Identity consumes no events and has no inbox. Every consuming handler follows the same steps:
+A consuming module keeps a `ProcessedMessages` table with a single meaningful column, `EventId` (the primary key), plus `ProcessedOn`; the entity is [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs) and the tables are `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages`, `WarehousesProcessedMessages` and `BankingProcessedMessages`. Identity consumes no events and has no inbox. Every consuming handler follows the same steps:
 
 1. Call `WasEventProcessedAsync(EventId)` and return when the id is already recorded.
 2. Load the aggregate and apply the domain change.
@@ -103,12 +103,17 @@ A consuming module keeps a `ProcessedMessages` table with a single meaningful co
 | `WarehouseStockedEventHandler` | Warehouses | `SaveStockWithInboxAsync` | none |
 | `WarehouseEntryLockedEventHandler` | Warehouses | `SaveWarWithInboxAsync`, or `SaveWarWithInboxAndOutboxAsync` on the refund path | `FundsUnlockRequestedEvent` for an orphaned lock |
 | `WarehouseEntryLockRejectedEventHandler` | Warehouses | `SaveWarWithInboxAsync` | none; a missing participant is a valid outcome |
+| `LoanRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `LoanApprovedEvent` or `LoanRejectedEvent` |
+| `LoanRepaymentRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `LoanRepaymentCollectedEvent`, always, even for a zero collection |
+| `LoanApprovedEventHandler` | Banking | `SaveLoanWithInboxAsync` | none |
+| `LoanRejectedEventHandler` | Banking | `SaveLoanWithInboxAsync` | none |
+| `LoanRepaymentCollectedEventHandler` | Banking | `SaveLoanWithInboxAsync` | none |
 
-Only `EventAlreadyProcessedException` is caught. A missing aggregate (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), a domain rule (`InsufficientFundsException`, `LockNotFoundException`, `ItemNotLockedException`, `InvalidAuctionStateTransitionException`) and a `DbUpdateConcurrencyException` all propagate to the producer's `OutboxProcessor`, where they count as a failed attempt. The intent is visible failure: a message that cannot be applied ends up dead with its reason recorded instead of being skipped.
+Only `EventAlreadyProcessedException` is caught. A missing aggregate (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), a domain rule (`InsufficientFundsException`, `LockNotFoundException`, `ItemNotLockedException`, `InvalidAuctionStateTransitionException`, `InvalidLoanStateTransitionException`) and a `DbUpdateConcurrencyException` all propagate to the producer's `OutboxProcessor`, where they count as a failed attempt. The intent is visible failure: a message that cannot be applied ends up dead with its reason recorded instead of being skipped.
 
 ## Publisher seam
 
-[`IIntegrationEventPublisher`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs) has one method, `PublishAsync(Guid messageId, string type, string content, CancellationToken token)`. The host registers `InProcessEventPublisher` for it as a scoped service in [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs); the implementation ignores `messageId`, calls [`IntegrationEventTypes.Deserialize(type, content)`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) and hands the result to MediatR `IPublisher.Publish`, which runs the handlers one after another in DI registration order (Auctions, Wallets, Identity, Inventory, Warehouses assemblies). `Deserialize` throws `NotSupportedException` for a type that is not in the registry and `JsonException` for an empty payload; both land in `Errors` of the outbox row.
+[`IIntegrationEventPublisher`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs) has one method, `PublishAsync(Guid messageId, string type, string content, CancellationToken token)`. The host registers `InProcessEventPublisher` for it as a scoped service in [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs); the implementation ignores `messageId`, calls [`IntegrationEventTypes.Deserialize(type, content)`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) and hands the result to MediatR `IPublisher.Publish`, which runs the handlers one after another in DI registration order (Auctions, Wallets, Identity, Inventory, Warehouses, Banking assemblies). `Deserialize` throws `NotSupportedException` for a type that is not in the registry and `JsonException` for an empty payload; both land in `Errors` of the outbox row.
 
 Replacing the in-process bus with a broker means one new `IIntegrationEventPublisher` implementation that sends `Type` and `Content` to the broker, plus a host-side consumer that deserializes incoming messages the same way and publishes them to MediatR; the modules, their outboxes and their inboxes stay as they are. Adding an event means adding a record to the right subject folder under `Events/` and one line to the registry; the producer stores `nameof(TheEvent)` in `Type`, so the folder and namespace never reach the database.
 
@@ -136,10 +141,15 @@ Replacing the in-process bus with a broker means one new `IIntegrationEventPubli
 | `WarehouseEntryLockedEvent` | `PublicWarehouseId`, `UserId` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockedEventHandler` | yes |
 | `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | yes |
 | `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | Wallets and Inventory `WarehouseWonEventHandler` | yes |
+| `LoanRequestedEvent` | `PublicLoanId`, `UserId`, `Principal`, `RequiredTurnover` | Banking `CreateLoanCommandHandler` | Wallets `LoanRequestedEventHandler` | yes |
+| `LoanApprovedEvent` | `PublicLoanId`, `UserId` | Wallets `LoanRequestedEventHandler` | Banking `LoanApprovedEventHandler` | yes |
+| `LoanRejectedEvent` | `PublicLoanId`, `UserId`, `Reason` | Wallets `LoanRequestedEventHandler` | Banking `LoanRejectedEventHandler` | yes |
+| `LoanRepaymentRequestedEvent` | `PublicLoanId`, `UserId`, `Amount` | Banking `BankKeeper`, `RepayLoanCommandHandler` | Wallets `LoanRepaymentRequestedEventHandler` | yes |
+| `LoanRepaymentCollectedEvent` | `PublicLoanId`, `UserId`, `AmountCollected` | Wallets `LoanRepaymentRequestedEventHandler` | Banking `LoanRepaymentCollectedEventHandler` | yes |
 
 ## Decisions
 
-- The outbox and inbox are copied into every module instead of living in `Shared.Integration`, so the shared project stays a contracts-only assembly with no EF Core dependency; the price is five identical classes to keep in sync (see [ADR-002](../adr/002-transactional-outbox-and-inbox.md)).
+- The outbox and inbox are copied into every module instead of living in `Shared.Integration`, so the shared project stays a contracts-only assembly with no EF Core dependency; the price is six identical classes to keep in sync (see [ADR-002](../adr/002-transactional-outbox-and-inbox.md)).
 - The bus is in-process and the publisher is a seam, so the modules were written for at-least-once delivery from the start and a broker can be introduced without touching them (see [ADR-003](../adr/003-in-process-event-bus-before-rabbitmq.md)).
 - Handlers let unexpected exceptions escape on purpose, so a message that cannot be applied becomes a dead row with its error history rather than a silent skip.
 
@@ -147,5 +157,5 @@ Replacing the in-process bus with a broker means one new `IIntegrationEventPubli
 
 - [README.md](README.md) - backend overview, running, configuration, tests.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - the three auction flows as sequence diagrams.
-- [auctions.md](auctions.md), [wallets.md](wallets.md), [inventory.md](inventory.md), [identity.md](identity.md) - producers and consumers per module.
+- [auctions.md](auctions.md), [wallets.md](wallets.md), [inventory.md](inventory.md), [identity.md](identity.md), [warehouses.md](warehouses.md), [banking.md](banking.md) - producers and consumers per module.
 - [../adr/002-transactional-outbox-and-inbox.md](../adr/002-transactional-outbox-and-inbox.md), [../adr/003-in-process-event-bus-before-rabbitmq.md](../adr/003-in-process-event-bus-before-rabbitmq.md) - the two messaging ADRs.

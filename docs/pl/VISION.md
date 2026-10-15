@@ -51,6 +51,7 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 - Auctions: tworzenie jako `Pending` do czasu blokady przedmiotu przez Inventory, lista, szczegóły i historia ofert przez Dapper, licytacja z ochroną anty-snajperską, zamykanie w tle, outbox z ponowieniami i martwymi wiadomościami, inbox.
 - Inventory: przedmioty z cenami zależnymi od rzadkości, crafting, sprzedaż do sklepu, konfigurowalny pakiet startowy przy rejestracji, blokowanie i przenoszenie przedmiotów dla aukcji, inbox i outbox.
 - Warehouses: wojny magazynowe zasilane pulą w tle, ukryte manifesty wyceniane przez Inventory, celowo zwodnicze widełki, wpisowe blokowane przez Wallets będące zarazem budżetem podbić, okna podbić 5-10 s ze stałymi kwotami, rozliczenie mintujące manifest dla zwycięzcy i usuwające cenę końcową z obiegu, inbox i outbox.
+- Banking: stałe oferty pożyczek bramkowane skumulowanym obrotem portfela, asynchroniczne sagi udzielenia i pobrania z Wallets, jedna spłata w terminie zapadalności ściągana przez keepera, częściowe pobranie z jednorazową karą i automatycznymi ponowieniami, wcześniejsza ręczna spłata, inbox i outbox.
 - Przekrojowo: pipeline FluentValidation, globalny kontrakt błędów, optymistyczna współbieżność, GitLab CI z Testcontainers.
 
 ## 6. Planowane dalej
@@ -62,7 +63,7 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 1. **Pakiet startowy** przyznawany przy rejestracji, zdefiniowany w konfiguracji (mały, wszedł 2026-10-14).
 2. **Przelewy między graczami** z append-only historią przelewów (małe, weszły 2026-10-14).
 3. **Aukcje magazynów-niespodzianek**: magazyn o losowej zawartości, pokazywany przed licytacją tylko jako celowo zwodnicze widełki wartości, żeby magazyny nie były gwarantowanym zarobkiem (duże, weszły 2026-10-15 jako moduł Warehouses).
-4. **Bank** udzielający pożyczek z oprocentowaniem (średni, wymaga zadania okresowego w stylu `AuctionCloser` i świadomego projektu ekonomii, bo pożyczki tworzą pieniądz).
+4. **Bank** udzielający pożyczek z oprocentowaniem (średni, wszedł 2026-10-15 jako moduł Banking: oferty bramkowane obrotem, pobranie w terminie zapadalności przez `BankKeeper`, kary za przeterminowanie i ponowienia; wypłata tworzy pieniądz, pobranie niszczy kapitał, odsetki i karę).
 5. **Lombard**, w którym gracz zatrudnia dobrze wyszkolone boty dla pasywnego dochodu (średni, też tworzy pieniądz, zależy od decyzji ekonomicznych z punktu 4).
 6. **Kasyno** z prostymi zabawowymi grami jak ruletka i blackjack (średnie, źródła i zlewy bilansowane razem z punktami 4 i 5).
 7. **Profile użytkowników**: znajomi, avatar, podpięte prawdziwe konta społecznościowe i opcja profilu prywatnego, który ukrywa wszystko poza zdjęciem profilowym (średnie, dotyka danych osobowych, więc prywatność jest częścią projektu od początku).

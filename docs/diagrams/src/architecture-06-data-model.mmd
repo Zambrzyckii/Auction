@@ -15,6 +15,7 @@ erDiagram
         uuid UserId PK "equals Users.PublicUserId"
         numeric AvailableFunds "18,2"
         numeric LockedFunds "18,2"
+        numeric LifetimeTurnover "18,2 economy credits only"
         boolean IsSuspendedWallet "unique UserId where false"
         uuid Version "concurrency token"
     }
@@ -98,6 +99,28 @@ erDiagram
         varchar Rarity "max 16, stored as text"
         numeric Price "18,2 minted at settlement"
     }
+    BANKING__BankingLoans {
+        integer Id PK "identity column"
+        uuid PublicLoanId UK
+        uuid UserId "unique while Status IN (0, 1, 2, 3)"
+        varchar OfferName "max 64, snapshot"
+        numeric Principal "18,2 snapshot"
+        numeric InterestRate "5,4 snapshot"
+        numeric PenaltyRate "5,4 snapshot"
+        numeric RequiredTurnover "18,2 snapshot"
+        interval Term "snapshot"
+        numeric TotalDue "18,2 frozen at Create"
+        numeric Penalty "18,2 charged once"
+        numeric AmountRepaid "18,2"
+        integer Status "PendingApproval=0 Active=1 CollectionPending=2 Overdue=3 Repaid=4 Rejected=5"
+        timestamptz RequestedOn "approval timeout"
+        timestamptz DueOn "nullable, set on Approve"
+        timestamptz LastCollectionRequestedOn "nullable, retry and abort cutoff"
+        timestamptz OverdueSince "nullable, penalty charged marker"
+        timestamptz RepaidOn "nullable"
+        text RejectionReason "nullable, max 256"
+        uuid Version "concurrency token"
+    }
     IDENTITY__IdentityOutboxMessages {
         uuid Id PK
     }
@@ -125,6 +148,12 @@ erDiagram
     WAREHOUSES__WarehousesProcessedMessages {
         uuid EventId PK
     }
+    BANKING__BankingOutboxMessages {
+        uuid Id PK
+    }
+    BANKING__BankingProcessedMessages {
+        uuid EventId PK
+    }
     AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
@@ -137,3 +166,5 @@ erDiagram
     WAREHOUSES__WarehousesWars ||..o{ WAREHOUSES__WarehousesStockItems : "PublicWarehouseId, no FK"
     WAREHOUSES__WarehousesWars |o..o{ WALLETS__WalletsFundsLocks : "PublicWarehouseId stored in PublicAuctionId, no FK"
     IDENTITY__Users ||..o{ WAREHOUSES__WarehousesParticipants : "UserId, no FK"
+    IDENTITY__Users ||..o{ BANKING__BankingLoans : "UserId, no FK"
+    WALLETS__Wallets |o..o{ BANKING__BankingLoans : "UserId, disbursement and collection via events only"

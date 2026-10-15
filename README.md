@@ -2,11 +2,11 @@
 
 > English version. Polish counterpart: [README.pl.md](README.pl.md)
 
-**AuctionServer** is a gamified auction house built as a **modular monolith in .NET 10 on PostgreSQL**: users register, receive a virtual wallet, collect and craft items, trade them through timed auctions with anti-sniping, automatic closing and exactly-once settlement, and bid in fast warehouse wars over hidden stock. It is a portfolio and learning project whose point is the architecture: strict module boundaries, event-driven integration through a transactional outbox and inbox, and correctness guarantees (idempotency, optimistic concurrency, atomic writes) that demo projects usually skip.
+**AuctionServer** is a gamified auction house built as a **modular monolith in .NET 10 on PostgreSQL**: users register, receive a virtual wallet, collect and craft items, trade them through timed auctions with anti-sniping, automatic closing and exactly-once settlement, bid in fast warehouse wars over hidden stock and take bank loans gated by their lifetime market turnover. It is a portfolio and learning project whose point is the architecture: strict module boundaries, event-driven integration through a transactional outbox and inbox, and correctness guarantees (idempotency, optimistic concurrency, atomic writes) that demo projects usually skip.
 
 ## Status
 
-The backend is complete for the main flow: five modules (Identity, Wallets, Auctions, Inventory, Warehouses), 21 endpoints, 20 integration events, 344 test methods and CI pipelines for GitLab and GitHub Actions. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: six modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking), 25 endpoints, 25 integration events, 428 test methods and CI pipelines for GitLab and GitHub Actions. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 

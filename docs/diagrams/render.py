@@ -26,11 +26,14 @@ PALETTE = {
     "#D1FAE5": "#064E3B", "#059669": "#34D399", "#064E3B": "#D1FAE5",  # wallets (emerald)
     "#E0F2FE": "#0C4A6E", "#0284C7": "#38BDF8", "#0C4A6E": "#E0F2FE",  # auctions (sky)
     "#FFE4E6": "#881337", "#E11D48": "#FB7185", "#881337": "#FFE4E6",  # inventory (rose)
+    "#CCFBF1": "#134E4A", "#0D9488": "#2DD4BF", "#134E4A": "#CCFBF1",  # warehouses (teal)
+    "#ECFCCB": "#365314", "#65A30D": "#A3E635", "#365314": "#ECFCCB",  # banking (lime)
     "#E2E8F0": "#334155", "#475569": "#94A3B8", "#0F172A": "#F1F5F9",  # shared (slate)
     "#F4F4F5": "#27272A", "#71717A": "#A1A1AA", "#27272A": "#F4F4F5",  # planned (zinc, dashed)
     "#F3E8FF": "#581C87", "#9333EA": "#C084FC", "#581C87": "#F3E8FF",  # db (purple)
     "#EEF2FF": "#1E1B4B", "#FFFBEB": "#451A03", "#F0FDF4": "#022C22",  # subgraph fills: host, identity, wallets
     "#F0F9FF": "#082F49", "#FFF1F2": "#4C0519", "#F8FAFC": "#1E293B", "#FAFAFA": "#18181B",  # subgraph fills: auctions, inventory, shared, planned
+    "#F0FDFA": "#042F2E", "#F7FEE7": "#1A2E05",  # subgraph fills: warehouses, banking
 }
 HEX = re.compile(r"#[0-9A-Fa-f]{6}")
 

@@ -25,9 +25,9 @@ docker compose up -d                              # from the repo ROOT: API on :
 
 ### Tests
 
-Five test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
+Six test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
 
-- All five mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
+- All six mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
   `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull
   `postgres:latest`; each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
@@ -67,6 +67,9 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Wallets \
   --output-dir Infrastructure/Persistence/Migrations
 dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Warehouses \
   --startup-project src/AuctionServer.Api --context WarehouseDbContext \
+  --output-dir Infrastructure/Persistence/Migrations
+dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Banking \
+  --startup-project src/AuctionServer.Api --context BankingDbContext \
   --output-dir Infrastructure/Persistence/Migrations
 ```
 
@@ -115,6 +118,9 @@ first request and `Encoding.UTF8.GetBytes(null)` throws (`Program.cs:42`). Suppl
 `Program.cs:34` throws `InvalidOperationException` when it is missing and `AddWalletsModule(connectionString, startingFunds)`
 throws `ArgumentOutOfRangeException` when it is `<= 0`. The whole `Warehouses` section (tiers, estimates, pool and
 timing knobs, bound to `WarehousesOptions`) has the same fail-fast at `Program.cs:36`.
+The whole `Banking` section (penalty rate, retry interval, both timeouts and the loan offers, bound to `BankingOptions`)
+has the same fail-fast in `Program.cs`; `AddBankingModule` validates the values (offers non-empty and unique, timeouts
+`>= 10 min`).
 `Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
 it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app starts and `POST /api/users/bots` answers 401.
 
@@ -122,7 +128,7 @@ it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app 
 deliberately does not read them (dev-only values are inline there) and no code reads them either. Treat them as
 leftovers, not as the app's configuration path.
 
-The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all five
+The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all six
 contexts' migrations between `Build()` and `Run()`, before the outbox processors start. The flag defaults to
 `false` in `appsettings.json`, so `dotnet run` and the test fixtures keep migrating explicitly.
 
@@ -141,6 +147,7 @@ AuctionServer.Modules.Wallets      virtual funds with a per-bid lock ledger and 
 AuctionServer.Modules.Identity     register/login/bot provisioning (BCrypt, JWT with name/id/role claims, 24 h bot tokens)
 AuctionServer.Modules.Inventory    items/crafting/shop + bot-only mint and a config-driven starter pack on registration; locks items for auctions, transfers them to the winner
 AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 5-10 s raise windows, settlement burns the final price; CQS — EF Core for both
+AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wallet turnover, grant and collection sagas with Wallets, one repayment at maturity pulled by BankKeeper, one-time overdue penalty with retries; CQS — EF Core for both
 AuctionServer.Shared.Integration   the only shared project: integration events + AppException
 ```
 
@@ -229,22 +236,35 @@ Active event flows:
   warehouse refunds reuse `FundsUnlockRequestedEvent`; its missing-lock tolerance makes redundant refunds safe.
   Timers (lobby countdown, raise windows, pool refill) live in `WarehouseKeeper` (1 s loop). Details with the full
   event table: `docs/en/backend/warehouses.md`.
+- **Bank sagas** (two, both request/reply with Wallets): loan grant — `POST /api/bank/loans` stores a `PendingApproval`
+  loan plus `LoanRequestedEvent` in one save → Wallets' `LoanRequestedEventHandler` calls
+  `Wallet.DisburseLoan(principal, requiredTurnover)` (turnover gate and credit atomic; the disbursement counts toward
+  `LifetimeTurnover`) and replies `LoanApprovedEvent` (`Approve(now)` sets `DueOn = now + Term`) or `LoanRejectedEvent`
+  (`Reject(reason)` frees the one-open-loan index slot); collection — `BankKeeper` (5 s loop, four sweeps: reject stale
+  approvals, abort stuck collections, collect matured, retry overdue) or `RepayLoanCommandHandler` calls
+  `Loan.RequestCollection(now)` and emits `LoanRepaymentRequestedEvent(Amount = Outstanding)` → Wallets'
+  `LoanRepaymentRequestedEventHandler` answers with `Wallet.CollectUpTo` (best effort, locked funds untouchable, zero
+  legal) → `LoanRepaymentCollectedEventHandler` runs `ApplyCollection`: full → `Repaid`, partial before `DueOn` →
+  `Active` without penalty, partial at/past `DueOn` → `Overdue` with a one-time penalty keyed on `OverdueSince == null`.
+  Timeouts are validated `>= 10 min` (the dead-letter horizon). Details: `docs/en/backend/banking.md`.
 
 Delivery is at-least-once, so every cross-module consumer is idempotent via an **inbox** — one table per consuming
 module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`,
-`WarehousesProcessedMessages`), event id as PK,
+`WarehousesProcessedMessages`, `BankingProcessedMessages`), event id as PK,
 `ProcessedMessage` entity under `Infrastructure/Inbox/`. The handler checks the inbox first (`WasEventProcessedAsync`)
 and silently returns on a replay; entity changes and the inbox row are still saved in one `SaveChangesAsync`
 (`SaveChangesWithInboxAsync`, or `SaveChangesWithInboxAndOutboxAsync` when the handler also replies), so the PK
 unique violation — surfaced as the module's `EventAlreadyProcessedException` and swallowed by the handler — remains
 the backstop for the race where two deliveries pass the check concurrently. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
 `AuctionFinishedEventHandler`, `ItemSoldToShopEventHandler`, `FundsLockRequestedEventHandler`,
-`FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`;
+`FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`,
+`LoanRequestedEventHandler`, `LoanRepaymentRequestedEventHandler`;
 Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `FundsLockedEventHandler`, `FundsLockRejectedEventHandler`; Inventory: `ItemLockRequestedEventHandler`,
 `AuctionFinishedEventHandler`, `AuctionSettledEventHandler`, `AuctionCancelledEventHandler`,
 `WarehouseStockRequestedEventHandler`, `WarehouseWonEventHandler`; Warehouses: `WarehouseStockedEventHandler`,
-`WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
+`WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`; Banking: `LoanApprovedEventHandler`,
+`LoanRejectedEventHandler`, `LoanRepaymentCollectedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
 unique index instead. Handlers deliberately do **not** catch illegal state transitions —
 `InvalidAuctionStateTransitionException` (409), `ItemNotLockedException`, the 404 from `GetItemLockedForAuctionAsync`
 — so no inbox row is written, the outbox row retries and finally dead-letters with the reason in `Errors`. A visible
@@ -252,11 +272,11 @@ failure beats a silent skip.
 
 Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
 exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the poll query. The
-outbox entity and processor exist as five separate copies (Auctions, Identity, Inventory, Wallets, Warehouses) — a
-change to one must be mirrored in the others.
+outbox entity and processor exist as six separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
+Banking) — a change to one must be mirrored in the others.
 
-Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Funds/`, `Items/`,
-`Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
+Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Banking/`, `Funds/`,
+`Items/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
 `Type` column and the `IntegrationEventTypes` registry use the simple type name, so the folders are purely for
 readability — moving an event never touches stored rows.
 
@@ -328,12 +348,15 @@ cancelled or closed auction frees the item. The filter is raw SQL over the enum'
 `Item.LockedForAuctionId` (`ItemConfiguration.cs:13`) needs no filter: PostgreSQL treats NULLs as distinct, so it
 only constrains locked items and doubles as the lookup key for `GetItemLockedForAuctionAsync`. Wallets' `FundsLock` ledger uses the same idiom:
 a unique index on (`WalletUserId`, `PublicAuctionId`) filtered on `"Status" = 0` enforces one active lock per
-auction per wallet, so `FundsLockStatus.Active` must stay `0`.
+auction per wallet, so `FundsLockStatus.Active` must stay `0`. Banking enforces one open loan per player with
+`HasIndex(UserId).IsUnique().HasFilter("\"Status\" IN (0, 1, 2, 3)")`, so the `LoanStatus` integers
+(`PendingApproval=0, Active=1, CollectionPending=2, Overdue=3, Repaid=4, Rejected=5`) must never be renumbered;
+the repository translates the unique violation into `LoanAlreadyActiveException` (409).
 
 ### Entity configuration
 
-All five contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
-`IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
+All six contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
+`IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`, `BankingDbContext.cs`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
 (Auctions keeps them in `Infrastructure/Configurations/`, the other modules in `Infrastructure/Configuration/`).
 
 Auctions keys: the primary key is the `int AuctionId` identity column (`AuctionConfiguration.cs:11`), and
@@ -352,8 +375,8 @@ Where the documentation, the README roadmap and the code disagree, the code wins
 **Implemented** (register → wallet via outbox → login/JWT → funds → create auction as `Pending` → item locked
 in Inventory → auction activated with item snapshot → pessimistic bid confirmed by a funds lock (anti-sniping) → background auto-close →
 exactly-once settlement via inbox → `AuctionSettledEvent` → item transferred to the winner, or unlocked when
-nobody bid): all five modules are fully wired — authentication, five outbox processors, `AuctionCloser`,
-`WarehouseKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
+nobody bid): all six modules are fully wired — authentication, six outbox processors, `AuctionCloser`,
+`WarehouseKeeper`, `BankKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
 included — was verified manually end-to-end on 2026-10-14 against the compose stack: insufficient-funds rejection,
 409 on a second in-flight bid, confirm, release of the previous leader's lock, close, settlement by consuming the
 winner's lock and the item transfer, with zero dead or pending outbox rows afterwards.
@@ -371,6 +394,15 @@ On 2026-10-15 the fifth module, Warehouses, landed: warehouse wars with a server
 dedicated Wallets saga that doubles as the bid budget, 5-10 s raise windows with tier-fixed increments, and a
 settlement that burns the final price (`Wallet.SpendLock`) and mints the manifest (`Item.CreateWithPrice`).
 Five endpoints under `/api/warehouses`, six events, five tables. Chapter: `docs/en/backend/warehouses.md`.
+
+Also on 2026-10-15 the sixth module, Banking, landed: loans from fixed configured offers gated by the new
+`Wallet.LifetimeTurnover` counter (economy credits only — `AddFunds` counts, `ReceiveTransfer` and
+`GrantStartingFunds` do not; single choke point in the private `Credit(amount, countsTowardTurnover)`), an
+asynchronous grant saga (`Wallet.DisburseLoan` checks the gate and credits atomically), one repayment at maturity
+collected by `BankKeeper` through `Wallet.CollectUpTo` (best effort, locked funds untouchable), a one-time overdue
+penalty (`OverdueSince == null` marker) with automatic retries, early manual repayment (202), one open loan per
+player via a filtered unique index, and timeouts validated at or above the 10-minute dead-letter horizon. Four
+endpoints under `/api/bank`, five events, three tables. Chapter: `docs/en/backend/banking.md`.
 Probed live against the compose stack on 2026-10-15 (20 checks: three players funded and joined, entry locks
 confirmed, guarded raises — 409 for the leading raiser, 400 for an increment outside the tier — settlement after
 the window, manifest revealed only once `Settled`, exact winner and loser balances, items minted at the quoted
@@ -407,6 +439,6 @@ Still aspirational — verify before building on them:
   touching the modules.
 
 Known debt worth keeping in mind: `Microsoft.Extensions.Hosting` is pinned to a .NET 11 **preview** version in
-Auctions, Wallets and Inventory (fix all three together); Testcontainers fixtures use an obsolete
+all six modules (fix them together); Testcontainers fixtures use an obsolete
 `PostgreSqlBuilder` constructor (CS0618); `AuctionActivatedEvent` is published but nobody consumes it;
 `SellItemToShopCommandHandler.cs` breaks the "outbox `Id` == `EventId`" convention with two separate Guids.
