@@ -30,6 +30,17 @@ public sealed class Wallet
         Credit(principal, countsTowardTurnover: true);
     }
 
+    public decimal CollectUpTo(decimal amount)
+    {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
+
+        var collected = Math.Min(amount, AvailableFunds);
+        if (collected == 0) return 0m;
+        AvailableFunds -= collected;
+        Version = Guid.NewGuid();
+        return collected;
+    }
+
     private void Credit(decimal amount, bool countsTowardTurnover)
     {
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();

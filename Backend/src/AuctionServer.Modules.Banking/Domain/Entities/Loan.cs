@@ -69,4 +69,51 @@ public sealed class Loan
         RejectionReason = reason;
         Version = Guid.NewGuid();
     }
+
+    public decimal RequestCollection(DateTime now)
+    {
+        if (Status == LoanStatus.CollectionPending)
+            throw new BankingExceptions.LoanCollectionInProgressException();
+        if (Status == LoanStatus.Repaid)
+            throw new BankingExceptions.LoanAlreadyRepaidException();
+        if (Status != LoanStatus.Active && Status != LoanStatus.Overdue)
+            throw new BankingExceptions.InvalidLoanStateTransitionException(Status, LoanStatus.CollectionPending);
+
+        Status = LoanStatus.CollectionPending;
+        LastCollectionRequestedOn = now;
+        Version = Guid.NewGuid();
+        return Outstanding;
+    }
+
+    public void ApplyCollection(decimal collected, DateTime now)
+    {
+        if (Status != LoanStatus.CollectionPending)
+            throw new BankingExceptions.InvalidLoanStateTransitionException(Status, LoanStatus.Repaid);
+        if (collected < 0 || collected > Outstanding)
+            throw new BankingExceptions.InvalidCollectionAmountException();
+
+        AmountRepaid += collected;
+        Version = Guid.NewGuid();
+
+        if (Outstanding == 0)
+        {
+            Status = LoanStatus.Repaid;
+            RepaidOn = now;
+            return;
+        }
+
+        if (LastCollectionRequestedOn < DueOn)
+        {
+            Status = LoanStatus.Active;
+            return;
+        }
+
+        if (OverdueSince == null)
+        {
+            Penalty = Math.Round(Outstanding * PenaltyRate, 2, MidpointRounding.AwayFromZero);
+            OverdueSince = now;
+        }
+
+        Status = LoanStatus.Overdue;
+    }
 }

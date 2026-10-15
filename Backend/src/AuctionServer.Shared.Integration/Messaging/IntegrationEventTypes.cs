@@ -35,7 +35,9 @@ public static class IntegrationEventTypes
         [nameof(WarehouseWonEvent)] = typeof(WarehouseWonEvent),
         [nameof(LoanRequestedEvent)] = typeof(LoanRequestedEvent),
         [nameof(LoanApprovedEvent)] = typeof(LoanApprovedEvent),
-        [nameof(LoanRejectedEvent)] = typeof(LoanRejectedEvent)
+        [nameof(LoanRejectedEvent)] = typeof(LoanRejectedEvent),
+        [nameof(LoanRepaymentRequestedEvent)] = typeof(LoanRepaymentRequestedEvent),
+        [nameof(LoanRepaymentCollectedEvent)] = typeof(LoanRepaymentCollectedEvent)
     };
 
     public static INotification Deserialize(string type, string content)

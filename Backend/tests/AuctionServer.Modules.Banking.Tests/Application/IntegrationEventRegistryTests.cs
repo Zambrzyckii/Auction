@@ -11,7 +11,9 @@ public class IntegrationEventRegistryTests
     {
         new LoanRequestedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 200m, 400m),
         new LoanApprovedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
-        new LoanRejectedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Turnover too low")
+        new LoanRejectedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Turnover too low"),
+        new LoanRepaymentRequestedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 220m),
+        new LoanRepaymentCollectedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 180m)
     };
 
     [Theory]

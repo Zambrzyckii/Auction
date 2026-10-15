@@ -52,6 +52,15 @@ public sealed class BankingPostgresFixture : IAsyncLifetime
         return loan;
     }
 
+    public async Task<decimal> RequestCollectionAsync(Guid publicLoanId, DateTime requestedOn)
+    {
+        await using var context = CreateContext();
+        var loan = await context.Loans.SingleAsync(l => l.PublicLoanId == publicLoanId);
+        var outstanding = loan.RequestCollection(requestedOn);
+        await context.SaveChangesAsync();
+        return outstanding;
+    }
+
     public async Task<Loan> GetLoanAsync(Guid publicLoanId)
     {
         await using var context = CreateContext();
