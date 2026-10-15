@@ -34,6 +34,40 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("ActivatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("BotPayoutRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<DateTime?>("BotPurchasedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("BotRarity")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeSpan?>("BotSpawnInterval")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("BotTierName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("NextSpawnOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("PendingBotPayoutRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<int?>("PendingBotRarity")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeSpan?>("PendingBotSpawnInterval")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("PendingBotTierName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<Guid?>("PendingPaymentId")
                         .HasColumnType("uuid");
 
@@ -68,6 +102,8 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId")
                         .IsUnique()
                         .HasFilter("\"Status\" IN (0, 1)");
+
+                    b.HasIndex("Status", "NextSpawnOn");
 
                     b.ToTable("PawnshopShops", (string)null);
                 });

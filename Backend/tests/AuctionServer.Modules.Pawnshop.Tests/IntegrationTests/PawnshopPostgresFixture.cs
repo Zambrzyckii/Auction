@@ -48,6 +48,17 @@ public sealed class PawnshopPostgresFixture : IAsyncLifetime
         return shop;
     }
 
+    public async Task<Guid> BeginBotPurchaseAsync(Guid publicPawnshopId, string tierName = "Pawn Clerk",
+        PawnshopRarity rarity = PawnshopRarity.Common, TimeSpan? spawnInterval = null, decimal payoutRate = 0.5m)
+    {
+        await using var context = CreateContext();
+        var shop = await context.Shops.SingleAsync(s => s.PublicPawnshopId == publicPawnshopId);
+        var paymentId = shop.BeginBotPurchase(tierName, rarity, spawnInterval ?? TimeSpan.FromSeconds(30),
+            payoutRate, DateTime.UtcNow);
+        await context.SaveChangesAsync();
+        return paymentId;
+    }
+
     public async Task<Shop> GetShopAsync(Guid publicPawnshopId)
     {
         await using var context = CreateContext();

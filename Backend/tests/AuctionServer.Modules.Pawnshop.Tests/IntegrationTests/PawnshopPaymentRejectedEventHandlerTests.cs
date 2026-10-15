@@ -33,6 +33,23 @@ public class PawnshopPaymentRejectedEventHandlerTests(PawnshopPostgresFixture fi
     }
 
     [Fact]
+    public async Task Handle_WhenBotPending_ShouldKeepShopActiveWithReason()
+    {
+        var seeded = await fixture.SeedShopAsync(ShopStatus.Active);
+        var paymentId = await fixture.BeginBotPurchaseAsync(seeded.PublicPawnshopId);
+        var notification = new PawnshopPaymentRejectedEvent(Guid.NewGuid(), seeded.PublicPawnshopId,
+            paymentId, seeded.UserId, "Insufficient funds");
+
+        await HandleAsync(notification);
+
+        var shop = await fixture.GetShopAsync(seeded.PublicPawnshopId);
+        Assert.Equal(ShopStatus.Active, shop.Status);
+        Assert.Equal("Insufficient funds", shop.RejectionReason);
+        Assert.Null(shop.BotTierName);
+        Assert.Null(shop.PendingBotTierName);
+    }
+
+    [Fact]
     public async Task Handle_WhenDeliveredTwice_ShouldApplyOnce()
     {
         var seeded = await fixture.SeedShopAsync();

@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Pawnshop.Application.Interfaces;
 using AuctionServer.Modules.Pawnshop.Domain.Entities;
+using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Inbox;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
@@ -13,6 +14,14 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
     public async Task<Shop> GetShopByPublicIdAsync(Guid publicPawnshopId, CancellationToken token)
     {
         var shop = await context.Shops.SingleOrDefaultAsync(s => s.PublicPawnshopId == publicPawnshopId, token);
+        if (shop is null) throw new PawnshopExceptions.PawnshopNotFoundException();
+        return shop;
+    }
+
+    public async Task<Shop> GetLiveShopByUserIdAsync(Guid userId, CancellationToken token)
+    {
+        var shop = await context.Shops
+            .SingleOrDefaultAsync(s => s.UserId == userId && s.Status != ShopStatus.Rejected, token);
         if (shop is null) throw new PawnshopExceptions.PawnshopNotFoundException();
         return shop;
     }
@@ -42,6 +51,12 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
         {
             throw new PawnshopExceptions.PawnshopAlreadyOwnedException();
         }
+    }
+
+    public async Task SaveShopWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token)
+    {
+        context.OutboxMessages.Add(outboxMessage);
+        await context.SaveChangesAsync(token);
     }
 
     public async Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)

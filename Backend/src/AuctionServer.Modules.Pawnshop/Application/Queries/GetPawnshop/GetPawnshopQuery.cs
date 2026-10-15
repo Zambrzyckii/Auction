@@ -10,4 +10,11 @@ public record PawnshopDto(
     ShopStatus Status,
     DateTime RequestedOn,
     DateTime? ActivatedOn,
-    string? RejectionReason);
+    string? RejectionReason,
+    string? BotTierName,
+    PawnshopRarity? BotRarity,
+    TimeSpan? BotSpawnInterval,
+    decimal? BotPayoutRate,
+    DateTime? BotPurchasedOn,
+    DateTime? NextSpawnOn,
+    string? PendingBotTierName);

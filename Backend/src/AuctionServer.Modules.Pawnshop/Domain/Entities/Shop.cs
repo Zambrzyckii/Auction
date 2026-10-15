@@ -14,6 +14,16 @@ public sealed class Shop
     public string? RejectionReason { get; private set; }
     public Guid? PendingPaymentId { get; private set; }
     public DateTime? PendingPaymentRequestedOn { get; private set; }
+    public string? BotTierName { get; private set; }
+    public PawnshopRarity? BotRarity { get; private set; }
+    public TimeSpan? BotSpawnInterval { get; private set; }
+    public decimal? BotPayoutRate { get; private set; }
+    public DateTime? BotPurchasedOn { get; private set; }
+    public DateTime? NextSpawnOn { get; private set; }
+    public string? PendingBotTierName { get; private set; }
+    public PawnshopRarity? PendingBotRarity { get; private set; }
+    public TimeSpan? PendingBotSpawnInterval { get; private set; }
+    public decimal? PendingBotPayoutRate { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
 
     public static Shop Open(Guid userId, DateTime now)
@@ -32,8 +42,22 @@ public sealed class Shop
         if (PendingPaymentId != paymentId)
             throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
 
-        Status = ShopStatus.Active;
-        ActivatedOn = now;
+        if (Status == ShopStatus.PendingPayment)
+        {
+            Status = ShopStatus.Active;
+            ActivatedOn = now;
+        }
+        else
+        {
+            BotTierName = PendingBotTierName;
+            BotRarity = PendingBotRarity;
+            BotSpawnInterval = PendingBotSpawnInterval;
+            BotPayoutRate = PendingBotPayoutRate;
+            BotPurchasedOn = now;
+            NextSpawnOn = now + PendingBotSpawnInterval!.Value;
+            ClearPendingBot();
+        }
+
         RejectionReason = null;
         ClearPendingPayment();
     }
@@ -43,7 +67,9 @@ public sealed class Shop
         if (PendingPaymentId != paymentId)
             throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
 
-        Status = ShopStatus.Rejected;
+        if (Status == ShopStatus.PendingPayment) Status = ShopStatus.Rejected;
+        else ClearPendingBot();
+
         RejectionReason = reason;
         ClearPendingPayment();
     }
@@ -54,6 +80,32 @@ public sealed class Shop
             throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
 
         RejectPayment(PendingPaymentId.Value, "Payment timed out");
+    }
+
+    public Guid BeginBotPurchase(string tierName, PawnshopRarity rarity, TimeSpan spawnInterval, decimal payoutRate,
+        DateTime now)
+    {
+        if (Status != ShopStatus.Active) throw new PawnshopExceptions.PawnshopNotActiveException();
+        if (PendingPaymentId is not null) throw new PawnshopExceptions.PaymentInProgressException();
+        if (BotRarity is not null && rarity <= BotRarity) throw new PawnshopExceptions.BotNotAnUpgradeException();
+
+        PendingBotTierName = tierName;
+        PendingBotRarity = rarity;
+        PendingBotSpawnInterval = spawnInterval;
+        PendingBotPayoutRate = payoutRate;
+        RejectionReason = null;
+        PendingPaymentId = Guid.NewGuid();
+        PendingPaymentRequestedOn = now;
+        Version = Guid.NewGuid();
+        return PendingPaymentId.Value;
+    }
+
+    private void ClearPendingBot()
+    {
+        PendingBotTierName = null;
+        PendingBotRarity = null;
+        PendingBotSpawnInterval = null;
+        PendingBotPayoutRate = null;
     }
 
     private void ClearPendingPayment()

@@ -11,6 +11,7 @@ public class GetPawnshopQueryHandler(IPawnshopRepository repository) : IRequestH
         var shop = await repository.GetLatestShopByUserIdReadOnlyAsync(request.UserId, token)
                    ?? throw new PawnshopExceptions.PawnshopNotFoundException();
         return new PawnshopDto(shop.PublicPawnshopId, shop.Status, shop.RequestedOn, shop.ActivatedOn,
-            shop.RejectionReason);
+            shop.RejectionReason, shop.BotTierName, shop.BotRarity, shop.BotSpawnInterval, shop.BotPayoutRate,
+            shop.BotPurchasedOn, shop.NextSpawnOn, shop.PendingBotTierName);
     }
 }

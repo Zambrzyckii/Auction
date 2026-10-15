@@ -35,6 +35,25 @@ public class PawnshopPaymentCompletedEventHandlerTests(PawnshopPostgresFixture f
     }
 
     [Fact]
+    public async Task Handle_WhenBotPending_ShouldInstallBot()
+    {
+        var seeded = await fixture.SeedShopAsync(ShopStatus.Active);
+        var paymentId = await fixture.BeginBotPurchaseAsync(seeded.PublicPawnshopId);
+        var notification = new PawnshopPaymentCompletedEvent(Guid.NewGuid(), seeded.PublicPawnshopId,
+            paymentId, seeded.UserId);
+
+        await HandleAsync(notification);
+
+        var shop = await fixture.GetShopAsync(seeded.PublicPawnshopId);
+        Assert.Equal(ShopStatus.Active, shop.Status);
+        Assert.Equal("Pawn Clerk", shop.BotTierName);
+        Assert.Equal(PawnshopRarity.Common, shop.BotRarity);
+        Assert.NotNull(shop.NextSpawnOn);
+        Assert.Null(shop.PendingBotTierName);
+        Assert.Null(shop.PendingPaymentId);
+    }
+
+    [Fact]
     public async Task Handle_WhenDeliveredTwice_ShouldActivateOnce()
     {
         var seeded = await fixture.SeedShopAsync();

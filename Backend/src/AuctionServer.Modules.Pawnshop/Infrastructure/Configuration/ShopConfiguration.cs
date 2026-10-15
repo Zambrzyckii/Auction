@@ -13,6 +13,11 @@ internal sealed class ShopConfiguration : IEntityTypeConfiguration<Shop>
         builder.HasIndex(x => x.PublicPawnshopId).IsUnique();
         builder.HasIndex(x => x.UserId).IsUnique().HasFilter("\"Status\" IN (0, 1)");
         builder.Property(x => x.RejectionReason).HasMaxLength(256);
+        builder.Property(x => x.BotTierName).HasMaxLength(64);
+        builder.Property(x => x.PendingBotTierName).HasMaxLength(64);
+        builder.Property(x => x.BotPayoutRate).HasPrecision(5, 4);
+        builder.Property(x => x.PendingBotPayoutRate).HasPrecision(5, 4);
+        builder.HasIndex(x => new { x.Status, x.NextSpawnOn });
         builder.Property(x => x.Version).IsConcurrencyToken();
     }
 }
