@@ -19,15 +19,22 @@ public sealed class Item
 
     public static Item Create(Guid ownerUserId, string name, ItemRarity rarity)
     {
+        return CreateWithPrice(ownerUserId, name, rarity, RollPriceFor(rarity));
+    }
+    
+    public static Item CreateWithPrice(Guid ownerUserId, string name, ItemRarity rarity, decimal officialPrice)
+    {
+        if (officialPrice <= 0) throw new InventoryException.InvalidItemPriceException();
+        
         var newItem = new Item
         {
             OwnerUserId = ownerUserId,
             Name = name,
             Rarity = rarity,
             Status = ItemStatus.Available,
-            OfficialPrice = RollPriceFor(rarity)
+            OfficialPrice = officialPrice
         };
-
+        
         return newItem;
     }
 

@@ -81,9 +81,16 @@ public sealed class WarehouseKeeper(IServiceProvider serviceProvider, ILogger<Wa
         foreach (var war in expired)
         {
             var warehouseParticipantLeader = war.CurrentLeaderId;
-            
-            if (warehouseParticipantLeader is null) war.Cancel("No bids placed");
-            else war.Settle();
+
+            if (warehouseParticipantLeader is null)
+            {
+                war.Cancel("No bids placed");
+            }
+            else
+            {
+                war.Settle();
+                await AddWonEventAsync(context, war, warehouseParticipantLeader.Value, token);
+            }
 
             foreach (var participant in war.Participants.Where(p => p.State == ParticipantState.Active))
             {
@@ -93,6 +100,23 @@ public sealed class WarehouseKeeper(IServiceProvider serviceProvider, ILogger<Wa
         }
 
         await context.SaveChangesAsync(token);
+    }
+
+    private static async Task AddWonEventAsync(WarehouseDbContext context, WarehouseWar war, Guid winnerId, CancellationToken token)
+    {
+        var stock = await context.StockItems
+            .Where(s => s.PublicWarehouseId == war.PublicWarehouseId)
+            .Select(s => new WarehouseStockItem(s.Name, s.Rarity, s.Price))
+            .ToListAsync(token);
+
+        var eventId = Guid.NewGuid();
+        context.OutboxMessages.Add(new OutboxMessage
+        {
+            Id = eventId,
+            Type = nameof(WarehouseWonEvent),
+            Content = JsonSerializer.Serialize(
+                new WarehouseWonEvent(eventId, war.PublicWarehouseId, winnerId, war.CurrentPrice, stock))
+        });
     }
 
     private static void AddRefund(WarehouseDbContext context, Guid publicWarehouseId, Guid userId)

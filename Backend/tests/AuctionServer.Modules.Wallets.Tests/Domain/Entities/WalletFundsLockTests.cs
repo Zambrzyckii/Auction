@@ -134,4 +134,63 @@ public class WalletFundsLockTests
         Assert.Equal(FundsLockStatus.Active,
             wallet.FundsLocks.Single(l => l.PublicAuctionId == secondAuctionId).Status);
     }
+
+    [Fact]
+    public void SpendLock_WhenAmountWithinLock_ShouldConsumeLockAndReturnChange()
+    {
+        var wallet = CreateWalletWithFunds(500m);
+        var warehouseId = Guid.NewGuid();
+        wallet.LockFunds(warehouseId, 500m);
+        var versionBefore = wallet.Version;
+
+        wallet.SpendLock(warehouseId, 350m);
+
+        Assert.Equal(150m, wallet.AvailableFunds);
+        Assert.Equal(0m, wallet.LockedFunds);
+        Assert.Equal(FundsLockStatus.Consumed, Assert.Single(wallet.FundsLocks).Status);
+        Assert.NotEqual(versionBefore, wallet.Version);
+    }
+
+    [Fact]
+    public void SpendLock_WhenAmountEqualsLock_ShouldSpendWholeLock()
+    {
+        var wallet = CreateWalletWithFunds(500m);
+        var warehouseId = Guid.NewGuid();
+        wallet.LockFunds(warehouseId, 500m);
+
+        wallet.SpendLock(warehouseId, 500m);
+
+        Assert.Equal(0m, wallet.AvailableFunds);
+        Assert.Equal(0m, wallet.LockedFunds);
+    }
+
+    [Fact]
+    public void SpendLock_WhenAmountExceedsLock_ShouldThrowInvalidAmountException()
+    {
+        var wallet = CreateWalletWithFunds(100m);
+        var warehouseId = Guid.NewGuid();
+        wallet.LockFunds(warehouseId, 100m);
+
+        Assert.Throws<WalletExceptions.InvalidAmountException>(() => wallet.SpendLock(warehouseId, 150m));
+        Assert.Equal(100m, wallet.LockedFunds);
+        Assert.Equal(FundsLockStatus.Active, Assert.Single(wallet.FundsLocks).Status);
+    }
+
+    [Fact]
+    public void SpendLock_WhenAmountIsNotPositive_ShouldThrowInvalidAmountException()
+    {
+        var wallet = CreateWalletWithFunds(100m);
+        var warehouseId = Guid.NewGuid();
+        wallet.LockFunds(warehouseId, 100m);
+
+        Assert.Throws<WalletExceptions.InvalidAmountException>(() => wallet.SpendLock(warehouseId, 0m));
+    }
+
+    [Fact]
+    public void SpendLock_WhenLockIsMissing_ShouldThrowLockNotFoundException()
+    {
+        var wallet = CreateWalletWithFunds(100m);
+
+        Assert.Throws<WalletExceptions.LockNotFoundException>(() => wallet.SpendLock(Guid.NewGuid(), 50m));
+    }
 }

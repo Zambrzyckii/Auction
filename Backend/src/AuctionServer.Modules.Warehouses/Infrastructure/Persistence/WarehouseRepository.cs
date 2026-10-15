@@ -80,6 +80,13 @@ public sealed class WarehouseRepository(WarehouseDbContext context) : IWarehouse
             .ToDictionaryAsync(x => x.Key, x => x.Count, token);
     }
 
+    public async Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicWarehouseId, CancellationToken token)
+    {
+        return await context.StockItems.AsNoTracking()
+            .Where(s => s.PublicWarehouseId == publicWarehouseId)
+            .ToListAsync(token);
+    }
+
     private async Task SaveTranslatingUniqueViolationAsync(CancellationToken token)
     {
         try

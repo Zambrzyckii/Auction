@@ -38,6 +38,29 @@ public class ItemTests
         Assert.InRange(item.OfficialPrice, min, max);
     }
 
+    [Fact]
+    public void CreateWithPrice_ShouldUseGivenPriceInsteadOfRolling()
+    {
+        var ownerId = Guid.NewGuid();
+
+        var item = Item.CreateWithPrice(ownerId, "Warehouse Rare Find", ItemRarity.Rare, 7m);
+
+        Assert.Equal(ownerId, item.OwnerUserId);
+        Assert.Equal("Warehouse Rare Find", item.Name);
+        Assert.Equal(7m, item.OfficialPrice);
+        Assert.Equal(ItemRarity.Rare, item.Rarity);
+        Assert.Equal(ItemStatus.Available, item.Status);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-10)]
+    public void CreateWithPrice_WhenPriceIsNotPositive_ShouldThrowException(decimal price)
+    {
+        Assert.Throws<InventoryException.InvalidItemPriceException>(
+            () => Item.CreateWithPrice(Guid.NewGuid(), "Warehouse Find", ItemRarity.Common, price));
+    }
+
     [Theory]
     [InlineData(ItemRarity.Common, ItemRarity.Rare)]
     [InlineData(ItemRarity.Rare, ItemRarity.Epic)]

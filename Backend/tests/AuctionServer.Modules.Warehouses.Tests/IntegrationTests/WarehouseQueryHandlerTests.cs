@@ -4,6 +4,7 @@ using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouses;
 using AuctionServer.Modules.Warehouses.Domain.Entities;
 using AuctionServer.Modules.Warehouses.Domain.Enums;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Warehouses.Tests.IntegrationTests;
 
@@ -59,6 +60,56 @@ public class WarehouseQueryHandlerTests(WarehousesPostgresFixture fixture)
         Assert.Equal(ParticipantState.PendingLock, result.ParticipantState);
         Assert.False(result.IsLeader);
         Assert.Equal(2, result.Players);
+    }
+
+    [Fact]
+    public async Task GetWarehouseById_WhenSettled_ShouldRevealManifest()
+    {
+        var players = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+        var seeded = await fixture.SeedBiddingWarAsync(players);
+        await using (var setupContext = fixture.CreateContext())
+        {
+            var war = await setupContext.Wars.SingleAsync(w => w.PublicWarehouseId == seeded.PublicWarehouseId);
+            war.Raise(players[0], 50m, [10m, 50m], TimeSpan.FromSeconds(10));
+            war.Settle();
+            setupContext.StockItems.Add(new StockItem
+            {
+                PublicWarehouseId = seeded.PublicWarehouseId, Name = "Warehouse Rare Find", Rarity = "Rare", Price = 300m
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var context = fixture.CreateContext();
+        var handler = new GetWarehouseByIdQueryHandler(new WarehouseRepository(context), Options);
+        var result = await handler.Handle(new GetWarehouseByIdQuery(seeded.PublicWarehouseId, players[0]), CancellationToken.None);
+
+        Assert.Equal(WarehouseWarStatus.Settled, result.Status);
+        Assert.True(result.IsLeader);
+        Assert.NotNull(result.Manifest);
+        var manifestItem = Assert.Single(result.Manifest);
+        Assert.Equal("Warehouse Rare Find", manifestItem.Name);
+        Assert.Equal(300m, manifestItem.Price);
+    }
+
+    [Fact]
+    public async Task GetWarehouseById_WhenNotSettled_ShouldHideManifest()
+    {
+        var seeded = await fixture.SeedOpenWarAsync(Guid.NewGuid());
+        await using (var setupContext = fixture.CreateContext())
+        {
+            setupContext.StockItems.Add(new StockItem
+            {
+                PublicWarehouseId = seeded.PublicWarehouseId, Name = "Warehouse Common Find", Rarity = "Common", Price = 50m
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var context = fixture.CreateContext();
+        var handler = new GetWarehouseByIdQueryHandler(new WarehouseRepository(context), Options);
+        var result = await handler.Handle(new GetWarehouseByIdQuery(seeded.PublicWarehouseId, Guid.NewGuid()), CancellationToken.None);
+
+        Assert.Null(result.Manifest);
+        Assert.Equal(1, result.ItemCount);
     }
 
     [Fact]

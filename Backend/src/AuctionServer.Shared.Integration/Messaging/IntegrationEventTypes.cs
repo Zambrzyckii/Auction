@@ -26,7 +26,8 @@ public static class IntegrationEventTypes
         [nameof(WarehouseStockedEvent)] = typeof(WarehouseStockedEvent),
         [nameof(WarehouseEntryLockRequestedEvent)] = typeof(WarehouseEntryLockRequestedEvent),
         [nameof(WarehouseEntryLockedEvent)] = typeof(WarehouseEntryLockedEvent),
-        [nameof(WarehouseEntryLockRejectedEvent)] = typeof(WarehouseEntryLockRejectedEvent)
+        [nameof(WarehouseEntryLockRejectedEvent)] = typeof(WarehouseEntryLockRejectedEvent),
+        [nameof(WarehouseWonEvent)] = typeof(WarehouseWonEvent)
     };
 
     public static INotification Deserialize(string type, string content)

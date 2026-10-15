@@ -7,6 +7,7 @@ public class InventoryException
 {
     public class ItemNotAvailableException(ItemStatus status) : AppException($"Item is not available, current status: {status}", 400);
     public class ItemNotLockedException() : AppException("This item is not locked", 400);
+    public class InvalidItemPriceException() : AppException("Item price must be greater than zero", 400);
     public class NotEnoughIngredientsToCraftException() : AppException("Crafting requires exactly 3 ingredients", 400);
     public class IngredientsOwnerMismatchException() : AppException("All ingredients must belong to the same owner", 400);
     public class IngredientsRarityMismatchException() : AppException("All ingredients must share the same rarity", 400);

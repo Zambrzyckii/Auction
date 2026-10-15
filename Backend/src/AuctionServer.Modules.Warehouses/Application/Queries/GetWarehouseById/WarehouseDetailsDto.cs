@@ -17,4 +17,8 @@ public record WarehouseDetailsDto(
     DateTime? BiddingEndsOn,
     bool IsParticipant,
     ParticipantState? ParticipantState,
-    bool IsLeader);
+    bool IsLeader,
+    string? CancellationReason,
+    IReadOnlyList<ManifestItemDto>? Manifest);
+
+public record ManifestItemDto(string Name, string Rarity, decimal Price);

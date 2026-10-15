@@ -57,6 +57,17 @@ public sealed class Wallet
         Version = Guid.NewGuid();
     }
 
+    public void SpendLock(Guid publicAuctionId, decimal amount)
+    {
+        if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
+        var fundsLocked = GetActiveLock(publicAuctionId);
+        if (amount > fundsLocked.Amount) throw new WalletExceptions.InvalidAmountException();
+        fundsLocked.Consume();
+        LockedFunds -= fundsLocked.Amount;
+        AvailableFunds += fundsLocked.Amount - amount;
+        Version = Guid.NewGuid();
+    }
+
     public decimal ConsumeLock(Guid publicAuctionId)
     {
         var fundsLock = GetActiveLock(publicAuctionId);

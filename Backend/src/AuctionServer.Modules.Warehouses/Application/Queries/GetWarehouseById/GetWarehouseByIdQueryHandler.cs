@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Warehouses.Application.Interfaces;
 using AuctionServer.Modules.Warehouses.Application.Options;
+using AuctionServer.Modules.Warehouses.Domain.Enums;
 using MediatR;
 
 namespace AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouseById;
@@ -12,6 +13,13 @@ public class GetWarehouseByIdQueryHandler(IWarehouseRepository repository, Wareh
         var war = await repository.GetWarByPublicIdReadOnlyAsync(request.PublicWarehouseId, token);
         var stockCounts = await repository.GetStockCountsReadOnlyAsync([war.PublicWarehouseId], token);
         var participant = war.Participants.SingleOrDefault(p => p.UserId == request.CallerId);
+        
+        IReadOnlyList<ManifestItemDto>? manifest = null;
+        if (war.Status == WarehouseWarStatus.Settled)
+        {
+            var stock = await repository.GetStockReadOnlyAsync(war.PublicWarehouseId, token);
+            manifest = stock.Select(s => new ManifestItemDto(s.Name, s.Rarity, s.Price)).ToList();
+        }
 
         return new WarehouseDetailsDto(
             war.PublicWarehouseId,
@@ -28,6 +36,8 @@ public class GetWarehouseByIdQueryHandler(IWarehouseRepository repository, Wareh
             war.BiddingEndsOn,
             participant is not null,
             participant?.State,
-            war.CurrentLeaderId == request.CallerId);
+            war.CurrentLeaderId == request.CallerId,
+            war.CancellationReason,
+            manifest);
     }
 }
