@@ -14,7 +14,9 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
     public async Task<Shop> GetShopByPublicIdAsync(Guid publicPawnshopId, CancellationToken token)
     {
         var shop = await context.Shops.SingleOrDefaultAsync(s => s.PublicPawnshopId == publicPawnshopId, token);
+        
         if (shop is null) throw new PawnshopExceptions.PawnshopNotFoundException();
+        
         return shop;
     }
 
@@ -22,6 +24,7 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
     {
         var shop = await context.Shops
             .SingleOrDefaultAsync(s => s.UserId == userId && s.Status != ShopStatus.Rejected, token);
+        
         if (shop is null) throw new PawnshopExceptions.PawnshopNotFoundException();
         return shop;
     }
@@ -43,6 +46,7 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
     {
         context.Shops.Add(shop);
         context.OutboxMessages.Add(outboxMessage);
+        
         try
         {
             await context.SaveChangesAsync(token);
@@ -53,7 +57,7 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
         }
     }
 
-    public async Task SaveShopWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token)
+    public async Task SaveChangesWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token)
     {
         context.OutboxMessages.Add(outboxMessage);
         await context.SaveChangesAsync(token);
@@ -64,6 +68,7 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
     {
         context.StockItems.AddRange(items);
         context.ProcessedMessages.Add(inboxMessage);
+        
         try
         {
             await context.SaveChangesAsync(token);
@@ -80,24 +85,29 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
             .Where(i => i.PublicPawnshopId == publicPawnshopId && i.Status == StockItemStatus.InStock)
             .OrderBy(i => i.SellAfter)
             .ToListAsync(token);
+        
         var resolved = await context.StockItems.AsNoTracking()
             .Where(i => i.PublicPawnshopId == publicPawnshopId && i.Status != StockItemStatus.InStock)
             .OrderByDescending(i => i.ResolvedOn)
             .Take(20)
             .ToListAsync(token);
+        
         return inStock.Concat(resolved).ToList();
     }
 
     public async Task<StockItem> GetStockItemByPublicIdAsync(Guid publicStockItemId, CancellationToken token)
     {
         var item = await context.StockItems.SingleOrDefaultAsync(i => i.PublicStockItemId == publicStockItemId, token);
+        
         if (item is null) throw new PawnshopExceptions.StockItemNotFoundException();
+        
         return item;
     }
 
     public async Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)
     {
         context.ProcessedMessages.Add(inboxMessage);
+        
         try
         {
             await context.SaveChangesAsync(token);

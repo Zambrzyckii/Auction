@@ -27,6 +27,6 @@ public class BuyBotCommandHandler(IPawnshopRepository repository, PawnshopOption
             Content = JsonSerializer.Serialize(new PawnshopPaymentRequestedEvent(
                 eventId, shop.PublicPawnshopId, paymentId, request.UserId, tier.Price, 0m))
         };
-        await repository.SaveShopWithOutboxAsync(outboxMessage, token);
+        await repository.SaveChangesWithOutboxAsync(outboxMessage, token);
     }
 }

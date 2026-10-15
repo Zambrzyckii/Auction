@@ -11,7 +11,7 @@ public interface IPawnshopRepository
     Task<Shop?> GetLatestShopByUserIdReadOnlyAsync(Guid userId, CancellationToken token);
     Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
     Task SaveNewShopWithOutboxAsync(Shop shop, OutboxMessage outboxMessage, CancellationToken token);
-    Task SaveShopWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
+    Task SaveChangesWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
     Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token);
     Task SaveStockWithInboxAsync(IReadOnlyList<StockItem> items, ProcessedMessage inboxMessage, CancellationToken token);
     Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicPawnshopId, CancellationToken token);

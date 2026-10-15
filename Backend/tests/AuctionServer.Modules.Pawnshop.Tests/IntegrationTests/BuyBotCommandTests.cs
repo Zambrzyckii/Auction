@@ -82,10 +82,10 @@ public class BuyBotCommandTests(PawnshopPostgresFixture fixture)
 
         var payment1 = shop1.BeginBotPurchase("Pawn Clerk", PawnshopRarity.Common, TimeSpan.FromSeconds(30), 0.5m, now);
         var payment2 = shop2.BeginBotPurchase("Appraiser", PawnshopRarity.Rare, TimeSpan.FromMinutes(1), 0.5m, now);
-        await repository1.SaveShopWithOutboxAsync(BuildRequest(shop1, payment1, 50000m), CancellationToken.None);
+        await repository1.SaveChangesWithOutboxAsync(BuildRequest(shop1, payment1, 50000m), CancellationToken.None);
 
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
-            () => repository2.SaveShopWithOutboxAsync(BuildRequest(shop2, payment2, 300000m), CancellationToken.None));
+            () => repository2.SaveChangesWithOutboxAsync(BuildRequest(shop2, payment2, 300000m), CancellationToken.None));
 
         await using var context = fixture.CreateContext();
         Assert.Equal(1, await context.OutboxMessages.CountAsync(

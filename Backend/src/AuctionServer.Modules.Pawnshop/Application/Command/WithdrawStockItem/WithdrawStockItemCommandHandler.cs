@@ -26,6 +26,6 @@ public class WithdrawStockItemCommandHandler(IPawnshopRepository repository) : I
                 eventId, item.PublicPawnshopId, item.PublicStockItemId, item.UserId, item.Name,
                 item.Rarity.ToString(), item.Price))
         };
-        await repository.SaveShopWithOutboxAsync(outboxMessage, CancellationToken.None);
+        await repository.SaveChangesWithOutboxAsync(outboxMessage, CancellationToken.None);
     }
 }
