@@ -86,6 +86,47 @@ public sealed class WarehouseWar
         Version = Guid.NewGuid();
     }
 
+    public void StartBidding(int minPlayers, TimeSpan raiseWindow)
+    {
+        if (Status != WarehouseWarStatus.Open)
+            throw new WarehouseExceptions.InvalidWarStateTransitionException(Status, WarehouseWarStatus.Bidding);
+        if (BiddingStartsOn is null)
+            throw new WarehouseExceptions.CountdownNotStartedException();
+        if (_participants.Count(p => p.State == ParticipantState.Active) < minPlayers)
+            throw new WarehouseExceptions.NotEnoughPlayersException();
+
+        Status = WarehouseWarStatus.Bidding;
+        BiddingEndsOn = DateTime.UtcNow + raiseWindow;
+        Version = Guid.NewGuid();
+    }
+
+    public void Raise(Guid userId, decimal increment, IReadOnlyList<decimal> allowedIncrements, TimeSpan raiseWindow)
+    {
+
+        if (Status != WarehouseWarStatus.Bidding) throw new WarehouseExceptions.WarNotBiddingException(Status);
+        if (BiddingEndsOn < DateTime.UtcNow) throw new WarehouseExceptions.RaiseWindowClosedException();
+        if (GetParticipant(userId).State != ParticipantState.Active)
+            throw new WarehouseExceptions.ParticipantNotActiveException();
+        if (userId == CurrentLeaderId) throw new WarehouseExceptions.AlreadyLeadingException();
+        if (!allowedIncrements.Contains(increment)) throw new WarehouseExceptions.InvalidIncrementException();
+        if (CurrentPrice + increment > EntryFee) throw new WarehouseExceptions.BudgetExceededException();
+
+        CurrentLeaderId = userId;
+        CurrentPrice += increment;
+        BiddingEndsOn = DateTime.UtcNow + raiseWindow;
+        Version = Guid.NewGuid();
+    }
+
+    public void Settle()
+    {
+        if (Status != WarehouseWarStatus.Bidding)
+            throw new WarehouseExceptions.InvalidWarStateTransitionException(Status, WarehouseWarStatus.Settled);
+        if (CurrentLeaderId is null) throw new WarehouseExceptions.NoLeaderException();
+
+        Status = WarehouseWarStatus.Settled;
+        Version = Guid.NewGuid();
+    }
+
     public void Cancel(string reason)
     {
         if (Status is WarehouseWarStatus.Settled or WarehouseWarStatus.Cancelled)

@@ -62,4 +62,20 @@ public sealed class WarehousesPostgresFixture : IAsyncLifetime
         await context.SaveChangesAsync();
         return war;
     }
+
+    public async Task<WarehouseWar> SeedBiddingWarAsync(params Guid[] participantIds)
+    {
+        await using var context = CreateContext();
+        var war = WarehouseWar.Create("Small", 500m);
+        war.OpenLobby(totalValue: 350m, estimateMin: 200m, estimateMax: 600m);
+        foreach (var userId in participantIds)
+        {
+            war.Join(userId, maxPlayers: 5);
+            war.ConfirmParticipant(userId, minPlayers: participantIds.Length, maxPlayers: 5, TimeSpan.FromSeconds(30));
+        }
+        war.StartBidding(minPlayers: participantIds.Length, TimeSpan.FromSeconds(10));
+        context.Wars.Add(war);
+        await context.SaveChangesAsync();
+        return war;
+    }
 }

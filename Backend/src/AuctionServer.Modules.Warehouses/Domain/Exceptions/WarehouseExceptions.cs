@@ -30,4 +30,23 @@ public static class WarehouseExceptions
 
     public class InvalidWarStateTransitionException(WarehouseWarStatus from, WarehouseWarStatus to)
         : AppException($"Warehouse war cannot move from {from} to {to}", 409);
+
+    public class CountdownNotStartedException() : AppException("Bidding countdown has not been scheduled", 409);
+
+    public class NotEnoughPlayersException() : AppException("Warehouse war is below the player minimum", 409);
+
+    public class WarNotBiddingException(WarehouseWarStatus status)
+        : AppException($"Warehouse war is not in bidding, current status: {status}", 409);
+
+    public class RaiseWindowClosedException() : AppException("Raise window has already closed", 409);
+
+    public class ParticipantNotActiveException() : AppException("Entry fee is not confirmed yet", 409);
+
+    public class AlreadyLeadingException() : AppException("Current leader cannot raise own bid", 409);
+
+    public class InvalidIncrementException() : AppException("Increment is not allowed for this tier", 400);
+
+    public class BudgetExceededException() : AppException("Raise would exceed the entry fee budget", 400);
+
+    public class NoLeaderException() : AppException("Warehouse war has no leading bid to settle", 409);
 }

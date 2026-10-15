@@ -40,8 +40,70 @@ public sealed class WarehouseKeeper(IServiceProvider serviceProvider, ILogger<Wa
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<WarehouseDbContext>();
+        await StartScheduledBiddingAsync(context, token);
+        await SettleExpiredBiddingAsync(context, token);
         await CancelExpiredLobbiesAsync(context, token);
         await RefillPoolAsync(context, token);
+    }
+
+    private async Task StartScheduledBiddingAsync(WarehouseDbContext context, CancellationToken token)
+    {
+        var now = DateTime.UtcNow;
+        var due = await context.Wars
+            .Where(w => w.Status == WarehouseWarStatus.Open && w.BiddingStartsOn != null && w.BiddingStartsOn <= now)
+            .ToListAsync(token);
+        if (due.Count == 0) return;
+
+        foreach (var war in due)
+        {
+            if (war.Participants.Count(p => p.State == ParticipantState.Active) >= options.MinPlayers)
+            {
+                war.StartBidding(options.MinPlayers, options.RaiseWindow);
+                continue;
+            }
+
+            war.Cancel("Not enough players");
+            foreach (var participant in war.Participants.Where(p => p.State == ParticipantState.Active))
+                AddRefund(context, war.PublicWarehouseId, participant.UserId);
+        }
+
+        await context.SaveChangesAsync(token);
+    }
+
+    private async Task SettleExpiredBiddingAsync(WarehouseDbContext context, CancellationToken token)
+    {
+        var now = DateTime.UtcNow;
+        var expired = await context.Wars
+            .Where(w => w.Status == WarehouseWarStatus.Bidding && w.BiddingEndsOn != null && w.BiddingEndsOn <= now)
+            .ToListAsync(token);
+        if (expired.Count == 0) return;
+
+        foreach (var war in expired)
+        {
+            var warehouseParticipantLeader = war.CurrentLeaderId;
+            
+            if (warehouseParticipantLeader is null) war.Cancel("No bids placed");
+            else war.Settle();
+
+            foreach (var participant in war.Participants.Where(p => p.State == ParticipantState.Active))
+            {
+                if (participant.UserId == warehouseParticipantLeader) continue;
+                AddRefund(context, war.PublicWarehouseId, participant.UserId);
+            }
+        }
+
+        await context.SaveChangesAsync(token);
+    }
+
+    private static void AddRefund(WarehouseDbContext context, Guid publicWarehouseId, Guid userId)
+    {
+        var eventId = Guid.NewGuid();
+        context.OutboxMessages.Add(new OutboxMessage
+        {
+            Id = eventId,
+            Type = nameof(FundsUnlockRequestedEvent),
+            Content = JsonSerializer.Serialize(new FundsUnlockRequestedEvent(eventId, publicWarehouseId, userId))
+        });
     }
 
     private async Task CancelExpiredLobbiesAsync(WarehouseDbContext context, CancellationToken token)
@@ -60,16 +122,7 @@ public sealed class WarehouseKeeper(IServiceProvider serviceProvider, ILogger<Wa
             war.Cancel(reason);
 
             foreach (var participant in war.Participants.Where(p => p.State == ParticipantState.Active))
-            {
-                var eventId = Guid.NewGuid();
-                context.OutboxMessages.Add(new OutboxMessage
-                {
-                    Id = eventId,
-                    Type = nameof(FundsUnlockRequestedEvent),
-                    Content = JsonSerializer.Serialize(
-                        new FundsUnlockRequestedEvent(eventId, war.PublicWarehouseId, participant.UserId))
-                });
-            }
+                AddRefund(context, war.PublicWarehouseId, participant.UserId);
         }
 
         await context.SaveChangesAsync(token);

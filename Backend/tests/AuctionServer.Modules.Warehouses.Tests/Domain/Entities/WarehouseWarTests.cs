@@ -261,4 +261,213 @@ public class WarehouseWarTests
 
         Assert.Throws<WarehouseExceptions.InvalidWarStateTransitionException>(() => war.Cancel("Lobby timed out"));
     }
+
+    private static readonly TimeSpan RaiseWindow = TimeSpan.FromSeconds(10);
+
+    [Fact]
+    public void StartBidding_WhenMinimumIsActive_ShouldOpenFirstRaiseWindow()
+    {
+        var war = CreateOpenWar();
+        for (var i = 0; i < 3; i++) JoinAndConfirm(war, minPlayers: 3, maxPlayers: 5);
+
+        war.StartBidding(minPlayers: 3, RaiseWindow);
+
+        Assert.Equal(WarehouseWarStatus.Bidding, war.Status);
+        Assert.NotNull(war.BiddingEndsOn);
+        Assert.InRange(war.BiddingEndsOn.Value,
+            DateTime.UtcNow + RaiseWindow - TimeSpan.FromSeconds(5), DateTime.UtcNow + RaiseWindow);
+    }
+
+    [Fact]
+    public void StartBidding_WhenPlayerLeftDuringCountdown_ShouldThrowException()
+    {
+        var war = CreateOpenWar();
+        var leaver = JoinAndConfirm(war, minPlayers: 3, maxPlayers: 5);
+        for (var i = 0; i < 2; i++) JoinAndConfirm(war, minPlayers: 3, maxPlayers: 5);
+        war.Leave(leaver);
+
+        Assert.Throws<WarehouseExceptions.NotEnoughPlayersException>(() => war.StartBidding(3, RaiseWindow));
+        Assert.Equal(WarehouseWarStatus.Open, war.Status);
+    }
+
+    [Fact]
+    public void StartBidding_WhenCountdownNeverScheduled_ShouldThrowException()
+    {
+        var war = CreateOpenWar();
+
+        Assert.Throws<WarehouseExceptions.CountdownNotStartedException>(() => war.StartBidding(3, RaiseWindow));
+    }
+
+    [Fact]
+    public void StartBidding_WhenNotOpen_ShouldThrowException()
+    {
+        var war = WarehouseWar.Create("Small", 500m);
+
+        Assert.Throws<WarehouseExceptions.InvalidWarStateTransitionException>(() => war.StartBidding(3, RaiseWindow));
+    }
+
+    private static readonly List<decimal> Increments = [10m, 50m, 100m, 500m];
+
+    private static WarehouseWar CreateBiddingWar(out Guid[] players, TimeSpan? firstWindow = null)
+    {
+        var war = CreateOpenWar();
+        players = [Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()];
+        foreach (var player in players)
+        {
+            war.Join(player, maxPlayers: 5);
+            war.ConfirmParticipant(player, minPlayers: 3, maxPlayers: 5, Countdown);
+        }
+        war.StartBidding(minPlayers: 3, firstWindow ?? RaiseWindow);
+        return war;
+    }
+
+    [Fact]
+    public void Raise_WhenFirstRaise_ShouldSetLeaderAndExtendWindow()
+    {
+        var war = CreateBiddingWar(out var players);
+        var versionBeforeRaise = war.Version;
+
+        war.Raise(players[0], 50m, Increments, RaiseWindow);
+
+        Assert.Equal(players[0], war.CurrentLeaderId);
+        Assert.Equal(50m, war.CurrentPrice);
+        Assert.NotNull(war.BiddingEndsOn);
+        Assert.InRange(war.BiddingEndsOn.Value,
+            DateTime.UtcNow + RaiseWindow - TimeSpan.FromSeconds(5), DateTime.UtcNow + RaiseWindow);
+        Assert.NotEqual(versionBeforeRaise, war.Version);
+    }
+
+    [Fact]
+    public void Raise_WhenAnotherPlayerOutbids_ShouldAccumulatePrice()
+    {
+        var war = CreateBiddingWar(out var players);
+
+        war.Raise(players[0], 50m, Increments, RaiseWindow);
+        war.Raise(players[1], 100m, Increments, RaiseWindow);
+
+        Assert.Equal(players[1], war.CurrentLeaderId);
+        Assert.Equal(150m, war.CurrentPrice);
+    }
+
+    [Fact]
+    public void Raise_WhenNotBidding_ShouldThrowException()
+    {
+        var war = CreateOpenWar();
+        var userId = Guid.NewGuid();
+        war.Join(userId, maxPlayers: 5);
+
+        Assert.Throws<WarehouseExceptions.WarNotBiddingException>(
+            () => war.Raise(userId, 50m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Raise_WhenWindowExpired_ShouldThrowException()
+    {
+        var war = CreateBiddingWar(out var players, firstWindow: TimeSpan.FromSeconds(-1));
+
+        Assert.Throws<WarehouseExceptions.RaiseWindowClosedException>(
+            () => war.Raise(players[0], 50m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Raise_WhenCallerIsLeader_ShouldThrowException()
+    {
+        var war = CreateBiddingWar(out var players);
+        war.Raise(players[0], 50m, Increments, RaiseWindow);
+
+        Assert.Throws<WarehouseExceptions.AlreadyLeadingException>(
+            () => war.Raise(players[0], 50m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Raise_WhenCallerIsNotParticipant_ShouldThrowException()
+    {
+        var war = CreateBiddingWar(out _);
+
+        Assert.Throws<WarehouseExceptions.ParticipantNotFoundException>(
+            () => war.Raise(Guid.NewGuid(), 50m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Raise_WhenEntryFeeNotConfirmed_ShouldThrowException()
+    {
+        var war = CreateOpenWar();
+        var pending = Guid.NewGuid();
+        war.Join(pending, maxPlayers: 5);
+        for (var i = 0; i < 3; i++) JoinAndConfirm(war, minPlayers: 3, maxPlayers: 5);
+        war.StartBidding(minPlayers: 3, RaiseWindow);
+
+        Assert.Throws<WarehouseExceptions.ParticipantNotActiveException>(
+            () => war.Raise(pending, 50m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Raise_WhenIncrementIsNotAllowed_ShouldThrowException()
+    {
+        var war = CreateBiddingWar(out var players);
+
+        Assert.Throws<WarehouseExceptions.InvalidIncrementException>(
+            () => war.Raise(players[0], 25m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Raise_WhenBudgetWouldBeExceeded_ShouldThrowException()
+    {
+        var war = CreateBiddingWar(out var players);
+        war.Raise(players[0], 500m, Increments, RaiseWindow);
+
+        Assert.Throws<WarehouseExceptions.BudgetExceededException>(
+            () => war.Raise(players[1], 10m, Increments, RaiseWindow));
+        Assert.Equal(500m, war.CurrentPrice);
+    }
+
+    [Fact]
+    public void Raise_WhenPriceReachesEntryFee_ShouldAllowExactBudget()
+    {
+        var war = CreateBiddingWar(out var players);
+
+        war.Raise(players[0], 500m, Increments, RaiseWindow);
+
+        Assert.Equal(500m, war.CurrentPrice);
+    }
+
+    [Fact]
+    public void Raise_WhenLeaderCallsAfterWindowExpired_ShouldReportClosedWindow()
+    {
+        var war = CreateBiddingWar(out var players);
+        war.Raise(players[0], 50m, Increments, TimeSpan.FromSeconds(-1));
+
+        Assert.Throws<WarehouseExceptions.RaiseWindowClosedException>(
+            () => war.Raise(players[0], 50m, Increments, RaiseWindow));
+    }
+
+    [Fact]
+    public void Settle_WhenLeaderExists_ShouldClose()
+    {
+        var war = CreateBiddingWar(out var players);
+        war.Raise(players[0], 50m, Increments, RaiseWindow);
+        var versionBeforeSettle = war.Version;
+
+        war.Settle();
+
+        Assert.Equal(WarehouseWarStatus.Settled, war.Status);
+        Assert.Equal(players[0], war.CurrentLeaderId);
+        Assert.NotEqual(versionBeforeSettle, war.Version);
+    }
+
+    [Fact]
+    public void Settle_WhenNobodyBid_ShouldThrowException()
+    {
+        var war = CreateBiddingWar(out _);
+
+        Assert.Throws<WarehouseExceptions.NoLeaderException>(() => war.Settle());
+    }
+
+    [Fact]
+    public void Settle_WhenNotBidding_ShouldThrowException()
+    {
+        var war = CreateOpenWar();
+
+        Assert.Throws<WarehouseExceptions.InvalidWarStateTransitionException>(() => war.Settle());
+    }
 }

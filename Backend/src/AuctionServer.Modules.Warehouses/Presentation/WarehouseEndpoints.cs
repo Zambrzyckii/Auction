@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using AuctionServer.Modules.Warehouses.Application.Command.JoinWarehouseWar;
 using AuctionServer.Modules.Warehouses.Application.Command.LeaveWarehouseWar;
+using AuctionServer.Modules.Warehouses.Application.Command.PlaceWarehouseBid;
 using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouseById;
 using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouses;
+using AuctionServer.Modules.Warehouses.Presentation.Request;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -41,6 +43,13 @@ public static class WarehouseEndpoints
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new LeaveWarehouseWarCommand(id, userId));
+            return Results.Ok();
+        }).RequireAuthorization();
+
+        group.MapPost("/{id:guid}/bids", async (Guid id, PlaceWarehouseBidRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new PlaceWarehouseBidCommand(id, userId, request.Increment));
             return Results.Ok();
         }).RequireAuthorization();
 

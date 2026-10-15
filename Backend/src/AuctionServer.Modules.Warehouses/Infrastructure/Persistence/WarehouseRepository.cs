@@ -49,6 +49,11 @@ public sealed class WarehouseRepository(WarehouseDbContext context) : IWarehouse
         await context.SaveChangesAsync(token);
     }
 
+    public async Task SaveWarAsync(CancellationToken token)
+    {
+        await context.SaveChangesAsync(token);
+    }
+
     public async Task<List<WarehouseWar>> GetActiveWarsReadOnlyAsync(int limit, CancellationToken token)
     {
         return await context.Wars.AsNoTracking()
