@@ -52,6 +52,7 @@ Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z pr
 - Inventory: przedmioty z cenami zależnymi od rzadkości, crafting, sprzedaż do sklepu, konfigurowalny pakiet startowy przy rejestracji, blokowanie i przenoszenie przedmiotów dla aukcji, inbox i outbox.
 - Warehouses: wojny magazynowe zasilane pulą w tle, ukryte manifesty wyceniane przez Inventory, celowo zwodnicze widełki, wpisowe blokowane przez Wallets będące zarazem budżetem podbić, okna podbić 5-10 s ze stałymi kwotami, rozliczenie mintujące manifest dla zwycięzcy i usuwające cenę końcową z obiegu, inbox i outbox.
 - Banking: stałe oferty pożyczek bramkowane skumulowanym obrotem portfela, asynchroniczne sagi udzielenia i pobrania z Wallets, jedna spłata w terminie zapadalności ściągana przez keepera, częściowe pobranie z jednorazową karą i automatycznymi ponowieniami, wcześniejsza ręczna spłata, inbox i outbox.
+- Pawnshop: lokal bramkowany skumulowanym obrotem portfela, skonfigurowana drabinka botów z jednym miejscem na bota, towar tworzony przez bota i wyceniany przez Inventory, okno wycofania, po którym następuje automatyczna sprzedaż za stały ułamek ceny, zdarzenia płatności i wypłat wymieniane z Wallets, inbox i outbox.
 - Przekrojowo: pipeline FluentValidation, globalny kontrakt błędów, optymistyczna współbieżność, GitLab CI z Testcontainers.
 
 ## 6. Planowane dalej
@@ -64,7 +65,7 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 2. **Przelewy między graczami** z append-only historią przelewów (małe, weszły 2026-10-14).
 3. **Aukcje magazynów-niespodzianek**: magazyn o losowej zawartości, pokazywany przed licytacją tylko jako celowo zwodnicze widełki wartości, żeby magazyny nie były gwarantowanym zarobkiem (duże, weszły 2026-10-15 jako moduł Warehouses).
 4. **Bank** udzielający pożyczek z oprocentowaniem (średni, wszedł 2026-10-15 jako moduł Banking: oferty bramkowane obrotem, pobranie w terminie zapadalności przez `BankKeeper`, kary za przeterminowanie i ponowienia; wypłata tworzy pieniądz, pobranie niszczy kapitał, odsetki i karę).
-5. **Lombard**, w którym gracz zatrudnia dobrze wyszkolone boty dla pasywnego dochodu (średni, też tworzy pieniądz, zależy od decyzji ekonomicznych z punktu 4).
+5. **Lombard**, w którym gracz zatrudnia dobrze wyszkolone boty dla pasywnego dochodu (średni, wszedł 2026-10-15 jako moduł Pawnshop z lokalem bramkowanym skumulowanym obrotem, drabinką ulepszeń z jednym botem i towarem czasowym, który właściciel może wycofać albo który sprzedaje się automatycznie za stały ułamek ceny, a wypłaty tworzą pieniądz, podczas gdy jednorazowe zakupy go niszczą).
 6. **Kasyno** z prostymi zabawowymi grami jak ruletka i blackjack (średnie, źródła i zlewy bilansowane razem z punktami 4 i 5).
 7. **Profile użytkowników**: znajomi, avatar, podpięte prawdziwe konta społecznościowe i opcja profilu prywatnego, który ukrywa wszystko poza zdjęciem profilowym (średnie, dotyka danych osobowych, więc prywatność jest częścią projektu od początku).
 

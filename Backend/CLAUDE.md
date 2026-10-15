@@ -25,16 +25,16 @@ docker compose up -d                              # from the repo ROOT: API on :
 
 ### Tests
 
-Six test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
+Seven test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
 
-- All six mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
+- All seven mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
   `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull
   `postgres:latest`; each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
   on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
-  runs in `integration-tests` next to the other four projects. `Wallets.Tests` and `Identity.Tests` additionally boot the whole
+  runs in `integration-tests` next to the other six projects. `Wallets.Tests` and `Identity.Tests` additionally boot the whole
   host through a `WebApplicationFactory<Program>` fixture (`CustomApi`) that sets `ConnectionStrings__DefaultConnection`,
   `Jwt__Key` (Identity also `Bots__ApiKey`) as process env vars and migrates only its own module — the other modules'
   outbox processors log errors against missing tables; that noise is expected.
@@ -71,6 +71,9 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Warehouses \
 dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Banking \
   --startup-project src/AuctionServer.Api --context BankingDbContext \
   --output-dir Infrastructure/Persistence/Migrations
+dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Pawnshop \
+  --startup-project src/AuctionServer.Api --context PawnshopDbContext \
+  --output-dir Infrastructure/Persistence/Migrations
 ```
 
 `--output-dir` matters for Auctions: the module has **two** migration folders. `Migrations/` holds the initial
@@ -87,7 +90,10 @@ share one schema. Inventory follows the same layout (snapshot `InventoryDbContex
 `Initial_Inventory` creates `InventoryItems` and `InventoryOutboxMessages`, `Add_Item_LockedForAuctionId` and
 `Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. Warehouses uses the Wallets layout as well:
 `Initial_Warehouses` (wars, stock items, outbox, inbox) and `Add_Warehouses_Lobby` (participants table plus
-`CancellationReason`) under `Infrastructure/Persistence/Migrations/`. `Add_Auction_Status_And_Item_Snapshot` is the one
+`CancellationReason`) under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
+`Initial_Pawnshop` (shops, outbox, inbox), `Add_Pawnshop_Bot` (bot snapshot columns), `Add_Pawnshop_Stock` (pending
+stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Precision` (`numeric(5,4)` for
+`PendingStockPayoutRate`). `Add_Auction_Status_And_Item_Snapshot` is the one
 hand-edited migration: it adds `Status`, backfills it from `IsClosed` with raw SQL and only then drops the column,
 so pre-existing open auctions stay `Active` instead of falling back to the `Pending` default — keep that order if you
 ever regenerate it.
@@ -121,6 +127,9 @@ timing knobs, bound to `WarehousesOptions`) has the same fail-fast at `Program.c
 The whole `Banking` section (penalty rate, retry interval, both timeouts and the loan offers, bound to `BankingOptions`)
 has the same fail-fast in `Program.cs`; `AddBankingModule` validates the values (offers non-empty and unique, timeouts
 `>= 10 min`).
+The whole `Pawnshop` section (premises price and turnover threshold, stock sell delay, both timeouts and the bot tiers,
+bound to `PawnshopOptions`) has the same fail-fast in `Program.cs`. `AddPawnshopModule` validates the values (tiers
+non-empty with unique names and rarities, `PayoutRate` within `[0.01, 1)`, timeouts `>= 10 min`).
 `Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
 it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app starts and `POST /api/users/bots` answers 401.
 
@@ -128,7 +137,7 @@ it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app 
 deliberately does not read them (dev-only values are inline there) and no code reads them either. Treat them as
 leftovers, not as the app's configuration path.
 
-The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all six
+The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all seven
 contexts' migrations between `Build()` and `Run()`, before the outbox processors start. The flag defaults to
 `false` in `appsettings.json`, so `dotnet run` and the test fixtures keep migrating explicitly.
 
@@ -148,6 +157,7 @@ AuctionServer.Modules.Identity     register/login/bot provisioning (BCrypt, JWT 
 AuctionServer.Modules.Inventory    items/crafting/shop + bot-only mint and a config-driven starter pack on registration; locks items for auctions, transfers them to the winner
 AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 5-10 s raise windows, settlement burns the final price; CQS — EF Core for both
 AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wallet turnover, grant and collection sagas with Wallets, one repayment at maturity pulled by BankKeeper, one-time overdue penalty with retries; CQS — EF Core for both
+AuctionServer.Modules.Pawnshop     pawnshop: turnover-gated premises, one bot slot on an upgrade-only ladder, goods spawned through Inventory quotes, auto-sold for a share of the price by PawnshopKeeper or withdrawn to Inventory at full price, CQS with EF Core for both
 AuctionServer.Shared.Integration   the only shared project: integration events + AppException
 ```
 
@@ -247,10 +257,22 @@ Active event flows:
   legal) → `LoanRepaymentCollectedEventHandler` runs `ApplyCollection`: full → `Repaid`, partial before `DueOn` →
   `Active` without penalty, partial at/past `DueOn` → `Overdue` with a one-time penalty keyed on `OverdueSince == null`.
   Timeouts are validated `>= 10 min` (the dead-letter horizon). Details: `docs/en/backend/banking.md`.
+- **Pawnshop sagas** (three, all driven by the Pawnshop module). Payment covers premises and bots with one trio,
+  `PawnshopPaymentRequestedEvent` to Wallets' `PawnshopPaymentRequestedEventHandler`, which calls
+  `Wallet.PayForPawnshop(amount, requiredTurnover)` (turnover gate, then an all-or-nothing debit that leaves
+  `LifetimeTurnover` untouched) and replies `PawnshopPaymentCompletedEvent` or `PawnshopPaymentRejectedEvent`. Premises
+  carry the configured threshold, bot purchases carry 0. Replies are matched on `Shop.PendingPaymentId`, a mismatch
+  throws and dead-letters. Stocking mirrors the warehouse quote. `PawnshopKeeper` emits `PawnshopStockRequestedEvent`
+  with outbox id, event id and `PendingStockRequestId` equal, Inventory prices transient items and replies
+  `PawnshopStockedEvent` echoing `RequestId`. To resolve stock the keeper sells due items through `StockItem.SellDue` and
+  writes one `PawnshopPayoutEvent` per pawnshop (Wallets credits via `AddFunds`, so payouts build turnover), while
+  `POST /api/pawnshop/stock/{id}/withdraw` writes `PawnshopItemWithdrawnEvent` (Inventory mints the item through
+  `Item.CreateWithPrice`). The window closes at `SellAfter` and the item's `Version` token settles a withdrawal racing
+  the sale. Details: `docs/en/backend/pawnshop.md`.
 
 Delivery is at-least-once, so every cross-module consumer is idempotent via an **inbox** — one table per consuming
 module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`,
-`WarehousesProcessedMessages`, `BankingProcessedMessages`), event id as PK,
+`WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`), event id as PK,
 `ProcessedMessage` entity under `Infrastructure/Inbox/`. The handler checks the inbox first (`WasEventProcessedAsync`)
 and silently returns on a replay; entity changes and the inbox row are still saved in one `SaveChangesAsync`
 (`SaveChangesWithInboxAsync`, or `SaveChangesWithInboxAndOutboxAsync` when the handler also replies), so the PK
@@ -258,13 +280,16 @@ unique violation — surfaced as the module's `EventAlreadyProcessedException` a
 the backstop for the race where two deliveries pass the check concurrently. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
 `AuctionFinishedEventHandler`, `ItemSoldToShopEventHandler`, `FundsLockRequestedEventHandler`,
 `FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`,
-`LoanRequestedEventHandler`, `LoanRepaymentRequestedEventHandler`;
+`LoanRequestedEventHandler`, `LoanRepaymentRequestedEventHandler`, `PawnshopPaymentRequestedEventHandler`,
+`PawnshopPayoutEventHandler`;
 Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `FundsLockedEventHandler`, `FundsLockRejectedEventHandler`; Inventory: `ItemLockRequestedEventHandler`,
 `AuctionFinishedEventHandler`, `AuctionSettledEventHandler`, `AuctionCancelledEventHandler`,
-`WarehouseStockRequestedEventHandler`, `WarehouseWonEventHandler`; Warehouses: `WarehouseStockedEventHandler`,
+`WarehouseStockRequestedEventHandler`, `WarehouseWonEventHandler`, `PawnshopStockRequestedEventHandler`,
+`PawnshopItemWithdrawnEventHandler`; Warehouses: `WarehouseStockedEventHandler`,
 `WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`; Banking: `LoanApprovedEventHandler`,
-`LoanRejectedEventHandler`, `LoanRepaymentCollectedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
+`LoanRejectedEventHandler`, `LoanRepaymentCollectedEventHandler`; Pawnshop: `PawnshopPaymentCompletedEventHandler`,
+`PawnshopPaymentRejectedEventHandler`, `PawnshopStockedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
 unique index instead. Handlers deliberately do **not** catch illegal state transitions —
 `InvalidAuctionStateTransitionException` (409), `ItemNotLockedException`, the 404 from `GetItemLockedForAuctionAsync`
 — so no inbox row is written, the outbox row retries and finally dead-letters with the reason in `Errors`. A visible
@@ -272,11 +297,11 @@ failure beats a silent skip.
 
 Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
 exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the poll query. The
-outbox entity and processor exist as six separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
-Banking) — a change to one must be mirrored in the others.
+outbox entity and processor exist as seven separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
+Banking, Pawnshop) — a change to one must be mirrored in the others.
 
 Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Banking/`, `Funds/`,
-`Items/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
+`Items/`, `Pawnshop/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
 `Type` column and the `IntegrationEventTypes` registry use the simple type name, so the folders are purely for
 readability — moving an event never touches stored rows.
 
@@ -352,11 +377,15 @@ auction per wallet, so `FundsLockStatus.Active` must stay `0`. Banking enforces 
 `HasIndex(UserId).IsUnique().HasFilter("\"Status\" IN (0, 1, 2, 3)")`, so the `LoanStatus` integers
 (`PendingApproval=0, Active=1, CollectionPending=2, Overdue=3, Repaid=4, Rejected=5`) must never be renumbered;
 the repository translates the unique violation into `LoanAlreadyActiveException` (409).
+Pawnshop enforces one live pawnshop per player with `HasIndex(UserId).IsUnique().HasFilter("\"Status\" IN (0, 1)")`,
+so `ShopStatus` (`PendingPayment=0, Active=1, Rejected=2`) must never be renumbered, and the repository translates the
+violation into `PawnshopAlreadyOwnedException` (409).
 
 ### Entity configuration
 
-All six contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
-`IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`, `BankingDbContext.cs`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
+All seven contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
+`IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`, `BankingDbContext.cs`,
+`PawnshopDbContext.cs:17`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
 (Auctions keeps them in `Infrastructure/Configurations/`, the other modules in `Infrastructure/Configuration/`).
 
 Auctions keys: the primary key is the `int AuctionId` identity column (`AuctionConfiguration.cs:11`), and
@@ -375,8 +404,8 @@ Where the documentation, the README roadmap and the code disagree, the code wins
 **Implemented** (register → wallet via outbox → login/JWT → funds → create auction as `Pending` → item locked
 in Inventory → auction activated with item snapshot → pessimistic bid confirmed by a funds lock (anti-sniping) → background auto-close →
 exactly-once settlement via inbox → `AuctionSettledEvent` → item transferred to the winner, or unlocked when
-nobody bid): all six modules are fully wired — authentication, six outbox processors, `AuctionCloser`,
-`WarehouseKeeper`, `BankKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
+nobody bid): all seven modules are fully wired — authentication, seven outbox processors, `AuctionCloser`,
+`WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
 included — was verified manually end-to-end on 2026-10-14 against the compose stack: insufficient-funds rejection,
 409 on a second in-flight bid, confirm, release of the previous leader's lock, close, settlement by consuming the
 winner's lock and the item transfer, with zero dead or pending outbox rows afterwards.
@@ -407,6 +436,18 @@ Probed live against the compose stack on 2026-10-15 (20 checks: three players fu
 confirmed, guarded raises — 409 for the leading raiser, 400 for an increment outside the tier — settlement after
 the window, manifest revealed only once `Settled`, exact winner and loser balances, items minted at the quoted
 prices, zero pending and zero dead rows across all five outboxes).
+
+Also on 2026-10-15 the seventh module, Pawnshop, landed. A player whose `LifetimeTurnover` reaches the configured
+threshold buys premises through a payment saga with Wallets (`Wallet.PayForPawnshop` checks the gate and debits
+atomically without touching turnover). One bot slot takes a strictly higher tier each time, without a refund.
+`PawnshopKeeper` (5 s loop, four sweeps) requests goods priced by Inventory and sells each one after
+`StockSellDelay` for `Round(Price * PayoutRate, 2, AwayFromZero)`, credited through `AddFunds`, and the owner can
+withdraw an item before `SellAfter` into Inventory at its full price. Five endpoints under `/api/pawnshop`, seven
+events, four tables. The chapter is `docs/en/backend/pawnshop.md`. It was probed live against the compose stack the
+same day with 33 checks (premises debit with turnover untouched, rejection for a fresh player, 409 on a second
+pawnshop and on a same-tier bot, spawns with the configured window, 404 for a foreign withdrawal, the withdrawn item
+in Inventory at the stock price, the automatic payout with wallet and turnover grown by the same sum) and zero dead
+or stale pending rows across all seven outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
 column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `LoginCommandHandler.cs:34`, the

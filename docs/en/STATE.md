@@ -6,14 +6,14 @@
 
 ## Phase
 
-**Backend complete for the main flow, no other module started.** On 2026-10-14 the pending-auction timeout and the funds-reservation saga for bids landed, followed the same day by the first gameplay batch: the starter item pack and player-to-player transfers. On 2026-10-15 the fifth module, Warehouses, landed with the warehouse wars from the third roadmap item, and the sixth, Banking, with the turnover-gated loans from the fourth. Before that the last code commit was `e684e33` from 2026-08-30. Register, login, create auction, bid, close and settle work end to end inside one process, with the known gaps listed below; the whole chain, both sagas included, was verified manually against the Compose stack on 2026-10-14, the warehouse war chain (stocking, entry locks, guarded raises, settlement with reveal and refunds) the same way on 2026-10-15, and the loan chain (turnover rejection, grant after a top-up, early repayment, keeper collection, overdue penalty with retry) the same day, with all six outboxes clean afterwards.
+**Backend complete for the main flow, no other module started.** On 2026-10-14 the pending-auction timeout and the funds-reservation saga for bids landed, followed the same day by the first gameplay batch: the starter item pack and player-to-player transfers. On 2026-10-15 the fifth module, Warehouses, landed with the warehouse wars from the third roadmap item, the sixth, Banking, with the turnover-gated loans from the fourth, and the seventh, Pawnshop, with the passive-income bots from the fifth. Before that the last code commit was `e684e33` from 2026-08-30. Register, login, create auction, bid, close and settle work end to end inside one process, with the known gaps listed below; the whole chain, both sagas included, was verified manually against the Compose stack on 2026-10-14, the warehouse war chain (stocking, entry locks, guarded raises, settlement with reveal and refunds) the same way on 2026-10-15, and the loan chain (turnover rejection, grant after a top-up, early repayment, keeper collection, overdue penalty with retry) the same day, with all six outboxes clean afterwards. The pawnshop chain was probed live against the Compose stack the same day with 33 checks, all passed. The probe covered the offers, the premises purchase with the turnover gate, the bot purchases and their conflicts, the spawns, the withdrawal, the automatic sale with its payout and the zero dead and zero stale pending rows across all seven outboxes.
 
 ## What exists
 
-- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory, Warehouses and Banking and the contracts project `Shared.Integration`; 25 endpoints, 25 integration events, 22 tables, six `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper` and `BankKeeper`.
-- Tests: six xUnit projects, 428 test methods (234 offline, 194 integration through Testcontainers), none crossing a module boundary.
+- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory, Warehouses, Banking and Pawnshop and the contracts project `Shared.Integration`; 30 endpoints, 32 integration events, 26 tables, seven `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper` and `PawnshopKeeper`.
+- Tests: seven xUnit projects, 534 test methods (302 offline, 232 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` and its GitHub Actions mirror `.github/workflows/ci.yml`, both with `build`, `unit-tests` and `integration-tests`.
-- Documentation: `docs/en` and `docs/pl` with this set of pages and 15 rendered diagrams; root `README.md` and `README.pl.md`.
+- Documentation: `docs/en` and `docs/pl` with this set of pages and 16 rendered diagrams; root `README.md` and `README.pl.md`.
 - `Backend/Dockerfile` and a root `compose.yaml` (API + PostgreSQL, migrations applied at startup behind `Database:MigrateOnStartup`).
 - CORS for the configured frontend origins (`Cors:AllowedOrigins`), the OpenAPI document at `/openapi/v1.json` and `/health` with a database check.
 - Not in the repository: frontend, bots, gateway, message broker.
@@ -31,7 +31,7 @@
 
 ## Next step
 
-On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day, the warehouse wars and the bank followed on 2026-10-15. Next in the [VISION.md](VISION.md) roadmap is the pawnshop, which depends on the economy decisions the bank has now made.
+On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day, the warehouse wars, the bank and the pawnshop followed on 2026-10-15. Next in the [VISION.md](VISION.md) roadmap is the casino, whose sources and sinks are balanced together with the bank and the pawnshop.
 
 ## Related documents
 

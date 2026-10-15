@@ -121,6 +121,35 @@ erDiagram
         text RejectionReason "nullable, max 256"
         uuid Version "concurrency token"
     }
+    PAWNSHOP__PawnshopShops {
+        integer Id PK "identity column"
+        uuid PublicPawnshopId UK
+        uuid UserId "unique while Status IN (0, 1)"
+        integer Status "PendingPayment=0 Active=1 Rejected=2"
+        timestamptz RequestedOn "newest shop wins in GET"
+        timestamptz ActivatedOn "nullable"
+        text RejectionReason "nullable, max 256"
+        uuid PendingPaymentId "nullable, the one payment in flight"
+        varchar BotTierName "nullable, max 64, installed bot snapshot with rarity, interval, rate, purchase time"
+        varchar PendingBotTierName "nullable, max 64, bot being paid for, same four snapshot columns"
+        timestamptz NextSpawnOn "nullable, indexed with Status"
+        uuid PendingStockRequestId "nullable, the one spawn request in flight with its frozen rate"
+        uuid Version "concurrency token"
+    }
+    PAWNSHOP__PawnshopStockItems {
+        integer Id PK "identity column"
+        uuid PublicStockItemId UK
+        uuid PublicPawnshopId "owning pawnshop"
+        uuid UserId "owner, indexed with Status"
+        varchar Name "max 100"
+        integer Rarity "PawnshopRarity"
+        numeric Price "18,2 quoted by Inventory"
+        numeric PayoutRate "5,4 frozen per item"
+        integer Status "InStock=0 Withdrawn=1 Sold=2, indexed with SellAfter"
+        timestamptz SellAfter "SpawnedOn + StockSellDelay"
+        numeric PayoutAmount "nullable, 18,2 set on sale"
+        uuid Version "concurrency token"
+    }
     IDENTITY__IdentityOutboxMessages {
         uuid Id PK
     }
@@ -154,6 +183,12 @@ erDiagram
     BANKING__BankingProcessedMessages {
         uuid EventId PK
     }
+    PAWNSHOP__PawnshopOutboxMessages {
+        uuid Id PK
+    }
+    PAWNSHOP__PawnshopProcessedMessages {
+        uuid EventId PK
+    }
     AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
@@ -168,3 +203,7 @@ erDiagram
     IDENTITY__Users ||..o{ WAREHOUSES__WarehousesParticipants : "UserId, no FK"
     IDENTITY__Users ||..o{ BANKING__BankingLoans : "UserId, no FK"
     WALLETS__Wallets |o..o{ BANKING__BankingLoans : "UserId, disbursement and collection via events only"
+    IDENTITY__Users ||..o{ PAWNSHOP__PawnshopShops : "UserId, no FK"
+    PAWNSHOP__PawnshopShops ||..o{ PAWNSHOP__PawnshopStockItems : "PublicPawnshopId, no FK"
+    WALLETS__Wallets |o..o{ PAWNSHOP__PawnshopShops : "UserId, payments and payouts via events only"
+    PAWNSHOP__PawnshopStockItems |o..o| INVENTORY__InventoryItems : "withdrawal mints an item via events only, no stored link"

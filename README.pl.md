@@ -2,11 +2,11 @@
 
 > Wersja polska. Angielski odpowiednik: [README.md](README.md)
 
-**AuctionServer** to zgamifikowany dom aukcyjny zbudowany jako **modular monolith w .NET 10 na PostgreSQL**: użytkownicy rejestrują się, dostają wirtualny portfel, zbierają i craftują przedmioty, handlują nimi przez aukcje czasowe z ochroną anty-snajperską, automatycznym zamykaniem i rozliczeniem dokładnie raz, licytują w szybkich wojnach magazynowych o ukrytą zawartość oraz biorą pożyczki bankowe bramkowane całkowitym obrotem rynkowym. To projekt portfolio i nauki, w którym chodzi o architekturę: ścisłe granice modułów, integrację przez zdarzenia z transakcyjnym outboxem i inboxem oraz gwarancje poprawności (idempotencja, optymistyczna współbieżność, atomowe zapisy), które projekty demo zwykle pomijają.
+**AuctionServer** to zgamifikowany dom aukcyjny zbudowany jako **modular monolith w .NET 10 na PostgreSQL**: użytkownicy rejestrują się, dostają wirtualny portfel, zbierają i craftują przedmioty, handlują nimi przez aukcje czasowe z ochroną anty-snajperską, automatycznym zamykaniem i rozliczeniem dokładnie raz, licytują w szybkich wojnach magazynowych o ukrytą zawartość, biorą pożyczki bankowe bramkowane całkowitym obrotem rynkowym oraz zarabiają pasywnie w lombardzie obsadzonym przez boty. To projekt portfolio i nauki, w którym chodzi o architekturę: ścisłe granice modułów, integrację przez zdarzenia z transakcyjnym outboxem i inboxem oraz gwarancje poprawności (idempotencja, optymistyczna współbieżność, atomowe zapisy), które projekty demo zwykle pomijają.
 
 ## Status
 
-Backend jest kompletny dla głównego przepływu: sześć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking), 25 endpointów, 25 zdarzeń integracyjnych, 428 metod testowych i pipeline'y CI dla GitLaba i GitHub Actions. Frontend Angular, boty AI, API gateway i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
+Backend jest kompletny dla głównego przepływu: siedem modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop), 30 endpointów, 32 zdarzenia integracyjne, 534 metody testowe i pipeline'y CI dla GitLaba i GitHub Actions. Frontend Angular, boty AI, API gateway i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
 
 ## Szybki start
 

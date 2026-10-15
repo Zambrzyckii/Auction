@@ -11,7 +11,7 @@
 | Endpointy | [`Presentation/InventoryEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Presentation/InventoryEndpoints.cs), rekordy żądań `CraftItemRequest`, `GrantItemRequest` |
 | Komendy | `Application/Command/CraftItem/`, `Application/Command/GrantItem/`, `Application/Command/SellItemToShop/` (komenda, handler, walidator w każdym) |
 | Zapytania | `Application/Queries/GetUserItemsQuery/` (zapytanie, handler, `UserItemsDto`) |
-| Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs` |
+| Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
 | Domena | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
 | Infrastruktura | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
@@ -30,7 +30,7 @@ Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/sr
 
 ## Konfiguracja
 
-Moduł ma jeden klucz konfiguracji: `Inventory:StarterItems`, listę wpisów `{ Name, Rarity }` przyznawanych każdemu nowemu graczowi przy rejestracji (domyślnie w `appsettings.json` trzy przedmioty `Common`; pusta lista wyłącza pakiet). Pozostałe reguły to stałe w [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` jest losowana raz przy tworzeniu przez `Random.Shared.Next` (górna granica wyłączona): `Item.Create` losuje ją i deleguje do `Item.CreateWithPrice`, fabryki przyjmującej jawną cenę (używanej przez mint magazynowy), która odrzuca cenę niedodatnią przez `InvalidItemPriceException`. Crafting potrzebuje dokładnie `CraftIngredientsCount = 3` składników, a wycraftowany przedmiot nazywa się `Crafted {rarity} Item`.
+Moduł ma jeden klucz konfiguracji: `Inventory:StarterItems`, listę wpisów `{ Name, Rarity }` przyznawanych każdemu nowemu graczowi przy rejestracji (domyślnie w `appsettings.json` trzy przedmioty `Common`; pusta lista wyłącza pakiet). Pozostałe reguły to stałe w [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` jest losowana raz przy tworzeniu przez `Random.Shared.Next` (górna granica wyłączona): `Item.Create` losuje ją i deleguje do `Item.CreateWithPrice`, fabryki przyjmującej jawną cenę (używanej przez mint magazynowy i mint lombardu), która odrzuca cenę niedodatnią przez `InvalidItemPriceException`. Crafting potrzebuje dokładnie `CraftIngredientsCount = 3` składników, a wycraftowany przedmiot nazywa się `Crafted {rarity} Item`.
 
 | Rzadkość | Wartość | Losowana cena oficjalna |
 |---|---|---|
@@ -99,11 +99,14 @@ Walidacja działa przed handlerami: `CraftItemCommandValidator` wymaga dokładni
 | konsumowane | `UserRegisteredEvent` | `UserRegisteredEventHandler`: jedno `Item.Create` na wpis `Inventory:StarterItems`, zapis atomowy z wierszem inboxa |
 | konsumowane | `WarehouseStockRequestedEvent` | `WarehouseStockRequestedEventHandler`: wycenia jedno przejściowe `Item.Create` na żądaną rzadkość (nic nie jest zapisywane; wywołanie tylko pożycza ukryty roll cen) i odpowiada `WarehouseStockedEvent` z wycenionym manifestem |
 | konsumowane | `WarehouseWonEvent` | `WarehouseWonEventHandler`: jedno `Item.CreateWithPrice` na wpis manifestu dla zwycięzcy, w cenach wylosowanych przy wycenie, zapis przez `AddItemsWithInboxAsync` |
+| konsumowane | `PawnshopStockRequestedEvent` | `PawnshopStockRequestedEventHandler` używa tego samego triku wyceny co handler magazynowy. Losuje jedno przejściowe `Item.Create` na żądaną rzadkość o nazwie `Pawned {rarity} Good` (nic nie jest zapisywane) i odpowiada `PawnshopStockedEvent`, którego `RequestId` to `EventId` żądania, bo jeden lombard pyta wiele razy |
+| konsumowane | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mintuje jeden przedmiot `Available` dla właściciela przez `Item.CreateWithPrice` w cenie z magazynu lombardu, zapis przez `AddItemsWithInboxAsync` |
 | publikowane | `ItemLockedEvent`, `ItemLockRejectedEvent` | odpowiedzi zapisywane w tym samym `SaveChangesAsync` co blokada i wiersz inboxa |
 | publikowane | `WarehouseStockedEvent` | odpowiedź wyceny, zapisywana w tym samym `SaveChangesAsync` co wiersz inboxa |
+| publikowane | `PawnshopStockedEvent` | odpowiedź wyceny lombardu, zapisywana w tym samym `SaveChangesAsync` co wiersz inboxa |
 | publikowane | `ItemSoldToShopEvent` | `SellItemToShopCommandHandler`; `Id` wiersza outboxa i `EventId` zdarzenia to dwa różne Guidy |
 
-Wszystkich pięciu konsumentów używa tabeli inboxa `InventoryProcessedMessages`; w konsumentach aukcyjnych nieznany przedmiot lub aukcja to 404, który propaguje do outboxa producenta i jest ponawiany.
+Każdy konsument używa tabeli inboxa `InventoryProcessedMessages`; w konsumentach aukcyjnych nieznany przedmiot lub aukcja to 404, który propaguje do outboxa producenta i jest ponawiany.
 
 ## Decyzje
 
@@ -112,6 +115,7 @@ Wszystkich pięciu konsumentów używa tabeli inboxa `InventoryProcessedMessages
 - Przedmiot zmienia właściciela tylko w `TransferTo`, wyzwalanym przez `AuctionSettledEvent`, więc przedmiot przechodzi po tym, jak Wallets przesunie pieniądze.
 - Blokada jest zapisana na przedmiocie (`LockedForAuctionId`, unikalna), co pozwala konsumentom znaleźć przedmiot dla aukcji bez żadnych danych Auctions i zapobiega zablokowaniu dwóch przedmiotów dla jednej aukcji.
 - Pakiet startowy konsumuje `UserRegisteredEvent`, tak jak Wallets tworzy portfel; w odróżnieniu od portfela przedmioty nie mają naturalnego klucza unikalnego, więc idempotencję daje wiersz inboxa zapisany w tej samej transakcji co przedmioty.
+- Lombard używa wzorca wyceny z magazynów z własnymi zdarzeniami. Inventory wycenia przejściowe przedmioty, których nigdy nie zapisuje, a wycofany przedmiot z lombardu jest mintowany w cenie wycenionej wcześniej, więc gracz dostaje dokładnie tyle, ile pokazał lombard.
 
 ## Powiązane dokumenty
 
@@ -119,4 +123,5 @@ Wszystkich pięciu konsumentów używa tabeli inboxa `InventoryProcessedMessages
 - [messaging.md](messaging.md) - outbox, inbox, polityka ponowień.
 - [auctions.md](auctions.md) - druga strona sagi blokady przedmiotu.
 - [wallets.md](wallets.md) - wypłata ze sklepu i rozliczenie.
+- [pawnshop.md](pawnshop.md) - druga strona zdarzeń wyceny i wycofania z lombardu.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - przepływy aukcji od początku do końca.

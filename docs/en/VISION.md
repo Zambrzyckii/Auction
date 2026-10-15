@@ -52,6 +52,7 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 - Inventory: items with rarity-based prices, crafting, selling to the shop, a configurable starter pack on registration, locking and transferring items for auctions, inbox and outbox.
 - Warehouses: warehouse wars stocked by a background pool, hidden manifests priced by Inventory, deliberately misleading estimates, an entry fee locked through Wallets that is also the bid budget, 5-10 s raise windows with fixed increments, settlement that mints the manifest for the winner and removes the final price from the economy, inbox and outbox.
 - Banking: fixed loan offers gated by the lifetime wallet turnover, asynchronous grant and collection sagas with Wallets, a single repayment at maturity pulled by a keeper, partial collection with a one-time penalty and automatic retries, early manual repayment, inbox and outbox.
+- Pawnshop: premises gated by the lifetime wallet turnover, a configured bot ladder with one bot slot, goods spawned by the bot and priced by Inventory, a withdrawal window followed by an automatic sale for a fixed share of the price, payment and payout events exchanged with Wallets, inbox and outbox.
 - Cross-cutting: FluentValidation pipeline, global error contract, optimistic concurrency, GitLab CI with Testcontainers.
 
 ## 6. Planned next
@@ -64,7 +65,7 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 2. **Player-to-player money transfers** with an append-only transfer history (small, shipped 2026-10-14).
 3. **Mystery warehouse auctions**: a warehouse with random content, shown before bidding only as a deliberately misleading value range, so warehouses are not a guaranteed profit (large, shipped 2026-10-15 as the Warehouses module).
 4. **Bank** granting loans with interest (medium, shipped 2026-10-15 as the Banking module: turnover-gated offers, maturity collection by `BankKeeper`, overdue penalties and retries; disbursement creates money, collection destroys principal, interest and penalty).
-5. **Pawnshop** where a player hires well-trained bots for passive income (medium, also creates money, depends on the economy decisions of item 4).
+5. **Pawnshop** where a player hires well-trained bots for passive income (medium, shipped 2026-10-15 as the Pawnshop module with premises gated by the lifetime turnover, a one-bot upgrade ladder and timed stock that the owner can withdraw or that sells automatically for a fixed share of its price, and payouts create money while one-time purchases destroy it).
 6. **Casino** with simple playful games such as roulette and blackjack (medium, sources and sinks balanced together with items 4 and 5).
 7. **User profiles**: friends, avatar, linked real-world social accounts and a private-profile option that hides everything except the profile picture (medium, touches personal data, so privacy is part of the design from the start).
 

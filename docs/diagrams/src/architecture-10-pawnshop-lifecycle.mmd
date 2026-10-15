@@ -1,0 +1,22 @@
+stateDiagram-v2
+    state "Pawnshop (PawnshopShops.Status)" as ShopMachine {
+        [*] --> PendingPayment: Shop.Open (POST /api/pawnshop), payment requested with the turnover gate
+        PendingPayment --> Active: CompletePayment on PawnshopPaymentCompletedEvent
+        PendingPayment --> Rejected: RejectPayment on PawnshopPaymentRejectedEvent
+        PendingPayment --> Rejected: ExpirePayment by PawnshopKeeper after PaymentTimeout
+        Rejected --> [*]
+        note right of Active
+            bot purchases run while Active,
+            BeginBotPurchase (POST /bot) opens one payment,
+            CompletePayment installs a strictly higher tier,
+            a rejected or expired payment keeps the old bot
+        end note
+    }
+    state "Stock item (PawnshopStockItems.Status)" as ItemMachine {
+        [*] --> InStock: ReceiveStock on PawnshopStockedEvent, SellAfter = now + StockSellDelay
+        InStock --> Withdrawn: Withdraw before SellAfter (POST /stock/{id}/withdraw), item minted in Inventory
+        InStock --> Sold: SellDue by PawnshopKeeper at SellAfter, payout credited through Wallets
+        Withdrawn --> [*]
+        Sold --> [*]
+    }
+    ShopMachine --> ItemMachine: RequestSpawn by PawnshopKeeper at NextSpawnOn, Inventory quotes the price

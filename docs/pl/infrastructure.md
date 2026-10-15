@@ -20,7 +20,7 @@ Rozpoczęta 2026-10-14 plikiem Compose; broker i gateway pozostają planowane. P
 |---|---|
 | szew transportu | `IIntegrationEventPublisher.PublishAsync(messageId, type, content)` to jedyne miejsce, w którym zdarzenia opuszczają moduł; `IntegrationEventTypes` zamienia `type` i `content` z powrotem na typowane zdarzenie |
 | konfiguracja ze środowiska | każde ustawienie jest czytane przez `IConfiguration`, więc `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` i `Wallets__StartingFunds` można wstrzyknąć jako zmienne środowiskowe |
-| odtwarzalna baza | schemat jest w pełni opisany sześcioma zestawami migracji, aplikowanymi przez `dotnet ef database update` per kontekst albo na starcie, gdy `Database:MigrateOnStartup` jest `true` (Compose to ustawia) |
+| odtwarzalna baza | schemat jest w pełni opisany siedmioma zestawami migracji, aplikowanymi przez `dotnet ef database update` per kontekst albo na starcie, gdy `Database:MigrateOnStartup` jest `true` (Compose to ustawia) |
 | baza CI | `.gitlab-ci.yml` buduje i testuje przy każdym pushu w oficjalnym obrazie SDK z docker-in-docker |
 
 ## Czego brakuje
