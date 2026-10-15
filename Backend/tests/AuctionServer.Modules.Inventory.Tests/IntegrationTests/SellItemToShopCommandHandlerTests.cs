@@ -3,7 +3,7 @@ using AuctionServer.Modules.Inventory.Application.Command.SellItemToShop;
 using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Items;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Inventory.Tests.IntegrationTests;

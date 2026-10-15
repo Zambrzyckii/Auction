@@ -10,7 +10,7 @@
 
 | Folder | Zawartość |
 |---|---|
-| `Events/` | dwadzieścia typów `record` implementujących `INotification` z MediatR, plus rekord ładunku `WarehouseStockItem`; każdy rekord zdarzenia zaczyna się od `Guid EventId` |
+| `Events/` | dwadzieścia typów `record` implementujących `INotification` z MediatR, plus rekord ładunku `WarehouseStockItem`, pogrupowane tematycznie w `Auctions/`, `Funds/`, `Items/`, `Users/` i `Warehouses/`; każdy rekord zdarzenia zaczyna się od `Guid EventId` |
 | `Exceptions/` | `AppException(message, statusCode)`, abstrakcyjna baza każdego wyjątku domenowego, oraz `RequestValidationException` (400) |
 | `Messaging/` | `IIntegrationEventPublisher` (szew publishera) i `IntegrationEventTypes` (rejestr nazwa→typ używany do deserializacji wierszy outboxa) |
 | `Validators/` | `ValidationBehaviour<,>`, behavior pipeline'u MediatR uruchamiający walidatory FluentValidation przed handlerem |
@@ -110,7 +110,7 @@ Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolum
 
 [`IIntegrationEventPublisher`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs) ma jedną metodę, `PublishAsync(Guid messageId, string type, string content, CancellationToken token)`. Host rejestruje dla niej `InProcessEventPublisher` jako serwis scoped w [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs); implementacja ignoruje `messageId`, woła [`IntegrationEventTypes.Deserialize(type, content)`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) i przekazuje wynik do `IPublisher.Publish` MediatR, który uruchamia handlery jeden po drugim w kolejności rejestracji DI (assembly Auctions, Wallets, Identity, Inventory, Warehouses). `Deserialize` rzuca `NotSupportedException` dla typu, którego nie ma w rejestrze, i `JsonException` dla pustego ładunku; oba trafiają do `Errors` wiersza outboxa.
 
-Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IIntegrationEventPublisher`, która wysyła `Type` i `Content` do brokera, plus konsumenta po stronie hosta, który deserializuje przychodzące wiadomości w ten sam sposób i publikuje je do MediatR; moduły, ich outboxy i inboxy zostają bez zmian. Dodanie zdarzenia oznacza dodanie rekordu do `Events/` i jednej linii do rejestru; producent zapisuje `nameof(TheEvent)` w `Type`.
+Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IIntegrationEventPublisher`, która wysyła `Type` i `Content` do brokera, plus konsumenta po stronie hosta, który deserializuje przychodzące wiadomości w ten sam sposób i publikuje je do MediatR; moduły, ich outboxy i inboxy zostają bez zmian. Dodanie zdarzenia oznacza dodanie rekordu do właściwego folderu tematycznego w `Events/` i jednej linii do rejestru; producent zapisuje `nameof(TheEvent)` w `Type`, więc folder i przestrzeń nazw nigdy nie trafiają do bazy.
 
 ## Katalog zdarzeń
 

@@ -1,5 +1,9 @@
 using System.Text.Json;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Auctions;
+using AuctionServer.Shared.Integration.Events.Funds;
+using AuctionServer.Shared.Integration.Events.Items;
+using AuctionServer.Shared.Integration.Events.Users;
+using AuctionServer.Shared.Integration.Events.Warehouses;
 using MediatR;
 
 namespace AuctionServer.Shared.Integration.Messaging;

@@ -5,7 +5,8 @@ using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
 using AuctionServer.Modules.Auctions.Infrastructure.Inbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Auctions;
+using AuctionServer.Shared.Integration.Events.Funds;
 using MediatR;
 
 namespace AuctionServer.Modules.Auctions.Application.Handlers;

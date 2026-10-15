@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AuctionServer.Modules.Inventory.Application.Handlers;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Warehouses;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Inventory.Tests.IntegrationTests;

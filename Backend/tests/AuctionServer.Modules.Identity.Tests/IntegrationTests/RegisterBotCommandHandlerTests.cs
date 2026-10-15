@@ -3,7 +3,7 @@ using AuctionServer.Modules.Identity.Application.Commands.RegisterBot;
 using AuctionServer.Modules.Identity.Domain.Entities;
 using AuctionServer.Modules.Identity.Domain.Exceptions;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Identity.Tests.IntegrationTests;

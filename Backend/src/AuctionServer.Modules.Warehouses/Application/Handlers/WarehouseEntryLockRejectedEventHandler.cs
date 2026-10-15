@@ -1,7 +1,7 @@
 using AuctionServer.Modules.Warehouses.Application.Interfaces;
 using AuctionServer.Modules.Warehouses.Domain.Exceptions;
 using AuctionServer.Modules.Warehouses.Infrastructure.Inbox;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Warehouses;
 using MediatR;
 
 namespace AuctionServer.Modules.Warehouses.Application.Handlers;

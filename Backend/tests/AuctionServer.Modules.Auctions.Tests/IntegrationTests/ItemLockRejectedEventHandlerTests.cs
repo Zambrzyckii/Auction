@@ -3,7 +3,7 @@ using AuctionServer.Modules.Auctions.Domain.Entities;
 using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Items;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Auctions.Tests.IntegrationTests;

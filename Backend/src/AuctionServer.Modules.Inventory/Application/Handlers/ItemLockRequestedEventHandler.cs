@@ -3,7 +3,7 @@ using AuctionServer.Modules.Inventory.Application.Interfaces;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
 using AuctionServer.Modules.Inventory.Infrastructure.Inbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Items;
 using MediatR;
 
 namespace AuctionServer.Modules.Inventory.Application.Handlers;

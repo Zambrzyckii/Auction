@@ -10,7 +10,7 @@
 
 | Folder | Contents |
 |---|---|
-| `Events/` | twenty `record` types implementing MediatR `INotification`, plus the `WarehouseStockItem` payload record; every event record starts with `Guid EventId` |
+| `Events/` | twenty `record` types implementing MediatR `INotification`, plus the `WarehouseStockItem` payload record, grouped by subject into `Auctions/`, `Funds/`, `Items/`, `Users/` and `Warehouses/`; every event record starts with `Guid EventId` |
 | `Exceptions/` | `AppException(message, statusCode)`, the abstract base of every domain exception, and `RequestValidationException` (400) |
 | `Messaging/` | `IIntegrationEventPublisher` (the publisher seam) and `IntegrationEventTypes` (the name-to-type registry used to deserialize outbox rows) |
 | `Validators/` | `ValidationBehaviour<,>`, the MediatR pipeline behavior that runs FluentValidation validators before a handler |
@@ -110,7 +110,7 @@ Only `EventAlreadyProcessedException` is caught. A missing aggregate (`AuctionNo
 
 [`IIntegrationEventPublisher`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs) has one method, `PublishAsync(Guid messageId, string type, string content, CancellationToken token)`. The host registers `InProcessEventPublisher` for it as a scoped service in [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs); the implementation ignores `messageId`, calls [`IntegrationEventTypes.Deserialize(type, content)`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) and hands the result to MediatR `IPublisher.Publish`, which runs the handlers one after another in DI registration order (Auctions, Wallets, Identity, Inventory, Warehouses assemblies). `Deserialize` throws `NotSupportedException` for a type that is not in the registry and `JsonException` for an empty payload; both land in `Errors` of the outbox row.
 
-Replacing the in-process bus with a broker means one new `IIntegrationEventPublisher` implementation that sends `Type` and `Content` to the broker, plus a host-side consumer that deserializes incoming messages the same way and publishes them to MediatR; the modules, their outboxes and their inboxes stay as they are. Adding an event means adding a record to `Events/` and one line to the registry; the producer stores `nameof(TheEvent)` in `Type`.
+Replacing the in-process bus with a broker means one new `IIntegrationEventPublisher` implementation that sends `Type` and `Content` to the broker, plus a host-side consumer that deserializes incoming messages the same way and publishes them to MediatR; the modules, their outboxes and their inboxes stay as they are. Adding an event means adding a record to the right subject folder under `Events/` and one line to the registry; the producer stores `nameof(TheEvent)` in `Type`, so the folder and namespace never reach the database.
 
 ## Event catalog
 

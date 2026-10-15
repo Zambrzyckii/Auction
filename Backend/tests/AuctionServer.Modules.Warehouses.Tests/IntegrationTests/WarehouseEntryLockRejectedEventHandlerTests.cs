@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Warehouses.Application.Handlers;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Warehouses;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Warehouses.Tests.IntegrationTests;

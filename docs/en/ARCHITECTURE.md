@@ -89,7 +89,7 @@ Modules never call each other. A module that needs another module to react write
 | `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | yes |
 | `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | Wallets `WarehouseWonEventHandler`, Inventory `WarehouseWonEventHandler` | yes, in both |
 
-The records live in [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events) and the handlers in each module's `Application/Handlers/` folder. Adding an event means adding a record and registering it in `IntegrationEventTypes`; an unregistered type makes `Deserialize` throw `NotSupportedException`, so the outbox row fails and eventually dead-letters.
+The records live in [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), grouped by subject into `Auctions/`, `Funds/`, `Items/`, `Users/` and `Warehouses/`, and the handlers in each module's `Application/Handlers/` folder. Adding an event means adding a record and registering it in `IntegrationEventTypes`; an unregistered type makes `Deserialize` throw `NotSupportedException`, so the outbox row fails and eventually dead-letters.
 
 ## Auction flows
 

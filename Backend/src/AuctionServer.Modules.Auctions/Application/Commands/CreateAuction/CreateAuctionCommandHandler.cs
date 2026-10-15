@@ -2,7 +2,7 @@ using System.Text.Json;
 using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Auctions.Domain.Entities;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Items;
 using MediatR;
 
 namespace AuctionServer.Modules.Auctions.Application.Commands.CreateAuction;

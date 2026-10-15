@@ -89,7 +89,7 @@ Moduły nigdy nie wołają się nawzajem. Moduł, który potrzebuje reakcji inne
 | `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | tak |
 | `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | Wallets `WarehouseWonEventHandler`, Inventory `WarehouseWonEventHandler` | tak, w obu |
 
-Rekordy leżą w [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), a handlery w folderze `Application/Handlers/` każdego modułu. Dodanie zdarzenia oznacza dodanie rekordu i zarejestrowanie go w `IntegrationEventTypes`; niezarejestrowany typ sprawia, że `Deserialize` rzuca `NotSupportedException`, więc wiersz outboxa zawodzi i w końcu trafia do martwych.
+Rekordy leżą w [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), pogrupowane tematycznie w `Auctions/`, `Funds/`, `Items/`, `Users/` i `Warehouses/`, a handlery w folderze `Application/Handlers/` każdego modułu. Dodanie zdarzenia oznacza dodanie rekordu i zarejestrowanie go w `IntegrationEventTypes`; niezarejestrowany typ sprawia, że `Deserialize` rzuca `NotSupportedException`, więc wiersz outboxa zawodzi i w końcu trafia do martwych.
 
 ## Przepływy aukcji
 

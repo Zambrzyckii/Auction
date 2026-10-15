@@ -255,7 +255,10 @@ exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skip
 outbox entity and processor exist as five separate copies (Auctions, Identity, Inventory, Wallets, Warehouses) — a
 change to one must be mirrored in the others.
 
-Events live in `AuctionServer.Shared.Integration/Events/` and are plain records carrying an `EventId`.
+Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Funds/`, `Items/`,
+`Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
+`Type` column and the `IntegrationEventTypes` registry use the simple type name, so the folders are purely for
+readability — moving an event never touches stored rows.
 
 ### Read path (Auctions)
 

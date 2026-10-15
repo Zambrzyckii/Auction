@@ -2,7 +2,7 @@ using AuctionServer.Modules.Wallets.Application.Handlers;
 using AuctionServer.Modules.Wallets.Domain.Enums;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Warehouses;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;

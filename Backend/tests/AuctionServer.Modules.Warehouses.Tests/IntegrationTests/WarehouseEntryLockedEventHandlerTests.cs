@@ -2,7 +2,8 @@ using AuctionServer.Modules.Warehouses.Application.Handlers;
 using AuctionServer.Modules.Warehouses.Application.Options;
 using AuctionServer.Modules.Warehouses.Domain.Enums;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Funds;
+using AuctionServer.Shared.Integration.Events.Warehouses;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Warehouses.Tests.IntegrationTests;

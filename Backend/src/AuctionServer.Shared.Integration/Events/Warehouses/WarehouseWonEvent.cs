@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace AuctionServer.Shared.Integration.Events;
+namespace AuctionServer.Shared.Integration.Events.Warehouses;
 
 public record WarehouseWonEvent(
     Guid EventId,

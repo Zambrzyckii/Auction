@@ -1,7 +1,7 @@
 using AuctionServer.Modules.Wallets.Application.Options;
 using AuctionServer.Modules.Wallets.Application.Handlers;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
-using AuctionServer.Shared.Integration.Events;
+using AuctionServer.Shared.Integration.Events.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Wallets.Tests.IntegrationTests;
