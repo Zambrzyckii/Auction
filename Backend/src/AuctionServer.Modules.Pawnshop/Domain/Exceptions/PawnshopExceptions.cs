@@ -26,6 +26,9 @@ public static class PawnshopExceptions
     public sealed class BotNotAnUpgradeException()
         : AppException("A new bot must be of a higher tier than the current one", 409);
 
+    public sealed class InvalidStockException()
+        : AppException("Stock reply must contain at least one item", 400);
+
     public sealed class EventAlreadyProcessedException()
         : AppException("Event was already processed", 409);
 }

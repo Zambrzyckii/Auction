@@ -17,4 +17,17 @@ public record PawnshopDto(
     decimal? BotPayoutRate,
     DateTime? BotPurchasedOn,
     DateTime? NextSpawnOn,
-    string? PendingBotTierName);
+    string? PendingBotTierName,
+    IReadOnlyList<StockItemDto> Stock);
+
+public record StockItemDto(
+    Guid PublicStockItemId,
+    string Name,
+    PawnshopRarity Rarity,
+    decimal Price,
+    decimal PayoutRate,
+    StockItemStatus Status,
+    DateTime SpawnedOn,
+    DateTime SellAfter,
+    DateTime? ResolvedOn,
+    decimal? PayoutAmount);

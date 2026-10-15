@@ -59,6 +59,35 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
         await context.SaveChangesAsync(token);
     }
 
+    public async Task SaveStockWithInboxAsync(IReadOnlyList<StockItem> items, ProcessedMessage inboxMessage,
+        CancellationToken token)
+    {
+        context.StockItems.AddRange(items);
+        context.ProcessedMessages.Add(inboxMessage);
+        try
+        {
+            await context.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new PawnshopExceptions.EventAlreadyProcessedException();
+        }
+    }
+
+    public async Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicPawnshopId, CancellationToken token)
+    {
+        var inStock = await context.StockItems.AsNoTracking()
+            .Where(i => i.PublicPawnshopId == publicPawnshopId && i.Status == StockItemStatus.InStock)
+            .OrderBy(i => i.SellAfter)
+            .ToListAsync(token);
+        var resolved = await context.StockItems.AsNoTracking()
+            .Where(i => i.PublicPawnshopId == publicPawnshopId && i.Status != StockItemStatus.InStock)
+            .OrderByDescending(i => i.ResolvedOn)
+            .Take(20)
+            .ToListAsync(token);
+        return inStock.Concat(resolved).ToList();
+    }
+
     public async Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)
     {
         context.ProcessedMessages.Add(inboxMessage);

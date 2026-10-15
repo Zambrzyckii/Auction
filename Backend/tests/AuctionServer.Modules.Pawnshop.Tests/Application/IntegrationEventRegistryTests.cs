@@ -25,4 +25,24 @@ public class IntegrationEventRegistryTests
 
         Assert.Equal(notification, deserialized);
     }
+
+    public static TheoryData<INotification> PawnshopStockEvents => new()
+    {
+        new PawnshopStockRequestedEvent(Guid.NewGuid(), Guid.NewGuid(), ["Common"]),
+        new PawnshopStockedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            [new PawnshopStockItem("Pawned Common Good", "Common", 55m)])
+    };
+
+    // Records holding lists compare by reference, so these events round-trip through JSON instead.
+    [Theory]
+    [MemberData(nameof(PawnshopStockEvents))]
+    public void Deserialize_ShouldRoundTripStockEventsByJson(INotification notification)
+    {
+        var type = notification.GetType();
+        var content = JsonSerializer.Serialize(notification, type);
+
+        var deserialized = IntegrationEventTypes.Deserialize(type.Name, content);
+
+        Assert.Equal(content, JsonSerializer.Serialize(deserialized, type));
+    }
 }

@@ -8,6 +8,7 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
 public sealed class PawnshopDbContext(DbContextOptions<PawnshopDbContext> options) : DbContext(options)
 {
     public DbSet<Shop> Shops => Set<Shop>();
+    public DbSet<StockItem> StockItems => Set<StockItem>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
 

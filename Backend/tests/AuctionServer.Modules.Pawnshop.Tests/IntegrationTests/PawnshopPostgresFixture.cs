@@ -59,6 +59,28 @@ public sealed class PawnshopPostgresFixture : IAsyncLifetime
         return paymentId;
     }
 
+    public async Task<Shop> SeedShopWithBotAsync(decimal payoutRate = 0.5m, Guid? userId = null)
+    {
+        await using var context = CreateContext();
+        var shop = Shop.Open(userId ?? Guid.NewGuid(), DateTime.UtcNow);
+        shop.CompletePayment(shop.PendingPaymentId!.Value, DateTime.UtcNow);
+        var paymentId = shop.BeginBotPurchase("Pawn Clerk", PawnshopRarity.Common, TimeSpan.FromSeconds(30),
+            payoutRate, DateTime.UtcNow);
+        shop.CompletePayment(paymentId, DateTime.UtcNow);
+        context.Shops.Add(shop);
+        await context.SaveChangesAsync();
+        return shop;
+    }
+
+    public async Task<Guid> RequestSpawnAsync(Guid publicPawnshopId, DateTime requestedOn)
+    {
+        await using var context = CreateContext();
+        var shop = await context.Shops.SingleAsync(s => s.PublicPawnshopId == publicPawnshopId);
+        var (requestId, _) = shop.RequestSpawn(requestedOn);
+        await context.SaveChangesAsync();
+        return requestId;
+    }
+
     public async Task<Shop> GetShopAsync(Guid publicPawnshopId)
     {
         await using var context = CreateContext();

@@ -13,4 +13,6 @@ public interface IPawnshopRepository
     Task SaveNewShopWithOutboxAsync(Shop shop, OutboxMessage outboxMessage, CancellationToken token);
     Task SaveShopWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
     Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token);
+    Task SaveStockWithInboxAsync(IReadOnlyList<StockItem> items, ProcessedMessage inboxMessage, CancellationToken token);
+    Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicPawnshopId, CancellationToken token);
 }

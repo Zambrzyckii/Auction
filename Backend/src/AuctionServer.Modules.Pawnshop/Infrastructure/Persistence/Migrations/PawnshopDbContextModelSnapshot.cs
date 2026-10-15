@@ -74,6 +74,15 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("PendingPaymentRequestedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal?>("PendingStockPayoutRate")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("PendingStockRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PendingStockRequestedOn")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("PublicPawnshopId")
                         .HasColumnType("uuid");
 
@@ -106,6 +115,71 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status", "NextSpawnOn");
 
                     b.ToTable("PawnshopShops", (string)null);
+                });
+
+            modelBuilder.Entity("AuctionServer.Modules.Pawnshop.Domain.Entities.StockItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("PayoutAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PayoutRate")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("PublicPawnshopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PublicStockItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Rarity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ResolvedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SellAfter")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SpawnedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublicStockItemId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "SellAfter");
+
+                    b.HasIndex("UserId", "Status");
+
+                    b.ToTable("PawnshopStockItems", (string)null);
                 });
 
             modelBuilder.Entity("AuctionServer.Modules.Pawnshop.Infrastructure.Inbox.ProcessedMessage", b =>

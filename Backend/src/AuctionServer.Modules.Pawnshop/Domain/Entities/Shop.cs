@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
+using AuctionServer.Shared.Integration.Events.Pawnshop;
 
 namespace AuctionServer.Modules.Pawnshop.Domain.Entities;
 
@@ -24,6 +25,9 @@ public sealed class Shop
     public PawnshopRarity? PendingBotRarity { get; private set; }
     public TimeSpan? PendingBotSpawnInterval { get; private set; }
     public decimal? PendingBotPayoutRate { get; private set; }
+    public Guid? PendingStockRequestId { get; private set; }
+    public DateTime? PendingStockRequestedOn { get; private set; }
+    public decimal? PendingStockPayoutRate { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
 
     public static Shop Open(Guid userId, DateTime now)
@@ -98,6 +102,62 @@ public sealed class Shop
         PendingPaymentRequestedOn = now;
         Version = Guid.NewGuid();
         return PendingPaymentId.Value;
+    }
+
+    public (Guid RequestId, PawnshopRarity Rarity) RequestSpawn(DateTime now)
+    {
+        if (Status != ShopStatus.Active) throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
+        if (BotRarity is null) throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
+        if (PendingStockRequestId is not null) throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
+        if (NextSpawnOn > now) throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
+
+        PendingStockRequestId = Guid.NewGuid();
+        PendingStockRequestedOn = now;
+        PendingStockPayoutRate = BotPayoutRate;
+        NextSpawnOn = now + BotSpawnInterval!.Value;
+        Version = Guid.NewGuid();
+        return (PendingStockRequestId.Value, BotRarity.Value);
+    }
+
+    public IReadOnlyList<StockItem> ReceiveStock(Guid requestId, IReadOnlyList<PawnshopStockItem> stock,
+        TimeSpan sellDelay, DateTime now)
+    {
+        if (PendingStockRequestId != requestId)
+            throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
+        if (stock.Count == 0)
+            throw new PawnshopExceptions.InvalidStockException();
+
+        var payoutRate = PendingStockPayoutRate!.Value;
+        var items = stock.Select(s => new StockItem
+        {
+            PublicPawnshopId = PublicPawnshopId,
+            UserId = UserId,
+            Name = s.Name,
+            Rarity = Enum.Parse<PawnshopRarity>(s.Rarity),
+            Price = s.Price,
+            PayoutRate = payoutRate,
+            SpawnedOn = now,
+            SellAfter = now + sellDelay
+        }).ToList();
+
+        ClearPendingStockRequest();
+        return items;
+    }
+
+    public void ExpireStockRequest()
+    {
+        if (PendingStockRequestId == null)
+            throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
+
+        ClearPendingStockRequest();
+    }
+
+    private void ClearPendingStockRequest()
+    {
+        PendingStockRequestId = null;
+        PendingStockRequestedOn = null;
+        PendingStockPayoutRate = null;
+        Version = Guid.NewGuid();
     }
 
     private void ClearPendingBot()
