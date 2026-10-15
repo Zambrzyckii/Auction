@@ -41,6 +41,8 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-10-15 | Publiczne parametry magazynu (wpisowe, podbicia, cena startowa) wynikają tylko z tieru; z ukrytej wartości wynikają wyłącznie widełki | właściciel | podbicia wyliczane z wartości pozwoliłyby graczom odczytać ukrytą wartość z dozwolonych podbić |
 | 2026-10-15 | Cena końcowa zwycięzcy opuszcza ekonomię, a przegrani dostają pełne zwroty | właściciel | wojna magazynowa nie ma sprzedawcy do uznania; zlew równoważy kran mint-i-sprzedaż zapisany jako znane ograniczenie |
 | 2026-10-15 | Pliki `CLAUDE.md` są śledzone przez gita | właściciel | instrukcje agenta ewoluują z kodem i powinny być przeglądalne w historii |
+| 2026-10-15 | Zdarzenia integracyjne pogrupowane tematycznie (`Auctions/`, `Funds/`, `Items/`, `Users/`, `Warehouses/`), po jednym segmencie przestrzeni nazw | właściciel | podział tematyczny trzyma pary żądanie/odpowiedź razem, gdzie podział per moduł by je rozdzielił; rejestr i kolumna `Type` outboxa używają prostych nazw typów, więc zapisane wiersze niczego nie zauważają |
+| 2026-10-15 | Pipeline GitHub Actions odwzorowujący GitLabowy, wyzwalany pushami i pull requestami do `main` | właściciel | repozytorium jest hostowane na GitHubie, który nie uruchamia `.gitlab-ci.yml`; oba pliki zostają, żeby mirror na GitLabie dalej działał |
 
 ## Powiązane dokumenty
 

@@ -20,7 +20,7 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 | `AuctionServer.Api` host with the five modules | exists | [backend/README.md](backend/README.md) |
 | PostgreSQL, one database, 19 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
 | Docker Compose (API image plus PostgreSQL) | exists | [backend/README.md](backend/README.md) |
-| GitLab CI pipeline | exists | [Build and CI](#build-and-ci) |
+| GitLab CI and GitHub Actions pipelines | exist | [Build and CI](#build-and-ci) |
 | Angular frontend | planned | [frontend.md](frontend.md) |
 | API gateway, RabbitMQ | planned | [infrastructure.md](infrastructure.md) |
 | AI bots (Python) | planned | [bots.md](bots.md) |
@@ -202,6 +202,7 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 - Stage `build` runs `dotnet build Backend/AuctionServer.slnx`.
 - Stage `test` has two jobs: `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory and Warehouses test projects.
 - There is no deploy stage, no artifacts and no caching; the application image exists only for local use ([`Backend/Dockerfile`](../../Backend/Dockerfile), built by the root [`compose.yaml`](../../compose.yaml)), the pipeline does not build or push it.
+- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) mirrors the same three jobs on GitHub Actions, triggered by pushes and pull requests to `main`; the test jobs depend on `build` through `needs`, and `ubuntu-latest` has Docker preinstalled, so the dind service and the Testcontainers override stay GitLab-only.
 
 ## Design patterns in use
 

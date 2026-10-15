@@ -12,7 +12,7 @@
 
 - `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions, Inventory i Warehouses oraz projekt kontraktów `Shared.Integration`; 21 endpointów, 20 zdarzeń integracyjnych, 19 tabel, pięć `OutboxProcessor`ów, `AuctionCloser` i `WarehouseKeeper`.
 - Testy: pięć projektów xUnit, 344 metody testowe (177 offline, 167 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
-- CI: `.gitlab-ci.yml` z `build`, `unit-tests` i `integration-tests`.
+- CI: `.gitlab-ci.yml` i jego lustro na GitHub Actions `.github/workflows/ci.yml`, oba z `build`, `unit-tests` i `integration-tests`.
 - Dokumentacja: `docs/en` i `docs/pl` z tym zestawem stron i 14 wyrenderowanymi diagramami; główne `README.md` i `README.pl.md`.
 - `Backend/Dockerfile` i `compose.yaml` w korzeniu (API + PostgreSQL, migracje aplikowane na starcie za flagą `Database:MigrateOnStartup`).
 - CORS dla skonfigurowanych originów frontendu (`Cors:AllowedOrigins`), dokument OpenAPI pod `/openapi/v1.json` i `/health` ze sprawdzeniem bazy.

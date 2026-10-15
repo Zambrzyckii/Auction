@@ -141,7 +141,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedN
 dotnet test tests/AuctionServer.Modules.Wallets.Tests                                                    # jeden moduł, offline + integracyjne
 ```
 
-Pipeline GitLaba uruchamia pierwszy filtr dla Auctions w `unit-tests`, a pełne projekty Wallets, Identity, Inventory i Warehouses plus testy integracyjne Auctions w `integration-tests`; zobacz [Build i CI](../ARCHITECTURE.md#build-i-ci). Żaden test nie przekracza granicy modułu: handlery zdarzeń są wołane bezpośrednio z ręcznie zbudowanymi zdarzeniami.
+Pipeline GitLaba uruchamia pierwszy filtr dla Auctions w `unit-tests`, a pełne projekty Wallets, Identity, Inventory i Warehouses plus testy integracyjne Auctions w `integration-tests`; workflow GitHub Actions ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) odwzorowuje ten sam podział; zobacz [Build i CI](../ARCHITECTURE.md#build-i-ci). Żaden test nie przekracza granicy modułu: handlery zdarzeń są wołane bezpośrednio z ręcznie zbudowanymi zdarzeniami.
 
 ## Rozdziały
 

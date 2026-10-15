@@ -20,7 +20,7 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 | Host `AuctionServer.Api` z pięcioma modułami | istnieje | [backend/README.md](backend/README.md) |
 | PostgreSQL, jedna baza, 19 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
 | Docker Compose (obraz API plus PostgreSQL) | istnieje | [backend/README.md](backend/README.md) |
-| Pipeline GitLab CI | istnieje | [Build i CI](#build-i-ci) |
+| Pipeline'y GitLab CI i GitHub Actions | istnieją | [Build i CI](#build-i-ci) |
 | Frontend Angular | planowany | [frontend.md](frontend.md) |
 | API gateway, RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
 | Boty AI (Python) | planowane | [bots.md](bots.md) |
@@ -202,6 +202,7 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 - Stage `build` uruchamia `dotnet build Backend/AuctionServer.slnx`.
 - Stage `test` ma dwa joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory i Warehouses.
 - Nie ma stage'u deploy, artefaktów ani cache'owania; obraz aplikacji istnieje tylko do użytku lokalnego ([`Backend/Dockerfile`](../../Backend/Dockerfile), budowany przez [`compose.yaml`](../../compose.yaml) z korzenia), pipeline go nie buduje ani nie publikuje.
+- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) odwzorowuje te same trzy joby na GitHub Actions, wyzwalane pushami i pull requestami do `main`; joby testowe zależą od `build` przez `needs`, a `ubuntu-latest` ma preinstalowanego Dockera, więc serwis dind i override Testcontainers zostają tylko po stronie GitLaba.
 
 ## Stosowane wzorce projektowe
 

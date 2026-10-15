@@ -141,7 +141,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedN
 dotnet test tests/AuctionServer.Modules.Wallets.Tests                                                    # one module, offline + integration
 ```
 
-The GitLab pipeline runs the first filter for Auctions in `unit-tests` and the full Wallets, Identity, Inventory and Warehouses projects plus the Auctions integration tests in `integration-tests`; see [Build and CI](../ARCHITECTURE.md#build-and-ci). No test crosses a module boundary: event handlers are invoked directly with hand-built events.
+The GitLab pipeline runs the first filter for Auctions in `unit-tests` and the full Wallets, Identity, Inventory and Warehouses projects plus the Auctions integration tests in `integration-tests`; the GitHub Actions workflow ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) mirrors the same split; see [Build and CI](../ARCHITECTURE.md#build-and-ci). No test crosses a module boundary: event handlers are invoked directly with hand-built events.
 
 ## Chapters
 

@@ -41,6 +41,8 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-15 | Public warehouse parameters (entry fee, increments, starting price) derive only from the tier; only the estimate range derives from the hidden value | owner | increments derived from the value would let players read the hidden value from the allowed raises |
 | 2026-10-15 | The winner's final price leaves the economy and losers get full refunds | owner | a warehouse war has no seller to credit; the sink offsets the mint-and-sell faucet recorded as a known limitation |
 | 2026-10-15 | `CLAUDE.md` files are tracked by git | owner | agent instructions evolve with the code and should be reviewable in history |
+| 2026-10-15 | Integration events grouped by subject (`Auctions/`, `Funds/`, `Items/`, `Users/`, `Warehouses/`), one namespace segment each | owner | by-subject keeps request/reply pairs together where by-module would split them; the registry and the outbox `Type` column use simple type names, so stored rows never notice |
+| 2026-10-15 | GitHub Actions pipeline mirroring the GitLab one, triggered by pushes and pull requests to `main` | owner | the repository is hosted on GitHub, which does not run `.gitlab-ci.yml`; both files stay so a GitLab mirror keeps working |
 
 ## Related documents
 
