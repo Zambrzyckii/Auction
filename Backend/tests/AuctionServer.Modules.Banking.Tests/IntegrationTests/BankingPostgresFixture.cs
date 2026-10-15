@@ -14,8 +14,7 @@ public sealed class BankingIntegrationCollection : ICollectionFixture<BankingPos
 
 public sealed class BankingPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
         .WithDatabase("banking_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

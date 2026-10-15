@@ -13,8 +13,7 @@ public sealed class AuctionsIntegrationCollection : ICollectionFixture<AuctionsP
 
 public sealed class AuctionsPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
         .WithDatabase("auctions_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

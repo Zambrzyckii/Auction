@@ -14,8 +14,7 @@ public sealed class InventoryIntegrationCollection : ICollectionFixture<Inventor
 
 public sealed class InventoryPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
         .WithDatabase("inventory_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

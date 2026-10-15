@@ -438,6 +438,5 @@ Still aspirational — verify before building on them:
   implementation; a broker means adding an AMQP publisher + a host-side consumer that feeds `IPublisher`, not
   touching the modules.
 
-Known debt worth keeping in mind: Testcontainers fixtures use an obsolete
-`PostgreSqlBuilder` constructor (CS0618); `AuctionActivatedEvent` is published but nobody consumes it;
+Known debt worth keeping in mind: `AuctionActivatedEvent` is published but nobody consumes it;
 `SellItemToShopCommandHandler.cs` breaks the "outbox `Id` == `EventId`" convention with two separate Guids.

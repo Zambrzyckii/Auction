@@ -13,8 +13,7 @@ public sealed class IdentityIntegrationCollection : ICollectionFixture<IdentityP
 
 public sealed class IdentityPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
         .WithDatabase("identity_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())
