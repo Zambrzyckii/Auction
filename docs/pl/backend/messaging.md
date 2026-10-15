@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/messaging.md](../../en/backend/messaging.md)
 
-`AuctionServer.Shared.Integration` to jedyny projekt referencowany przez każdy moduł, a tabele outboxa i inboxa to jedyna droga, którą moduły wpływają na siebie nawzajem. Ten rozdział opisuje projekt współdzielony, wiersz outboxa i jego procesor, politykę ponowień i martwych wiadomości, wzorzec inboxa po stronie konsumenta, szew publishera, który zastąpiłby broker wiadomości, oraz katalog dziewięciu zdarzeń integracyjnych.
+`AuctionServer.Shared.Integration` to jedyny projekt referencowany przez każdy moduł, a tabele outboxa i inboxa to jedyna droga, którą moduły wpływają na siebie nawzajem. Ten rozdział opisuje projekt współdzielony, wiersz outboxa i jego procesor, politykę ponowień i martwych wiadomości, wzorzec inboxa po stronie konsumenta, szew publishera, który zastąpiłby broker wiadomości, oraz katalog dwudziestu zdarzeń integracyjnych.
 
 ## Przegląd
 
@@ -10,7 +10,7 @@
 
 | Folder | Zawartość |
 |---|---|
-| `Events/` | dziewięć typów `record` implementujących `INotification` z MediatR; każdy rekord zaczyna się od `Guid EventId` |
+| `Events/` | dwadzieścia typów `record` implementujących `INotification` z MediatR, plus rekord ładunku `WarehouseStockItem`; każdy rekord zdarzenia zaczyna się od `Guid EventId` |
 | `Exceptions/` | `AppException(message, statusCode)`, abstrakcyjna baza każdego wyjątku domenowego, oraz `RequestValidationException` (400) |
 | `Messaging/` | `IIntegrationEventPublisher` (szew publishera) i `IntegrationEventTypes` (rejestr nazwa→typ używany do deserializacji wierszy outboxa) |
 | `Validators/` | `ValidationBehaviour<,>`, behavior pipeline'u MediatR uruchamiający walidatory FluentValidation przed handlerem |
@@ -26,7 +26,7 @@ Diagram pokazuje jedno zdarzenie wędrujące z transakcji modułu produkującego
   <img alt="Diagram: z outboxa do inboxa" src="../../diagrams/backend-messaging-01-outbox-to-inbox.svg">
 </picture>
 
-Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) i [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); cztery kopie różnią się tylko używanym `DbContext`em oraz, w Identity, dwoma publicznymi setterami (`Errors`, `IsDead`) i klasą procesora bez `sealed`. Tabele to `OutboxMessages` (Auctions, bez wywołania `ToTable`), `WalletsOutboxMessages`, `InventoryOutboxMessages` i `IdentityOutboxMessages`.
+Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) i [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); pięć kopii różni się tylko używanym `DbContext`em oraz, w Identity, dwoma publicznymi setterami (`Errors`, `IsDead`) i klasą procesora bez `sealed`. Tabele to `OutboxMessages` (Auctions, bez wywołania `ToTable`), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages` i `WarehousesOutboxMessages`.
 
 | Kolumna | Typ | Znaczenie |
 |---|---|---|
@@ -71,7 +71,7 @@ SELECT "Id", "Type", "AttemptCount", "Errors" FROM "OutboxMessages" WHERE "IsDea
 
 ## Inbox
 
-Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolumną, `EventId` (klucz główny), plus `ProcessedOn`; encją jest [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs), a tabele to `AuctionsProcessedMessages`, `WalletsProcessedMessages` i `InventoryProcessedMessages`. Identity nie konsumuje zdarzeń i nie ma inboxa. Każdy handler konsumujący wykonuje te same kroki:
+Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolumną, `EventId` (klucz główny), plus `ProcessedOn`; encją jest [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs), a tabele to `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages` i `WarehousesProcessedMessages`. Identity nie konsumuje zdarzeń i nie ma inboxa. Każdy handler konsumujący wykonuje te same kroki:
 
 1. Woła `WasEventProcessedAsync(EventId)` i kończy, gdy id jest już zapisane.
 2. Ładuje agregat i wykonuje zmianę domenową.
@@ -83,19 +83,32 @@ Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolum
 |---|---|---|---|
 | `UserRegisteredEventHandler` | Wallets | `AddWalletAsync` | brak; bez inboxa, duplikat rzuca `WalletAlreadyExistException`, który handler połyka |
 | `BidPlacedEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
+| `FundsLockRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `FundsLockedEvent` albo `FundsLockRejectedEvent` |
+| `FundsUnlockRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak; brak blokady jest poprawnym wynikiem |
 | `AuctionFinishedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `AuctionSettledEvent` |
 | `ItemSoldToShopEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
+| `WarehouseEntryLockRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `WarehouseEntryLockedEvent` albo `WarehouseEntryLockRejectedEvent` |
+| `WarehouseWonEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
 | `ItemLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `AuctionActivatedEvent` |
 | `ItemLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | brak |
+| `FundsLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `BidPlacedEvent`, albo `FundsUnlockRequestedEvent`, gdy aukcja nie jest już `Active` |
+| `FundsLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | brak |
+| `UserRegisteredEventHandler` | Inventory | `AddItemsWithInboxAsync` | brak; pakiet startowy |
 | `ItemLockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `ItemLockedEvent` albo `ItemLockRejectedEvent` |
 | `AuctionFinishedEventHandler` | Inventory | `SaveChangesWithInboxAsync` | brak |
 | `AuctionSettledEventHandler` | Inventory | `SaveChangesWithInboxAsync` | brak |
+| `AuctionCancelledEventHandler` | Inventory | `SaveChangesWithInboxAsync` | brak; brak blokady jest poprawnym wynikiem |
+| `WarehouseStockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `WarehouseStockedEvent` |
+| `WarehouseWonEventHandler` | Inventory | `AddItemsWithInboxAsync` | brak; mintuje manifest |
+| `WarehouseStockedEventHandler` | Warehouses | `SaveStockWithInboxAsync` | brak |
+| `WarehouseEntryLockedEventHandler` | Warehouses | `SaveWarWithInboxAsync`, a na ścieżce zwrotu `SaveWarWithInboxAndOutboxAsync` | `FundsUnlockRequestedEvent` dla osieroconej blokady |
+| `WarehouseEntryLockRejectedEventHandler` | Warehouses | `SaveWarWithInboxAsync` | brak; brak uczestnika jest poprawnym wynikiem |
 
 Łapany jest wyłącznie `EventAlreadyProcessedException`. Brakujący agregat (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), reguła domenowa (`InsufficientFundsException`, `LockNotFoundException`, `ItemNotLockedException`, `InvalidAuctionStateTransitionException`) i `DbUpdateConcurrencyException` propagują do `OutboxProcessor`a producenta, gdzie liczą się jako nieudana próba. Zamysł to widoczna porażka: wiadomość, której nie da się zastosować, kończy jako martwa z zapisanym powodem, zamiast zostać pominięta.
 
 ## Szew publishera
 
-[`IIntegrationEventPublisher`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs) ma jedną metodę, `PublishAsync(Guid messageId, string type, string content, CancellationToken token)`. Host rejestruje dla niej `InProcessEventPublisher` jako serwis scoped w [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs); implementacja ignoruje `messageId`, woła [`IntegrationEventTypes.Deserialize(type, content)`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) i przekazuje wynik do `IPublisher.Publish` MediatR, który uruchamia handlery jeden po drugim w kolejności rejestracji DI (assembly Auctions, Wallets, Identity, Inventory). `Deserialize` rzuca `NotSupportedException` dla typu, którego nie ma w rejestrze, i `JsonException` dla pustego ładunku; oba trafiają do `Errors` wiersza outboxa.
+[`IIntegrationEventPublisher`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs) ma jedną metodę, `PublishAsync(Guid messageId, string type, string content, CancellationToken token)`. Host rejestruje dla niej `InProcessEventPublisher` jako serwis scoped w [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs); implementacja ignoruje `messageId`, woła [`IntegrationEventTypes.Deserialize(type, content)`](../../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) i przekazuje wynik do `IPublisher.Publish` MediatR, który uruchamia handlery jeden po drugim w kolejności rejestracji DI (assembly Auctions, Wallets, Identity, Inventory, Warehouses). `Deserialize` rzuca `NotSupportedException` dla typu, którego nie ma w rejestrze, i `JsonException` dla pustego ładunku; oba trafiają do `Errors` wiersza outboxa.
 
 Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IIntegrationEventPublisher`, która wysyła `Type` i `Content` do brokera, plus konsumenta po stronie hosta, który deserializuje przychodzące wiadomości w ten sam sposób i publikuje je do MediatR; moduły, ich outboxy i inboxy zostają bez zmian. Dodanie zdarzenia oznacza dodanie rekordu do `Events/` i jednej linii do rejestru; producent zapisuje `nameof(TheEvent)` w `Type`.
 
@@ -108,14 +121,25 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 | `ItemLockedEvent` | `PublicAuctionId`, `PublicItemId`, `ItemName`, `ItemRarity`, `OfficialPrice` | Inventory `ItemLockRequestedEventHandler` | Auctions `ItemLockedEventHandler` | tak |
 | `ItemLockRejectedEvent` | `PublicAuctionId`, `PublicItemId`, `Reason` | Inventory `ItemLockRequestedEventHandler` | Auctions `ItemLockRejectedEventHandler` | tak |
 | `AuctionActivatedEvent` | `PublicAuctionId`, `SellerUserId`, `PublicItemId`, `ItemName`, `ItemRarity`, `ItemOfficialPrice`, `CurrentPrice`, `EndsOn` | Auctions `ItemLockedEventHandler` | brak | tak |
-| `BidPlacedEvent` | `PublicAuctionId`, `NewWinningUserId`, `PreviousWinningUserId?`, `NewPrice`, `PreviousPrice?` | Auctions `PlaceBidCommandHandler` | Wallets `BidPlacedEventHandler` | tak |
+| `BidPlacedEvent` | `PublicAuctionId`, `NewWinningUserId`, `PreviousWinningUserId?`, `NewPrice`, `PreviousPrice?` | Auctions `FundsLockedEventHandler` (potwierdzenie oferty) | Wallets `BidPlacedEventHandler` | tak |
 | `AuctionFinishedEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId?`, `FinalPrice?` | Auctions `AuctionCloser` | `AuctionFinishedEventHandler` w Wallets i Inventory | tak |
+| `AuctionCancelledEvent` | `PublicAuctionId`, `PublicItemId`, `Reason` | Auctions `AuctionCloser` | Inventory `AuctionCancelledEventHandler` | tak |
 | `AuctionSettledEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId`, `FinalPrice` | Wallets `AuctionFinishedEventHandler` | Inventory `AuctionSettledEventHandler` | tak |
 | `ItemSoldToShopEvent` | `PublicItemId`, `OwnerUserId`, `Price` | Inventory `SellItemToShopCommandHandler` | Wallets `ItemSoldToShopEventHandler` | nie, dwa osobne wywołania `Guid.NewGuid()` |
+| `FundsLockRequestedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Auctions `PlaceBidCommandHandler` | Wallets `FundsLockRequestedEventHandler` | tak |
+| `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | tak |
+| `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | tak |
+| `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId`; przy zwrotach magazynowych `PublicAuctionId` niesie id magazynu | Auctions `FundsLockedEventHandler`; Warehouses `LeaveWarehouseWarCommandHandler`, `WarehouseEntryLockedEventHandler` i `WarehouseKeeper` | Wallets `FundsUnlockRequestedEventHandler` | tak |
+| `WarehouseStockRequestedEvent` | `PublicWarehouseId`, `Rarities` | Warehouses `WarehouseKeeper` | Inventory `WarehouseStockRequestedEventHandler` | tak |
+| `WarehouseStockedEvent` | `PublicWarehouseId`, `Stock` (lista `WarehouseStockItem`) | Inventory `WarehouseStockRequestedEventHandler` | Warehouses `WarehouseStockedEventHandler` | tak |
+| `WarehouseEntryLockRequestedEvent` | `PublicWarehouseId`, `UserId`, `Amount` | Warehouses `JoinWarehouseWarCommandHandler` | Wallets `WarehouseEntryLockRequestedEventHandler` | tak |
+| `WarehouseEntryLockedEvent` | `PublicWarehouseId`, `UserId` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockedEventHandler` | tak |
+| `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | tak |
+| `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | `WarehouseWonEventHandler` w Wallets i Inventory | tak |
 
 ## Decyzje
 
-- Outbox i inbox są skopiowane do każdego modułu zamiast leżeć w `Shared.Integration`, dzięki czemu projekt współdzielony pozostaje assembly z samymi kontraktami, bez zależności od EF Core; ceną są cztery identyczne klasy do utrzymania w synchronizacji (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md)).
+- Outbox i inbox są skopiowane do każdego modułu zamiast leżeć w `Shared.Integration`, dzięki czemu projekt współdzielony pozostaje assembly z samymi kontraktami, bez zależności od EF Core; ceną jest pięć identycznych klas do utrzymania w synchronizacji (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md)).
 - Szyna jest in-process, a publisher to szew, więc moduły od początku były pisane pod dostarczanie at-least-once i broker można wprowadzić bez ich dotykania (zobacz [ADR-003](../adr/003-in-process-event-bus-before-rabbitmq.md)).
 - Handlery celowo wypuszczają nieoczekiwane wyjątki, więc wiadomość, której nie da się zastosować, staje się martwym wierszem z historią błędów, a nie cichym pominięciem.
 

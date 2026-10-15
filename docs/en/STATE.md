@@ -2,18 +2,18 @@
 
 > English version. Polish 1:1 counterpart: [../pl/STATE.md](../pl/STATE.md)
 >
-> Last updated: 2026-10-14
+> Last updated: 2026-10-15
 
 ## Phase
 
-**Backend complete for the main flow, no other module started.** On 2026-10-14 the pending-auction timeout and the funds-reservation saga for bids landed, followed the same day by the first gameplay batch: the starter item pack and player-to-player transfers. Before that the last code commit was `e684e33` from 2026-08-30. Register, login, create auction, bid, close and settle work end to end inside one process, with the known gaps listed below; the whole chain, both sagas included, was verified manually against the Compose stack on 2026-10-14.
+**Backend complete for the main flow, no other module started.** On 2026-10-14 the pending-auction timeout and the funds-reservation saga for bids landed, followed the same day by the first gameplay batch: the starter item pack and player-to-player transfers. On 2026-10-15 the fifth module, Warehouses, landed with the warehouse wars from the third roadmap item. Before that the last code commit was `e684e33` from 2026-08-30. Register, login, create auction, bid, close and settle work end to end inside one process, with the known gaps listed below; the whole chain, both sagas included, was verified manually against the Compose stack on 2026-10-14, and the warehouse war chain (stocking, entry locks, guarded raises, settlement with reveal and refunds) the same way on 2026-10-15, with all five outboxes clean afterwards.
 
 ## What exists
 
-- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions and Inventory and the contracts project `Shared.Integration`; 16 endpoints, 14 integration events, 14 tables, four `OutboxProcessor`s and `AuctionCloser`.
-- Tests: four xUnit projects, 263 test methods (127 offline, 136 integration through Testcontainers), none crossing a module boundary.
+- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory and Warehouses and the contracts project `Shared.Integration`; 21 endpoints, 20 integration events, 19 tables, five `OutboxProcessor`s, `AuctionCloser` and `WarehouseKeeper`.
+- Tests: five xUnit projects, 344 test methods (177 offline, 167 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` with `build`, `unit-tests` and `integration-tests`.
-- Documentation: `docs/en` and `docs/pl` with this set of pages and 13 rendered diagrams; root `README.md` and `README.pl.md`.
+- Documentation: `docs/en` and `docs/pl` with this set of pages and 14 rendered diagrams; root `README.md` and `README.pl.md`.
 - `Backend/Dockerfile` and a root `compose.yaml` (API + PostgreSQL, migrations applied at startup behind `Database:MigrateOnStartup`).
 - CORS for the configured frontend origins (`Cors:AllowedOrigins`), the OpenAPI document at `/openapi/v1.json` and `/health` with a database check.
 - Not in the repository: frontend, bots, gateway, message broker.
@@ -31,7 +31,7 @@
 
 ## Next step
 
-On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend, and the first batch (starter item pack, player-to-player transfers) shipped the same day; next in the [VISION.md](VISION.md) roadmap are the mystery warehouse auctions.
+On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day and the warehouse wars followed on 2026-10-15. Next in the [VISION.md](VISION.md) roadmap is the bank granting loans.
 
 ## Related documents
 

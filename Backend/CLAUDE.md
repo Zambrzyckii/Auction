@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This file covers the .NET backend in `Backend/`. `Frontend/`, `Bots/` and `Infrastructure/` are planned work
 with no code — they may not even exist in the tree yet.
 
-`AGENTS.md` (repo root) describes the intended target architecture. Parts of it are not implemented yet;
-see "Aspirational vs. implemented" below before trusting it.
+The original design note (`AGENTS.md`) was deleted on 2026-08-15; the target architecture now lives in
+`docs/en/VISION.md` and `docs/en/ARCHITECTURE.md`. Parts of it are not implemented yet;
+see "Aspirational vs. implemented" below before trusting roadmap claims.
 
 ## Commands
 
@@ -24,16 +25,16 @@ docker compose up -d                              # from the repo ROOT: API on :
 
 ### Tests
 
-Four test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
+Five test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
 
-- All four mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
+- All five mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
   `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull
   `postgres:latest`; each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
   on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
-  runs in `integration-tests` next to the other three projects. `Wallets.Tests` and `Identity.Tests` additionally boot the whole
+  runs in `integration-tests` next to the other four projects. `Wallets.Tests` and `Identity.Tests` additionally boot the whole
   host through a `WebApplicationFactory<Program>` fixture (`CustomApi`) that sets `ConnectionStrings__DefaultConnection`,
   `Jwt__Key` (Identity also `Bots__ApiKey`) as process env vars and migrates only its own module — the other modules'
   outbox processors log errors against missing tables; that noise is expected.
@@ -64,6 +65,9 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Inventory \
 dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Wallets \
   --startup-project src/AuctionServer.Api --context WalletDbContext \
   --output-dir Infrastructure/Persistence/Migrations
+dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Warehouses \
+  --startup-project src/AuctionServer.Api --context WarehouseDbContext \
+  --output-dir Infrastructure/Persistence/Migrations
 ```
 
 `--output-dir` matters for Auctions: the module has **two** migration folders. `Migrations/` holds the initial
@@ -78,7 +82,9 @@ Identity keeps its migrations under `Infrastructure/Persistence/Migrations/` (sa
 entity maps to its own `IdentityOutboxMessages` table — table names must be globally unique because all modules
 share one schema. Inventory follows the same layout (snapshot `InventoryDbContextModelSnapshot.cs`):
 `Initial_Inventory` creates `InventoryItems` and `InventoryOutboxMessages`, `Add_Item_LockedForAuctionId` and
-`Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. `Add_Auction_Status_And_Item_Snapshot` is the one
+`Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. Warehouses uses the Wallets layout as well:
+`Initial_Warehouses` (wars, stock items, outbox, inbox) and `Add_Warehouses_Lobby` (participants table plus
+`CancellationReason`) under `Infrastructure/Persistence/Migrations/`. `Add_Auction_Status_And_Item_Snapshot` is the one
 hand-edited migration: it adds `Status`, backfills it from `IsClosed` with raw SQL and only then drops the column,
 so pre-existing open auctions stay `Active` instead of falling back to the `Pending` default — keep that order if you
 ever regenerate it.
@@ -89,7 +95,7 @@ context overrides `MigrationsHistoryTable`, they also share a single `__EFMigrat
 
 ### Configuration
 
-`appsettings.json` has **no** `ConnectionStrings` section, yet `AuctionServer.Api/Program.cs:8` reads
+`appsettings.json` has **no** `ConnectionStrings` section, yet `AuctionServer.Api/Program.cs:33` reads
 `DefaultConnection` and passes it with `!`. The connection string comes from User Secrets
 (`UserSecretsId` `577a6cdc-…` in `AuctionServer.Api.csproj`) or from the
 `ConnectionStrings__DefaultConnection` environment variable. With neither set, both modules are registered with a
@@ -104,17 +110,19 @@ dotnet user-secrets set "Bots:ApiKey" "<random-string>" --project src/AuctionSer
 
 `Jwt:Key` is equally mandatory and equally absent from `appsettings.json` (only `Jwt:Issuer`/`Jwt:Audience` live
 there). Without it the app **starts fine but every request 500s**: `JwtBearerOptions` initialize lazily on the
-first request and `Encoding.UTF8.GetBytes(null)` throws (`Program.cs:29`). Supply it via user secrets or the
-`Jwt__Key` environment variable. `Wallets:StartingFunds` (not a secret — lives in `appsettings.json`) is the one key with a startup fail-fast:
-`Program.cs:22` throws `InvalidOperationException` when it is missing and `AddWalletsModule(connectionString, startingFunds)`
-throws `ArgumentOutOfRangeException` when it is `<= 0`. `Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
-it is read into the `ApiKey` scheme at `Program.cs:34`; when missing the app starts and `POST /api/users/bots` answers 401.
+first request and `Encoding.UTF8.GetBytes(null)` throws (`Program.cs:42`). Supply it via user secrets or the
+`Jwt__Key` environment variable. `Wallets:StartingFunds` (not a secret — lives in `appsettings.json`) has a startup fail-fast:
+`Program.cs:34` throws `InvalidOperationException` when it is missing and `AddWalletsModule(connectionString, startingFunds)`
+throws `ArgumentOutOfRangeException` when it is `<= 0`. The whole `Warehouses` section (tiers, estimates, pool and
+timing knobs, bound to `WarehousesOptions`) has the same fail-fast at `Program.cs:36`.
+`Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
+it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app starts and `POST /api/users/bots` answers 401.
 
 `.env` / `.env.example` (`DB_USER`, `DB_PASSWORD`) have no consumer in the repository — the root `compose.yaml`
 deliberately does not read them (dev-only values are inline there) and no code reads them either. Treat them as
 leftovers, not as the app's configuration path.
 
-The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all four
+The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all five
 contexts' migrations between `Build()` and `Run()`, before the outbox processors start. The flag defaults to
 `false` in `appsettings.json`, so `dotnet run` and the test fixtures keep migrating explicitly.
 
@@ -132,6 +140,7 @@ AuctionServer.Modules.Auctions     auctions & bidding, item-lock and funds-lock 
 AuctionServer.Modules.Wallets      virtual funds with a per-bid lock ledger and player transfers with an append-only history, settlement inbox + outbox; CQS — EF Core for both
 AuctionServer.Modules.Identity     register/login/bot provisioning (BCrypt, JWT with name/id/role claims, 24 h bot tokens)
 AuctionServer.Modules.Inventory    items/crafting/shop + bot-only mint and a config-driven starter pack on registration; locks items for auctions, transfers them to the winner
+AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 5-10 s raise windows, settlement burns the final price; CQS — EF Core for both
 AuctionServer.Shared.Integration   the only shared project: integration events + AppException
 ```
 
@@ -141,13 +150,13 @@ Each module exposes two static extension classes; the host calls both and nothin
 
 - `<Module>ModuleExtensions.Add<Module>Module(services, connectionString)` — registers the `DbContext` and
   repositories (`AuctionModuleExtensions.cs:12`, `WalletModuleExtensions.cs:10`). Wallets additionally takes the
-  starting funds and Inventory the starter-item list; each lands in a singleton options record
-  (`WalletsOptions`, `InventoryOptions`).
+  starting funds, Inventory the starter-item list and Warehouses its whole options section; each lands in a
+  singleton options record (`WalletsOptions`, `InventoryOptions`, `WarehousesOptions`).
 - `<Module>Endpoints.Map<Module>Endpoints(app)` — minimal-API `MapGroup("/api/<module>")` with handlers that only
   build a MediatR message and `sender.Send(...)`, no logic in the endpoint
   (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`).
 
-MediatR and FluentValidation are registered per module assembly in `Program.cs:46-72` — each module gets its own
+MediatR and FluentValidation are registered per module assembly in `Program.cs:59-92` — each module gets its own
 `AddValidatorsFromAssembly(...)` plus an `AddMediatR(...)` block that also re-adds the shared
 `ValidationBehaviour<,>` open behavior (MediatR 14 deduplicates repeated `AddOpenBehavior` registrations, so this
 is safe). Adding a module means adding both lines — assembly scanning is not automatic.
@@ -204,25 +213,38 @@ Active event flows:
   same transaction) has **two consumers**: Wallets consumes the winner's `FundsLock` for the auction (`ConsumeLock`) and credits the seller with that amount, and in the same `SaveChangesAsync`,
   writes `AuctionSettledEvent` to `WalletsOutboxMessages`; Inventory's `AuctionFinishedEventHandler` unlocks the
   item (`Item.UnlockItem`) only when there is no winner. MediatR runs them in registration order (Wallets before
-  Inventory, `Program.cs:54,68`); an exception in Inventory retries the whole publish and Wallets' inbox makes its
-  part a no-op.
+  Inventory, `Program.cs:67,81`); an exception in Inventory retries the whole publish and Wallets' inbox makes its
+  part a no-op. `WarehouseWonEvent` leans on the same order: money is spent before items are minted.
 - `AuctionSettledEvent` → Inventory's `AuctionSettledEventHandler` finds the item by `LockedForAuctionId`
   (`GetItemLockedForAuctionAsync`, 404 when nothing is locked for that auction) and `Item.TransferTo(winner)`.
   The item moves only after the money did.
 - `ItemSoldToShopEvent` (Inventory's `SellItemToShopCommandHandler`, outbox `InventoryOutboxMessages`) → Wallets
   credits the seller with the item's `OfficialPrice` (`ItemSoldToShopEventHandler`, inbox-protected).
+- **Warehouse sagas** (three, all driven by the Warehouses module): stock quoting — `WarehouseStockRequestedEvent`
+  → Inventory prices a manifest without saving any item (`WarehouseStockRequestedEventHandler`) → `WarehouseStockedEvent`;
+  entry lock — `WarehouseEntryLockRequestedEvent` → Wallets `LockFunds` → `WarehouseEntryLockedEvent` /
+  `WarehouseEntryLockRejectedEvent` (dedicated events on purpose: a `FundsLockedEvent` reply would also hit the
+  Auctions handler in process and dead-letter); settlement — `WarehouseWonEvent` → Wallets `Wallet.SpendLock` burns
+  the final price (no seller to credit) and Inventory mints the manifest through `Item.CreateWithPrice`. All
+  warehouse refunds reuse `FundsUnlockRequestedEvent`; its missing-lock tolerance makes redundant refunds safe.
+  Timers (lobby countdown, raise windows, pool refill) live in `WarehouseKeeper` (1 s loop). Details with the full
+  event table: `docs/en/backend/warehouses.md`.
 
 Delivery is at-least-once, so every cross-module consumer is idempotent via an **inbox** — one table per consuming
-module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`), event id as PK,
+module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`,
+`WarehousesProcessedMessages`), event id as PK,
 `ProcessedMessage` entity under `Infrastructure/Inbox/`. The handler checks the inbox first (`WasEventProcessedAsync`)
 and silently returns on a replay; entity changes and the inbox row are still saved in one `SaveChangesAsync`
 (`SaveChangesWithInboxAsync`, or `SaveChangesWithInboxAndOutboxAsync` when the handler also replies), so the PK
 unique violation — surfaced as the module's `EventAlreadyProcessedException` and swallowed by the handler — remains
 the backstop for the race where two deliveries pass the check concurrently. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
 `AuctionFinishedEventHandler`, `ItemSoldToShopEventHandler`, `FundsLockRequestedEventHandler`,
-`FundsUnlockRequestedEventHandler`; Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
+`FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`;
+Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `FundsLockedEventHandler`, `FundsLockRejectedEventHandler`; Inventory: `ItemLockRequestedEventHandler`,
-`AuctionFinishedEventHandler`, `AuctionSettledEventHandler`, `AuctionCancelledEventHandler`); `UserRegisteredEventHandler` relies on the wallet
+`AuctionFinishedEventHandler`, `AuctionSettledEventHandler`, `AuctionCancelledEventHandler`,
+`WarehouseStockRequestedEventHandler`, `WarehouseWonEventHandler`; Warehouses: `WarehouseStockedEventHandler`,
+`WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
 unique index instead. Handlers deliberately do **not** catch illegal state transitions —
 `InvalidAuctionStateTransitionException` (409), `ItemNotLockedException`, the 404 from `GetItemLockedForAuctionAsync`
 — so no inbox row is written, the outbox row retries and finally dead-letters with the reason in `Errors`. A visible
@@ -230,8 +252,8 @@ failure beats a silent skip.
 
 Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
 exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the poll query. The
-outbox entity and processor exist as four separate copies (Auctions, Identity, Inventory, Wallets) — a change to one
-must be mirrored in the others.
+outbox entity and processor exist as five separate copies (Auctions, Identity, Inventory, Wallets, Warehouses) — a
+change to one must be mirrored in the others.
 
 Events live in `AuctionServer.Shared.Integration/Events/` and are plain records carrying an `EventId`.
 
@@ -264,7 +286,7 @@ lowercase by PostgreSQL and will not match the schema. Both queries are covered 
 - **CancellationToken**: passed through to reads, but deliberately dropped on critical financial saves —
   `SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None)` in `BidPlacedEventHandler.cs`, so a dropped client connection
   cannot abort a half-applied money transfer. Keep this asymmetry when adding financial writes.
-- Invariants live in the entity, not the handler: `Wallet.LockFunds` / `ReleaseLock` / `ConsumeLock` / `AddFunds`
+- Invariants live in the entity, not the handler: `Wallet.LockFunds` / `ReleaseLock` / `ConsumeLock` / `SpendLock` / `AddFunds`
   validate and throw (`Domain/Entities/Wallet.cs`), and `FundsLock` rows are mutated only through the `Wallet`
   aggregate root (the child mutators are `internal`). Handlers orchestrate, they do not check balances.
 
@@ -307,8 +329,8 @@ auction per wallet, so `FundsLockStatus.Active` must stay `0`.
 
 ### Entity configuration
 
-All four contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
-`IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
+All five contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
+`IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
 (Auctions keeps them in `Infrastructure/Configurations/`, the other modules in `Infrastructure/Configuration/`).
 
 Auctions keys: the primary key is the `int AuctionId` identity column (`AuctionConfiguration.cs:11`), and
@@ -322,13 +344,13 @@ Soft-delete: `User` is filtered globally by `HasQueryFilter(x => !x.IsDeleted)` 
 
 ## Aspirational vs. implemented
 
-Where `AGENTS.md`, the README roadmap and the code disagree, the code wins. Current state:
+Where the documentation, the README roadmap and the code disagree, the code wins. Current state:
 
 **Implemented** (register → wallet via outbox → login/JWT → funds → create auction as `Pending` → item locked
 in Inventory → auction activated with item snapshot → pessimistic bid confirmed by a funds lock (anti-sniping) → background auto-close →
 exactly-once settlement via inbox → `AuctionSettledEvent` → item transferred to the winner, or unlocked when
-nobody bid): all four modules are fully wired — authentication, four outbox processors, `AuctionCloser`,
-validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
+nobody bid): all five modules are fully wired — authentication, five outbox processors, `AuctionCloser`,
+`WarehouseKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
 included — was verified manually end-to-end on 2026-10-14 against the compose stack: insufficient-funds rejection,
 409 on a second in-flight bid, confirm, release of the previous leader's lock, close, settlement by consuming the
 winner's lock and the item transfer, with zero dead or pending outbox rows afterwards.
@@ -340,6 +362,16 @@ Also on 2026-10-14 the first gameplay batch landed: a starter item pack granted 
 as both balance changes; `POST /api/wallets/transfers` + owner-only `GET /api/wallets/{id}/transfers`). Both were
 probed live against the rebuilt compose stack the same day (11 checks: pack granted on register, balances moved,
 history row, 400 self-transfer and insufficient funds, 403 foreign history), all four outboxes clean afterwards.
+
+On 2026-10-15 the fifth module, Warehouses, landed: warehouse wars with a server-stocked pool (`WarehouseKeeper`,
+1 s loop), a hidden manifest quoted by Inventory, misleading public estimates, an entry fee locked through a
+dedicated Wallets saga that doubles as the bid budget, 5-10 s raise windows with tier-fixed increments, and a
+settlement that burns the final price (`Wallet.SpendLock`) and mints the manifest (`Item.CreateWithPrice`).
+Five endpoints under `/api/warehouses`, six events, five tables. Chapter: `docs/en/backend/warehouses.md`.
+Probed live against the compose stack on 2026-10-15 (20 checks: three players funded and joined, entry locks
+confirmed, guarded raises — 409 for the leading raiser, 400 for an increment outside the tier — settlement after
+the window, manifest revealed only once `Settled`, exact winner and loser balances, items minted at the quoted
+prices, zero pending and zero dead rows across all five outboxes).
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
 column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `LoginCommandHandler.cs:34`, the

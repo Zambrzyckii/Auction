@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/wallets.md](../../en/backend/wallets.md)
 
-`AuctionServer.Modules.Wallets` trzyma wirtualne pieniądze: jeden portfel na użytkownika z saldem dostępnym i zablokowanym, tworzony automatycznie przy rejestracji, obciążany i zasilany przez zdarzenia aukcji i sklepu, przenoszony między graczami przez przelewy z append-only historią oraz wystawiony przez cztery endpointy pod `/api/wallets`. To jedyny moduł, który ma zarówno inbox, jak i outbox odpowiadający na zdarzenie innym zdarzeniem.
+`AuctionServer.Modules.Wallets` trzyma wirtualne pieniądze: jeden portfel na użytkownika z saldem dostępnym i zablokowanym, tworzony automatycznie przy rejestracji, obciążany i zasilany przez zdarzenia aukcji i sklepu, przenoszony między graczami przez przelewy z append-only historią, blokowany jako wpisowe wojen magazynowych oraz wystawiony przez cztery endpointy pod `/api/wallets`. Jego outbox odpowiada na zdarzenie innym zdarzeniem w dwóch sagach: blokady środków dla ofert i blokady wpisowego dla wojen magazynowych.
 
 ## Przegląd
 
@@ -10,7 +10,7 @@
 |---|---|
 | Endpointy | [`Presentation/WalletEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Presentation/WalletEndpoints.cs), rekordy żądań `AddFundsRequest`, `TransferRequest` |
 | Komendy i zapytania | `Application/Command/AddFunds/` i `Application/Command/TransferFunds/` (komenda, handler, walidator w każdym), `Application/Queries/GetWallet/` (zapytanie, handler, `WalletDto`), `Application/Queries/GetWalletTransfers/` (zapytanie, handler, `TransferDto`), `Application/Options/WalletsOptions.cs` |
-| Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs` |
+| Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs`, `FundsLockRequestedEventHandler.cs`, `FundsUnlockRequestedEventHandler.cs`, `WarehouseEntryLockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs` |
 | Domena | [`Domain/Entities/Wallet.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Entities/Wallet.cs), `Domain/Entities/Transfer.cs`, [`Domain/Exceptions/WalletExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Exceptions/WalletExceptions.cs) |
 | Infrastruktura | `Persistence/` (`WalletDbContext`, `WalletRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
@@ -54,6 +54,7 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 | `LockFunds(auctionId, amount)` | `amount > 0`, `AvailableFunds >= amount`, brak aktywnej blokady dla aukcji | dodaje `Active` `FundsLock` i przenosi `amount` z dostępnych do zablokowanych |
 | `ReleaseLock(auctionId)` | istnieje aktywna blokada dla aukcji | oznacza ją `Released` i przenosi jej kwotę z powrotem do dostępnych |
 | `ConsumeLock(auctionId)` | istnieje aktywna blokada dla aukcji | oznacza ją `Consumed`, zmniejsza `LockedFunds`; pieniądze opuszczają portfel; zwraca kwotę |
+| `SpendLock(id, amount)` | `amount > 0`, istnieje aktywna blokada dla id, `amount <= lock.Amount` | oznacza blokadę `Consumed`, zmniejsza `LockedFunds` o całą blokadę, resztę (`lock.Amount - amount`) oddaje do `AvailableFunds`; wydana kwota opuszcza obieg |
 | `SuspendAccount()`, `UnsuspendAccount()` | — | przełączają `IsSuspendedWallet`; brak wywołań w `src/` |
 
 | Wyjątek | Status | Komunikat |
@@ -89,6 +90,9 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 | konsumowane | `ItemSoldToShopEvent` | `ItemSoldToShopEventHandler` woła `AddFunds(Price)` na portfelu właściciela; `SaveUserFundsWithInboxAsync` |
 | publikowane | `AuctionSettledEvent` | zapisywane przez `AuctionFinishedEventHandler`; konsumowane przez Inventory, które przenosi przedmiot |
 | publikowane | `FundsLockedEvent`, `FundsLockRejectedEvent` | zapisywane przez `FundsLockRequestedEventHandler`; konsumowane przez Auctions, które potwierdza albo odrzuca ofertę oczekującą |
+| konsumowane | `WarehouseEntryLockRequestedEvent` | `WarehouseEntryLockRequestedEventHandler` blokuje wpisowe tą samą księgą `LockFunds` (id magazynu trafia do kolumny `PublicAuctionId`) i odpowiada `WarehouseEntryLockedEvent` albo `WarehouseEntryLockRejectedEvent`; jedno `SaveUserFundsWithInboxAndOutboxAsync` |
+| konsumowane | `WarehouseWonEvent` | `WarehouseWonEventHandler` woła `SpendLock(PublicWarehouseId, FinalPrice)` na portfelu zwycięzcy: cena znika (zlew pieniędzy), reszta wpisowego wraca do dostępnych; jedno `SaveUserFundsWithInboxAsync` |
+| publikowane | `WarehouseEntryLockedEvent`, `WarehouseEntryLockRejectedEvent` | zapisywane przez `WarehouseEntryLockRequestedEventHandler`; konsumowane przez Warehouses, które potwierdza albo usuwa uczestnika |
 
 Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota też startuje ze `StartingFunds`; zdarzenie nie niesie roli.
 
@@ -100,6 +104,7 @@ Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota te
 - Odczyty i zapisy używają EF Core (CQS); ścieżka odczytu Dapperem istnieje tylko w Auctions.
 - Środki są blokowane, zanim oferta zacznie prowadzić: każda blokada to wiersz `FundsLock` powiązany z jedną aukcją, `LockedFunds` zawsze równa się sumie aktywnych blokad, a zwolnienie i rozliczenie biorą kwotę z księgi, więc błędne zdarzenie nie przeniesie złej kwoty.
 - Przelew to jedna lokalna transakcja wewnątrz modułu (dwa śledzone portfele plus wiersz historii w jednym zapisie) i nie publikuje zdarzenia integracyjnego, bo żaden inny moduł na niego nie reaguje; historia jest append-only, a przelew wydaje wyłącznie `AvailableFunds`, nigdy pieniądze zablokowane.
+- Księga `FundsLock` jest celowo generyczna: jej kluczem jest dowolny `Guid`, więc wpisowe magazynów reużywa te same wiersze, to samo zdarzenie zwrotu i te same niezmienniki co oferty aukcyjne, a `SpendLock` to jedyna metoda, która niszczy pieniądze zamiast je przenosić.
 
 ## Powiązane dokumenty
 

@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/wallets.md](../../pl/backend/wallets.md)
 
-`AuctionServer.Modules.Wallets` keeps the virtual money: one wallet per user with an available and a locked balance, created automatically on registration, charged and credited by the auction and shop events, moved between players through transfers with an append-only history, and exposed through four endpoints under `/api/wallets`. It is the only module with both an inbox and an outbox that replies to an event with another event.
+`AuctionServer.Modules.Wallets` keeps the virtual money: one wallet per user with an available and a locked balance, created automatically on registration, charged and credited by the auction and shop events, moved between players through transfers with an append-only history, locked as warehouse-war entry fees and exposed through four endpoints under `/api/wallets`. Its outbox replies to an event with another event in two sagas: the funds lock for bids and the entry lock for warehouse wars.
 
 ## Overview
 
@@ -10,7 +10,7 @@
 |---|---|
 | Endpoints | [`Presentation/WalletEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Presentation/WalletEndpoints.cs), request records `AddFundsRequest`, `TransferRequest` |
 | Commands and queries | `Application/Command/AddFunds/` and `Application/Command/TransferFunds/` (command, handler, validator each), `Application/Queries/GetWallet/` (query, handler, `WalletDto`), `Application/Queries/GetWalletTransfers/` (query, handler, `TransferDto`), `Application/Options/WalletsOptions.cs` |
-| Event handlers | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs` |
+| Event handlers | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs`, `FundsLockRequestedEventHandler.cs`, `FundsUnlockRequestedEventHandler.cs`, `WarehouseEntryLockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs` |
 | Domain | [`Domain/Entities/Wallet.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Entities/Wallet.cs), `Domain/Entities/Transfer.cs`, [`Domain/Exceptions/WalletExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Exceptions/WalletExceptions.cs) |
 | Infrastructure | `Persistence/` (`WalletDbContext`, `WalletRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
@@ -54,6 +54,7 @@ The module also owns `WalletsFundsLocks`, the per-bid lock ledger (`Id`, `Wallet
 | `LockFunds(auctionId, amount)` | `amount > 0`, `AvailableFunds >= amount`, no active lock for the auction | adds an `Active` `FundsLock` and moves `amount` from available to locked |
 | `ReleaseLock(auctionId)` | an active lock for the auction exists | marks it `Released` and moves its amount back to available |
 | `ConsumeLock(auctionId)` | an active lock for the auction exists | marks it `Consumed`, shrinks `LockedFunds`; the money leaves the wallet; returns the amount |
+| `SpendLock(id, amount)` | `amount > 0`, an active lock for the id exists, `amount <= lock.Amount` | marks the lock `Consumed`, shrinks `LockedFunds` by the whole lock, returns the change (`lock.Amount - amount`) to `AvailableFunds`; the spent amount leaves the economy |
 | `SuspendAccount()`, `UnsuspendAccount()` | — | toggle `IsSuspendedWallet`; no callers in `src/` |
 
 | Exception | Status | Message |
@@ -89,6 +90,9 @@ The module also owns `WalletsFundsLocks`, the per-bid lock ledger (`Id`, `Wallet
 | consumed | `ItemSoldToShopEvent` | `ItemSoldToShopEventHandler` calls `AddFunds(Price)` on the owner's wallet; `SaveUserFundsWithInboxAsync` |
 | published | `AuctionSettledEvent` | written by `AuctionFinishedEventHandler`; consumed by Inventory, which transfers the item |
 | published | `FundsLockedEvent`, `FundsLockRejectedEvent` | written by `FundsLockRequestedEventHandler`; consumed by Auctions, which confirms or rejects the pending bid |
+| consumed | `WarehouseEntryLockRequestedEvent` | `WarehouseEntryLockRequestedEventHandler` locks the entry fee with the same `LockFunds` ledger (the warehouse id takes the `PublicAuctionId` column) and replies with `WarehouseEntryLockedEvent` or `WarehouseEntryLockRejectedEvent`; one `SaveUserFundsWithInboxAndOutboxAsync` |
+| consumed | `WarehouseWonEvent` | `WarehouseWonEventHandler` calls `SpendLock(PublicWarehouseId, FinalPrice)` on the winner's wallet: the price vanishes (money sink), the rest of the fee returns to available; one `SaveUserFundsWithInboxAsync` |
+| published | `WarehouseEntryLockedEvent`, `WarehouseEntryLockRejectedEvent` | written by `WarehouseEntryLockRequestedEventHandler`; consumed by Warehouses, which confirms or removes the participant |
 
 Bots are registered through the same `UserRegisteredEvent`, so a bot wallet also starts with `StartingFunds`; the event carries no role.
 
@@ -100,6 +104,7 @@ Bots are registered through the same `UserRegisteredEvent`, so a bot wallet also
 - Reads and writes both use EF Core (CQS); the Dapper read path exists only in Auctions.
 - Funds are locked before a bid can lead: every lock is a `FundsLock` row tied to one auction, `LockedFunds` always equals the sum of active locks, and release and settlement take the amount from the ledger, so a malformed event cannot move the wrong amount.
 - A transfer is one local transaction inside the module (two tracked wallets plus the history row in a single save) and publishes no integration event, because no other module reacts to it; the history is append-only and spends only `AvailableFunds`, never locked money.
+- The `FundsLock` ledger is generic on purpose: its key is any `Guid`, so warehouse entry fees reuse the same rows, the same refund event and the same invariants as auction bids, and `SpendLock` is the only method that destroys money instead of moving it.
 
 ## Related documents
 

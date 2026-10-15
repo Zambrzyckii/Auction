@@ -1,6 +1,6 @@
 flowchart TB
 
-    subgraph Host ["AuctionServer.Api - ProjectReference to the four modules"]
+    subgraph Host ["AuctionServer.Api - ProjectReference to the five modules"]
         Program["Program.cs<br/>DI, authentication schemes and policies,<br/>MediatR + FluentValidation registered per module assembly"]:::host
         ApiInfra["Infrastructure/<br/>ApiKeyAuthenticationHandler, GlobalExceptionHandler,<br/>Messaging/InProcessEventPublisher"]:::host
     end
@@ -10,12 +10,13 @@ flowchart TB
         Wallets["Modules.Wallets<br/>WalletDbContext, OutboxProcessor"]:::wallets
         Auctions["Modules.Auctions<br/>AuctionDbContext, OutboxProcessor, AuctionCloser"]:::auctions
         Inventory["Modules.Inventory<br/>InventoryDbContext, OutboxProcessor"]:::inventory
+        Warehouses["Modules.Warehouses<br/>WarehouseDbContext, OutboxProcessor, WarehouseKeeper"]:::warehouses
     end
 
-    Shared["AuctionServer.Shared.Integration<br/>Events/ (9 records), AppException, IIntegrationEventPublisher,<br/>IntegrationEventTypes, ValidationBehaviour"]:::shared
+    Shared["AuctionServer.Shared.Integration<br/>Events/ (20 records), AppException, IIntegrationEventPublisher,<br/>IntegrationEventTypes, ValidationBehaviour"]:::shared
 
-    Program --> Identity & Wallets & Auctions & Inventory
-    Identity & Wallets & Auctions & Inventory --> Shared
+    Program --> Identity & Wallets & Auctions & Inventory & Warehouses
+    Identity & Wallets & Auctions & Inventory & Warehouses --> Shared
     ApiInfra -.->|"implements IIntegrationEventPublisher"| Shared
 
     style Host fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
@@ -27,6 +28,7 @@ flowchart TB
     classDef wallets   fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B
     classDef auctions  fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E
     classDef inventory fill:#FFE4E6,stroke:#E11D48,stroke-width:2px,color:#881337
+    classDef warehouses fill:#CCFBF1,stroke:#0D9488,stroke-width:2px,color:#134E4A
     classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
     classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
     classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

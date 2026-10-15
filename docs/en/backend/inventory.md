@@ -11,7 +11,7 @@
 | Endpoints | [`Presentation/InventoryEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Presentation/InventoryEndpoints.cs), request records `CraftItemRequest`, `GrantItemRequest` |
 | Commands | `Application/Command/CraftItem/`, `Application/Command/GrantItem/`, `Application/Command/SellItemToShop/` (command, handler, validator each) |
 | Queries | `Application/Queries/GetUserItemsQuery/` (query, handler, `UserItemsDto`) |
-| Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs` |
+| Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs` |
 | Domain | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
 | Infrastructure | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
@@ -30,7 +30,7 @@ Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/s
 
 ## Configuration
 
-The module has one configuration key: `Inventory:StarterItems`, a list of `{ Name, Rarity }` entries granted to every new player on registration (the default in `appsettings.json` is three `Common` items; an empty list disables the pack). The remaining rules are constants in [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` is rolled once at creation with `Random.Shared.Next` (upper bound exclusive), crafting needs exactly `CraftIngredientsCount = 3` ingredients, and a crafted item is named `Crafted {rarity} Item`.
+The module has one configuration key: `Inventory:StarterItems`, a list of `{ Name, Rarity }` entries granted to every new player on registration (the default in `appsettings.json` is three `Common` items; an empty list disables the pack). The remaining rules are constants in [`Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs). `OfficialPrice` is rolled once at creation with `Random.Shared.Next` (upper bound exclusive): `Item.Create` rolls it and delegates to `Item.CreateWithPrice`, the factory that takes an explicit price (used by the warehouse mint) and rejects a non-positive one with `InvalidItemPriceException`. Crafting needs exactly `CraftIngredientsCount = 3` ingredients, and a crafted item is named `Crafted {rarity} Item`.
 
 | Rarity | Value | Rolled official price |
 |---|---|---|
@@ -79,6 +79,7 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 |---|---|---|
 | `ItemNotAvailableException` | 400 | `Item is not available, current status: {status}` |
 | `ItemNotLockedException` | 400 | `This item is not locked` |
+| `InvalidItemPriceException` | 400 | `Item price must be greater than zero` |
 | `NotEnoughIngredientsToCraftException` | 400 | `Crafting requires exactly 3 ingredients` |
 | `IngredientsOwnerMismatchException` | 400 | `All ingredients must belong to the same owner` |
 | `IngredientsRarityMismatchException` | 400 | `All ingredients must share the same rarity` |
@@ -96,7 +97,10 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 | consumed | `AuctionCancelledEvent` | `AuctionCancelledEventHandler`: `FindItemLockedForAuctionAsync` plus `UnlockItem`; a missing lock is a valid outcome |
 | consumed | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
 | consumed | `UserRegisteredEvent` | `UserRegisteredEventHandler`: one `Item.Create` per `Inventory:StarterItems` entry, saved atomically with the inbox row |
+| consumed | `WarehouseStockRequestedEvent` | `WarehouseStockRequestedEventHandler`: quotes one transient `Item.Create` per requested rarity (nothing is saved; the call only borrows the hidden price roll) and replies with `WarehouseStockedEvent` carrying the priced manifest |
+| consumed | `WarehouseWonEvent` | `WarehouseWonEventHandler`: one `Item.CreateWithPrice` per manifest entry for the winner, at the prices rolled during quoting, saved with `AddItemsWithInboxAsync` |
 | published | `ItemLockedEvent`, `ItemLockRejectedEvent` | replies written in the same `SaveChangesAsync` as the lock and the inbox row |
+| published | `WarehouseStockedEvent` | the quote reply, written in the same `SaveChangesAsync` as the inbox row |
 | published | `ItemSoldToShopEvent` | `SellItemToShopCommandHandler`; the outbox row `Id` and the event `EventId` are two different Guids |
 
 All five consumers use the inbox table `InventoryProcessedMessages`; in the auction consumers an unknown item or auction is a 404 that propagates to the producer's outbox and is retried.

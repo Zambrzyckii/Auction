@@ -68,6 +68,36 @@ erDiagram
         uuid LockedForAuctionId UK "nullable"
         uuid Version "concurrency token"
     }
+    WAREHOUSES__WarehousesWars {
+        integer Id PK "identity column"
+        uuid PublicWarehouseId UK
+        varchar Tier "max 32, sets fee and increments"
+        integer Status "Stocking=0 Open=1 Bidding=2 Settled=3 Cancelled=4"
+        numeric TotalValue "18,2 hidden"
+        numeric EstimateMin "18,2 shown"
+        numeric EstimateMax "18,2 shown"
+        numeric EntryFee "18,2 also the bid budget"
+        numeric CurrentPrice "18,2"
+        uuid CurrentLeaderId "nullable"
+        timestamptz BiddingStartsOn "nullable, set = countdown running"
+        timestamptz BiddingEndsOn "nullable, reset on every raise"
+        text CancellationReason "nullable"
+        timestamptz CreatedOn "lobby timeout"
+        uuid Version "concurrency token"
+    }
+    WAREHOUSES__WarehousesParticipants {
+        integer Id PK "identity column"
+        integer WarehouseWarId FK "cascade delete, unique with UserId"
+        uuid UserId
+        integer State "PendingLock=0 Active=1"
+    }
+    WAREHOUSES__WarehousesStockItems {
+        integer Id PK "identity column"
+        uuid PublicWarehouseId "indexed"
+        varchar Name "max 100"
+        varchar Rarity "max 16, stored as text"
+        numeric Price "18,2 minted at settlement"
+    }
     IDENTITY__IdentityOutboxMessages {
         uuid Id PK
     }
@@ -89,6 +119,12 @@ erDiagram
     INVENTORY__InventoryProcessedMessages {
         uuid EventId PK
     }
+    WAREHOUSES__WarehousesOutboxMessages {
+        uuid Id PK
+    }
+    WAREHOUSES__WarehousesProcessedMessages {
+        uuid EventId PK
+    }
     AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
@@ -97,3 +133,7 @@ erDiagram
     IDENTITY__Users ||..o{ AUCTIONS__Auctions : "SellerUserId and CurrentWinningUserId, no FK"
     IDENTITY__Users ||..o{ INVENTORY__InventoryItems : "OwnerUserId, no FK"
     INVENTORY__InventoryItems |o..o| AUCTIONS__Auctions : "ItemId = PublicItemId and LockedForAuctionId = PublicAuctionId, no FK"
+    WAREHOUSES__WarehousesWars ||--o{ WAREHOUSES__WarehousesParticipants : "WarehouseWarId, real FK, owned by the aggregate"
+    WAREHOUSES__WarehousesWars ||..o{ WAREHOUSES__WarehousesStockItems : "PublicWarehouseId, no FK"
+    WAREHOUSES__WarehousesWars |o..o{ WALLETS__WalletsFundsLocks : "PublicWarehouseId stored in PublicAuctionId, no FK"
+    IDENTITY__Users ||..o{ WAREHOUSES__WarehousesParticipants : "UserId, no FK"

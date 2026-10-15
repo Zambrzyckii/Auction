@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../pl/ARCHITECTURE.md](../pl/ARCHITECTURE.md)
 
-AuctionServer is a .NET 10 modular monolith for a gamified auction house: four modules (Identity, Wallets, Auctions, Inventory) run in one ASP.NET Core process, share one PostgreSQL database and talk to each other only through integration events carried by a transactional outbox and consumed through an inbox. This page covers the system context, the module layering, request handling, cross-module messaging, the three auction flows, the data model, the CI pipeline, the design patterns in use and the known limitations. Module-level detail lives in the [backend chapters](backend/README.md).
+AuctionServer is a .NET 10 modular monolith for a gamified auction house: five modules (Identity, Wallets, Auctions, Inventory, Warehouses) run in one ASP.NET Core process, share one PostgreSQL database and talk to each other only through integration events carried by a transactional outbox and consumed through an inbox. This page covers the system context, the module layering, request handling, cross-module messaging, the three auction flows and the warehouse-war flow, the data model, the CI pipeline, the design patterns in use and the known limitations. Module-level detail lives in the [backend chapters](backend/README.md).
 
 ## System context
 
@@ -17,23 +17,24 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 
 | Component | Status | Documented in |
 |---|---|---|
-| `AuctionServer.Api` host with the four modules | exists | [backend/README.md](backend/README.md) |
-| PostgreSQL, one database, 11 tables | exists (started by hand or by Testcontainers) | [Data model](#data-model) |
+| `AuctionServer.Api` host with the five modules | exists | [backend/README.md](backend/README.md) |
+| PostgreSQL, one database, 19 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
+| Docker Compose (API image plus PostgreSQL) | exists | [backend/README.md](backend/README.md) |
 | GitLab CI pipeline | exists | [Build and CI](#build-and-ci) |
 | Angular frontend | planned | [frontend.md](frontend.md) |
-| API gateway, RabbitMQ, Docker Compose | planned | [infrastructure.md](infrastructure.md) |
+| API gateway, RabbitMQ | planned | [infrastructure.md](infrastructure.md) |
 | AI bots (Python) | planned | [bots.md](bots.md) |
 
 ## Modules and layering
 
-The diagram shows the project references: the host references the four modules, every module references only `AuctionServer.Shared.Integration`, and no module references another module.
+The diagram shows the project references: the host references the five modules, every module references only `AuctionServer.Shared.Integration`, and no module references another module.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-02-module-layering.dark.svg">
   <img alt="Modules and layering diagram" src="../diagrams/architecture-02-module-layering.svg">
 </picture>
 
-Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints and request records), `Application/` (MediatR commands, queries and validators, event handlers, repository interfaces), `Domain/` (entities, enums, exceptions) and `Infrastructure/` (DbContext, repositories, EF configurations, outbox, inbox, background services, migrations). The module project files declare a single `ProjectReference`, to [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), which holds the nine event records, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` and `ValidationBehaviour`. The host wires a module with one extension method per module (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`) and maps its endpoints with `Map*Endpoints`; both calls sit in [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
+Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints and request records), `Application/` (MediatR commands, queries and validators, event handlers, repository interfaces), `Domain/` (entities, enums, exceptions) and `Infrastructure/` (DbContext, repositories, EF configurations, outbox, inbox, background services, migrations). The module project files declare a single `ProjectReference`, to [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), which holds the twenty event records, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` and `ValidationBehaviour`. The host wires a module with one extension method per module (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`) and maps its endpoints with `Map*Endpoints`; both calls sit in [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
 
 | Module | Route prefix | DbContext | Tables | Background services | Tests |
 |---|---|---|---|---|---|
@@ -41,6 +42,7 @@ Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints a
 | [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsTransfers`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `AuctionsBids`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
+| [Warehouses](backend/warehouses.md) | `/api/warehouses` | `WarehouseDbContext` | `WarehousesWars`, `WarehousesParticipants`, `WarehousesStockItems`, `WarehousesOutboxMessages`, `WarehousesProcessedMessages` | `OutboxProcessor`, `WarehouseKeeper` | `AuctionServer.Modules.Warehouses.Tests` |
 
 The module rules are enforced by convention, not by tooling: no cross-module project reference, no cross-module database query, and `Domain/` and `Application/` free of ASP.NET Core types. The last rule holds for ASP.NET Core itself, but `Application/` handlers do reference their own module's `Infrastructure.Outbox` and `Infrastructure.Inbox` types to build outbox and inbox rows, and `LoginCommandHandler` reads `IConfiguration` directly.
 
@@ -60,7 +62,7 @@ Modules never call each other. A module that needs another module to react write
 1. The producer adds an `OutboxMessage` row (`Id` equal to the event's `EventId`, `Type` equal to the event class name, `Content` with the JSON payload) to the same transaction as its entity change.
 2. The module's `OutboxProcessor` (a `BackgroundService`, one copy per module) polls every 3 s for up to 20 rows that are unprocessed, not dead and due, ordered by `CreatedOn`.
 3. It calls [`IIntegrationEventPublisher.PublishAsync`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs); the only implementation, [`InProcessEventPublisher`](../../Backend/src/AuctionServer.Api/Infrastructure/Messaging/InProcessEventPublisher.cs), deserializes the payload through [`IntegrationEventTypes`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) and publishes it with MediatR `IPublisher`.
-4. MediatR runs the matching `INotificationHandler`s one after another, in the order the module assemblies are registered in `Program.cs` (Auctions, Wallets, Identity, Inventory).
+4. MediatR runs the matching `INotificationHandler`s one after another, in the order the module assemblies are registered in `Program.cs` (Auctions, Wallets, Identity, Inventory, Warehouses).
 5. A consumer first asks `WasEventProcessedAsync(EventId)`, then applies the domain change and saves it together with a `ProcessedMessage` row (and a reply outbox row, when it replies) in one `SaveChangesAsync`; a primary-key violation on the inbox row surfaces as `EventAlreadyProcessedException`, which the handler swallows.
 6. Any other exception propagates back to the `OutboxProcessor`, which records it on the row and schedules a retry; after the fifth failure the row is marked dead.
 
@@ -74,12 +76,18 @@ Modules never call each other. A module that needs another module to react write
 | `FundsLockRequestedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Auctions `PlaceBidCommandHandler` | Wallets `FundsLockRequestedEventHandler` | yes |
 | `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | yes |
 | `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | yes |
-| `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId` | Auctions `FundsLockedEventHandler` | Wallets `FundsUnlockRequestedEventHandler` | yes |
+| `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId`; warehouse refunds put the warehouse id in `PublicAuctionId` | Auctions `FundsLockedEventHandler`; Warehouses `LeaveWarehouseWarCommandHandler`, `WarehouseEntryLockedEventHandler`, `WarehouseKeeper` | Wallets `FundsUnlockRequestedEventHandler` | yes |
 | `AuctionActivatedEvent` | auction and seller ids, item snapshot, `CurrentPrice`, `EndsOn` | Auctions `ItemLockedEventHandler` | none | — |
 | `BidPlacedEvent` | `PublicAuctionId`, `NewWinningUserId`, `PreviousWinningUserId?`, `NewPrice`, `PreviousPrice?` | Auctions `FundsLockedEventHandler` | Wallets `BidPlacedEventHandler` | yes |
 | `AuctionFinishedEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId?`, `FinalPrice?` | Auctions `AuctionCloser` | Wallets `AuctionFinishedEventHandler`, Inventory `AuctionFinishedEventHandler` | yes, in both |
 | `AuctionSettledEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId`, `FinalPrice` | Wallets `AuctionFinishedEventHandler` | Inventory `AuctionSettledEventHandler` | yes |
 | `ItemSoldToShopEvent` | `PublicItemId`, `OwnerUserId`, `Price` | Inventory `SellItemToShopCommandHandler` | Wallets `ItemSoldToShopEventHandler` | yes |
+| `WarehouseStockRequestedEvent` | `PublicWarehouseId`, `Rarities` | Warehouses `WarehouseKeeper` | Inventory `WarehouseStockRequestedEventHandler` | yes |
+| `WarehouseStockedEvent` | `PublicWarehouseId`, `Stock` | Inventory `WarehouseStockRequestedEventHandler` | Warehouses `WarehouseStockedEventHandler` | yes |
+| `WarehouseEntryLockRequestedEvent` | `PublicWarehouseId`, `UserId`, `Amount` | Warehouses `JoinWarehouseWarCommandHandler` | Wallets `WarehouseEntryLockRequestedEventHandler` | yes |
+| `WarehouseEntryLockedEvent` | `PublicWarehouseId`, `UserId` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockedEventHandler` | yes |
+| `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | yes |
+| `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | Wallets `WarehouseWonEventHandler`, Inventory `WarehouseWonEventHandler` | yes, in both |
 
 The records live in [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events) and the handlers in each module's `Application/Handlers/` folder. Adding an event means adding a record and registering it in `IntegrationEventTypes`; an unregistered type makes `Deserialize` throw `NotSupportedException`, so the outbox row fails and eventually dead-letters.
 
@@ -135,16 +143,30 @@ The sequence below shows the background closer ending an auction and the settlem
 5. The Wallets `OutboxProcessor` publishes `AuctionSettledEvent`; Inventory's [`AuctionSettledEventHandler`](../../Backend/src/AuctionServer.Modules.Inventory/Application/Handlers/AuctionSettledEventHandler.cs) finds the locked item and calls `Item.TransferTo(WinnerUserId)`, which changes the owner, clears the lock and sets `Available`.
 6. The 404 and 409 exceptions inside these handlers are deliberately not caught: the message is retried and, after five failures, parked as dead with its error history instead of being skipped silently.
 
+### Warehouse wars (stocking, entry lock, fast bidding, settlement)
+
+The sequence below shows the life of one warehouse war: the keeper stocks it through an Inventory quote, players stake their entry fee through Wallets, the raise windows run locally, and the settlement pays, refunds and mints.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-08-warehouse-war.dark.svg">
+  <img alt="Warehouse war diagram" src="../diagrams/architecture-08-warehouse-war.svg">
+</picture>
+
+1. [`WarehouseKeeper`](../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Background/WarehouseKeeper.cs) (a 1 s loop) keeps `Warehouses:PoolSize` wars alive: it creates a `Stocking` war from a random tier and asks Inventory for a quote with `WarehouseStockRequestedEvent` carrying rolled rarities. Inventory prices them on transient `Item.Create` results (nothing is saved) and replies with the manifest; `WarehouseStockedEventHandler` stores it in `WarehousesStockItems`, rolls the deliberately misleading public estimate through [`EstimateGenerator`](../../Backend/src/AuctionServer.Modules.Warehouses/Application/Estimates/EstimateGenerator.cs) and opens the lobby.
+2. `POST /api/warehouses/{id}/join` adds a `PendingLock` participant and emits `WarehouseEntryLockRequestedEvent`; Wallets locks the tier's entry fee with the generic `FundsLock` ledger and replies. The confirmation activates the participant: at `MinPlayers` active the countdown starts, at `MaxPlayers` bidding starts immediately. A rejection frees the seat; a lock that arrives after the war moved on is refunded (`FundsUnlockRequestedEvent`), so no fee can stay stranded.
+3. When the countdown elapses the keeper calls `StartBidding`; raises (`POST /bids`) are local aggregate calls guarded by status, window, participant state, leadership, the tier's increment set and the `EntryFee` budget, racing on the `Version` token. Every raise resets the `RaiseWindow`.
+4. When the window expires the keeper settles: with a leader it emits `WarehouseWonEvent` (winner, final price, manifest) plus refunds for the losers; without one it cancels and refunds everybody. Wallets consumes the winner's lock with `Wallet.SpendLock` (the price leaves the economy, the change returns), then Inventory mints the manifest with `Item.CreateWithPrice`; after `Settled` the GET detail reveals the manifest. Full detail in [backend/warehouses.md](backend/warehouses.md).
+
 ## Data model
 
-The diagram shows the fourteen tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
+The diagram shows the nineteen tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
   <img alt="Data model diagram" src="../diagrams/architecture-06-data-model.svg">
 </picture>
 
-All four `DbContext`s point at the same database and share the default `__EFMigrationsHistory` table (no context overrides the history table), so isolation rests on discipline and on distinct table names. Identifiers cross module boundaries as copied Guids: `Wallets.UserId` and `Auctions.SellerUserId` hold `Users.PublicUserId`, `Auctions.ItemId` holds `InventoryItems.PublicItemId`, and `InventoryItems.LockedForAuctionId` holds `Auctions.PublicAuctionId`. Column types come from the EF model snapshots in each module's migrations folder.
+All five `DbContext`s point at the same database and share the default `__EFMigrationsHistory` table (no context overrides the history table), so isolation rests on discipline and on distinct table names. Identifiers cross module boundaries as copied Guids: `Wallets.UserId` and `Auctions.SellerUserId` hold `Users.PublicUserId`, `Auctions.ItemId` holds `InventoryItems.PublicItemId`, and `InventoryItems.LockedForAuctionId` holds `Auctions.PublicAuctionId`. Column types come from the EF model snapshots in each module's migrations folder.
 
 | Table | Module | Purpose |
 |---|---|---|
@@ -160,6 +182,10 @@ All four `DbContext`s point at the same database and share the default `__EFMigr
 | `AuctionsProcessedMessages` | Auctions | inbox |
 | `InventoryItems` | Inventory | items; unique `PublicItemId`, unique nullable `LockedForAuctionId`, `Version` |
 | `InventoryOutboxMessages`, `InventoryProcessedMessages` | Inventory | outbox, inbox |
+| `WarehousesWars` | Warehouses | warehouse wars; unique `PublicWarehouseId`, the hidden `TotalValue`, the public estimates, `EntryFee`, `CurrentPrice`, the timers, `Version` |
+| `WarehousesParticipants` | Warehouses | lobby lineup owned by the `WarehouseWar` aggregate; unique (`WarehouseWarId`, `UserId`), `State` (`PendingLock`/`Active`) |
+| `WarehousesStockItems` | Warehouses | the hidden manifest, one row per item quoted by Inventory, revealed only after settlement |
+| `WarehousesOutboxMessages`, `WarehousesProcessedMessages` | Warehouses | outbox, inbox |
 
 Every outbox table has the same nine columns (`Id`, `Type`, `Content`, `CreatedOn`, `ProcessedOn`, `AttemptCount`, `Errors`, `IsDead`, `NextAttemptOn`) and every inbox table has `EventId` and `ProcessedOn`; see [backend/messaging.md](backend/messaging.md).
 
@@ -174,23 +200,23 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 
 - Every job runs in the `mcr.microsoft.com/dotnet/sdk:10.0` image with a `docker:dind` service; `DOCKER_HOST=tcp://docker:2375` and `TESTCONTAINERS_HOST_OVERRIDE=docker` let Testcontainers start PostgreSQL inside the runner.
 - Stage `build` runs `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` has two jobs: `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity and Inventory test projects.
-- There is no deploy stage, no artifacts, no caching and no image of the application; the repository has no Dockerfile and no Compose file.
+- Stage `test` has two jobs: `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory and Warehouses test projects.
+- There is no deploy stage, no artifacts and no caching; the application image exists only for local use ([`Backend/Dockerfile`](../../Backend/Dockerfile), built by the root [`compose.yaml`](../../compose.yaml)), the pipeline does not build or push it.
 
 ## Design patterns in use
 
-- **Modular monolith.** One deployable, four modules with private tables and private `DbContext`s, a single shared contracts project.
-- **CQRS in Auctions, CQS elsewhere.** Auctions writes through EF Core and reads through Dapper over `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets and Inventory read through EF Core with `AsNoTracking`.
-- **Transactional outbox.** Four copies of `OutboxMessage` and `OutboxProcessor`, one per module; the event row commits with the state change.
-- **Inbox (idempotent consumer).** `ProcessedMessages` tables in Wallets, Auctions and Inventory, checked before the change and inserted with it.
-- **Saga by choreography.** Auction creation and settlement are chains of events across modules with no orchestrator; each hop is a local transaction.
-- **Optimistic concurrency.** `Version` is a Guid concurrency token on `Auction`, `Wallet` and `Item`, regenerated inside every mutating method; conflicts surface as 409 or as a retried background cycle.
+- **Modular monolith.** One deployable, five modules with private tables and private `DbContext`s, a single shared contracts project.
+- **CQRS in Auctions, CQS elsewhere.** Auctions writes through EF Core and reads through Dapper over `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory and Warehouses read through EF Core with `AsNoTracking`.
+- **Transactional outbox.** Five copies of `OutboxMessage` and `OutboxProcessor`, one per module; the event row commits with the state change.
+- **Inbox (idempotent consumer).** `ProcessedMessages` tables in Wallets, Auctions, Inventory and Warehouses, checked before the change and inserted with it.
+- **Saga by choreography.** Auction creation, auction settlement, the warehouse stock quote, the warehouse entry lock and the warehouse settlement are chains of events across modules with no orchestrator; each hop is a local transaction.
+- **Optimistic concurrency.** `Version` is a Guid concurrency token on `Auction`, `Wallet`, `Item` and `WarehouseWar`, regenerated inside every mutating method; conflicts surface as 409 or as a retried background cycle.
 - **Global error contract.** Domain exceptions derive from `AppException(message, statusCode)` and are mapped by one `IExceptionHandler`.
 - **Validation pipeline.** FluentValidation validators next to their commands, executed by a MediatR behavior.
 - **Filtered unique indexes.** One open auction per item (`"Status" IN (0, 1)`) and one item per auction lock (`LockedForAuctionId`, nulls distinct); Wallets also declares a unique index on `UserId` filtered on `"IsSuspendedWallet" = false`, which adds no constraint because `UserId` is already the primary key.
 - **Surrogate key plus public id.** `AuctionId`/`PublicAuctionId`, `Id`/`PublicUserId`, `Id`/`PublicItemId`; only the Guids leave the module.
 - **Composition by extension methods.** `Add<Module>Module` and `Map<Module>Endpoints` are the only entry points the host knows.
-- **Polling background services.** `OutboxProcessor` (four copies) and `AuctionCloser` are `BackgroundService`s with a fixed 3 s delay between cycles.
+- **Polling background services.** `OutboxProcessor` (five copies) and `AuctionCloser` are `BackgroundService`s with a fixed 3 s delay between cycles; `WarehouseKeeper` runs on a 1 s delay because the raise windows are measured in seconds.
 
 ## Known limitations
 
@@ -199,17 +225,18 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 3. `Role.Admin` is defined in [`Role.cs`](../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs) but never assigned or checked.
 4. [`Backend/.env.example`](../../Backend/.env.example) (`DB_USER`, `DB_PASSWORD`) has no reader; configuration comes from user secrets or `__` environment variables.
 5. Auctions migrations live in two folders ([`Migrations/`](../../Backend/src/AuctionServer.Modules.Auctions/Migrations) with the initial migration and the snapshot, [`Infrastructure/Migrations/`](../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) with the later ones), so `dotnet ef migrations add` must pass `--output-dir Infrastructure/Migrations`.
-6. `Microsoft.Extensions.Hosting` is pinned to `11.0.0-preview.5.26302.115` in all four module projects while the rest of the stack is 10.0.x.
+6. `Microsoft.Extensions.Hosting` is pinned to `11.0.0-preview.5.26302.115` in all five module projects while the rest of the stack is 10.0.x.
 7. `AuctionActivatedEvent` is produced and registered but has no handler.
 8. `Jwt:Key` and `Bots:ApiKey` are not validated at startup. Without `Jwt:Key` the bearer options cannot be built ([`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs)), so every request, anonymous ones included, answers 500 `Unhandled error occurred`; a key shorter than 32 characters only breaks login, which answers 500 `Server configuration error` once the credentials are valid; a missing API key makes `POST /api/users/bots` answer 401.
 9. [`SellItemToShopCommandHandler`](../../Backend/src/AuctionServer.Modules.Inventory/Application/Command/SellItemToShop/SellItemToShopCommandHandler.cs) uses different Guids for the outbox row `Id` and the event `EventId`; every other producer uses one Guid for both.
-10. The `unit-tests` CI job covers only the offline tests of `Auctions.Tests`; the offline tests of the other three projects run only inside `integration-tests`, which needs Docker.
+10. The `unit-tests` CI job covers only the offline tests of `Auctions.Tests`; the offline tests of the other four projects run only inside `integration-tests`, which needs Docker.
+11. The warehouse-war economy has a faucet next to its sink: the winner's final price vanishes, but the minted items can be sold to the shop at `OfficialPrice`, so when typical final prices stay below typical manifest values the wars create money. The deceptive estimates and the tier configuration are the tuning levers; watch it once bots play.
 
 ## Related documents
 
 - [README.md](README.md) - documentation index and reading order.
 - [backend/README.md](backend/README.md) - projects, running, configuration, request pipeline, error contract, tests.
 - [backend/messaging.md](backend/messaging.md) - outbox, inbox, retry policy, event catalog.
-- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md) - module chapters.
+- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md), [backend/warehouses.md](backend/warehouses.md) - module chapters.
 - [VISION.md](VISION.md) - target system and planned work.
 - [adr/](adr) - architecture decision records.

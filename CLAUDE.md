@@ -35,10 +35,10 @@ cd Backend && dotnet build AuctionServer.slnx
 - **`Backend/CLAUDE.md`** — the canonical backend reference. As of 2026-08-11 a sample of its file:line
   citations and its "Aspirational vs. implemented" claims were re-checked against the code and held up; the
   rest were not audited. Re-verify any single citation you are about to act on.
-- **`AGENTS.md`** (repo root) — the *intended target* architecture and the module rules the project is
-  designed around. Several patterns it describes as active are not wired up at runtime (notably the Outbox
-  drain and the whole Identity module). Read `Backend/CLAUDE.md`'s "Aspirational vs. implemented" section
-  before building on anything `AGENTS.md` claims.
+- **`docs/`** — the bilingual documentation set (EN/PL, 1:1 structure): `docs/en/ARCHITECTURE.md` for how the
+  system is built, `docs/en/VISION.md` for the target architecture and the roadmap. The original design note
+  (`AGENTS.md`) was deleted on 2026-08-15; these pages replaced it. Read `Backend/CLAUDE.md`'s
+  "Aspirational vs. implemented" section before building on any roadmap claim.
 - **`README.md`** — recruitment-facing project overview (stack, architecture, done-vs-planned, how to run).
   Written for human readers; when it and the code drift apart, update it rather than trust it.
 
@@ -46,8 +46,8 @@ Where a document and the code disagree, the code wins — and the disagreement i
 
 ## Non-negotiable module rules
 
-These come from `AGENTS.md` and are enforced by convention, not by the compiler — nothing stops you from
-breaking them, so they need active attention:
+These come from the original design note (today `docs/en/VISION.md`, "Ground rules") and are enforced by
+convention, not by the compiler — nothing stops you from breaking them, so they need active attention:
 
 - One module = one `.csproj`, internally split into `Presentation` / `Application` / `Domain` / `Infrastructure`.
 - **No cross-module database joins and no cross-module project references.** Modules communicate only through

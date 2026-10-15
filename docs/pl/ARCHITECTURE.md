@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/ARCHITECTURE.md](../en/ARCHITECTURE.md)
 
-AuctionServer to modular monolith w .NET 10 dla zgamifikowanego domu aukcyjnego: cztery moduły (Identity, Wallets, Auctions, Inventory) działają w jednym procesie ASP.NET Core, dzielą jedną bazę PostgreSQL i rozmawiają ze sobą wyłącznie przez zdarzenia integracyjne przenoszone transakcyjnym outboxem i konsumowane przez inbox. Ta strona opisuje kontekst systemu, warstwy modułów, obsługę żądań, komunikację między modułami, trzy przepływy aukcji, model danych, pipeline CI, stosowane wzorce projektowe i znane ograniczenia. Szczegóły poszczególnych modułów są w [rozdziałach backendu](backend/README.md).
+AuctionServer to modular monolith w .NET 10 dla zgamifikowanego domu aukcyjnego: pięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses) działa w jednym procesie ASP.NET Core, dzieli jedną bazę PostgreSQL i rozmawia ze sobą wyłącznie przez zdarzenia integracyjne przenoszone transakcyjnym outboxem i konsumowane przez inbox. Ta strona opisuje kontekst systemu, warstwy modułów, obsługę żądań, komunikację między modułami, trzy przepływy aukcji i przepływ wojny magazynowej, model danych, pipeline CI, stosowane wzorce projektowe i znane ograniczenia. Szczegóły poszczególnych modułów są w [rozdziałach backendu](backend/README.md).
 
 ## Kontekst systemu
 
@@ -17,23 +17,24 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 
 | Komponent | Status | Opisany w |
 |---|---|---|
-| Host `AuctionServer.Api` z czterema modułami | istnieje | [backend/README.md](backend/README.md) |
-| PostgreSQL, jedna baza, 11 tabel | istnieje (uruchamiany ręcznie albo przez Testcontainers) | [Model danych](#model-danych) |
+| Host `AuctionServer.Api` z pięcioma modułami | istnieje | [backend/README.md](backend/README.md) |
+| PostgreSQL, jedna baza, 19 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
+| Docker Compose (obraz API plus PostgreSQL) | istnieje | [backend/README.md](backend/README.md) |
 | Pipeline GitLab CI | istnieje | [Build i CI](#build-i-ci) |
 | Frontend Angular | planowany | [frontend.md](frontend.md) |
-| API gateway, RabbitMQ, Docker Compose | planowane | [infrastructure.md](infrastructure.md) |
+| API gateway, RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
 | Boty AI (Python) | planowane | [bots.md](bots.md) |
 
 ## Moduły i warstwy
 
-Diagram pokazuje referencje między projektami: host referencuje cztery moduły, każdy moduł referencuje wyłącznie `AuctionServer.Shared.Integration`, a żaden moduł nie referencuje innego modułu.
+Diagram pokazuje referencje między projektami: host referencuje pięć modułów, każdy moduł referencuje wyłącznie `AuctionServer.Shared.Integration`, a żaden moduł nie referencuje innego modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-02-module-layering.dark.svg">
   <img alt="Diagram: moduły i warstwy" src="../diagrams/architecture-02-module-layering.svg">
 </picture>
 
-Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minimal API i rekordy żądań), `Application/` (komendy, zapytania i walidatory MediatR, handlery zdarzeń, interfejsy repozytoriów), `Domain/` (encje, enumy, wyjątki) oraz `Infrastructure/` (DbContext, repozytoria, konfiguracje EF, outbox, inbox, serwisy tła, migracje). Pliki projektów modułów deklarują jedną `ProjectReference`, do [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), które zawiera dziewięć rekordów zdarzeń, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` i `ValidationBehaviour`. Host podpina moduł jedną metodą rozszerzającą na moduł (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`) i mapuje jego endpointy przez `Map*Endpoints`; oba wywołania są w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
+Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minimal API i rekordy żądań), `Application/` (komendy, zapytania i walidatory MediatR, handlery zdarzeń, interfejsy repozytoriów), `Domain/` (encje, enumy, wyjątki) oraz `Infrastructure/` (DbContext, repozytoria, konfiguracje EF, outbox, inbox, serwisy tła, migracje). Pliki projektów modułów deklarują jedną `ProjectReference`, do [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), które zawiera dwadzieścia rekordów zdarzeń, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` i `ValidationBehaviour`. Host podpina moduł jedną metodą rozszerzającą na moduł (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`) i mapuje jego endpointy przez `Map*Endpoints`; oba wywołania są w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
 
 | Moduł | Prefiks tras | DbContext | Tabele | Serwisy tła | Testy |
 |---|---|---|---|---|---|
@@ -41,6 +42,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 | [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsTransfers`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `AuctionsBids`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
+| [Warehouses](backend/warehouses.md) | `/api/warehouses` | `WarehouseDbContext` | `WarehousesWars`, `WarehousesParticipants`, `WarehousesStockItems`, `WarehousesOutboxMessages`, `WarehousesProcessedMessages` | `OutboxProcessor`, `WarehouseKeeper` | `AuctionServer.Modules.Warehouses.Tests` |
 
 Reguły modułów są egzekwowane konwencją, nie narzędziami: brak referencji projektowych między modułami, brak zapytań do bazy innego modułu oraz `Domain/` i `Application/` wolne od typów ASP.NET Core. Ostatnia reguła jest spełniona dla samego ASP.NET Core, ale handlery w `Application/` referencują typy `Infrastructure.Outbox` i `Infrastructure.Inbox` własnego modułu, żeby budować wiersze outboxa i inboxa, a `LoginCommandHandler` czyta `IConfiguration` bezpośrednio.
 
@@ -60,7 +62,7 @@ Moduły nigdy nie wołają się nawzajem. Moduł, który potrzebuje reakcji inne
 1. Producent dodaje wiersz `OutboxMessage` (`Id` równe `EventId` zdarzenia, `Type` równe nazwie klasy zdarzenia, `Content` z ładunkiem JSON) do tej samej transakcji co zmiana encji.
 2. `OutboxProcessor` modułu (`BackgroundService`, jedna kopia na moduł) odpytuje co 3 s o maksymalnie 20 wierszy nieprzetworzonych, niemartwych i wymagalnych, uporządkowanych po `CreatedOn`.
 3. Woła [`IIntegrationEventPublisher.PublishAsync`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs); jedyna implementacja, [`InProcessEventPublisher`](../../Backend/src/AuctionServer.Api/Infrastructure/Messaging/InProcessEventPublisher.cs), deserializuje ładunek przez [`IntegrationEventTypes`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) i publikuje go przez `IPublisher` MediatR.
-4. MediatR uruchamia pasujące `INotificationHandler`y jeden po drugim, w kolejności rejestracji assembly modułów w `Program.cs` (Auctions, Wallets, Identity, Inventory).
+4. MediatR uruchamia pasujące `INotificationHandler`y jeden po drugim, w kolejności rejestracji assembly modułów w `Program.cs` (Auctions, Wallets, Identity, Inventory, Warehouses).
 5. Konsument najpierw pyta `WasEventProcessedAsync(EventId)`, potem wykonuje zmianę domenową i zapisuje ją razem z wierszem `ProcessedMessage` (i wierszem outboxa z odpowiedzią, gdy odpowiada) w jednym `SaveChangesAsync`; naruszenie klucza głównego na wierszu inboxa ujawnia się jako `EventAlreadyProcessedException`, który handler połyka.
 6. Każdy inny wyjątek wraca do `OutboxProcessor`a, który zapisuje go w wierszu i planuje ponowienie; po piątej porażce wiersz jest oznaczany jako martwy.
 
@@ -74,12 +76,18 @@ Moduły nigdy nie wołają się nawzajem. Moduł, który potrzebuje reakcji inne
 | `FundsLockRequestedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Auctions `PlaceBidCommandHandler` | Wallets `FundsLockRequestedEventHandler` | tak |
 | `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | tak |
 | `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | tak |
-| `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId` | Auctions `FundsLockedEventHandler` | Wallets `FundsUnlockRequestedEventHandler` | tak |
+| `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId`; zwroty magazynowe wkładają id magazynu w `PublicAuctionId` | Auctions `FundsLockedEventHandler`; Warehouses `LeaveWarehouseWarCommandHandler`, `WarehouseEntryLockedEventHandler`, `WarehouseKeeper` | Wallets `FundsUnlockRequestedEventHandler` | tak |
 | `AuctionActivatedEvent` | id aukcji i sprzedawcy, snapshot przedmiotu, `CurrentPrice`, `EndsOn` | Auctions `ItemLockedEventHandler` | brak | — |
 | `BidPlacedEvent` | `PublicAuctionId`, `NewWinningUserId`, `PreviousWinningUserId?`, `NewPrice`, `PreviousPrice?` | Auctions `FundsLockedEventHandler` | Wallets `BidPlacedEventHandler` | tak |
 | `AuctionFinishedEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId?`, `FinalPrice?` | Auctions `AuctionCloser` | Wallets `AuctionFinishedEventHandler`, Inventory `AuctionFinishedEventHandler` | tak, w obu |
 | `AuctionSettledEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId`, `FinalPrice` | Wallets `AuctionFinishedEventHandler` | Inventory `AuctionSettledEventHandler` | tak |
 | `ItemSoldToShopEvent` | `PublicItemId`, `OwnerUserId`, `Price` | Inventory `SellItemToShopCommandHandler` | Wallets `ItemSoldToShopEventHandler` | tak |
+| `WarehouseStockRequestedEvent` | `PublicWarehouseId`, `Rarities` | Warehouses `WarehouseKeeper` | Inventory `WarehouseStockRequestedEventHandler` | tak |
+| `WarehouseStockedEvent` | `PublicWarehouseId`, `Stock` | Inventory `WarehouseStockRequestedEventHandler` | Warehouses `WarehouseStockedEventHandler` | tak |
+| `WarehouseEntryLockRequestedEvent` | `PublicWarehouseId`, `UserId`, `Amount` | Warehouses `JoinWarehouseWarCommandHandler` | Wallets `WarehouseEntryLockRequestedEventHandler` | tak |
+| `WarehouseEntryLockedEvent` | `PublicWarehouseId`, `UserId` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockedEventHandler` | tak |
+| `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | tak |
+| `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | Wallets `WarehouseWonEventHandler`, Inventory `WarehouseWonEventHandler` | tak, w obu |
 
 Rekordy leżą w [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), a handlery w folderze `Application/Handlers/` każdego modułu. Dodanie zdarzenia oznacza dodanie rekordu i zarejestrowanie go w `IntegrationEventTypes`; niezarejestrowany typ sprawia, że `Deserialize` rzuca `NotSupportedException`, więc wiersz outboxa zawodzi i w końcu trafia do martwych.
 
@@ -137,14 +145,28 @@ Sekwencja poniżej pokazuje closer w tle kończący aukcję oraz łańcuch rozli
 
 ## Model danych
 
-Diagram pokazuje czternaście tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
+### Wojna magazynowa (zaopatrzenie, blokada wpisowego, szybka licytacja, rozliczenie)
+
+Sekwencja poniżej pokazuje życie jednej wojny magazynowej: keeper zaopatruje ją przez wycenę w Inventory, gracze stawiają wpisowe przez Wallets, okna podbić działają lokalnie, a rozliczenie płaci, zwraca i mintuje.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-08-warehouse-war.dark.svg">
+  <img alt="Diagram wojny magazynowej" src="../diagrams/architecture-08-warehouse-war.svg">
+</picture>
+
+1. [`WarehouseKeeper`](../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Background/WarehouseKeeper.cs) (pętla 1 s) utrzymuje `Warehouses:PoolSize` wojen przy życiu: tworzy wojnę `Stocking` z losowego tieru i prosi Inventory o wycenę zdarzeniem `WarehouseStockRequestedEvent` z wylosowanymi rzadkościami. Inventory wycenia je na przejściowych wynikach `Item.Create` (nic nie jest zapisywane) i odpowiada manifestem; `WarehouseStockedEventHandler` zapisuje go w `WarehousesStockItems`, losuje celowo zwodnicze publiczne widełki przez [`EstimateGenerator`](../../Backend/src/AuctionServer.Modules.Warehouses/Application/Estimates/EstimateGenerator.cs) i otwiera lobby.
+2. `POST /api/warehouses/{id}/join` dodaje uczestnika `PendingLock` i emituje `WarehouseEntryLockRequestedEvent`; Wallets blokuje wpisowe tieru generyczną księgą `FundsLock` i odpowiada. Potwierdzenie aktywuje uczestnika: przy `MinPlayers` aktywnych startuje odliczanie, przy `MaxPlayers` licytacja rusza natychmiast. Odmowa zwalnia miejsce; blokada, która dotrze po tym, jak wojna poszła dalej, jest zwracana (`FundsUnlockRequestedEvent`), więc żadne wpisowe nie może utknąć.
+3. Gdy odliczanie minie, keeper woła `StartBidding`; podbicia (`POST /bids`) to lokalne wywołania agregatu strzeżone statusem, oknem, stanem uczestnika, przywództwem, zbiorem podbić tieru i budżetem `EntryFee`, ścigające się na tokenie `Version`. Każde podbicie resetuje `RaiseWindow`.
+4. Gdy okno wygaśnie, keeper rozlicza: z liderem emituje `WarehouseWonEvent` (zwycięzca, cena końcowa, manifest) plus zwroty dla przegranych; bez lidera anuluje i zwraca wszystkim. Wallets konsumuje blokadę zwycięzcy przez `Wallet.SpendLock` (cena opuszcza obieg, reszta wraca), potem Inventory mintuje manifest przez `Item.CreateWithPrice`; po `Settled` GET szczegółów odsłania manifest. Pełny opis w [backend/warehouses.md](backend/warehouses.md).
+
+Diagram pokazuje dziewiętnaście tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
   <img alt="Diagram: model danych" src="../diagrams/architecture-06-data-model.svg">
 </picture>
 
-Wszystkie cztery `DbContext`y wskazują tę samą bazę i dzielą domyślną tabelę `__EFMigrationsHistory` (żaden kontekst nie nadpisuje tabeli historii), więc izolacja opiera się na dyscyplinie i na różnych nazwach tabel. Identyfikatory przekraczają granice modułów jako kopiowane Guidy: `Wallets.UserId` i `Auctions.SellerUserId` trzymają `Users.PublicUserId`, `Auctions.ItemId` trzyma `InventoryItems.PublicItemId`, a `InventoryItems.LockedForAuctionId` trzyma `Auctions.PublicAuctionId`. Typy kolumn pochodzą ze snapshotów modelu EF w folderze migracji każdego modułu.
+Wszystkie pięć `DbContext`ów wskazuje tę samą bazę i dzielą domyślną tabelę `__EFMigrationsHistory` (żaden kontekst nie nadpisuje tabeli historii), więc izolacja opiera się na dyscyplinie i na różnych nazwach tabel. Identyfikatory przekraczają granice modułów jako kopiowane Guidy: `Wallets.UserId` i `Auctions.SellerUserId` trzymają `Users.PublicUserId`, `Auctions.ItemId` trzyma `InventoryItems.PublicItemId`, a `InventoryItems.LockedForAuctionId` trzyma `Auctions.PublicAuctionId`. Typy kolumn pochodzą ze snapshotów modelu EF w folderze migracji każdego modułu.
 
 | Tabela | Moduł | Przeznaczenie |
 |---|---|---|
@@ -160,6 +182,10 @@ Wszystkie cztery `DbContext`y wskazują tę samą bazę i dzielą domyślną tab
 | `AuctionsProcessedMessages` | Auctions | inbox |
 | `InventoryItems` | Inventory | przedmioty; unikalny `PublicItemId`, unikalny nullowalny `LockedForAuctionId`, `Version` |
 | `InventoryOutboxMessages`, `InventoryProcessedMessages` | Inventory | outbox, inbox |
+| `WarehousesWars` | Warehouses | wojny magazynowe; unikalne `PublicWarehouseId`, ukryte `TotalValue`, publiczne widełki, `EntryFee`, `CurrentPrice`, timery, `Version` |
+| `WarehousesParticipants` | Warehouses | skład lobby posiadany przez agregat `WarehouseWar`; unikalne (`WarehouseWarId`, `UserId`), `State` (`PendingLock`/`Active`) |
+| `WarehousesStockItems` | Warehouses | ukryty manifest, jeden wiersz na przedmiot wyceniony przez Inventory, odsłaniany dopiero po rozliczeniu |
+| `WarehousesOutboxMessages`, `WarehousesProcessedMessages` | Warehouses | outbox, inbox |
 
 Każda tabela outboxa ma te same dziewięć kolumn (`Id`, `Type`, `Content`, `CreatedOn`, `ProcessedOn`, `AttemptCount`, `Errors`, `IsDead`, `NextAttemptOn`), a każda tabela inboxa ma `EventId` i `ProcessedOn`; zobacz [backend/messaging.md](backend/messaging.md).
 
@@ -174,23 +200,23 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 
 - Każdy job działa w obrazie `mcr.microsoft.com/dotnet/sdk:10.0` z serwisem `docker:dind`; `DOCKER_HOST=tcp://docker:2375` i `TESTCONTAINERS_HOST_OVERRIDE=docker` pozwalają Testcontainers uruchomić PostgreSQL wewnątrz runnera.
 - Stage `build` uruchamia `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` ma dwa joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity i Inventory.
-- Nie ma stage'u deploy, artefaktów, cache'owania ani obrazu aplikacji; repozytorium nie ma Dockerfile ani pliku Compose.
+- Stage `test` ma dwa joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory i Warehouses.
+- Nie ma stage'u deploy, artefaktów ani cache'owania; obraz aplikacji istnieje tylko do użytku lokalnego ([`Backend/Dockerfile`](../../Backend/Dockerfile), budowany przez [`compose.yaml`](../../compose.yaml) z korzenia), pipeline go nie buduje ani nie publikuje.
 
 ## Stosowane wzorce projektowe
 
-- **Modular monolith.** Jeden deployowalny artefakt, cztery moduły z prywatnymi tabelami i prywatnymi `DbContext`ami, jeden współdzielony projekt kontraktów.
-- **CQRS w Auctions, CQS w pozostałych.** Auctions zapisuje przez EF Core i czyta Dapperem przez `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets i Inventory czytają przez EF Core z `AsNoTracking`.
-- **Transakcyjny outbox.** Cztery kopie `OutboxMessage` i `OutboxProcessor`, po jednej na moduł; wiersz zdarzenia commituje się razem ze zmianą stanu.
-- **Inbox (idempotentny konsument).** Tabele `ProcessedMessages` w Wallets, Auctions i Inventory, sprawdzane przed zmianą i wstawiane razem z nią.
-- **Saga przez choreografię.** Tworzenie aukcji i rozliczenie to łańcuchy zdarzeń między modułami bez orkiestratora; każdy skok to lokalna transakcja.
-- **Optymistyczna współbieżność.** `Version` to Guidowy token współbieżności na `Auction`, `Wallet` i `Item`, generowany na nowo w każdej metodzie mutującej; konflikty ujawniają się jako 409 albo jako ponowiony cykl w tle.
+- **Modular monolith.** Jeden deployowalny artefakt, pięć modułów z prywatnymi tabelami i prywatnymi `DbContext`ami, jeden współdzielony projekt kontraktów.
+- **CQRS w Auctions, CQS w pozostałych.** Auctions zapisuje przez EF Core i czyta Dapperem przez `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory i Warehouses czytają przez EF Core z `AsNoTracking`.
+- **Transakcyjny outbox.** Pięć kopii `OutboxMessage` i `OutboxProcessor`, po jednej na moduł; wiersz zdarzenia commituje się razem ze zmianą stanu.
+- **Inbox (idempotentny konsument).** Tabele `ProcessedMessages` w Wallets, Auctions, Inventory i Warehouses, sprawdzane przed zmianą i wstawiane razem z nią.
+- **Saga przez choreografię.** Tworzenie aukcji, rozliczenie aukcji, wycena magazynu, blokada wpisowego i rozliczenie magazynu to łańcuchy zdarzeń między modułami bez orkiestratora; każdy skok to lokalna transakcja.
+- **Optymistyczna współbieżność.** `Version` to Guidowy token współbieżności na `Auction`, `Wallet`, `Item` i `WarehouseWar`, generowany na nowo w każdej metodzie mutującej; konflikty ujawniają się jako 409 albo jako ponowiony cykl w tle.
 - **Globalny kontrakt błędów.** Wyjątki domenowe dziedziczą po `AppException(message, statusCode)` i są mapowane przez jeden `IExceptionHandler`.
 - **Pipeline walidacji.** Walidatory FluentValidation obok swoich komend, wykonywane przez behavior MediatR.
 - **Filtrowane indeksy unikalne.** Jedna otwarta aukcja na przedmiot (`"Status" IN (0, 1)`) i jeden przedmiot na blokadę aukcji (`LockedForAuctionId`, nulle rozróżnialne); Wallets deklaruje też indeks unikalny na `UserId` filtrowany po `"IsSuspendedWallet" = false`, który nie dodaje żadnego ograniczenia, bo `UserId` jest już kluczem głównym.
 - **Klucz zastępczy plus publiczny id.** `AuctionId`/`PublicAuctionId`, `Id`/`PublicUserId`, `Id`/`PublicItemId`; tylko Guidy opuszczają moduł.
 - **Kompozycja przez metody rozszerzające.** `Add<Module>Module` i `Map<Module>Endpoints` to jedyne punkty wejścia, które zna host.
-- **Odpytujące serwisy tła.** `OutboxProcessor` (cztery kopie) i `AuctionCloser` to `BackgroundService`y ze stałym opóźnieniem 3 s między cyklami.
+- **Odpytujące serwisy tła.** `OutboxProcessor` (pięć kopii) i `AuctionCloser` to `BackgroundService`y ze stałym opóźnieniem 3 s między cyklami; `WarehouseKeeper` działa z opóźnieniem 1 s, bo okna podbić są liczone w sekundach.
 
 ## Znane ograniczenia
 
@@ -199,17 +225,18 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 3. `Role.Admin` jest zdefiniowane w [`Role.cs`](../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), ale nigdy nie jest przypisywane ani sprawdzane.
 4. [`Backend/.env.example`](../../Backend/.env.example) (`DB_USER`, `DB_PASSWORD`) nie ma czytelnika; konfiguracja pochodzi z user secrets albo zmiennych środowiskowych z `__`.
 5. Migracje Auctions leżą w dwóch folderach ([`Migrations/`](../../Backend/src/AuctionServer.Modules.Auctions/Migrations) z migracją początkową i snapshotem, [`Infrastructure/Migrations/`](../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) z późniejszymi), więc `dotnet ef migrations add` musi dostać `--output-dir Infrastructure/Migrations`.
-6. `Microsoft.Extensions.Hosting` jest przypięty do `11.0.0-preview.5.26302.115` we wszystkich czterech projektach modułów, podczas gdy reszta stosu jest w wersji 10.0.x.
+6. `Microsoft.Extensions.Hosting` jest przypięty do `11.0.0-preview.5.26302.115` we wszystkich pięciu projektach modułów, podczas gdy reszta stosu jest w wersji 10.0.x.
 7. `AuctionActivatedEvent` jest produkowane i zarejestrowane, ale nie ma handlera.
 8. `Jwt:Key` i `Bots:ApiKey` nie są walidowane na starcie. Bez `Jwt:Key` nie da się zbudować opcji bearera ([`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs)), więc każde żądanie, także anonimowe, dostaje 500 `Unhandled error occurred`; klucz krótszy niż 32 znaki psuje tylko logowanie, które przy poprawnych danych dostaje 500 `Server configuration error`; brakujący klucz API sprawia, że `POST /api/users/bots` odpowiada 401.
 9. [`SellItemToShopCommandHandler`](../../Backend/src/AuctionServer.Modules.Inventory/Application/Command/SellItemToShop/SellItemToShopCommandHandler.cs) używa różnych Guidów dla `Id` wiersza outboxa i `EventId` zdarzenia; każdy inny producent używa jednego Guida dla obu.
-10. Job CI `unit-tests` obejmuje tylko testy offline `Auctions.Tests`; testy offline pozostałych trzech projektów działają wyłącznie w `integration-tests`, który potrzebuje Dockera.
+10. Job CI `unit-tests` obejmuje tylko testy offline `Auctions.Tests`; testy offline pozostałych czterech projektów działają wyłącznie w `integration-tests`, który potrzebuje Dockera.
+11. Ekonomia wojen magazynowych ma kran obok zlewu: cena końcowa zwycięzcy znika, ale zmintowane przedmioty można sprzedać do sklepu za `OfficialPrice`, więc gdy typowe ceny końcowe są niżej typowych wartości manifestów, wojny tworzą pieniądze. Zwodnicze widełki i konfiguracja tierów to dźwignie strojenia; obserwować, gdy zagrają boty.
 
 ## Powiązane dokumenty
 
 - [README.md](README.md) - indeks dokumentacji i kolejność czytania.
 - [backend/README.md](backend/README.md) - projekty, uruchomienie, konfiguracja, pipeline żądania, kontrakt błędów, testy.
 - [backend/messaging.md](backend/messaging.md) - outbox, inbox, polityka ponowień, katalog zdarzeń.
-- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md) - rozdziały modułów.
+- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md), [backend/warehouses.md](backend/warehouses.md) - rozdziały modułów.
 - [VISION.md](VISION.md) - docelowy system i planowane prace.
 - [adr/](adr) - rejestr decyzji architektonicznych.

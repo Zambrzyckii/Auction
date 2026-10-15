@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant C as Client
+    participant K as Warehouses - WarehouseKeeper, 1 s loop
+    participant W as Warehouses - WarehouseEndpoints + event handlers
+    participant WDB as Warehouses tables
+    participant OP as OutboxProcessors - one per module, 3 s poll
+    participant I as Inventory - warehouse event handlers
+    participant WA as Wallets - warehouse event handlers
+
+    Note over K,I: 1. stocking - the pool is refilled below Warehouses PoolSize
+    K->>WDB: INSERT WarehousesWars(Stocking) + WarehousesOutboxMessages(WarehouseStockRequestedEvent) in one SaveChangesAsync
+    OP->>I: Publish(WarehouseStockRequestedEvent) from the Warehouses outbox
+    I->>I: roll a name and a price per requested rarity, no item is saved
+    I->>OP: WarehouseStockedEvent(Stock) into the Inventory outbox
+    OP->>W: Publish(WarehouseStockedEvent) on the next poll
+    W->>WDB: INSERT WarehousesStockItems (hidden manifest) + estimates from the total value, Status = Open
+
+    Note over C,WA: 2. lobby - the entry fee is locked once and becomes the bid budget
+    C->>W: POST /api/warehouses/{id}/join with a JWT
+    W->>WDB: participant in PendingLock + WarehousesOutboxMessages(WarehouseEntryLockRequestedEvent)
+    OP->>WA: Publish(WarehouseEntryLockRequestedEvent)
+    WA->>WA: Wallet.LockFunds(PublicWarehouseId, EntryFee)
+    WA->>OP: WarehouseEntryLockedEvent or WarehouseEntryLockRejectedEvent into the Wallets outbox
+    OP->>W: Publish(the reply) on the next poll
+    alt WarehouseEntryLockedEvent
+        W->>WDB: ConfirmParticipant - Active, countdown from min players, immediate start at full capacity
+    else WarehouseEntryLockRejectedEvent
+        W->>WDB: RemoveParticipant - the seat frees up
+    end
+
+    Note over C,WDB: 3. bidding - a raise is a local write, no saga fits a 5-10 s window
+    K->>WDB: countdown finished: StartBidding sets the first raise window
+    C->>W: POST /api/warehouses/{id}/bids with an increment from the tier
+    W->>WDB: Raise - new leader, CurrentPrice grows up to EntryFee, window reset, Version turns races into 409
+
+    Note over K,WA: 4. settlement - the final price burns, the manifest is revealed
+    K->>WDB: window expired: Settle + WarehousesOutboxMessages(WarehouseWonEvent, FundsUnlockRequestedEvent per loser)
+    OP->>WA: Publish(WarehouseWonEvent) - the Wallets handler runs first
+    WA->>WA: winner Wallet.SpendLock(FinalPrice) - the money leaves the economy, the rest of the fee returns
+    OP->>I: the same event - the Inventory handler runs second
+    I->>I: mint the manifest with Item.CreateWithPrice for the winner
+    OP->>WA: Publish(FundsUnlockRequestedEvent) - every loser gets the entry fee back
+    C->>W: GET /api/warehouses/{id} - the manifest is public once Settled

@@ -50,6 +50,7 @@ The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the targe
 - Wallets: automatic wallet with configured starting funds, bot-only top-up, lock, unlock and spend of funds, player-to-player transfers with an append-only history, settlement with an inbox and an outbox.
 - Auctions: creation as `Pending` until Inventory locks the item, listing, detail and bid history through Dapper, bidding with anti-sniping, background closing, outbox with retry and dead letters, inbox.
 - Inventory: items with rarity-based prices, crafting, selling to the shop, a configurable starter pack on registration, locking and transferring items for auctions, inbox and outbox.
+- Warehouses: warehouse wars stocked by a background pool, hidden manifests priced by Inventory, deliberately misleading estimates, an entry fee locked through Wallets that is also the bid budget, 5-10 s raise windows with fixed increments, settlement that mints the manifest for the winner and removes the final price from the economy, inbox and outbox.
 - Cross-cutting: FluentValidation pipeline, global error contract, optimistic concurrency, GitLab CI with Testcontainers.
 
 ## 6. Planned next
@@ -60,7 +61,7 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 
 1. **Starter item pack** granted on registration, defined in configuration (small, shipped 2026-10-14).
 2. **Player-to-player money transfers** with an append-only transfer history (small, shipped 2026-10-14).
-3. **Mystery warehouse auctions**: a warehouse with random content, shown before bidding only as a deliberately misleading value range, so warehouses are not a guaranteed profit (large, needs a content generator and a valuation design).
+3. **Mystery warehouse auctions**: a warehouse with random content, shown before bidding only as a deliberately misleading value range, so warehouses are not a guaranteed profit (large, shipped 2026-10-15 as the Warehouses module).
 4. **Bank** granting loans with interest (medium, needs a periodic job in the style of `AuctionCloser` and a deliberate economy design, because loans create money).
 5. **Pawnshop** where a player hires well-trained bots for passive income (medium, also creates money, depends on the economy decisions of item 4).
 6. **Casino** with simple playful games such as roulette and blackjack (medium, sources and sinks balanced together with items 4 and 5).
