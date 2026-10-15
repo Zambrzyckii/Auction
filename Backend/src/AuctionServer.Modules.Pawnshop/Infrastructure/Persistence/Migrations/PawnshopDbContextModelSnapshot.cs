@@ -75,7 +75,8 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("PendingStockPayoutRate")
-                        .HasColumnType("numeric");
+                        .HasPrecision(5, 4)
+                        .HasColumnType("numeric(5,4)");
 
                     b.Property<Guid?>("PendingStockRequestId")
                         .HasColumnType("uuid");
