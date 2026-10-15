@@ -11,7 +11,10 @@ public class IntegrationEventRegistryTests
     {
         new PawnshopPaymentRequestedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 100000m, 1000000m),
         new PawnshopPaymentCompletedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()),
-        new PawnshopPaymentRejectedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Turnover too low")
+        new PawnshopPaymentRejectedEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "Turnover too low"),
+        new PawnshopPayoutEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 27.73m),
+        new PawnshopItemWithdrawnEvent(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(),
+            "Pawned Rare Good", "Rare", 437m)
     };
 
     [Theory]

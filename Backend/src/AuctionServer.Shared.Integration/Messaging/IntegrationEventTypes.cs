@@ -43,7 +43,9 @@ public static class IntegrationEventTypes
         [nameof(PawnshopPaymentCompletedEvent)] = typeof(PawnshopPaymentCompletedEvent),
         [nameof(PawnshopPaymentRejectedEvent)] = typeof(PawnshopPaymentRejectedEvent),
         [nameof(PawnshopStockRequestedEvent)] = typeof(PawnshopStockRequestedEvent),
-        [nameof(PawnshopStockedEvent)] = typeof(PawnshopStockedEvent)
+        [nameof(PawnshopStockedEvent)] = typeof(PawnshopStockedEvent),
+        [nameof(PawnshopPayoutEvent)] = typeof(PawnshopPayoutEvent),
+        [nameof(PawnshopItemWithdrawnEvent)] = typeof(PawnshopItemWithdrawnEvent)
     };
 
     public static INotification Deserialize(string type, string content)

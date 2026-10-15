@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Pawnshop.Application.Options;
+using AuctionServer.Modules.Pawnshop.Domain.Entities;
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
@@ -41,6 +42,7 @@ public sealed class PawnshopKeeper(IServiceProvider serviceProvider, ILogger<Paw
         var context = scope.ServiceProvider.GetRequiredService<PawnshopDbContext>();
         await ExpireStalePaymentsAsync(context, token);
         await ExpireStaleStockRequestsAsync(context, token);
+        await SellDueStockAsync(context, token);
         await RequestDueSpawnsAsync(context, token);
     }
 
@@ -75,6 +77,31 @@ public sealed class PawnshopKeeper(IServiceProvider serviceProvider, ILogger<Paw
         {
             logger.LogWarning("Expiring stale stock request for pawnshop {PublicPawnshopId}", shop.PublicPawnshopId);
             shop.ExpireStockRequest();
+        }
+
+        await context.SaveChangesAsync(token);
+    }
+
+    private async Task SellDueStockAsync(PawnshopDbContext context, CancellationToken token)
+    {
+        var now = DateTime.UtcNow;
+        var dueItems = await context.StockItems
+            .Where(i => i.Status == StockItemStatus.InStock && i.SellAfter <= now)
+            .OrderBy(i => i.SellAfter)
+            .Take(200)
+            .ToListAsync(token);
+        if (dueItems.Count == 0) return;
+
+        foreach (var batch in StockItem.SellDue(dueItems, now))
+        {
+            var eventId = Guid.NewGuid();
+            context.OutboxMessages.Add(new OutboxMessage
+            {
+                Id = eventId,
+                Type = nameof(PawnshopPayoutEvent),
+                Content = JsonSerializer.Serialize(new PawnshopPayoutEvent(
+                    eventId, batch.PublicPawnshopId, batch.UserId, batch.Amount))
+            });
         }
 
         await context.SaveChangesAsync(token);

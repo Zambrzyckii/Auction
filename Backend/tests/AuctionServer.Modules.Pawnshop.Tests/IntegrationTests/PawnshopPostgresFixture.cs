@@ -86,4 +86,29 @@ public sealed class PawnshopPostgresFixture : IAsyncLifetime
         await using var context = CreateContext();
         return await context.Shops.AsNoTracking().SingleAsync(s => s.PublicPawnshopId == publicPawnshopId);
     }
+
+    public async Task<StockItem> SeedStockItemAsync(Guid? userId = null, DateTime? sellAfter = null)
+    {
+        await using var context = CreateContext();
+        var item = new StockItem
+        {
+            PublicPawnshopId = Guid.NewGuid(),
+            UserId = userId ?? Guid.NewGuid(),
+            Name = "Pawned Rare Good",
+            Rarity = PawnshopRarity.Rare,
+            Price = 437m,
+            PayoutRate = 0.5m,
+            SpawnedOn = DateTime.UtcNow,
+            SellAfter = sellAfter ?? DateTime.UtcNow.AddMinutes(5)
+        };
+        context.StockItems.Add(item);
+        await context.SaveChangesAsync();
+        return item;
+    }
+
+    public async Task<StockItem> GetStockItemAsync(Guid publicStockItemId)
+    {
+        await using var context = CreateContext();
+        return await context.StockItems.AsNoTracking().SingleAsync(i => i.PublicStockItemId == publicStockItemId);
+    }
 }

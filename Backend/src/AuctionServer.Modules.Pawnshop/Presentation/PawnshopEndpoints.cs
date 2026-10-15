@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AuctionServer.Modules.Pawnshop.Application.Command.BuyBot;
 using AuctionServer.Modules.Pawnshop.Application.Command.OpenPawnshop;
+using AuctionServer.Modules.Pawnshop.Application.Command.WithdrawStockItem;
 using AuctionServer.Modules.Pawnshop.Application.Queries.GetOffers;
 using AuctionServer.Modules.Pawnshop.Application.Queries.GetPawnshop;
 using AuctionServer.Modules.Pawnshop.Presentation.Request;
@@ -41,6 +42,13 @@ public static class PawnshopEndpoints
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new BuyBotCommand(userId, request.TierName));
+            return Results.Accepted();
+        }).RequireAuthorization();
+
+        group.MapPost("/stock/{publicStockItemId:guid}/withdraw", async (Guid publicStockItemId, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new WithdrawStockItemCommand(userId, publicStockItemId));
             return Results.Accepted();
         }).RequireAuthorization();
 

@@ -80,7 +80,7 @@ public sealed class Shop
 
     public void ExpirePayment()
     {
-        if (PendingPaymentId == null)
+        if (PendingPaymentId is null)
             throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
 
         RejectPayment(PendingPaymentId.Value, "Payment timed out");
@@ -146,7 +146,7 @@ public sealed class Shop
 
     public void ExpireStockRequest()
     {
-        if (PendingStockRequestId == null)
+        if (PendingStockRequestId is null)
             throw new PawnshopExceptions.InvalidShopStateTransitionException(Status);
 
         ClearPendingStockRequest();

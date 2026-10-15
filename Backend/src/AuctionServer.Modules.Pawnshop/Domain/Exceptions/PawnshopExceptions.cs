@@ -29,6 +29,18 @@ public static class PawnshopExceptions
     public sealed class InvalidStockException()
         : AppException("Stock reply must contain at least one item", 400);
 
+    public sealed class StockItemNotFoundException()
+        : AppException("Stock item was not found", 404);
+
+    public sealed class StockItemNotInStockException()
+        : AppException("Stock item is no longer in stock", 409);
+
+    public sealed class StockWindowClosedException()
+        : AppException("The withdrawal window for this stock item has closed", 409);
+
+    public sealed class StockItemNotDueException()
+        : AppException("Stock item is not due for sale yet", 409);
+
     public sealed class EventAlreadyProcessedException()
         : AppException("Event was already processed", 409);
 }

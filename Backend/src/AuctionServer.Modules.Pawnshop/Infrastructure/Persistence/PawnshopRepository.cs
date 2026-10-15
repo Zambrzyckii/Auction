@@ -88,6 +88,13 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
         return inStock.Concat(resolved).ToList();
     }
 
+    public async Task<StockItem> GetStockItemByPublicIdAsync(Guid publicStockItemId, CancellationToken token)
+    {
+        var item = await context.StockItems.SingleOrDefaultAsync(i => i.PublicStockItemId == publicStockItemId, token);
+        if (item is null) throw new PawnshopExceptions.StockItemNotFoundException();
+        return item;
+    }
+
     public async Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)
     {
         context.ProcessedMessages.Add(inboxMessage);
