@@ -18,6 +18,7 @@ public class GetWalletQueryHandlerTests(WalletsPostgresFixture fixture)
 
         Assert.Equal(400m, result.AvailableFunds);
         Assert.Equal(100m, result.LockedFunds);
+        Assert.Equal(500m, result.LifetimeTurnover);
     }
 
     [Fact]

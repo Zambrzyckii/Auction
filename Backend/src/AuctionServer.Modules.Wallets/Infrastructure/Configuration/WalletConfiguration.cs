@@ -12,6 +12,7 @@ internal sealed class WalletConfiguration : IEntityTypeConfiguration<Wallet>
         builder.HasIndex(x => x.UserId).IsUnique();
         builder.Property(x => x.AvailableFunds).IsRequired().HasPrecision(18, 2);
         builder.Property(x => x.LockedFunds).IsRequired().HasPrecision(18, 2);
+        builder.Property(x => x.LifetimeTurnover).IsRequired().HasPrecision(18, 2);
         builder.OwnsMany(x => x.FundsLocks, fundsLock =>
         {
             fundsLock.ToTable("WalletsFundsLocks");

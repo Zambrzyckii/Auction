@@ -27,6 +27,8 @@ public class TransferFundsCommandHandlerTests(WalletsPostgresFixture fixture)
         var recipient = await fixture.GetWalletAsync(recipientId);
         Assert.Equal(180m, sender.AvailableFunds);
         Assert.Equal(120m, recipient.AvailableFunds);
+        Assert.Equal(300m, sender.LifetimeTurnover);
+        Assert.Equal(0m, recipient.LifetimeTurnover);
 
         await using var context = fixture.CreateContext();
         var transfer = await context.Transfers.SingleAsync(t => t.SenderUserId == senderId);

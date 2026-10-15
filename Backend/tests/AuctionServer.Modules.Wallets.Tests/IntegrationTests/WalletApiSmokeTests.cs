@@ -30,6 +30,7 @@ public class WalletApiSmokeTests(CustomApi factory)
         Assert.NotNull(dto);
         Assert.Equal(250m, dto.AvailableFunds);
         Assert.Equal(0m, dto.LockedFunds);
+        Assert.Equal(250m, dto.LifetimeTurnover);
     }
 
     [Fact]
@@ -110,6 +111,7 @@ public class WalletApiSmokeTests(CustomApi factory)
         var sender = await client.GetFromJsonAsync<WalletDto>($"/api/wallets/{senderId}");
         Assert.NotNull(sender);
         Assert.Equal(120m, sender.AvailableFunds);
+        Assert.Equal(200m, sender.LifetimeTurnover);
         var transfers = await client.GetFromJsonAsync<List<TransferDto>>($"/api/wallets/{senderId}/transfers");
         Assert.NotNull(transfers);
         var transfer = Assert.Single(transfers);

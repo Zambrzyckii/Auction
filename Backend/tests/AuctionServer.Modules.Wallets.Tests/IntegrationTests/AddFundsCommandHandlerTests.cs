@@ -20,6 +20,7 @@ public class AddFundsCommandHandlerTests(WalletsPostgresFixture fixture)
         var wallet = await fixture.GetWalletAsync(userId);
         Assert.Equal(100m, wallet.AvailableFunds);
         Assert.Equal(0m, wallet.LockedFunds);
+        Assert.Equal(100m, wallet.LifetimeTurnover);
         Assert.NotEqual(versionBefore, wallet.Version);
     }
 

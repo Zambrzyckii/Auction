@@ -12,7 +12,7 @@ public class TransferFundsCommandHandler(IWalletRepository repository) : IReques
         var recipientWallet = await repository.GetUserWalletByIdAsync(request.RecipientUserId, token);
 
         senderWallet.Withdraw(request.Amount);
-        recipientWallet.AddFunds(request.Amount);
+        recipientWallet.ReceiveTransfer(request.Amount);
 
         var transfer = new Transfer
         {

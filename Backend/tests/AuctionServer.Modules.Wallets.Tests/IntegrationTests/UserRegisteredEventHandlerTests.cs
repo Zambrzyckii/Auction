@@ -37,6 +37,7 @@ public class UserRegisteredEventHandlerTests(WalletsPostgresFixture fixture)
         var wallet = await fixture.GetWalletAsync(userId);
         Assert.Equal(1_000m, wallet.AvailableFunds);
         Assert.Equal(0m, wallet.LockedFunds);
+        Assert.Equal(0m, wallet.LifetimeTurnover);
     }
 
     [Fact]

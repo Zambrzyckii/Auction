@@ -12,7 +12,7 @@ public sealed class UserRegisteredEventHandler(IWalletRepository repository, Wal
     public async Task Handle(UserRegisteredEvent notification, CancellationToken token)
     {
         var wallet = new Wallet { UserId = notification.PublicUserId };
-        wallet.AddFunds(options.StartingFunds);
+        wallet.GrantStartingFunds(options.StartingFunds);
         try
         {
             await repository.AddWalletAsync(wallet, token);

@@ -66,6 +66,10 @@ namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsSuspendedWallet")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal>("LifetimeTurnover")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("LockedFunds")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");

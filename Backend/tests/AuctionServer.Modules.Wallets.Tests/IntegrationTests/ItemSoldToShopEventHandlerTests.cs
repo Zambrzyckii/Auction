@@ -35,6 +35,7 @@ public class ItemSoldToShopEventHandlerTests(WalletsPostgresFixture fixture)
 
         var wallet = await fixture.GetWalletAsync(ownerId);
         Assert.Equal(140m, wallet.AvailableFunds);
+        Assert.Equal(140m, wallet.LifetimeTurnover);
         Assert.True(await InboxContainsAsync(notification.EventId));
     }
 

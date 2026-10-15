@@ -8,6 +8,7 @@ public sealed class Wallet
     public Guid UserId { get; init; }
     public decimal AvailableFunds { get; private set; }
     public decimal LockedFunds { get; private set; }
+    public decimal LifetimeTurnover { get; private set; }
 
     public bool IsSuspendedWallet { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
@@ -17,11 +18,17 @@ public sealed class Wallet
     public void SuspendAccount() => IsSuspendedWallet = true;
     public void UnsuspendAccount() => IsSuspendedWallet = false;
 
-    public void AddFunds(decimal amount)
+    public void AddFunds(decimal amount) => Credit(amount, countsTowardTurnover: true);
+    public void ReceiveTransfer(decimal amount) => Credit(amount, countsTowardTurnover: false);
+    public void GrantStartingFunds(decimal amount) => Credit(amount, countsTowardTurnover: false);
+
+    private void Credit(decimal amount, bool countsTowardTurnover)
     {
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
-
+        
         AvailableFunds += amount;
+        if (countsTowardTurnover) LifetimeTurnover += amount;
+        
         Version = Guid.NewGuid();
     }
 
