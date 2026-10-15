@@ -3,6 +3,7 @@ using AuctionServer.Shared.Integration.Events.Auctions;
 using AuctionServer.Shared.Integration.Events.Banking;
 using AuctionServer.Shared.Integration.Events.Funds;
 using AuctionServer.Shared.Integration.Events.Items;
+using AuctionServer.Shared.Integration.Events.Pawnshop;
 using AuctionServer.Shared.Integration.Events.Users;
 using AuctionServer.Shared.Integration.Events.Warehouses;
 using MediatR;
@@ -37,7 +38,10 @@ public static class IntegrationEventTypes
         [nameof(LoanApprovedEvent)] = typeof(LoanApprovedEvent),
         [nameof(LoanRejectedEvent)] = typeof(LoanRejectedEvent),
         [nameof(LoanRepaymentRequestedEvent)] = typeof(LoanRepaymentRequestedEvent),
-        [nameof(LoanRepaymentCollectedEvent)] = typeof(LoanRepaymentCollectedEvent)
+        [nameof(LoanRepaymentCollectedEvent)] = typeof(LoanRepaymentCollectedEvent),
+        [nameof(PawnshopPaymentRequestedEvent)] = typeof(PawnshopPaymentRequestedEvent),
+        [nameof(PawnshopPaymentCompletedEvent)] = typeof(PawnshopPaymentCompletedEvent),
+        [nameof(PawnshopPaymentRejectedEvent)] = typeof(PawnshopPaymentRejectedEvent)
     };
 
     public static INotification Deserialize(string type, string content)

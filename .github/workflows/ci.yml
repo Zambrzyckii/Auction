@@ -43,3 +43,4 @@ jobs:
       - run: dotnet test Backend/tests/AuctionServer.Modules.Inventory.Tests
       - run: dotnet test Backend/tests/AuctionServer.Modules.Warehouses.Tests
       - run: dotnet test Backend/tests/AuctionServer.Modules.Banking.Tests
+      - run: dotnet test Backend/tests/AuctionServer.Modules.Pawnshop.Tests

@@ -30,6 +30,12 @@ public sealed class Wallet
         Credit(principal, countsTowardTurnover: true);
     }
 
+    public void PayForPawnshop(decimal amount, decimal requiredTurnover)
+    {
+        if (requiredTurnover > LifetimeTurnover) throw new WalletExceptions.InsufficientTurnoverException(requiredTurnover, LifetimeTurnover);
+        Withdraw(amount);
+    }
+
     public decimal CollectUpTo(decimal amount)
     {
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
