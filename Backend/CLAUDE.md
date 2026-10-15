@@ -438,7 +438,6 @@ Still aspirational — verify before building on them:
   implementation; a broker means adding an AMQP publisher + a host-side consumer that feeds `IPublisher`, not
   touching the modules.
 
-Known debt worth keeping in mind: `Microsoft.Extensions.Hosting` is pinned to a .NET 11 **preview** version in
-all six modules (fix them together); Testcontainers fixtures use an obsolete
+Known debt worth keeping in mind: Testcontainers fixtures use an obsolete
 `PostgreSqlBuilder` constructor (CS0618); `AuctionActivatedEvent` is published but nobody consumes it;
 `SellItemToShopCommandHandler.cs` breaks the "outbox `Id` == `EventId`" convention with two separate Guids.
