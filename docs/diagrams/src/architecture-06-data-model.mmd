@@ -150,6 +150,60 @@ erDiagram
         numeric PayoutAmount "nullable, 18,2 set on sale"
         uuid Version "concurrency token"
     }
+    CASINO__CasinoAccounts {
+        integer Id PK "identity column"
+        uuid UserId UK "created on the first purchase"
+        numeric Balance "18,2 chips"
+        numeric LifetimeBought "18,2"
+        numeric LifetimeCashedOut "18,2"
+        timestamptz CreatedOn
+        uuid Version "concurrency token"
+    }
+    CASINO__CasinoChipPurchases {
+        integer Id PK "identity column"
+        uuid PublicPurchaseId UK
+        uuid UserId "unique while Status = 0"
+        numeric Amount "18,2 whole chips"
+        integer Status "Pending=0 Completed=1 Rejected=2 Expired=3"
+        timestamptz RequestedOn "keeper cutoff, indexed with Status"
+        timestamptz ResolvedOn "nullable"
+        text RejectionReason "nullable, max 256"
+        uuid Version "concurrency token"
+    }
+    CASINO__CasinoRouletteSpins {
+        bigint Id PK "identity column"
+        uuid PublicSpinId UK
+        uuid UserId "indexed with PlacedOn"
+        smallint Pocket "0-36"
+        numeric TotalStake "18,2"
+        numeric TotalPayout "18,2"
+        timestamptz PlacedOn "immutable row, no Version"
+    }
+    CASINO__CasinoRouletteBets {
+        bigint Id PK "identity column"
+        bigint SpinId FK "cascade delete, owned by the aggregate"
+        integer Type "Straight=0 Red=1 Black=2 Odd=3 Even=4 Low=5 High=6 Dozen=7 Column=8"
+        smallint Selection "nullable, number 0-36 or dozen/column 1-3"
+        numeric Stake "18,2"
+        numeric Payout "18,2 stake * 36 / covered pockets"
+    }
+    CASINO__CasinoBlackjackHands {
+        bigint Id PK "identity column"
+        uuid PublicHandId UK
+        uuid UserId "unique while Status = 0"
+        integer Status "InProgress=0 Completed=1"
+        numeric Stake "18,2 doubled in place"
+        boolean Doubled
+        integer_array PlayerCards "card codes 0-51"
+        integer_array DealerCards "index 1 is the hole card"
+        integer Outcome "nullable, Win=0 Lose=1 Push=2 Blackjack=3"
+        numeric Payout "nullable, 18,2"
+        boolean AutoStood "set by the keeper sweep"
+        timestamptz StartedOn "indexed with UserId"
+        timestamptz LastActionOn "keeper cutoff, indexed with Status"
+        timestamptz CompletedOn "nullable"
+        uuid Version "concurrency token"
+    }
     IDENTITY__IdentityOutboxMessages {
         uuid Id PK
     }
@@ -189,6 +243,12 @@ erDiagram
     PAWNSHOP__PawnshopProcessedMessages {
         uuid EventId PK
     }
+    CASINO__CasinoOutboxMessages {
+        uuid Id PK
+    }
+    CASINO__CasinoProcessedMessages {
+        uuid EventId PK
+    }
     AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
@@ -207,3 +267,8 @@ erDiagram
     PAWNSHOP__PawnshopShops ||..o{ PAWNSHOP__PawnshopStockItems : "PublicPawnshopId, no FK"
     WALLETS__Wallets |o..o{ PAWNSHOP__PawnshopShops : "UserId, payments and payouts via events only"
     PAWNSHOP__PawnshopStockItems |o..o| INVENTORY__InventoryItems : "withdrawal mints an item via events only, no stored link"
+    IDENTITY__Users ||..o| CASINO__CasinoAccounts : "UserId, no FK"
+    CASINO__CasinoAccounts ||..o{ CASINO__CasinoChipPurchases : "UserId, no FK"
+    CASINO__CasinoRouletteSpins ||--o{ CASINO__CasinoRouletteBets : "SpinId, real FK, owned by the aggregate"
+    IDENTITY__Users ||..o{ CASINO__CasinoBlackjackHands : "UserId, no FK"
+    WALLETS__Wallets |o..o{ CASINO__CasinoChipPurchases : "UserId, purchases and cash-outs via events only"

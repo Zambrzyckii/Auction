@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../pl/ARCHITECTURE.md](../pl/ARCHITECTURE.md)
 
-AuctionServer is a .NET 10 modular monolith for a gamified auction house: seven modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop) run in one ASP.NET Core process, share one PostgreSQL database and talk to each other only through integration events carried by a transactional outbox and consumed through an inbox. This page covers the system context, the module layering, request handling, cross-module messaging, the three auction flows, the warehouse-war flow, the bank-loan flow and the pawnshop flow, the data model, the CI pipeline, the design patterns in use and the known limitations. Module-level detail lives in the [backend chapters](backend/README.md).
+AuctionServer is a .NET 10 modular monolith for a gamified auction house: eight modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino) run in one ASP.NET Core process, share one PostgreSQL database and talk to each other only through integration events carried by a transactional outbox and consumed through an inbox. This page covers the system context, the module layering, request handling, cross-module messaging, the three auction flows, the warehouse-war flow, the bank-loan flow, the pawnshop flow and the casino flow, the data model, the CI pipeline, the design patterns in use and the known limitations. Module-level detail lives in the [backend chapters](backend/README.md).
 
 ## System context
 
@@ -17,8 +17,8 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 
 | Component | Status | Documented in |
 |---|---|---|
-| `AuctionServer.Api` host with the seven modules | exists | [backend/README.md](backend/README.md) |
-| PostgreSQL, one database, 26 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
+| `AuctionServer.Api` host with the eight modules | exists | [backend/README.md](backend/README.md) |
+| PostgreSQL, one database, 33 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
 | Docker Compose (API image plus PostgreSQL) | exists | [backend/README.md](backend/README.md) |
 | GitLab CI and GitHub Actions pipelines | exist | [Build and CI](#build-and-ci) |
 | Angular frontend | planned | [frontend.md](frontend.md) |
@@ -27,14 +27,14 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 
 ## Modules and layering
 
-The diagram shows the project references: the host references the seven modules, every module references only `AuctionServer.Shared.Integration`, and no module references another module.
+The diagram shows the project references: the host references the eight modules, every module references only `AuctionServer.Shared.Integration`, and no module references another module.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-02-module-layering.dark.svg">
   <img alt="Modules and layering diagram" src="../diagrams/architecture-02-module-layering.svg">
 </picture>
 
-Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints and request records), `Application/` (MediatR commands, queries and validators, event handlers, repository interfaces), `Domain/` (entities, enums, exceptions) and `Infrastructure/` (DbContext, repositories, EF configurations, outbox, inbox, background services, migrations). The module project files declare a single `ProjectReference`, to [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), which holds the thirty-two event records, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` and `ValidationBehaviour`. The host wires a module with one extension method per module (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`) and maps its endpoints with `Map*Endpoints`; both calls sit in [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
+Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints and request records), `Application/` (MediatR commands, queries and validators, event handlers, repository interfaces), `Domain/` (entities, enums, exceptions) and `Infrastructure/` (DbContext, repositories, EF configurations, outbox, inbox, background services, migrations). The module project files declare a single `ProjectReference`, to [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), which holds the thirty-six event records, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` and `ValidationBehaviour`. The host wires a module with one extension method per module (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`, `AddCasinoModule`) and maps its endpoints with `Map*Endpoints`; both calls sit in [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
 
 | Module | Route prefix | DbContext | Tables | Background services | Tests |
 |---|---|---|---|---|---|
@@ -45,6 +45,7 @@ Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints a
 | [Warehouses](backend/warehouses.md) | `/api/warehouses` | `WarehouseDbContext` | `WarehousesWars`, `WarehousesParticipants`, `WarehousesStockItems`, `WarehousesOutboxMessages`, `WarehousesProcessedMessages` | `OutboxProcessor`, `WarehouseKeeper` | `AuctionServer.Modules.Warehouses.Tests` |
 | [Banking](backend/banking.md) | `/api/bank` | `BankingDbContext` | `BankingLoans`, `BankingOutboxMessages`, `BankingProcessedMessages` | `OutboxProcessor`, `BankKeeper` | `AuctionServer.Modules.Banking.Tests` |
 | [Pawnshop](backend/pawnshop.md) | `/api/pawnshop` | `PawnshopDbContext` | `PawnshopShops`, `PawnshopStockItems`, `PawnshopOutboxMessages`, `PawnshopProcessedMessages` | `OutboxProcessor`, `PawnshopKeeper` | `AuctionServer.Modules.Pawnshop.Tests` |
+| [Casino](backend/casino.md) | `/api/casino` | `CasinoDbContext` | `CasinoAccounts`, `CasinoChipPurchases`, `CasinoRouletteSpins`, `CasinoRouletteBets`, `CasinoBlackjackHands`, `CasinoOutboxMessages`, `CasinoProcessedMessages` | `OutboxProcessor`, `CasinoKeeper` | `AuctionServer.Modules.Casino.Tests` |
 
 The module rules are enforced by convention, not by tooling: no cross-module project reference, no cross-module database query, and `Domain/` and `Application/` free of ASP.NET Core types. The last rule holds for ASP.NET Core itself, but `Application/` handlers do reference their own module's `Infrastructure.Outbox` and `Infrastructure.Inbox` types to build outbox and inbox rows, and `LoginCommandHandler` reads `IConfiguration` directly.
 
@@ -64,7 +65,7 @@ Modules never call each other. A module that needs another module to react write
 1. The producer adds an `OutboxMessage` row (`Id` equal to the event's `EventId`, `Type` equal to the event class name, `Content` with the JSON payload) to the same transaction as its entity change.
 2. The module's `OutboxProcessor` (a `BackgroundService`, one copy per module) polls every 3 s for up to 20 rows that are unprocessed, not dead and due, ordered by `CreatedOn`.
 3. It calls [`IIntegrationEventPublisher.PublishAsync`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs); the only implementation, [`InProcessEventPublisher`](../../Backend/src/AuctionServer.Api/Infrastructure/Messaging/InProcessEventPublisher.cs), deserializes the payload through [`IntegrationEventTypes`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) and publishes it with MediatR `IPublisher`.
-4. MediatR runs the matching `INotificationHandler`s one after another, in the order the module assemblies are registered in `Program.cs` (Auctions, Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop).
+4. MediatR runs the matching `INotificationHandler`s one after another, in the order the module assemblies are registered in `Program.cs` (Auctions, Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino).
 5. A consumer first asks `WasEventProcessedAsync(EventId)`, then applies the domain change and saves it together with a `ProcessedMessage` row (and a reply outbox row, when it replies) in one `SaveChangesAsync`; a primary-key violation on the inbox row surfaces as `EventAlreadyProcessedException`, which the handler swallows.
 6. Any other exception propagates back to the `OutboxProcessor`, which records it on the row and schedules a retry; after the fifth failure the row is marked dead.
 
@@ -102,8 +103,12 @@ Modules never call each other. A module that needs another module to react write
 | `PawnshopStockedEvent` | `PublicPawnshopId`, `RequestId`, `Stock` | Inventory `PawnshopStockRequestedEventHandler` | Pawnshop `PawnshopStockedEventHandler` | yes |
 | `PawnshopPayoutEvent` | `PublicPawnshopId`, `UserId`, `Amount` | Pawnshop `PawnshopKeeper` | Wallets `PawnshopPayoutEventHandler` | yes |
 | `PawnshopItemWithdrawnEvent` | `PublicPawnshopId`, `PublicStockItemId`, `UserId`, `Name`, `Rarity`, `Price` | Pawnshop `WithdrawStockItemCommandHandler` | Inventory `PawnshopItemWithdrawnEventHandler` | yes |
+| `CasinoChipPurchaseRequestedEvent` | `PublicPurchaseId`, `UserId`, `Amount` | Casino `PurchaseChipsCommandHandler` | Wallets `CasinoChipPurchaseRequestedEventHandler` | yes |
+| `CasinoChipPurchaseCompletedEvent` | `PublicPurchaseId`, `UserId` | Wallets `CasinoChipPurchaseRequestedEventHandler` | Casino `CasinoChipPurchaseCompletedEventHandler` | yes |
+| `CasinoChipPurchaseRejectedEvent` | `PublicPurchaseId`, `UserId`, `Reason` | Wallets `CasinoChipPurchaseRequestedEventHandler` | Casino `CasinoChipPurchaseRejectedEventHandler` | yes |
+| `CasinoCashOutEvent` | `UserId`, `Amount` | Casino `CashOutChipsCommandHandler` | Wallets `CasinoCashOutEventHandler` | yes |
 
-The records live in [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), grouped by subject into `Auctions/`, `Banking/`, `Funds/`, `Items/`, `Pawnshop/`, `Users/` and `Warehouses/`, and the handlers in each module's `Application/Handlers/` folder. Adding an event means adding a record and registering it in `IntegrationEventTypes`; an unregistered type makes `Deserialize` throw `NotSupportedException`, so the outbox row fails and eventually dead-letters.
+The records live in [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), grouped by subject into `Auctions/`, `Banking/`, `Casino/`, `Funds/`, `Items/`, `Pawnshop/`, `Users/` and `Warehouses/`, and the handlers in each module's `Application/Handlers/` folder. Adding an event means adding a record and registering it in `IntegrationEventTypes`; an unregistered type makes `Deserialize` throw `NotSupportedException`, so the outbox row fails and eventually dead-letters.
 
 ## Auction flows
 
@@ -198,16 +203,30 @@ The state diagram shows the two state machines of the module, the pawnshop and t
 3. Within the window `POST /api/pawnshop/stock/{id}/withdraw` marks the item `Withdrawn` and emits `PawnshopItemWithdrawnEvent`, and Inventory mints an `Available` item at the full stock price. At `SellAfter` the keeper sells the due items and emits one `PawnshopPayoutEvent` per pawnshop, and Wallets credits the sum with `AddFunds`, so payouts count toward turnover.
 4. The same keeper expires payments and unanswered spawn requests after `PaymentTimeout` and `StockRequestTimeout` (both validated at or above the 10-minute dead-letter horizon). A reply that no longer matches the pending id throws and dead-letters instead of being skipped. Full detail in [backend/pawnshop.md](backend/pawnshop.md).
 
+### Casino (chips, roulette, blackjack, abandoned-hand sweep)
+
+The diagram shows the chip saga around the synchronous games: money enters and leaves the casino through Wallets events, while every spin and every blackjack action is a local write on the chip account.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-11-casino.dark.svg">
+  <img alt="Casino diagram" src="../diagrams/architecture-11-casino.svg">
+</picture>
+
+1. `POST /api/casino/chips/purchases` stores a `Pending` `ChipPurchase` (a filtered unique index allows one purchase in flight per player; the chip account is created with the first purchase) and emits `CasinoChipPurchaseRequestedEvent`. Wallets debits through `Wallet.Withdraw` (no turnover gate) and replies with `CasinoChipPurchaseCompletedEvent` or `CasinoChipPurchaseRejectedEvent`; completion credits the chips 1:1. A purchase unanswered for `PurchaseTimeout` is expired by [`CasinoKeeper`](../../Backend/src/AuctionServer.Modules.Casino/Infrastructure/Background/CasinoKeeper.cs) (5 s loop), and a completion arriving after the expiry still credits the chips, a deliberate departure from the pawnshop's late-reply rule, because the wallet was already debited.
+2. Gameplay is synchronous and publishes nothing. A roulette spin validates the bets, draws the pocket through `ICasinoRandom.Next(37)` and settles every bet at `stake * 36 / covered pockets` (zero loses all outside bets, so the edge is exactly 1/37); a blackjack hand deals from a fresh six-deck shoe (`ShoeCardSource` draws uniformly from the shoe minus the dealt cards, so no card order is persisted), pays 3:2 for a natural and stands on soft 17. Both debit and credit `ChipAccount.Balance` under its `Version` token in one save with the game row.
+3. The keeper's second sweep auto-stands blackjack hands abandoned for `HandTimeout`: the dealer plays, the hand settles with `AutoStood` set and any payout is credited in the same cycle.
+4. `POST /api/casino/chips/cashouts` debits the chips and writes `CasinoCashOutEvent` in one save; Wallets credits through `Wallet.ReceiveCasinoCashOut`, which never builds `LifetimeTurnover`, so hedged casino play cannot farm the bank or pawnshop gates. Full detail in [backend/casino.md](backend/casino.md).
+
 ## Data model
 
-The diagram shows the twenty-six tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
+The diagram shows the thirty-three tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
   <img alt="Data model diagram" src="../diagrams/architecture-06-data-model.svg">
 </picture>
 
-All seven `DbContext`s point at the same database and share the default `__EFMigrationsHistory` table (no context overrides the history table), so isolation rests on discipline and on distinct table names. Identifiers cross module boundaries as copied Guids: `Wallets.UserId` and `Auctions.SellerUserId` hold `Users.PublicUserId`, `Auctions.ItemId` holds `InventoryItems.PublicItemId`, and `InventoryItems.LockedForAuctionId` holds `Auctions.PublicAuctionId`. Column types come from the EF model snapshots in each module's migrations folder.
+All eight `DbContext`s point at the same database and share the default `__EFMigrationsHistory` table (no context overrides the history table), so isolation rests on discipline and on distinct table names. Identifiers cross module boundaries as copied Guids: `Wallets.UserId` and `Auctions.SellerUserId` hold `Users.PublicUserId`, `Auctions.ItemId` holds `InventoryItems.PublicItemId`, and `InventoryItems.LockedForAuctionId` holds `Auctions.PublicAuctionId`. Column types come from the EF model snapshots in each module's migrations folder.
 
 | Table | Module | Purpose |
 |---|---|---|
@@ -232,6 +251,11 @@ All seven `DbContext`s point at the same database and share the default `__EFMig
 | `PawnshopShops` | Pawnshop | pawnshops with the installed and pending bot snapshots and the spawn schedule, with a unique `PublicPawnshopId`, a unique `UserId` while `Status IN (0, 1)` and a `Version` token |
 | `PawnshopStockItems` | Pawnshop | goods spawned by the bots with the frozen price and payout rate, with a unique `PublicStockItemId`, a `Status` (`InStock`/`Withdrawn`/`Sold`), `SellAfter` and a `Version` token |
 | `PawnshopOutboxMessages`, `PawnshopProcessedMessages` | Pawnshop | outbox, inbox |
+| `CasinoAccounts` | Casino | one chip account per player with `Balance`, both lifetime counters and a `Version` token; created on the first purchase |
+| `CasinoChipPurchases` | Casino | chip purchases with a unique `PublicPurchaseId`, a unique `UserId` while `Status = 0` and a `Version` token |
+| `CasinoRouletteSpins`, `CasinoRouletteBets` | Casino | immutable spin history with the owned bets collection, indexed (`UserId`, `PlacedOn`) |
+| `CasinoBlackjackHands` | Casino | blackjack hands with the cards as `integer[]`, a unique `UserId` while `Status = 0` and a `Version` token |
+| `CasinoOutboxMessages`, `CasinoProcessedMessages` | Casino | outbox, inbox |
 
 Every outbox table has the same nine columns (`Id`, `Type`, `Content`, `CreatedOn`, `ProcessedOn`, `AttemptCount`, `Errors`, `IsDead`, `NextAttemptOn`) and every inbox table has `EventId` and `ProcessedOn`; see [backend/messaging.md](backend/messaging.md).
 
@@ -246,24 +270,24 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 
 - Every job runs in the `mcr.microsoft.com/dotnet/sdk:10.0` image with a `docker:dind` service; `DOCKER_HOST=tcp://docker:2375` and `TESTCONTAINERS_HOST_OVERRIDE=docker` let Testcontainers start PostgreSQL inside the runner.
 - Stage `build` runs `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` has two jobs: `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory, Warehouses, Banking and Pawnshop test projects.
+- Stage `test` has two jobs: `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop and Casino test projects.
 - There is no deploy stage, no artifacts and no caching; the application image exists only for local use ([`Backend/Dockerfile`](../../Backend/Dockerfile), built by the root [`compose.yaml`](../../compose.yaml)), the pipeline does not build or push it.
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) mirrors the same three jobs on GitHub Actions, triggered by pushes and pull requests to `main`; the test jobs depend on `build` through `needs`, and `ubuntu-latest` has Docker preinstalled, so the dind service and the Testcontainers override stay GitLab-only.
 
 ## Design patterns in use
 
-- **Modular monolith.** One deployable, seven modules with private tables and private `DbContext`s, a single shared contracts project.
-- **CQRS in Auctions, CQS elsewhere.** Auctions writes through EF Core and reads through Dapper over `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory, Warehouses, Banking and Pawnshop read through EF Core with `AsNoTracking`.
-- **Transactional outbox.** Seven copies of `OutboxMessage` and `OutboxProcessor`, one per module; the event row commits with the state change.
-- **Inbox (idempotent consumer).** `ProcessedMessages` tables in Wallets, Auctions, Inventory, Warehouses, Banking and Pawnshop, checked before the change and inserted with it.
-- **Saga by choreography.** Auction creation, auction settlement, the warehouse stock quote, the warehouse entry lock, the warehouse settlement, the loan grant, the loan collection, the pawnshop payment and the pawnshop spawn quote are chains of events across modules with no orchestrator; each hop is a local transaction.
-- **Optimistic concurrency.** `Version` is a Guid concurrency token on `Auction`, `Wallet`, `Item`, `WarehouseWar`, `Loan`, `Shop` and `StockItem`, regenerated inside every mutating method; conflicts surface as 409 or as a retried background cycle.
+- **Modular monolith.** One deployable, eight modules with private tables and private `DbContext`s, a single shared contracts project.
+- **CQRS in Auctions, CQS elsewhere.** Auctions writes through EF Core and reads through Dapper over `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory, Warehouses, Banking, Pawnshop and Casino read through EF Core with `AsNoTracking`.
+- **Transactional outbox.** Eight copies of `OutboxMessage` and `OutboxProcessor`, one per module; the event row commits with the state change.
+- **Inbox (idempotent consumer).** `ProcessedMessages` tables in Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop and Casino, checked before the change and inserted with it.
+- **Saga by choreography.** Auction creation, auction settlement, the warehouse stock quote, the warehouse entry lock, the warehouse settlement, the loan grant, the loan collection, the pawnshop payment, the pawnshop spawn quote and the casino chip purchase are chains of events across modules with no orchestrator; each hop is a local transaction.
+- **Optimistic concurrency.** `Version` is a Guid concurrency token on `Auction`, `Wallet`, `Item`, `WarehouseWar`, `Loan`, `Shop`, `StockItem`, `ChipAccount`, `ChipPurchase` and `BlackjackHand`, regenerated inside every mutating method; conflicts surface as 409 or as a retried background cycle.
 - **Global error contract.** Domain exceptions derive from `AppException(message, statusCode)` and are mapped by one `IExceptionHandler`.
 - **Validation pipeline.** FluentValidation validators next to their commands, executed by a MediatR behavior.
-- **Filtered unique indexes.** One open auction per item (`"Status" IN (0, 1)`), one item per auction lock (`LockedForAuctionId`, nulls distinct), one open loan per player (`UserId` filtered on `"Status" IN (0, 1, 2, 3)`) and one live pawnshop per player (`UserId` filtered on `"Status" IN (0, 1)`); Wallets also declares a unique index on `UserId` filtered on `"IsSuspendedWallet" = false`, which adds no constraint because `UserId` is already the primary key.
+- **Filtered unique indexes.** One open auction per item (`"Status" IN (0, 1)`), one item per auction lock (`LockedForAuctionId`, nulls distinct), one open loan per player (`UserId` filtered on `"Status" IN (0, 1, 2, 3)`), one live pawnshop per player (`UserId` filtered on `"Status" IN (0, 1)`), one casino chip purchase in flight and one active blackjack hand per player (both `UserId` filtered on `"Status" = 0`); Wallets also declares a unique index on `UserId` filtered on `"IsSuspendedWallet" = false`, which adds no constraint because `UserId` is already the primary key.
 - **Surrogate key plus public id.** `AuctionId`/`PublicAuctionId`, `Id`/`PublicUserId`, `Id`/`PublicItemId`; only the Guids leave the module.
 - **Composition by extension methods.** `Add<Module>Module` and `Map<Module>Endpoints` are the only entry points the host knows.
-- **Polling background services.** `OutboxProcessor` (seven copies) and `AuctionCloser` are `BackgroundService`s with a fixed 3 s delay between cycles; `WarehouseKeeper` runs on a 1 s delay because the raise windows are measured in seconds, `BankKeeper` and `PawnshopKeeper` on a 5 s delay against minute-scale loan terms and spawn intervals.
+- **Polling background services.** `OutboxProcessor` (eight copies) and `AuctionCloser` are `BackgroundService`s with a fixed 3 s delay between cycles; `WarehouseKeeper` runs on a 1 s delay because the raise windows are measured in seconds, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper` on a 5 s delay against minute-scale loan terms, spawn intervals and timeouts.
 
 ## Known limitations
 
@@ -280,12 +304,14 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 11. The pawnshop is a faucet that crafting amplifies. An item withdrawn within the window keeps its full price, and `Item.Craft` turns three items of one rarity into one item of the next rarity with a fresh price roll, so each step multiplies value by about 3.3. The owner accepted this on 2026-10-15, and the same faucet already exists for items won in warehouse wars. The numbers are in [backend/pawnshop.md](backend/pawnshop.md#decisions).
 12. Resolved pawnshop stock is never deleted. A Pawn Clerk adds about 2 880 rows a day to `PawnshopStockItems`, `GET /api/pawnshop` caps the resolved history at 20 and no retention sweep exists.
 13. Outbox throughput caps the bot population. Each `OutboxProcessor` delivers at most 20 rows per 3 s poll and a Pawn Clerk writes about 240 Pawnshop outbox rows an hour, so about 100 Pawn Clerks saturate the Pawnshop outbox.
+14. Casino variance creates money without a cap. On average both games are sinks (roulette returns exactly 36/37, the measured blackjack edge is about 1.1 % of the stake), but a straight bet returns 36 times the stake, nothing caps a chip balance and no rate limiter exists on the game endpoints. The owner accepted this on 2026-10-17; the numbers are in [backend/casino.md](backend/casino.md#games-and-the-house-edge).
+15. A bot spinning roulette nonstop can win the `Version` race against the casino's purchase-completion handler on all five delivery attempts, dead-lettering the purchase with the wallet debited and no chips credited; reviving the dead row repairs it, because a late completion is tolerated. Casino game history (spins, bets, hands) is also kept forever, like pawnshop stock.
 
 ## Related documents
 
 - [README.md](README.md) - documentation index and reading order.
 - [backend/README.md](backend/README.md) - projects, running, configuration, request pipeline, error contract, tests.
 - [backend/messaging.md](backend/messaging.md) - outbox, inbox, retry policy, event catalog.
-- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md) - module chapters.
+- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md) - module chapters.
 - [VISION.md](VISION.md) - target system and planned work.
 - [adr/](adr) - architecture decision records.

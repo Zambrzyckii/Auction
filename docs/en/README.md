@@ -2,14 +2,14 @@
 
 > English version. Polish 1:1 counterpart: [../pl/README.md](../pl/README.md)
 
-AuctionServer is a gamified auction house built as a .NET 10 modular monolith on PostgreSQL: seven modules in one process, talking through a transactional outbox and inbox. These pages describe how the system is put together, how an auction travels through it and what is planned; they are written for a developer who opens the repository for the first time. Every page exists in English and in Polish with the same structure.
+AuctionServer is a gamified auction house built as a .NET 10 modular monolith on PostgreSQL: eight modules in one process, talking through a transactional outbox and inbox. These pages describe how the system is put together, how an auction travels through it and what is planned; they are written for a developer who opens the repository for the first time. Every page exists in English and in Polish with the same structure.
 
 ## Reading order
 
 1. [ARCHITECTURE.md](ARCHITECTURE.md) - the system context, the modules, the three auction flows, the data model and the known limitations. Start here.
 2. [backend/README.md](backend/README.md) - the projects, how to run and configure the host, the request pipeline, the error contract and the tests.
 3. [backend/messaging.md](backend/messaging.md) - the outbox, the inbox, the retry policy and the catalog of integration events.
-4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/identity.md](backend/identity.md) - one chapter per module.
+4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md), [backend/identity.md](backend/identity.md) - one chapter per module.
 5. [STATE.md](STATE.md) and [VISION.md](VISION.md) - where the project stands and where it is going.
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) and [adr/](adr) - the rules and the reasons.
 7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - the modules that do not exist yet.
@@ -27,6 +27,7 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 | [backend/warehouses.md](backend/warehouses.md) | How is a warehouse war stocked, joined, bid on and settled, and what stays hidden until when? |
 | [backend/banking.md](backend/banking.md) | How does a loan get granted through the turnover gate, collected at maturity and punished when it goes overdue? |
 | [backend/pawnshop.md](backend/pawnshop.md) | How does a player buy premises through the turnover gate and hire a bot, and what happens to the goods the bot spawns? |
+| [backend/casino.md](backend/casino.md) | How do wallet money and casino chips flow, and why does every game statistically favour the house? |
 | [backend/identity.md](backend/identity.md) | How do registration, login, JWT and bot provisioning work? |
 | [VISION.md](VISION.md) | What is the product, what do the terms mean, what is planned next? |
 | [CONVENTIONS.md](CONVENTIONS.md) | How are code, tests and documentation kept, what is the definition of done? |
@@ -40,7 +41,7 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 ## Conventions
 
 - Every page under `docs/en/` has a Polish twin under `docs/pl/` with the same file name, the same number of lines and the same headings; line 3 of each page links to the other language.
-- Diagrams are authored in [Mermaid](https://mermaid.js.org/) under [`../diagrams/src/`](../diagrams/src) and committed as pre-rendered SVGs with a light and a dark variant, embedded with `<picture>` so GitLab and GitHub show the variant matching the reader's theme at full size. Colours are consistent across pages: orange for clients, indigo for the host, amber for Identity, green for Wallets, blue for Auctions, rose for Inventory, teal for Warehouses, lime for Banking, fuchsia for Pawnshop, slate for shared pieces, purple for PostgreSQL and dashed grey for planned parts. After editing a source run `python3 docs/diagrams/render.py`.
+- Diagrams are authored in [Mermaid](https://mermaid.js.org/) under [`../diagrams/src/`](../diagrams/src) and committed as pre-rendered SVGs with a light and a dark variant, embedded with `<picture>` so GitLab and GitHub show the variant matching the reader's theme at full size. Colours are consistent across pages: orange for clients, indigo for the host, amber for Identity, green for Wallets, blue for Auctions, rose for Inventory, teal for Warehouses, lime for Banking, fuchsia for Pawnshop, cyan for Casino, slate for shared pieces, purple for PostgreSQL and dashed grey for planned parts. After editing a source run `python3 docs/diagrams/render.py`.
 - Code is referenced by relative links to files rather than line numbers, so the links stay valid as files change; identifiers are quoted exactly as they appear in the code.
 - Everything in the repository is written in English; the `docs/pl` side is the only Polish text.
 

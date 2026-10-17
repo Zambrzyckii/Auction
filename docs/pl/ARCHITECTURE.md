@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/ARCHITECTURE.md](../en/ARCHITECTURE.md)
 
-AuctionServer to modular monolith w .NET 10 dla zgamifikowanego domu aukcyjnego: siedem modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop) działa w jednym procesie ASP.NET Core, dzieli jedną bazę PostgreSQL i rozmawia ze sobą wyłącznie przez zdarzenia integracyjne przenoszone transakcyjnym outboxem i konsumowane przez inbox. Ta strona opisuje kontekst systemu, warstwy modułów, obsługę żądań, komunikację między modułami, trzy przepływy aukcji, przepływ wojny magazynowej, przepływ pożyczek bankowych i przepływ lombardu, model danych, pipeline CI, stosowane wzorce projektowe i znane ograniczenia. Szczegóły poszczególnych modułów są w [rozdziałach backendu](backend/README.md).
+AuctionServer to modular monolith w .NET 10 dla zgamifikowanego domu aukcyjnego: osiem modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino) działa w jednym procesie ASP.NET Core, dzieli jedną bazę PostgreSQL i rozmawia ze sobą wyłącznie przez zdarzenia integracyjne przenoszone transakcyjnym outboxem i konsumowane przez inbox. Ta strona opisuje kontekst systemu, warstwy modułów, obsługę żądań, komunikację między modułami, trzy przepływy aukcji, przepływ wojny magazynowej, przepływ pożyczek bankowych, przepływ lombardu i przepływ kasyna, model danych, pipeline CI, stosowane wzorce projektowe i znane ograniczenia. Szczegóły poszczególnych modułów są w [rozdziałach backendu](backend/README.md).
 
 ## Kontekst systemu
 
@@ -17,8 +17,8 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 
 | Komponent | Status | Opisany w |
 |---|---|---|
-| Host `AuctionServer.Api` z siedmioma modułami | istnieje | [backend/README.md](backend/README.md) |
-| PostgreSQL, jedna baza, 26 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
+| Host `AuctionServer.Api` z ośmioma modułami | istnieje | [backend/README.md](backend/README.md) |
+| PostgreSQL, jedna baza, 33 tabele | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
 | Docker Compose (obraz API plus PostgreSQL) | istnieje | [backend/README.md](backend/README.md) |
 | Pipeline'y GitLab CI i GitHub Actions | istnieją | [Build i CI](#build-i-ci) |
 | Frontend Angular | planowany | [frontend.md](frontend.md) |
@@ -27,14 +27,14 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 
 ## Moduły i warstwy
 
-Diagram pokazuje referencje między projektami: host referencuje siedem modułów, każdy moduł referencuje wyłącznie `AuctionServer.Shared.Integration`, a żaden moduł nie referencuje innego modułu.
+Diagram pokazuje referencje między projektami: host referencuje osiem modułów, każdy moduł referencuje wyłącznie `AuctionServer.Shared.Integration`, a żaden moduł nie referencuje innego modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-02-module-layering.dark.svg">
   <img alt="Diagram: moduły i warstwy" src="../diagrams/architecture-02-module-layering.svg">
 </picture>
 
-Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minimal API i rekordy żądań), `Application/` (komendy, zapytania i walidatory MediatR, handlery zdarzeń, interfejsy repozytoriów), `Domain/` (encje, enumy, wyjątki) oraz `Infrastructure/` (DbContext, repozytoria, konfiguracje EF, outbox, inbox, serwisy tła, migracje). Pliki projektów modułów deklarują jedną `ProjectReference`, do [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), które zawiera trzydzieści dwa rekordy zdarzeń, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` i `ValidationBehaviour`. Host podpina moduł jedną metodą rozszerzającą na moduł (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`) i mapuje jego endpointy przez `Map*Endpoints`; oba wywołania są w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
+Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minimal API i rekordy żądań), `Application/` (komendy, zapytania i walidatory MediatR, handlery zdarzeń, interfejsy repozytoriów), `Domain/` (encje, enumy, wyjątki) oraz `Infrastructure/` (DbContext, repozytoria, konfiguracje EF, outbox, inbox, serwisy tła, migracje). Pliki projektów modułów deklarują jedną `ProjectReference`, do [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), które zawiera trzydzieści sześć rekordów zdarzeń, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` i `ValidationBehaviour`. Host podpina moduł jedną metodą rozszerzającą na moduł (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`, `AddCasinoModule`) i mapuje jego endpointy przez `Map*Endpoints`; oba wywołania są w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
 
 | Moduł | Prefiks tras | DbContext | Tabele | Serwisy tła | Testy |
 |---|---|---|---|---|---|
@@ -45,6 +45,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 | [Warehouses](backend/warehouses.md) | `/api/warehouses` | `WarehouseDbContext` | `WarehousesWars`, `WarehousesParticipants`, `WarehousesStockItems`, `WarehousesOutboxMessages`, `WarehousesProcessedMessages` | `OutboxProcessor`, `WarehouseKeeper` | `AuctionServer.Modules.Warehouses.Tests` |
 | [Banking](backend/banking.md) | `/api/bank` | `BankingDbContext` | `BankingLoans`, `BankingOutboxMessages`, `BankingProcessedMessages` | `OutboxProcessor`, `BankKeeper` | `AuctionServer.Modules.Banking.Tests` |
 | [Pawnshop](backend/pawnshop.md) | `/api/pawnshop` | `PawnshopDbContext` | `PawnshopShops`, `PawnshopStockItems`, `PawnshopOutboxMessages`, `PawnshopProcessedMessages` | `OutboxProcessor`, `PawnshopKeeper` | `AuctionServer.Modules.Pawnshop.Tests` |
+| [Casino](backend/casino.md) | `/api/casino` | `CasinoDbContext` | `CasinoAccounts`, `CasinoChipPurchases`, `CasinoRouletteSpins`, `CasinoRouletteBets`, `CasinoBlackjackHands`, `CasinoOutboxMessages`, `CasinoProcessedMessages` | `OutboxProcessor`, `CasinoKeeper` | `AuctionServer.Modules.Casino.Tests` |
 
 Reguły modułów są egzekwowane konwencją, nie narzędziami: brak referencji projektowych między modułami, brak zapytań do bazy innego modułu oraz `Domain/` i `Application/` wolne od typów ASP.NET Core. Ostatnia reguła jest spełniona dla samego ASP.NET Core, ale handlery w `Application/` referencują typy `Infrastructure.Outbox` i `Infrastructure.Inbox` własnego modułu, żeby budować wiersze outboxa i inboxa, a `LoginCommandHandler` czyta `IConfiguration` bezpośrednio.
 
@@ -64,7 +65,7 @@ Moduły nigdy nie wołają się nawzajem. Moduł, który potrzebuje reakcji inne
 1. Producent dodaje wiersz `OutboxMessage` (`Id` równe `EventId` zdarzenia, `Type` równe nazwie klasy zdarzenia, `Content` z ładunkiem JSON) do tej samej transakcji co zmiana encji.
 2. `OutboxProcessor` modułu (`BackgroundService`, jedna kopia na moduł) odpytuje co 3 s o maksymalnie 20 wierszy nieprzetworzonych, niemartwych i wymagalnych, uporządkowanych po `CreatedOn`.
 3. Woła [`IIntegrationEventPublisher.PublishAsync`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IIntegrationEventPublisher.cs); jedyna implementacja, [`InProcessEventPublisher`](../../Backend/src/AuctionServer.Api/Infrastructure/Messaging/InProcessEventPublisher.cs), deserializuje ładunek przez [`IntegrationEventTypes`](../../Backend/src/AuctionServer.Shared.Integration/Messaging/IntegrationEventTypes.cs) i publikuje go przez `IPublisher` MediatR.
-4. MediatR uruchamia pasujące `INotificationHandler`y jeden po drugim, w kolejności rejestracji assembly modułów w `Program.cs` (Auctions, Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop).
+4. MediatR uruchamia pasujące `INotificationHandler`y jeden po drugim, w kolejności rejestracji assembly modułów w `Program.cs` (Auctions, Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino).
 5. Konsument najpierw pyta `WasEventProcessedAsync(EventId)`, potem wykonuje zmianę domenową i zapisuje ją razem z wierszem `ProcessedMessage` (i wierszem outboxa z odpowiedzią, gdy odpowiada) w jednym `SaveChangesAsync`; naruszenie klucza głównego na wierszu inboxa ujawnia się jako `EventAlreadyProcessedException`, który handler połyka.
 6. Każdy inny wyjątek wraca do `OutboxProcessor`a, który zapisuje go w wierszu i planuje ponowienie; po piątej porażce wiersz jest oznaczany jako martwy.
 
@@ -102,8 +103,12 @@ Moduły nigdy nie wołają się nawzajem. Moduł, który potrzebuje reakcji inne
 | `PawnshopStockedEvent` | `PublicPawnshopId`, `RequestId`, `Stock` | Inventory `PawnshopStockRequestedEventHandler` | Pawnshop `PawnshopStockedEventHandler` | tak |
 | `PawnshopPayoutEvent` | `PublicPawnshopId`, `UserId`, `Amount` | Pawnshop `PawnshopKeeper` | Wallets `PawnshopPayoutEventHandler` | tak |
 | `PawnshopItemWithdrawnEvent` | `PublicPawnshopId`, `PublicStockItemId`, `UserId`, `Name`, `Rarity`, `Price` | Pawnshop `WithdrawStockItemCommandHandler` | Inventory `PawnshopItemWithdrawnEventHandler` | tak |
+| `CasinoChipPurchaseRequestedEvent` | `PublicPurchaseId`, `UserId`, `Amount` | Casino `PurchaseChipsCommandHandler` | Wallets `CasinoChipPurchaseRequestedEventHandler` | tak |
+| `CasinoChipPurchaseCompletedEvent` | `PublicPurchaseId`, `UserId` | Wallets `CasinoChipPurchaseRequestedEventHandler` | Casino `CasinoChipPurchaseCompletedEventHandler` | tak |
+| `CasinoChipPurchaseRejectedEvent` | `PublicPurchaseId`, `UserId`, `Reason` | Wallets `CasinoChipPurchaseRequestedEventHandler` | Casino `CasinoChipPurchaseRejectedEventHandler` | tak |
+| `CasinoCashOutEvent` | `UserId`, `Amount` | Casino `CashOutChipsCommandHandler` | Wallets `CasinoCashOutEventHandler` | tak |
 
-Rekordy leżą w [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), pogrupowane tematycznie w `Auctions/`, `Banking/`, `Funds/`, `Items/`, `Pawnshop/`, `Users/` i `Warehouses/`, a handlery w folderze `Application/Handlers/` każdego modułu. Dodanie zdarzenia oznacza dodanie rekordu i zarejestrowanie go w `IntegrationEventTypes`; niezarejestrowany typ sprawia, że `Deserialize` rzuca `NotSupportedException`, więc wiersz outboxa zawodzi i w końcu trafia do martwych.
+Rekordy leżą w [`Shared.Integration/Events/`](../../Backend/src/AuctionServer.Shared.Integration/Events), pogrupowane tematycznie w `Auctions/`, `Banking/`, `Casino/`, `Funds/`, `Items/`, `Pawnshop/`, `Users/` i `Warehouses/`, a handlery w folderze `Application/Handlers/` każdego modułu. Dodanie zdarzenia oznacza dodanie rekordu i zarejestrowanie go w `IntegrationEventTypes`; niezarejestrowany typ sprawia, że `Deserialize` rzuca `NotSupportedException`, więc wiersz outboxa zawodzi i w końcu trafia do martwych.
 
 ## Przepływy aukcji
 
@@ -198,16 +203,30 @@ Diagram stanów pokazuje dwie maszyny stanów modułu, lombard i przedmiot w mag
 3. W oknie `POST /api/pawnshop/stock/{id}/withdraw` oznacza przedmiot jako `Withdrawn` i emituje `PawnshopItemWithdrawnEvent`, a Inventory mintuje przedmiot `Available` w pełnej cenie z magazynu. W `SellAfter` keeper sprzedaje wymagalne przedmioty i emituje jedno `PawnshopPayoutEvent` na lombard, a Wallets uznaje sumę przez `AddFunds`, więc wypłaty wliczają się do obrotu.
 4. Ten sam keeper wygasza płatności i bez odpowiedzi żądania spawnu po `PaymentTimeout` i `StockRequestTimeout` (oba walidowane na poziomie co najmniej 10-minutowego horyzontu dead letter). Odpowiedź, która nie pasuje już do oczekującego id, rzuca wyjątek i trafia do martwych, zamiast być pominięta. Pełny opis w [backend/pawnshop.md](backend/pawnshop.md).
 
+### Kasyno (żetony, ruletka, blackjack, zamiatanie porzuconych rozdań)
+
+Diagram pokazuje sagę żetonów wokół synchronicznych gier: pieniądze wchodzą do kasyna i z niego wychodzą przez zdarzenia z Wallets, a każdy spin i każda akcja blackjacka to lokalny zapis na koncie żetonów.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-11-casino.dark.svg">
+  <img alt="Diagram kasyna" src="../diagrams/architecture-11-casino.svg">
+</picture>
+
+1. `POST /api/casino/chips/purchases` zapisuje `ChipPurchase` w stanie `Pending` (filtrowany unikalny indeks dopuszcza jeden zakup w locie na gracza; konto żetonów powstaje przy pierwszym zakupie) i emituje `CasinoChipPurchaseRequestedEvent`. Wallets obciąża przez `Wallet.Withdraw` (bez bramki obrotu) i odpowiada `CasinoChipPurchaseCompletedEvent` albo `CasinoChipPurchaseRejectedEvent`; zakończenie uznaje żetony 1:1. Zakup bez odpowiedzi przez `PurchaseTimeout` wygasza [`CasinoKeeper`](../../Backend/src/AuctionServer.Modules.Casino/Infrastructure/Background/CasinoKeeper.cs) (pętla 5 s), a zakończenie przychodzące po wygaśnięciu nadal uznaje żetony, co jest świadomym odejściem od lombardowej reguły spóźnionych odpowiedzi, bo portfel został już obciążony.
+2. Rozgrywka jest synchroniczna i niczego nie publikuje. Spin ruletki waliduje zakłady, losuje kieszeń przez `ICasinoRandom.Next(37)` i rozlicza każdy zakład po `stawka * 36 / pokryte kieszenie` (zero przegrywa wszystkie zakłady zewnętrzne, więc przewaga to dokładnie 1/37); rozdanie blackjacka rozdaje ze świeżego buta sześciu talii (`ShoeCardSource` losuje jednostajnie z buta minus rozdane karty, więc kolejność kart nie jest przechowywana), płaci 3:2 za naturala i staje na soft 17. Obie gry obciążają i uznają `ChipAccount.Balance` pod tokenem `Version` w jednym zapisie z wierszem gry.
+3. Drugie zamiatanie keepera automatycznie pasuje rozdania porzucone na `HandTimeout`: krupier gra, rozdanie rozlicza się z flagą `AutoStood`, a ewentualna wypłata jest uznawana w tym samym cyklu.
+4. `POST /api/casino/chips/cashouts` zdejmuje żetony i pisze `CasinoCashOutEvent` w jednym zapisie; Wallets uznaje przez `Wallet.ReceiveCasinoCashOut`, które nigdy nie buduje `LifetimeTurnover`, więc hedgowana gra w kasynie nie może farmić bramek banku ani lombardu. Pełny opis w [backend/casino.md](backend/casino.md).
+
 ## Model danych
 
-Diagram pokazuje dwadzieścia sześć tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
+Diagram pokazuje trzydzieści trzy tabele pogrupowane według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
   <img alt="Diagram: model danych" src="../diagrams/architecture-06-data-model.svg">
 </picture>
 
-Wszystkie siedem `DbContext`ów wskazuje tę samą bazę i dzielą domyślną tabelę `__EFMigrationsHistory` (żaden kontekst nie nadpisuje tabeli historii), więc izolacja opiera się na dyscyplinie i na różnych nazwach tabel. Identyfikatory przekraczają granice modułów jako kopiowane Guidy: `Wallets.UserId` i `Auctions.SellerUserId` trzymają `Users.PublicUserId`, `Auctions.ItemId` trzyma `InventoryItems.PublicItemId`, a `InventoryItems.LockedForAuctionId` trzyma `Auctions.PublicAuctionId`. Typy kolumn pochodzą ze snapshotów modelu EF w folderze migracji każdego modułu.
+Wszystkie osiem `DbContext`ów wskazuje tę samą bazę i dzielą domyślną tabelę `__EFMigrationsHistory` (żaden kontekst nie nadpisuje tabeli historii), więc izolacja opiera się na dyscyplinie i na różnych nazwach tabel. Identyfikatory przekraczają granice modułów jako kopiowane Guidy: `Wallets.UserId` i `Auctions.SellerUserId` trzymają `Users.PublicUserId`, `Auctions.ItemId` trzyma `InventoryItems.PublicItemId`, a `InventoryItems.LockedForAuctionId` trzyma `Auctions.PublicAuctionId`. Typy kolumn pochodzą ze snapshotów modelu EF w folderze migracji każdego modułu.
 
 | Tabela | Moduł | Przeznaczenie |
 |---|---|---|
@@ -232,6 +251,11 @@ Wszystkie siedem `DbContext`ów wskazuje tę samą bazę i dzielą domyślną ta
 | `PawnshopShops` | Pawnshop | lombardy ze snapshotami zainstalowanego i oczekującego bota oraz harmonogramem spawnów, z unikalnym `PublicPawnshopId`, unikalnym `UserId` dopóki `Status IN (0, 1)` i tokenem `Version` |
 | `PawnshopStockItems` | Pawnshop | towar tworzony przez boty z zamrożoną ceną i stawką wypłaty, z unikalnym `PublicStockItemId`, `Status` (`InStock`/`Withdrawn`/`Sold`), `SellAfter` i tokenem `Version` |
 | `PawnshopOutboxMessages`, `PawnshopProcessedMessages` | Pawnshop | outbox, inbox |
+| `CasinoAccounts` | Casino | jedno konto żetonów na gracza z `Balance`, oboma licznikami lifetime i tokenem `Version`; powstaje przy pierwszym zakupie |
+| `CasinoChipPurchases` | Casino | zakupy żetonów z unikalnym `PublicPurchaseId`, unikalnym `UserId` dopóki `Status = 0` i tokenem `Version` |
+| `CasinoRouletteSpins`, `CasinoRouletteBets` | Casino | niezmienna historia spinów z posiadaną kolekcją zakładów, indeksowana (`UserId`, `PlacedOn`) |
+| `CasinoBlackjackHands` | Casino | rozdania blackjacka z kartami jako `integer[]`, unikalnym `UserId` dopóki `Status = 0` i tokenem `Version` |
+| `CasinoOutboxMessages`, `CasinoProcessedMessages` | Casino | outbox, inbox |
 
 Każda tabela outboxa ma te same dziewięć kolumn (`Id`, `Type`, `Content`, `CreatedOn`, `ProcessedOn`, `AttemptCount`, `Errors`, `IsDead`, `NextAttemptOn`), a każda tabela inboxa ma `EventId` i `ProcessedOn`; zobacz [backend/messaging.md](backend/messaging.md).
 
@@ -246,24 +270,24 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 
 - Każdy job działa w obrazie `mcr.microsoft.com/dotnet/sdk:10.0` z serwisem `docker:dind`; `DOCKER_HOST=tcp://docker:2375` i `TESTCONTAINERS_HOST_OVERRIDE=docker` pozwalają Testcontainers uruchomić PostgreSQL wewnątrz runnera.
 - Stage `build` uruchamia `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` ma dwa joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking i Pawnshop.
+- Stage `test` ma dwa joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop i Casino.
 - Nie ma stage'u deploy, artefaktów ani cache'owania; obraz aplikacji istnieje tylko do użytku lokalnego ([`Backend/Dockerfile`](../../Backend/Dockerfile), budowany przez [`compose.yaml`](../../compose.yaml) z korzenia), pipeline go nie buduje ani nie publikuje.
 - [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) odwzorowuje te same trzy joby na GitHub Actions, wyzwalane pushami i pull requestami do `main`; joby testowe zależą od `build` przez `needs`, a `ubuntu-latest` ma preinstalowanego Dockera, więc serwis dind i override Testcontainers zostają tylko po stronie GitLaba.
 
 ## Stosowane wzorce projektowe
 
-- **Modular monolith.** Jeden deployowalny artefakt, siedem modułów z prywatnymi tabelami i prywatnymi `DbContext`ami, jeden współdzielony projekt kontraktów.
-- **CQRS w Auctions, CQS w pozostałych.** Auctions zapisuje przez EF Core i czyta Dapperem przez `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory, Warehouses, Banking i Pawnshop czytają przez EF Core z `AsNoTracking`.
-- **Transakcyjny outbox.** Siedem kopii `OutboxMessage` i `OutboxProcessor`, po jednej na moduł; wiersz zdarzenia commituje się razem ze zmianą stanu.
-- **Inbox (idempotentny konsument).** Tabele `ProcessedMessages` w Wallets, Auctions, Inventory, Warehouses, Banking i Pawnshop, sprawdzane przed zmianą i wstawiane razem z nią.
-- **Saga przez choreografię.** Tworzenie aukcji, rozliczenie aukcji, wycena magazynu, blokada wpisowego, rozliczenie magazynu, udzielenie pożyczki, pobranie pożyczki, płatność lombardu i wycena spawnu lombardu to łańcuchy zdarzeń między modułami bez orkiestratora; każdy skok to lokalna transakcja.
-- **Optymistyczna współbieżność.** `Version` to Guidowy token współbieżności na `Auction`, `Wallet`, `Item`, `WarehouseWar`, `Loan`, `Shop` i `StockItem`, generowany na nowo w każdej metodzie mutującej; konflikty ujawniają się jako 409 albo jako ponowiony cykl w tle.
+- **Modular monolith.** Jeden deployowalny artefakt, osiem modułów z prywatnymi tabelami i prywatnymi `DbContext`ami, jeden współdzielony projekt kontraktów.
+- **CQRS w Auctions, CQS w pozostałych.** Auctions zapisuje przez EF Core i czyta Dapperem przez `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory, Warehouses, Banking, Pawnshop i Casino czytają przez EF Core z `AsNoTracking`.
+- **Transakcyjny outbox.** Osiem kopii `OutboxMessage` i `OutboxProcessor`, po jednej na moduł; wiersz zdarzenia commituje się razem ze zmianą stanu.
+- **Inbox (idempotentny konsument).** Tabele `ProcessedMessages` w Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop i Casino, sprawdzane przed zmianą i wstawiane razem z nią.
+- **Saga przez choreografię.** Tworzenie aukcji, rozliczenie aukcji, wycena magazynu, blokada wpisowego, rozliczenie magazynu, udzielenie pożyczki, pobranie pożyczki, płatność lombardu, wycena spawnu lombardu i zakup żetonów kasyna to łańcuchy zdarzeń między modułami bez orkiestratora; każdy skok to lokalna transakcja.
+- **Optymistyczna współbieżność.** `Version` to Guidowy token współbieżności na `Auction`, `Wallet`, `Item`, `WarehouseWar`, `Loan`, `Shop`, `StockItem`, `ChipAccount`, `ChipPurchase` i `BlackjackHand`, generowany na nowo w każdej metodzie mutującej; konflikty ujawniają się jako 409 albo jako ponowiony cykl w tle.
 - **Globalny kontrakt błędów.** Wyjątki domenowe dziedziczą po `AppException(message, statusCode)` i są mapowane przez jeden `IExceptionHandler`.
 - **Pipeline walidacji.** Walidatory FluentValidation obok swoich komend, wykonywane przez behavior MediatR.
-- **Filtrowane indeksy unikalne.** Jedna otwarta aukcja na przedmiot (`"Status" IN (0, 1)`), jeden przedmiot na blokadę aukcji (`LockedForAuctionId`, nulle rozróżnialne), jedna otwarta pożyczka na gracza (`UserId` filtrowany po `"Status" IN (0, 1, 2, 3)`) i jeden żywy lombard na gracza (`UserId` filtrowany po `"Status" IN (0, 1)`); Wallets deklaruje też indeks unikalny na `UserId` filtrowany po `"IsSuspendedWallet" = false`, który nie dodaje żadnego ograniczenia, bo `UserId` jest już kluczem głównym.
+- **Filtrowane indeksy unikalne.** Jedna otwarta aukcja na przedmiot (`"Status" IN (0, 1)`), jeden przedmiot na blokadę aukcji (`LockedForAuctionId`, nulle rozróżnialne), jedna otwarta pożyczka na gracza (`UserId` filtrowany po `"Status" IN (0, 1, 2, 3)`), jeden żywy lombard na gracza (`UserId` filtrowany po `"Status" IN (0, 1)`), jeden zakup żetonów w locie i jedno aktywne rozdanie blackjacka na gracza (oba `UserId` filtrowane po `"Status" = 0`); Wallets deklaruje też indeks unikalny na `UserId` filtrowany po `"IsSuspendedWallet" = false`, który nie dodaje żadnego ograniczenia, bo `UserId` jest już kluczem głównym.
 - **Klucz zastępczy plus publiczny id.** `AuctionId`/`PublicAuctionId`, `Id`/`PublicUserId`, `Id`/`PublicItemId`; tylko Guidy opuszczają moduł.
 - **Kompozycja przez metody rozszerzające.** `Add<Module>Module` i `Map<Module>Endpoints` to jedyne punkty wejścia, które zna host.
-- **Odpytujące serwisy tła.** `OutboxProcessor` (siedem kopii) i `AuctionCloser` to `BackgroundService`y ze stałym opóźnieniem 3 s między cyklami; `WarehouseKeeper` działa z opóźnieniem 1 s, bo okna podbić są liczone w sekundach, a `BankKeeper` i `PawnshopKeeper` z opóźnieniem 5 s przy minutowych terminach pożyczek i interwałach spawnów.
+- **Odpytujące serwisy tła.** `OutboxProcessor` (osiem kopii) i `AuctionCloser` to `BackgroundService`y ze stałym opóźnieniem 3 s między cyklami; `WarehouseKeeper` działa z opóźnieniem 1 s, bo okna podbić są liczone w sekundach, a `BankKeeper`, `PawnshopKeeper` i `CasinoKeeper` z opóźnieniem 5 s przy minutowych terminach pożyczek, interwałach spawnów i timeoutach.
 
 ## Znane ograniczenia
 
@@ -280,12 +304,14 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 11. Lombard to kran, który crafting wzmacnia. Przedmiot wycofany w oknie zachowuje pełną cenę, a `Item.Craft` zamienia trzy przedmioty jednej rzadkości w jeden przedmiot następnej rzadkości z nowym losowaniem ceny, więc każdy stopień mnoży wartość około 3.3 raza. Właściciel zaakceptował to 2026-10-15, a ten sam kran już istnieje dla przedmiotów wygranych w wojnach magazynowych. Liczby są w [backend/pawnshop.md](backend/pawnshop.md#decyzje).
 12. Rozliczony towar lombardu nigdy nie jest usuwany. Bot `Pawn Clerk` dodaje około 2 880 wierszy na dobę do `PawnshopStockItems`, `GET /api/pawnshop` ogranicza rozliczoną historię do 20, a zamiatania retencji nie ma.
 13. Przepustowość outboxa ogranicza populację botów. Każdy `OutboxProcessor` dostarcza najwyżej 20 wierszy na odpytanie co 3 s, a bot `Pawn Clerk` zapisuje około 240 wierszy outboxa Pawnshop na godzinę, więc około 100 botów `Pawn Clerk` nasyca outbox Pawnshop.
+14. Wariancja kasyna tworzy pieniądze bez limitu. Średnio obie gry są zlewami (ruletka zwraca dokładnie 36/37, zmierzona przewaga blackjacka to około 1.1 % stawki), ale zakład prosty zwraca 36 razy stawkę, salda żetonów nic nie ogranicza i na endpointach gier nie ma rate limitera. Właściciel zaakceptował to 2026-10-17; liczby są w [backend/casino.md](backend/casino.md#gry-i-przewaga-kasyna).
+15. Bot kręcący ruletką bez przerwy może wygrać wyścig o `Version` z handlerem zakończenia zakupu przy wszystkich pięciu próbach dostarczenia, posyłając zakup do martwych z obciążonym portfelem i bez żetonów; naprawą jest wskrzeszenie martwego wiersza, bo spóźnione zakończenie jest tolerowane. Historia gier kasyna (spiny, zakłady, rozdania) też zostaje na zawsze, jak magazyn lombardu.
 
 ## Powiązane dokumenty
 
 - [README.md](README.md) - indeks dokumentacji i kolejność czytania.
 - [backend/README.md](backend/README.md) - projekty, uruchomienie, konfiguracja, pipeline żądania, kontrakt błędów, testy.
 - [backend/messaging.md](backend/messaging.md) - outbox, inbox, polityka ponowień, katalog zdarzeń.
-- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md) - rozdziały modułów.
+- [backend/auctions.md](backend/auctions.md), [backend/wallets.md](backend/wallets.md), [backend/inventory.md](backend/inventory.md), [backend/identity.md](backend/identity.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md) - rozdziały modułów.
 - [VISION.md](VISION.md) - docelowy system i planowane prace.
 - [adr/](adr) - rejestr decyzji architektonicznych.

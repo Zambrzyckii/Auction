@@ -1,0 +1,32 @@
+flowchart LR
+
+    Player["Player<br/>JWT"]:::client
+
+    subgraph Casino ["Modules.Casino"]
+        Purchase["POST /chips/purchases<br/>ChipPurchase Pending + outbox row, one save<br/>one purchase in flight per player"]:::casino
+        Account["ChipAccount.Balance<br/>Version concurrency token"]:::casino
+        Games["synchronous games, no outbox<br/>roulette: ICasinoRandom.Next(37), payout = stake * 36 / n<br/>blackjack: fresh six-deck ShoeCardSource, 3:2, stands on soft 17"]:::casino
+        CashOut["POST /chips/cashouts<br/>chip debit + CasinoCashOutEvent, one save"]:::casino
+        Keeper["CasinoKeeper, 5 s loop<br/>1. expire purchases older than PurchaseTimeout<br/>2. auto-stand hands idle past HandTimeout"]:::casino
+    end
+
+    subgraph Wallets ["Modules.Wallets"]
+        Debit["CasinoChipPurchaseRequestedEventHandler<br/>Wallet.Withdraw, no turnover gate"]:::wallets
+        Credit["CasinoCashOutEventHandler<br/>Wallet.ReceiveCasinoCashOut, builds no turnover"]:::wallets
+    end
+
+    Player --> Purchase
+    Player -->|"spins, hands, actions"| Games
+    Player --> CashOut
+    Purchase -.->|"CasinoChipPurchaseRequestedEvent"| Debit
+    Debit -.->|"Completed credits the chips, Rejected stores the reason;<br/>a late Completed after the keeper's expiry still credits"| Account
+    Games -->|"PlaceStake and Credit, one save with the game row"| Account
+    CashOut -.->|"CasinoCashOutEvent"| Credit
+    Keeper -->|"expires purchases, settles abandoned hands"| Account
+
+    style Casino fill:#ECFEFF,stroke:#0891B2,stroke-width:2px,color:#164E63
+    style Wallets fill:#F0FDF4,stroke:#059669,stroke-width:2px,color:#064E3B
+
+    classDef client  fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef casino  fill:#CFFAFE,stroke:#0891B2,stroke-width:2px,color:#164E63
+    classDef wallets fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B

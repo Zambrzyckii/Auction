@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/wallets.md](../../en/backend/wallets.md)
 
-`AuctionServer.Modules.Wallets` trzyma wirtualne pieniądze: jeden portfel na użytkownika z saldem dostępnym, saldem zablokowanym i licznikiem skumulowanego obrotu, tworzony automatycznie przy rejestracji, obciążany i zasilany przez zdarzenia aukcji i sklepu, przenoszony między graczami przez przelewy z append-only historią, blokowany jako wpisowe wojen magazynowych, uznawany i obciążany przez sagi banku, obciążany za zakupy w lombardzie, zasilany wypłatami lombardu oraz wystawiony przez cztery endpointy pod `/api/wallets`. Jego outbox odpowiada na zdarzenie innym zdarzeniem w pięciu sagach: blokady środków dla ofert, blokady wpisowego dla wojen magazynowych, udzielenia pożyczki, pobrania pożyczki i płatności lombardu.
+`AuctionServer.Modules.Wallets` trzyma wirtualne pieniądze: jeden portfel na użytkownika z saldem dostępnym, saldem zablokowanym i licznikiem skumulowanego obrotu, tworzony automatycznie przy rejestracji, obciążany i zasilany przez zdarzenia aukcji i sklepu, przenoszony między graczami przez przelewy z append-only historią, blokowany jako wpisowe wojen magazynowych, uznawany i obciążany przez sagi banku, obciążany za zakupy w lombardzie, zasilany wypłatami lombardu, wymieniany 1:1 na żetony kasyna i z powrotem oraz wystawiony przez cztery endpointy pod `/api/wallets`. Jego outbox odpowiada na zdarzenie innym zdarzeniem w sześciu sagach: blokady środków dla ofert, blokady wpisowego dla wojen magazynowych, udzielenia pożyczki, pobrania pożyczki, płatności lombardu i zakupu żetonów kasyna.
 
 ## Przegląd
 
@@ -10,7 +10,7 @@
 |---|---|
 | Endpointy | [`Presentation/WalletEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Presentation/WalletEndpoints.cs), rekordy żądań `AddFundsRequest`, `TransferRequest` |
 | Komendy i zapytania | `Application/Command/AddFunds/` i `Application/Command/TransferFunds/` (komenda, handler, walidator w każdym), `Application/Queries/GetWallet/` (zapytanie, handler, `WalletDto`), `Application/Queries/GetWalletTransfers/` (zapytanie, handler, `TransferDto`), `Application/Options/WalletsOptions.cs` |
-| Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs`, `FundsLockRequestedEventHandler.cs`, `FundsUnlockRequestedEventHandler.cs`, `WarehouseEntryLockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `LoanRequestedEventHandler.cs`, `LoanRepaymentRequestedEventHandler.cs`, `PawnshopPaymentRequestedEventHandler.cs`, `PawnshopPayoutEventHandler.cs` |
+| Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `BidPlacedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `ItemSoldToShopEventHandler.cs`, `FundsLockRequestedEventHandler.cs`, `FundsUnlockRequestedEventHandler.cs`, `WarehouseEntryLockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `LoanRequestedEventHandler.cs`, `LoanRepaymentRequestedEventHandler.cs`, `PawnshopPaymentRequestedEventHandler.cs`, `PawnshopPayoutEventHandler.cs`, `CasinoChipPurchaseRequestedEventHandler.cs`, `CasinoCashOutEventHandler.cs` |
 | Domena | [`Domain/Entities/Wallet.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Entities/Wallet.cs), `Domain/Entities/Transfer.cs`, [`Domain/Exceptions/WalletExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/Exceptions/WalletExceptions.cs) |
 | Infrastruktura | `Persistence/` (`WalletDbContext`, `WalletRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
 
@@ -42,7 +42,7 @@ Brak wartości zatrzymuje host (`Missing configuration value 'Wallets:StartingFu
 | `UserId` | `uuid` | klucz główny; równy `PublicUserId` z Identity z `UserRegisteredEvent` |
 | `AvailableFunds` | `numeric(18,2)` | pieniądze, którymi użytkownik może licytować |
 | `LockedFunds` | `numeric(18,2)` | pieniądze zatrzymane na aukcje, w których użytkownik aktualnie prowadzi |
-| `LifetimeTurnover` | `numeric(18,2)` | suma wszystkich wpływów z gospodarki, jakie kiedykolwiek otrzymał (sprzedaże do sklepu, rozliczenia aukcji, doładowania botów, wypłaty pożyczek, wypłaty lombardu); przelewy i środki startowe się nie liczą; nigdy nie maleje; bramkuje oferty banku i lokal lombardu. Nie da się uzupełnić historii wstecz, portfele sprzed migracji startują od 0 |
+| `LifetimeTurnover` | `numeric(18,2)` | suma wszystkich wpływów z gospodarki, jakie kiedykolwiek otrzymał (sprzedaże do sklepu, rozliczenia aukcji, doładowania botów, wypłaty pożyczek, wypłaty lombardu); przelewy, środki startowe i wypłaty z kasyna się nie liczą; nigdy nie maleje; bramkuje oferty banku i lokal lombardu. Nie da się uzupełnić historii wstecz, portfele sprzed migracji startują od 0 |
 | `IsSuspendedWallet` | `boolean` | ustawiane tylko przez `SuspendAccount`, które nie ma wywołań; indeks unikalny na `UserId` jest filtrowany po `"IsSuspendedWallet" = false`, ale `UserId` jest też kluczem głównym, więc ten indeks nie dodaje żadnego ograniczenia |
 | `Version` | `uuid` | token współbieżności, generowany na nowo przez każdą metodę pieniężną |
 
@@ -53,6 +53,7 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 | `AddFunds(amount)` | `amount > 0` | `AvailableFunds += amount`, `LifetimeTurnover += amount` (wpływ z gospodarki) |
 | `ReceiveTransfer(amount)` | `amount > 0` | `AvailableFunds += amount`, obrót nietknięty; woła ją wyłącznie `TransferFundsCommandHandler` |
 | `GrantStartingFunds(amount)` | `amount > 0` | `AvailableFunds += amount`, obrót nietknięty; woła ją wyłącznie `UserRegisteredEventHandler` |
+| `ReceiveCasinoCashOut(amount)` | `amount > 0` | `AvailableFunds += amount`, obrót nietknięty; woła ją wyłącznie `CasinoCashOutEventHandler`, więc hedgowana gra w kasynie nie może farmić bramek obrotu |
 | `DisburseLoan(principal, requiredTurnover)` | `LifetimeTurnover >= requiredTurnover`, potem reguły `Credit` | bramka obrotu i uznanie w jednym atomowym wywołaniu; wypłata wlicza się do obrotu |
 | `PayForPawnshop(amount, requiredTurnover)` | `LifetimeTurnover >= requiredTurnover`, potem reguły `Withdraw` | bramka obrotu i obciążenie w jednym atomowym wywołaniu, wszystko albo nic, obrót nietknięty |
 | `CollectUpTo(amount)` | `amount > 0` | obciąża o `min(AvailableFunds, amount)` i zwraca tę kwotę; zero jest legalnym wynikiem i nie rusza `Version`; zablokowane środki nigdy nie są pobierane |
@@ -107,6 +108,9 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 | konsumowane | `PawnshopPaymentRequestedEvent` | `PawnshopPaymentRequestedEventHandler` woła `PayForPawnshop(Amount, RequiredTurnover)` i odpowiada `PawnshopPaymentCompletedEvent` albo `PawnshopPaymentRejectedEvent` z komunikatem `InsufficientTurnoverException` lub `InsufficientFundsException`, wszystko w jednym `SaveUserFundsWithInboxAndOutboxAsync` |
 | konsumowane | `PawnshopPayoutEvent` | `PawnshopPayoutEventHandler` woła `AddFunds(Amount)` na portfelu właściciela, więc wypłaty budują obrót, zapisywane w jednym `SaveUserFundsWithInboxAsync` |
 | publikowane | `PawnshopPaymentCompletedEvent`, `PawnshopPaymentRejectedEvent` | zapisywane przez `PawnshopPaymentRequestedEventHandler` i konsumowane przez Pawnshop, które aktywuje lokal, instaluje bota albo odrzuca płatność |
+| konsumowane | `CasinoChipPurchaseRequestedEvent` | `CasinoChipPurchaseRequestedEventHandler` obciąża przez `Withdraw(Amount)` (bez bramki obrotu) i odpowiada `CasinoChipPurchaseCompletedEvent` albo `CasinoChipPurchaseRejectedEvent` z komunikatem `InsufficientFundsException`, wszystko w jednym `SaveUserFundsWithInboxAndOutboxAsync` |
+| konsumowane | `CasinoCashOutEvent` | `CasinoCashOutEventHandler` woła `ReceiveCasinoCashOut(Amount)`, więc wypłaty z kasyna nigdy nie budują obrotu; jedno `SaveUserFundsWithInboxAsync` |
+| publikowane | `CasinoChipPurchaseCompletedEvent`, `CasinoChipPurchaseRejectedEvent` | zapisywane przez `CasinoChipPurchaseRequestedEventHandler` i konsumowane przez Casino, które uznaje żetony albo odrzuca zakup |
 
 Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota też startuje ze `StartingFunds`; zdarzenie nie niesie roli.
 
@@ -119,7 +123,8 @@ Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota te
 - Środki są blokowane, zanim oferta zacznie prowadzić: każda blokada to wiersz `FundsLock` powiązany z jedną aukcją, `LockedFunds` zawsze równa się sumie aktywnych blokad, a zwolnienie i rozliczenie biorą kwotę z księgi, więc błędne zdarzenie nie przeniesie złej kwoty.
 - Przelew to jedna lokalna transakcja wewnątrz modułu (dwa śledzone portfele plus wiersz historii w jednym zapisie) i nie publikuje zdarzenia integracyjnego, bo żaden inny moduł na niego nie reaguje; historia jest append-only, a przelew wydaje wyłącznie `AvailableFunds`, nigdy pieniądze zablokowane.
 - Księga `FundsLock` jest celowo generyczna: jej kluczem jest dowolny `Guid`, więc wpisowe magazynów reużywa te same wiersze, to samo zdarzenie zwrotu i te same niezmienniki co oferty aukcyjne, a `SpendLock` to jedyna metoda, która niszczy pieniądze zamiast je przenosić.
-- Każdy wpływ przechodzi przez prywatny helper `Credit(amount, countsTowardTurnover)`, jedyne miejsce, w którym `LifetimeTurnover` może rosnąć. Trzy publiczne metody uznania niosą intencję w nazwach (`AddFunds` liczy, `ReceiveTransfer` i `GrantStartingFunds` nie), zamiast wystawiać boolean w miejscach wywołania. Obciążenia, zwolnienia blokad i reszta ze `SpendLock` nigdy nie dotykają licznika, bo obrót mierzy otrzymane pieniądze, a nie pieniądze przesuwane w kółko.
+- Każdy wpływ przechodzi przez prywatny helper `Credit(amount, countsTowardTurnover)`, jedyne miejsce, w którym `LifetimeTurnover` może rosnąć. Cztery publiczne metody uznania niosą intencję w nazwach (`AddFunds` liczy, `ReceiveTransfer`, `GrantStartingFunds` i `ReceiveCasinoCashOut` nie), zamiast wystawiać boolean w miejscach wywołania. Obciążenia, zwolnienia blokad i reszta ze `SpendLock` nigdy nie dotykają licznika, bo obrót mierzy otrzymane pieniądze, a nie pieniądze przesuwane w kółko.
+- `ReceiveCasinoCashOut` celowo nie buduje obrotu: gracz stawiający w ruletce jednocześnie na czerwone i czarne traci średnio tylko 1/37 obrotu, więc wypłaty liczone do obrotu sprzedawałyby bramkę 1M lombardu za około 28 tysięcy. Własny pieniądz gracza tylko wraca z żetonów, jak przy przelewie.
 - `CollectUpTo` działa z założenia w trybie best effort: bank musi zawsze dostać odpowiedź, nawet "pobrano zero", inaczej saga pożyczki utknęłaby w `CollectionPending`. Zerowe pobranie niczego nie zmienia, więc nie generuje na nowo `Version` i nie może przewrócić równoległej blokady środków.
 - `PayForPawnshop` jest lustrem `DisburseLoan`. Bramka obrotu i obciążenie to jedno wywołanie, więc odrzucony zakup niczego nie zmienia. Obciążenie idzie przez `Withdraw`, które nigdy nie dotyka `LifetimeTurnover`, więc wydatki w lombardzie nie mogą zniekształcić bramki. Wypłaty przychodzą przez `AddFunds` jak każdy inny wpływ z gospodarki, więc wliczają się do obrotu.
 
@@ -132,3 +137,4 @@ Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota te
 - [identity.md](identity.md) - rejestracja, która tworzy portfel.
 - [banking.md](banking.md) - oferty pożyczek, bramka obrotu i obie sagi banku.
 - [pawnshop.md](pawnshop.md) - płatności za lokal i boty oraz wypłaty, które rozlicza Wallets.
+- [casino.md](casino.md) - zakupy żetonów i wypłaty, które rozlicza Wallets.

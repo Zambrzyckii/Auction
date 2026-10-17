@@ -25,9 +25,9 @@ docker compose up -d                              # from the repo ROOT: API on :
 
 ### Tests
 
-Seven test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
+Eight test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
 
-- All seven mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
+- All eight mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
   `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull
   `postgres:latest`; each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
@@ -74,6 +74,9 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Banking \
 dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Pawnshop \
   --startup-project src/AuctionServer.Api --context PawnshopDbContext \
   --output-dir Infrastructure/Persistence/Migrations
+dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Casino \
+  --startup-project src/AuctionServer.Api --context CasinoDbContext \
+  --output-dir Infrastructure/Persistence/Migrations
 ```
 
 `--output-dir` matters for Auctions: the module has **two** migration folders. `Migrations/` holds the initial
@@ -93,7 +96,9 @@ share one schema. Inventory follows the same layout (snapshot `InventoryDbContex
 `CancellationReason`) under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
 `Initial_Pawnshop` (shops, outbox, inbox), `Add_Pawnshop_Bot` (bot snapshot columns), `Add_Pawnshop_Stock` (pending
 stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Precision` (`numeric(5,4)` for
-`PendingStockPayoutRate`). `Add_Auction_Status_And_Item_Snapshot` is the one
+`PendingStockPayoutRate`). Casino follows the same layout with `Initial_Casino` (chip accounts, purchases, outbox,
+inbox), `Add_Casino_Roulette` (spins plus the owned bets table) and `Add_Casino_Blackjack` (hands with `integer[]`
+card columns). `Add_Auction_Status_And_Item_Snapshot` is the one
 hand-edited migration: it adds `Status`, backfills it from `IsClosed` with raw SQL and only then drops the column,
 so pre-existing open auctions stay `Active` instead of falling back to the `Pending` default — keep that order if you
 ever regenerate it.
@@ -130,6 +135,10 @@ has the same fail-fast in `Program.cs`; `AddBankingModule` validates the values 
 The whole `Pawnshop` section (premises price and turnover threshold, stock sell delay, both timeouts and the bot tiers,
 bound to `PawnshopOptions`) has the same fail-fast in `Program.cs`. `AddPawnshopModule` validates the values (tiers
 non-empty with unique names and rarities, `PayoutRate` within `[0.01, 1)`, timeouts `>= 10 min`).
+The whole `Casino` section (purchase timeout, roulette and blackjack table limits and the hand timeout, bound to
+`CasinoOptions`) has the same fail-fast in `Program.cs`. `AddCasinoModule` validates the values (nested `Roulette`
+and `Blackjack` sections present, whole-number bet limits with `1 <= MinBet <= MaxBet`, `MaxBetsPerSpin` within
+`[1, 50]`, `HandTimeout` within `[30 s, 1 d]`, `PurchaseTimeout >= 10 min`).
 `Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
 it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app starts and `POST /api/users/bots` answers 401.
 
@@ -137,7 +146,7 @@ it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app 
 deliberately does not read them (dev-only values are inline there) and no code reads them either. Treat them as
 leftovers, not as the app's configuration path.
 
-The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all seven
+The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all eight
 contexts' migrations between `Build()` and `Run()`, before the outbox processors start. The flag defaults to
 `false` in `appsettings.json`, so `dotnet run` and the test fixtures keep migrating explicitly.
 
@@ -158,6 +167,7 @@ AuctionServer.Modules.Inventory    items/crafting/shop + bot-only mint and a con
 AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 5-10 s raise windows, settlement burns the final price; CQS — EF Core for both
 AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wallet turnover, grant and collection sagas with Wallets, one repayment at maturity pulled by BankKeeper, one-time overdue penalty with retries; CQS — EF Core for both
 AuctionServer.Modules.Pawnshop     pawnshop: turnover-gated premises, one bot slot on an upgrade-only ladder, goods spawned through Inventory quotes, auto-sold for a share of the price by PawnshopKeeper or withdrawn to Inventory at full price, CQS with EF Core for both
+AuctionServer.Modules.Casino       casino: wallet money exchanged 1:1 for chips through a purchase saga, european roulette and blackjack played synchronously on the chip balance, cash-outs excluded from turnover, CQS with EF Core for both
 AuctionServer.Shared.Integration   the only shared project: integration events + AppException
 ```
 
@@ -269,10 +279,22 @@ Active event flows:
   `POST /api/pawnshop/stock/{id}/withdraw` writes `PawnshopItemWithdrawnEvent` (Inventory mints the item through
   `Item.CreateWithPrice`). The window closes at `SellAfter` and the item's `Version` token settles a withdrawal racing
   the sale. Details: `docs/en/backend/pawnshop.md`.
+- **Casino chip saga** (request/reply with Wallets): `PurchaseChipsCommandHandler` stores a `Pending` `ChipPurchase`
+  (filtered unique index, one purchase in flight per player; the `ChipAccount` is created with the first purchase)
+  plus `CasinoChipPurchaseRequestedEvent` in one save → Wallets debits through `Wallet.Withdraw` (no turnover gate)
+  and replies `CasinoChipPurchaseCompletedEvent` or `CasinoChipPurchaseRejectedEvent` → Casino credits the chips or
+  stores the reason. `ChipPurchase.Complete` is legal from `Pending` and from `Expired`, so a completion arriving
+  after `CasinoKeeper` (5 s loop, two sweeps: expire stale purchases, auto-stand abandoned blackjack hands) expired
+  the purchase still credits the chips — a deliberate departure from the pawnshop late-reply rule — and a reject on
+  `Expired` is a silent no-op. Gameplay (roulette spins, blackjack hands) is synchronous on `ChipAccount.Balance`
+  under its `Version` token and publishes nothing; `POST /api/casino/chips/cashouts` debits the chips and writes
+  `CasinoCashOutEvent` in one save, and Wallets credits through `Wallet.ReceiveCasinoCashOut`, which never builds
+  `LifetimeTurnover`. Details: `docs/en/backend/casino.md`.
 
 Delivery is at-least-once, so every cross-module consumer is idempotent via an **inbox** — one table per consuming
 module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`,
-`WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`), event id as PK,
+`WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`,
+`CasinoProcessedMessages`), event id as PK,
 `ProcessedMessage` entity under `Infrastructure/Inbox/`. The handler checks the inbox first (`WasEventProcessedAsync`)
 and silently returns on a replay; entity changes and the inbox row are still saved in one `SaveChangesAsync`
 (`SaveChangesWithInboxAsync`, or `SaveChangesWithInboxAndOutboxAsync` when the handler also replies), so the PK
@@ -281,7 +303,7 @@ the backstop for the race where two deliveries pass the check concurrently. All 
 `AuctionFinishedEventHandler`, `ItemSoldToShopEventHandler`, `FundsLockRequestedEventHandler`,
 `FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`,
 `LoanRequestedEventHandler`, `LoanRepaymentRequestedEventHandler`, `PawnshopPaymentRequestedEventHandler`,
-`PawnshopPayoutEventHandler`;
+`PawnshopPayoutEventHandler`, `CasinoChipPurchaseRequestedEventHandler`, `CasinoCashOutEventHandler`;
 Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `FundsLockedEventHandler`, `FundsLockRejectedEventHandler`; Inventory: `ItemLockRequestedEventHandler`,
 `AuctionFinishedEventHandler`, `AuctionSettledEventHandler`, `AuctionCancelledEventHandler`,
@@ -289,7 +311,8 @@ Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `PawnshopItemWithdrawnEventHandler`; Warehouses: `WarehouseStockedEventHandler`,
 `WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`; Banking: `LoanApprovedEventHandler`,
 `LoanRejectedEventHandler`, `LoanRepaymentCollectedEventHandler`; Pawnshop: `PawnshopPaymentCompletedEventHandler`,
-`PawnshopPaymentRejectedEventHandler`, `PawnshopStockedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
+`PawnshopPaymentRejectedEventHandler`, `PawnshopStockedEventHandler`; Casino:
+`CasinoChipPurchaseCompletedEventHandler`, `CasinoChipPurchaseRejectedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
 unique index instead. Handlers deliberately do **not** catch illegal state transitions —
 `InvalidAuctionStateTransitionException` (409), `ItemNotLockedException`, the 404 from `GetItemLockedForAuctionAsync`
 — so no inbox row is written, the outbox row retries and finally dead-letters with the reason in `Errors`. A visible
@@ -297,10 +320,10 @@ failure beats a silent skip.
 
 Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
 exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the poll query. The
-outbox entity and processor exist as seven separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
-Banking, Pawnshop) — a change to one must be mirrored in the others.
+outbox entity and processor exist as eight separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
+Banking, Pawnshop, Casino) — a change to one must be mirrored in the others.
 
-Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Banking/`, `Funds/`,
+Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Banking/`, `Casino/`, `Funds/`,
 `Items/`, `Pawnshop/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
 `Type` column and the `IntegrationEventTypes` registry use the simple type name, so the folders are purely for
 readability — moving an event never touches stored rows.
@@ -380,12 +403,16 @@ the repository translates the unique violation into `LoanAlreadyActiveException`
 Pawnshop enforces one live pawnshop per player with `HasIndex(UserId).IsUnique().HasFilter("\"Status\" IN (0, 1)")`,
 so `ShopStatus` (`PendingPayment=0, Active=1, Rejected=2`) must never be renumbered, and the repository translates the
 violation into `PawnshopAlreadyOwnedException` (409).
+Casino uses the idiom twice: one chip purchase in flight and one active blackjack hand per player, both
+`HasIndex(UserId).IsUnique().HasFilter("\"Status\" = 0")`, so `ChipPurchaseStatus.Pending` and
+`BlackjackHandStatus.InProgress` must stay `0`, and the repository translates the violations into
+`PurchaseInProgressException` and `HandInProgressException` (409).
 
 ### Entity configuration
 
-All seven contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
+All eight contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
 `IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`, `BankingDbContext.cs`,
-`PawnshopDbContext.cs:17`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
+`PawnshopDbContext.cs:17`, `CasinoDbContext.cs`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
 (Auctions keeps them in `Infrastructure/Configurations/`, the other modules in `Infrastructure/Configuration/`).
 
 Auctions keys: the primary key is the `int AuctionId` identity column (`AuctionConfiguration.cs:11`), and
@@ -404,8 +431,8 @@ Where the documentation, the README roadmap and the code disagree, the code wins
 **Implemented** (register → wallet via outbox → login/JWT → funds → create auction as `Pending` → item locked
 in Inventory → auction activated with item snapshot → pessimistic bid confirmed by a funds lock (anti-sniping) → background auto-close →
 exactly-once settlement via inbox → `AuctionSettledEvent` → item transferred to the winner, or unlocked when
-nobody bid): all seven modules are fully wired — authentication, seven outbox processors, `AuctionCloser`,
-`WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
+nobody bid): all eight modules are fully wired — authentication, eight outbox processors, `AuctionCloser`,
+`WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper`, `CasinoKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
 included — was verified manually end-to-end on 2026-10-14 against the compose stack: insufficient-funds rejection,
 409 on a second in-flight bid, confirm, release of the previous leader's lock, close, settlement by consuming the
 winner's lock and the item transfer, with zero dead or pending outbox rows afterwards.
@@ -448,6 +475,19 @@ same day with 33 checks (premises debit with turnover untouched, rejection for a
 pawnshop and on a same-tier bot, spawns with the configured window, 404 for a foreign withdrawal, the withdrawn item
 in Inventory at the stock price, the automatic payout with wallet and turnover grown by the same sum) and zero dead
 or stale pending rows across all seven outboxes.
+
+On 2026-10-17 the eighth module, Casino, landed. Wallet money is exchanged 1:1 for casino chips through an
+asynchronous purchase saga with Wallets (`Wallet.Withdraw`, no turnover gate; one purchase in flight per player;
+stale purchases expired by `CasinoKeeper`, and a late completion still credits the chips). Gameplay is synchronous
+on the chip balance: european roulette (up to `MaxBetsPerSpin` bets, payout `stake * 36 / covered pockets`, zero
+loses outside bets, pocket drawn through `ICasinoRandom`) and blackjack (Hit/Stand/Double, 3:2 naturals, dealer
+stands on soft 17 and peeks, fresh six-deck shoe drawn by `ShoeCardSource` without persisting card order, abandoned
+hands auto-stood by the keeper). Cash-outs flow through the new `Wallet.ReceiveCasinoCashOut`, which never builds
+`LifetimeTurnover`. Eight endpoints under `/api/casino`, four events, seven tables; the measured blackjack edge is
+1.084 % of the initial stake (10M seeded hands anchored by the 4608/97032 natural probability). The chapter is
+`docs/en/backend/casino.md`. It was probed live against the compose stack on 2026-10-17 with 34 checks (free entry,
+purchase saga with a rejection, hedged spin, hidden hole card in the raw JSON, keeper auto-stand of an abandoned
+hand, cash-out without turnover) and zero dead or stale pending rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
 column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `LoginCommandHandler.cs:34`, the
