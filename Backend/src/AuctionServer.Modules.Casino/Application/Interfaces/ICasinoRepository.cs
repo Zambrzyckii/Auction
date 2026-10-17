@@ -12,7 +12,9 @@ public interface ICasinoRepository
     Task<ChipPurchase> GetPurchaseByPublicIdAsync(Guid publicPurchaseId, CancellationToken token);
     Task<ChipPurchase?> GetLatestPurchaseReadOnlyAsync(Guid userId, CancellationToken token);
     Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
+    Task<List<RouletteSpin>> GetRecentSpinsReadOnlyAsync(Guid userId, int take, CancellationToken token);
     void AddAccount(ChipAccount account);
+    Task SaveNewSpinAsync(RouletteSpin spin, CancellationToken token);
     Task SaveNewPurchaseWithOutboxAsync(ChipPurchase purchase, OutboxMessage outboxMessage, CancellationToken token);
     Task SaveChangesWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
     Task SaveChangesWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token);

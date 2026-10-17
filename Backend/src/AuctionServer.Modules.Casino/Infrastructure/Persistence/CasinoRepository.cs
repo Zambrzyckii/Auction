@@ -44,7 +44,21 @@ public sealed class CasinoRepository(CasinoDbContext context) : ICasinoRepositor
     public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token) =>
         await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
 
+    public async Task<List<RouletteSpin>> GetRecentSpinsReadOnlyAsync(Guid userId, int take, CancellationToken token) =>
+        await context.RouletteSpins.AsNoTracking()
+            .Where(s => s.UserId == userId)
+            .OrderByDescending(s => s.PlacedOn)
+            .ThenByDescending(s => s.Id)
+            .Take(take)
+            .ToListAsync(token);
+
     public void AddAccount(ChipAccount account) => context.ChipAccounts.Add(account);
+
+    public async Task SaveNewSpinAsync(RouletteSpin spin, CancellationToken token)
+    {
+        context.RouletteSpins.Add(spin);
+        await context.SaveChangesAsync(token);
+    }
 
     public async Task SaveNewPurchaseWithOutboxAsync(ChipPurchase purchase, OutboxMessage outboxMessage, CancellationToken token)
     {

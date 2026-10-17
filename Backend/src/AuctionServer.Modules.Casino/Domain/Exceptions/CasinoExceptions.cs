@@ -23,6 +23,9 @@ public static class CasinoExceptions
     public sealed class InvalidPurchaseStateTransitionException(ChipPurchaseStatus status)
         : AppException($"Chip purchase in status {status} cannot accept this transition", 409);
 
+    public sealed class InvalidRouletteBetsException(string message)
+        : AppException(message, 400);
+
     public sealed class EventAlreadyProcessedException()
         : AppException("Event was already processed", 409);
 }

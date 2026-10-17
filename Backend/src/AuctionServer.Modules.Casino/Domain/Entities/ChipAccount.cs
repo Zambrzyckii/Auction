@@ -23,6 +23,23 @@ public sealed class ChipAccount
         Version = Guid.NewGuid();
     }
 
+    public void PlaceStake(decimal amount)
+    {
+        if (amount <= 0) throw new CasinoExceptions.InvalidChipAmountException();
+        if (amount > Balance) throw new CasinoExceptions.InsufficientChipsException();
+
+        Balance -= amount;
+        Version = Guid.NewGuid();
+    }
+
+    public void Credit(decimal amount)
+    {
+        if (amount <= 0) throw new CasinoExceptions.InvalidChipAmountException();
+
+        Balance += amount;
+        Version = Guid.NewGuid();
+    }
+
     public void CashOut(decimal amount)
     {
         if (amount <= 0 || decimal.Round(amount, 2) != amount) throw new CasinoExceptions.InvalidChipAmountException();

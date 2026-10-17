@@ -110,6 +110,44 @@ namespace AuctionServer.Modules.Casino.Infrastructure.Persistence.Migrations
                     b.ToTable("CasinoChipPurchases", (string)null);
                 });
 
+            modelBuilder.Entity("AuctionServer.Modules.Casino.Domain.Entities.RouletteSpin", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("PlacedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("Pocket")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("PublicSpinId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TotalPayout")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalStake")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublicSpinId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "PlacedOn");
+
+                    b.ToTable("CasinoRouletteSpins", (string)null);
+                });
+
             modelBuilder.Entity("AuctionServer.Modules.Casino.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
@@ -160,6 +198,46 @@ namespace AuctionServer.Modules.Casino.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CasinoOutboxMessages", (string)null);
+                });
+
+            modelBuilder.Entity("AuctionServer.Modules.Casino.Domain.Entities.RouletteSpin", b =>
+                {
+                    b.OwnsMany("AuctionServer.Modules.Casino.Domain.Entities.RouletteBet", "Bets", b1 =>
+                        {
+                            b1.Property<long>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("bigint");
+
+                            NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<long>("Id"));
+
+                            b1.Property<decimal>("Payout")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)");
+
+                            b1.Property<short?>("Selection")
+                                .HasColumnType("smallint");
+
+                            b1.Property<long>("SpinId")
+                                .HasColumnType("bigint");
+
+                            b1.Property<decimal>("Stake")
+                                .HasPrecision(18, 2)
+                                .HasColumnType("numeric(18,2)");
+
+                            b1.Property<int>("Type")
+                                .HasColumnType("integer");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("SpinId");
+
+                            b1.ToTable("CasinoRouletteBets", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("SpinId");
+                        });
+
+                    b.Navigation("Bets");
                 });
 #pragma warning restore 612, 618
         }

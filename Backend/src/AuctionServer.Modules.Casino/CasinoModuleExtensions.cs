@@ -2,6 +2,7 @@ using AuctionServer.Modules.Casino.Application.Interfaces;
 using AuctionServer.Modules.Casino.Application.Options;
 using AuctionServer.Modules.Casino.Infrastructure.Background;
 using AuctionServer.Modules.Casino.Infrastructure.Persistence;
+using AuctionServer.Modules.Casino.Infrastructure.Random;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +21,7 @@ public static class CasinoModuleExtensions
         services.AddHostedService<OutboxProcessor>();
         services.AddHostedService<CasinoKeeper>();
         services.AddSingleton(options);
+        services.AddSingleton<ICasinoRandom, CasinoRandom>();
         services.AddScoped<ICasinoRepository, CasinoRepository>();
 
         return services;

@@ -9,6 +9,7 @@ public sealed class CasinoDbContext(DbContextOptions<CasinoDbContext> options) :
 {
     public DbSet<ChipAccount> ChipAccounts => Set<ChipAccount>();
     public DbSet<ChipPurchase> ChipPurchases => Set<ChipPurchase>();
+    public DbSet<RouletteSpin> RouletteSpins => Set<RouletteSpin>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
 

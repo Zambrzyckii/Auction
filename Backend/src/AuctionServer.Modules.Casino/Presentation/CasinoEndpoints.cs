@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using AuctionServer.Modules.Casino.Application.Command.CashOutChips;
 using AuctionServer.Modules.Casino.Application.Command.PurchaseChips;
+using AuctionServer.Modules.Casino.Application.Command.SpinRoulette;
 using AuctionServer.Modules.Casino.Application.Queries.GetCasino;
+using AuctionServer.Modules.Casino.Application.Queries.GetRouletteSpins;
 using AuctionServer.Modules.Casino.Presentation.Request;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -35,6 +37,20 @@ public static class CasinoEndpoints
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new CashOutChipsCommand(userId, request.Amount));
             return Results.Accepted();
+        }).RequireAuthorization();
+
+        group.MapPost("/roulette/spins", async (SpinRouletteRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new SpinRouletteCommand(userId, request.Bets));
+            return Results.Ok(result);
+        }).RequireAuthorization();
+
+        group.MapGet("/roulette/spins", async (ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new GetRouletteSpinsQuery(userId));
+            return Results.Ok(result);
         }).RequireAuthorization();
 
         return app;
