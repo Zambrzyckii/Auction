@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using AuctionServer.Modules.Casino.Application.Command.CashOutChips;
 using AuctionServer.Modules.Casino.Application.Command.PurchaseChips;
+using AuctionServer.Modules.Casino.Application.Command.ActOnBlackjackHand;
 using AuctionServer.Modules.Casino.Application.Command.SpinRoulette;
+using AuctionServer.Modules.Casino.Application.Command.StartBlackjackHand;
+using AuctionServer.Modules.Casino.Application.Queries.GetBlackjackHands;
 using AuctionServer.Modules.Casino.Application.Queries.GetCasino;
 using AuctionServer.Modules.Casino.Application.Queries.GetRouletteSpins;
 using AuctionServer.Modules.Casino.Presentation.Request;
@@ -50,6 +53,28 @@ public static class CasinoEndpoints
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var result = await sender.Send(new GetRouletteSpinsQuery(userId));
+            return Results.Ok(result);
+        }).RequireAuthorization();
+
+        group.MapPost("/blackjack/hands", async (StartBlackjackHandRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new StartBlackjackHandCommand(userId, request.Stake));
+            return Results.Created("/api/casino", result);
+        }).RequireAuthorization();
+
+        group.MapPost("/blackjack/hands/{publicHandId:guid}/actions",
+            async (Guid publicHandId, BlackjackActionRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new ActOnBlackjackHandCommand(userId, publicHandId, request.Action));
+            return Results.Ok(result);
+        }).RequireAuthorization();
+
+        group.MapGet("/blackjack/hands", async (ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new GetBlackjackHandsQuery(userId));
             return Results.Ok(result);
         }).RequireAuthorization();
 

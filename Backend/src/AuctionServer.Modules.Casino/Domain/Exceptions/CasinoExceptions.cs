@@ -26,6 +26,15 @@ public static class CasinoExceptions
     public sealed class InvalidRouletteBetsException(string message)
         : AppException(message, 400);
 
+    public sealed class InvalidBlackjackStakeException(string message)
+        : AppException(message, 400);
+
+    public sealed class HandNotFoundException()
+        : AppException("Blackjack hand was not found", 404);
+
+    public sealed class HandInProgressException()
+        : AppException("Another blackjack hand is already in progress", 409);
+
     public sealed class InvalidBlackjackActionException(string message)
         : AppException(message, 409);
 

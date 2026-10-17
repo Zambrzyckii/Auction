@@ -10,8 +10,20 @@ public record CasinoDto(
     decimal LifetimeBought,
     decimal LifetimeCashedOut,
     ChipPurchaseDto? LatestPurchase,
+    ActiveBlackjackHandDto? ActiveBlackjackHand,
     RouletteLimitsDto Roulette,
     BlackjackLimitsDto Blackjack);
+
+public record ActiveBlackjackHandDto(
+    Guid PublicHandId,
+    decimal Stake,
+    bool Doubled,
+    IReadOnlyList<int> PlayerCards,
+    int PlayerTotal,
+    bool PlayerIsSoft,
+    IReadOnlyList<int> VisibleDealerCards,
+    DateTime StartedOn,
+    DateTime LastActionOn);
 
 public record ChipPurchaseDto(
     Guid PublicPurchaseId,

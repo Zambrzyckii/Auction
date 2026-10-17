@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Casino.Application.Interfaces;
 using AuctionServer.Modules.Casino.Domain.Entities;
+using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Domain.Exceptions;
 using AuctionServer.Modules.Casino.Infrastructure.Inbox;
 using AuctionServer.Modules.Casino.Infrastructure.Outbox;
@@ -52,6 +53,27 @@ public sealed class CasinoRepository(CasinoDbContext context) : ICasinoRepositor
             .Take(take)
             .ToListAsync(token);
 
+    public async Task<BlackjackHand> GetHandByPublicIdAsync(Guid publicHandId, CancellationToken token)
+    {
+        var hand = await context.BlackjackHands.SingleOrDefaultAsync(h => h.PublicHandId == publicHandId, token);
+
+        if (hand is null) throw new CasinoExceptions.HandNotFoundException();
+
+        return hand;
+    }
+
+    public async Task<BlackjackHand?> GetActiveHandReadOnlyAsync(Guid userId, CancellationToken token) =>
+        await context.BlackjackHands.AsNoTracking()
+            .SingleOrDefaultAsync(h => h.UserId == userId && h.Status == BlackjackHandStatus.InProgress, token);
+
+    public async Task<List<BlackjackHand>> GetRecentCompletedHandsReadOnlyAsync(Guid userId, int take, CancellationToken token) =>
+        await context.BlackjackHands.AsNoTracking()
+            .Where(h => h.UserId == userId && h.Status == BlackjackHandStatus.Completed)
+            .OrderByDescending(h => h.StartedOn)
+            .ThenByDescending(h => h.Id)
+            .Take(take)
+            .ToListAsync(token);
+
     public void AddAccount(ChipAccount account) => context.ChipAccounts.Add(account);
 
     public async Task SaveNewSpinAsync(RouletteSpin spin, CancellationToken token)
@@ -59,6 +81,22 @@ public sealed class CasinoRepository(CasinoDbContext context) : ICasinoRepositor
         context.RouletteSpins.Add(spin);
         await context.SaveChangesAsync(token);
     }
+
+    public async Task SaveNewHandAsync(BlackjackHand hand, CancellationToken token)
+    {
+        context.BlackjackHands.Add(hand);
+
+        try
+        {
+            await context.SaveChangesAsync(token);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new CasinoExceptions.HandInProgressException();
+        }
+    }
+
+    public async Task SaveChangesAsync(CancellationToken token) => await context.SaveChangesAsync(token);
 
     public async Task SaveNewPurchaseWithOutboxAsync(ChipPurchase purchase, OutboxMessage outboxMessage, CancellationToken token)
     {

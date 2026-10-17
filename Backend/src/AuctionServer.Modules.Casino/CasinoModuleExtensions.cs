@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Casino.Application.Interfaces;
 using AuctionServer.Modules.Casino.Application.Options;
+using AuctionServer.Modules.Casino.Domain.Cards;
 using AuctionServer.Modules.Casino.Infrastructure.Background;
 using AuctionServer.Modules.Casino.Infrastructure.Persistence;
 using AuctionServer.Modules.Casino.Infrastructure.Random;
@@ -22,6 +23,7 @@ public static class CasinoModuleExtensions
         services.AddHostedService<CasinoKeeper>();
         services.AddSingleton(options);
         services.AddSingleton<ICasinoRandom, CasinoRandom>();
+        services.AddSingleton<ICardSource, ShoeCardSource>();
         services.AddScoped<ICasinoRepository, CasinoRepository>();
 
         return services;

@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Casino.Domain.Entities;
 using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Infrastructure.Persistence;
+using AuctionServer.Modules.Casino.Tests.Domain.Cards;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -58,6 +59,22 @@ public sealed class CasinoPostgresFixture : IAsyncLifetime
         context.ChipPurchases.Add(purchase);
         await context.SaveChangesAsync();
         return purchase;
+    }
+
+    public async Task<BlackjackHand> SeedHandAsync(Guid userId, params string[] cards)
+    {
+        await using var context = CreateContext();
+        var script = cards.Length == 0 ? ["5H", "10S", "6D", "7C"] : cards;
+        var hand = BlackjackHand.Start(userId, 100m, new ScriptedCardSource(script), DateTime.UtcNow);
+        context.BlackjackHands.Add(hand);
+        await context.SaveChangesAsync();
+        return hand;
+    }
+
+    public async Task<BlackjackHand> GetHandAsync(Guid publicHandId)
+    {
+        await using var context = CreateContext();
+        return await context.BlackjackHands.AsNoTracking().SingleAsync(h => h.PublicHandId == publicHandId);
     }
 
     public async Task<ChipAccount> GetAccountAsync(Guid userId)

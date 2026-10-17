@@ -27,6 +27,7 @@ public sealed class BlackjackHand
     private List<Card> DealtCards => PlayerCards.Concat(DealerCards).Select(c => new Card(c)).ToList();
 
     public HandValue PlayerValue => HandValue.Of(Player);
+    public HandValue DealerValue => HandValue.Of(Dealer);
 
     public IReadOnlyList<int> VisibleDealerCards =>
         Status == BlackjackHandStatus.Completed ? DealerCards : DealerCards.Take(1).ToList();

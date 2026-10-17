@@ -23,6 +23,77 @@ namespace AuctionServer.Modules.Casino.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AuctionServer.Modules.Casino.Domain.Entities.BlackjackHand", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("AutoStood")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("CompletedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<int>>("DealerCards")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<bool>("Doubled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastActionOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("Outcome")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("Payout")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.PrimitiveCollection<List<int>>("PlayerCards")
+                        .IsRequired()
+                        .HasColumnType("integer[]");
+
+                    b.Property<Guid>("PublicHandId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Stake")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("StartedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublicHandId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("Status", "LastActionOn");
+
+                    b.HasIndex("UserId", "StartedOn");
+
+                    b.ToTable("CasinoBlackjackHands", (string)null);
+                });
+
             modelBuilder.Entity("AuctionServer.Modules.Casino.Domain.Entities.ChipAccount", b =>
                 {
                     b.Property<int>("Id")
