@@ -8,6 +8,10 @@ using AuctionServer.Modules.Banking;
 using AuctionServer.Modules.Banking.Application.Options;
 using AuctionServer.Modules.Banking.Infrastructure.Persistence;
 using AuctionServer.Modules.Banking.Presentation;
+using AuctionServer.Modules.Casino;
+using AuctionServer.Modules.Casino.Application.Options;
+using AuctionServer.Modules.Casino.Infrastructure.Persistence;
+using AuctionServer.Modules.Casino.Presentation;
 using AuctionServer.Api.Infrastructure;
 using AuctionServer.Api.Infrastructure.Authentication;
 using AuctionServer.Api.Infrastructure.Health;
@@ -44,6 +48,7 @@ var starterItems = builder.Configuration.GetSection("Inventory:StarterItems").Ge
 var warehousesOptions = builder.Configuration.GetSection("Warehouses").Get<WarehousesOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Warehouses'");
 var bankingOptions = builder.Configuration.GetSection("Banking").Get<BankingOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Banking'");
 var pawnshopOptions = builder.Configuration.GetSection("Pawnshop").Get<PawnshopOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Pawnshop'");
+var casinoOptions = builder.Configuration.GetSection("Casino").Get<CasinoOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Casino'");
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -115,6 +120,13 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
 });
 
+builder.Services.AddValidatorsFromAssembly(typeof(CasinoModuleExtensions).Assembly);
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(CasinoModuleExtensions).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
+});
+
 builder.Services.AddAuctionModule(connectionString!);
 builder.Services.AddWalletsModule(connectionString!, startingFunds);
 builder.Services.AddIdentityModule(connectionString!);
@@ -122,6 +134,7 @@ builder.Services.AddInventoryModule(connectionString!, starterItems);
 builder.Services.AddWarehousesModule(connectionString!, warehousesOptions);
 builder.Services.AddBankingModule(connectionString!, bankingOptions);
 builder.Services.AddPawnshopModule(connectionString!, pawnshopOptions);
+builder.Services.AddCasinoModule(connectionString!, casinoOptions);
 builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
@@ -146,6 +159,7 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await scope.ServiceProvider.GetRequiredService<WarehouseDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<BankingDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<PawnshopDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<CasinoDbContext>().Database.MigrateAsync();
 }
 
 app.UseExceptionHandler();
@@ -162,6 +176,7 @@ app.MapIdentityEndpoints();
 app.MapWarehouseEndpoints();
 app.MapBankEndpoints();
 app.MapPawnshopEndpoints();
+app.MapCasinoEndpoints();
 app.Run();
 
 public partial class Program;

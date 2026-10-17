@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AuctionServer.Shared.Integration.Events.Auctions;
 using AuctionServer.Shared.Integration.Events.Banking;
+using AuctionServer.Shared.Integration.Events.Casino;
 using AuctionServer.Shared.Integration.Events.Funds;
 using AuctionServer.Shared.Integration.Events.Items;
 using AuctionServer.Shared.Integration.Events.Pawnshop;
@@ -45,7 +46,11 @@ public static class IntegrationEventTypes
         [nameof(PawnshopStockRequestedEvent)] = typeof(PawnshopStockRequestedEvent),
         [nameof(PawnshopStockedEvent)] = typeof(PawnshopStockedEvent),
         [nameof(PawnshopPayoutEvent)] = typeof(PawnshopPayoutEvent),
-        [nameof(PawnshopItemWithdrawnEvent)] = typeof(PawnshopItemWithdrawnEvent)
+        [nameof(PawnshopItemWithdrawnEvent)] = typeof(PawnshopItemWithdrawnEvent),
+        [nameof(CasinoChipPurchaseRequestedEvent)] = typeof(CasinoChipPurchaseRequestedEvent),
+        [nameof(CasinoChipPurchaseCompletedEvent)] = typeof(CasinoChipPurchaseCompletedEvent),
+        [nameof(CasinoChipPurchaseRejectedEvent)] = typeof(CasinoChipPurchaseRejectedEvent),
+        [nameof(CasinoCashOutEvent)] = typeof(CasinoCashOutEvent)
     };
 
     public static INotification Deserialize(string type, string content)

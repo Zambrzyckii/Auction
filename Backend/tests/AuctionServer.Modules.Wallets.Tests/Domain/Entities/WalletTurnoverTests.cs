@@ -70,6 +70,37 @@ public class WalletTurnoverTests
     }
 
     [Fact]
+    public void ReceiveCasinoCashOut_ShouldIncreaseBalanceButNotTurnover()
+    {
+        var wallet = CreateWallet();
+
+        wallet.ReceiveCasinoCashOut(487.5m);
+
+        Assert.Equal(487.5m, wallet.AvailableFunds);
+        Assert.Equal(0m, wallet.LifetimeTurnover);
+    }
+
+    [Fact]
+    public void ReceiveCasinoCashOut_WhenAmountIsNotPositive_ShouldThrowInvalidAmountException()
+    {
+        var wallet = CreateWallet();
+
+        Assert.Throws<WalletExceptions.InvalidAmountException>(() => wallet.ReceiveCasinoCashOut(0m));
+        Assert.Equal(0m, wallet.AvailableFunds);
+    }
+
+    [Fact]
+    public void ReceiveCasinoCashOut_ShouldRegenerateVersion()
+    {
+        var wallet = CreateWallet();
+        var versionBefore = wallet.Version;
+
+        wallet.ReceiveCasinoCashOut(100m);
+
+        Assert.NotEqual(versionBefore, wallet.Version);
+    }
+
+    [Fact]
     public void Withdraw_ShouldNotChangeTurnover()
     {
         var wallet = CreateWallet();

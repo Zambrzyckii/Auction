@@ -22,6 +22,8 @@ public sealed class Wallet
     public void ReceiveTransfer(decimal amount) => Credit(amount, countsTowardTurnover: false);
     public void GrantStartingFunds(decimal amount) => Credit(amount, countsTowardTurnover: false);
 
+    public void ReceiveCasinoCashOut(decimal amount) => Credit(amount, countsTowardTurnover: false);
+
     public void DisburseLoan(decimal principal, decimal requiredTurnover)
     {
         if (requiredTurnover > LifetimeTurnover)

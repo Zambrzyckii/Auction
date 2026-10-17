@@ -28,6 +28,7 @@
     <ProjectReference Include="..\AuctionServer.Modules.Warehouses\AuctionServer.Modules.Warehouses.csproj" />
     <ProjectReference Include="..\AuctionServer.Modules.Banking\AuctionServer.Modules.Banking.csproj" />
     <ProjectReference Include="..\AuctionServer.Modules.Pawnshop\AuctionServer.Modules.Pawnshop.csproj" />
+    <ProjectReference Include="..\AuctionServer.Modules.Casino\AuctionServer.Modules.Casino.csproj" />
   </ItemGroup>
 
 </Project>
