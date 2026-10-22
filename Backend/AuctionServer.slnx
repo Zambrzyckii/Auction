@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="src/AuctionServer.Api/AuctionServer.Api.csproj" />
+  <Project Path="tests/AuctionServer.Api.Tests/AuctionServer.Api.Tests.csproj" />
   <Project Path="src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj" />
   <Project Path="tests/AuctionServer.Modules.Auctions.Tests/AuctionServer.Modules.Auctions.Tests.csproj" />
   <Project Path="src/AuctionServer.Modules.Auctions/AuctionServer.Modules.Auctions.csproj" />

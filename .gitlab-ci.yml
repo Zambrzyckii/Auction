@@ -34,3 +34,4 @@ integration-tests:
     - dotnet test Backend/tests/AuctionServer.Modules.Pawnshop.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Casino.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Profiles.Tests
+    - dotnet test Backend/tests/AuctionServer.Api.Tests
