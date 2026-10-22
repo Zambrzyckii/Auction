@@ -22,6 +22,42 @@ namespace AuctionServer.Modules.Profiles.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AuctionServer.Modules.Profiles.Domain.Entities.Friendship", b =>
+                {
+                    b.Property<Guid>("PublicFriendshipId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AddresseeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequesterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserHighId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserLowId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PublicFriendshipId");
+
+                    b.HasIndex("AddresseeId");
+
+                    b.HasIndex("RequesterId");
+
+                    b.HasIndex("UserLowId", "UserHighId")
+                        .IsUnique();
+
+                    b.ToTable("ProfilesFriendships", (string)null);
+                });
+
             modelBuilder.Entity("AuctionServer.Modules.Profiles.Domain.Entities.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -57,6 +93,34 @@ namespace AuctionServer.Modules.Profiles.Infrastructure.Persistence.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("ProfilesUserProfiles", (string)null);
+                });
+
+            modelBuilder.Entity("AuctionServer.Modules.Profiles.Domain.Entities.WarehouseInvite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("InviteeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("InviterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PublicWarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InviteeId");
+
+                    b.HasIndex("InviterId", "InviteeId", "PublicWarehouseId")
+                        .IsUnique();
+
+                    b.ToTable("ProfilesWarehouseInvites", (string)null);
                 });
 
             modelBuilder.Entity("AuctionServer.Modules.Profiles.Infrastructure.Inbox.ProcessedMessage", b =>

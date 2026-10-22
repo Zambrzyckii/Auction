@@ -8,6 +8,13 @@ public record OwnProfileDto(
     int Level,
     DateTime MemberSince,
     string? AvatarUrl,
+    IReadOnlyList<FriendDto> Friends,
+    IReadOnlyList<PendingFriendRequestDto> IncomingFriendRequests,
+    IReadOnlyList<PendingFriendRequestDto> OutgoingFriendRequests,
     IReadOnlyList<SocialLinkDto> SocialLinks);
+
+public record FriendDto(Guid UserId, string Username);
+
+public record PendingFriendRequestDto(Guid PublicFriendshipId, Guid UserId, string Username);
 
 public record SocialLinkDto(SocialPlatform Platform, string Url);

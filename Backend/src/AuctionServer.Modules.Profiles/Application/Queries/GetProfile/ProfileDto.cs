@@ -8,6 +8,9 @@ public record ProfileDto(
     int Level,
     DateTime MemberSince,
     string? AvatarUrl,
+    IReadOnlyList<FriendDto> Friends,
     IReadOnlyList<SocialLinkDto> SocialLinks);
+
+public record FriendDto(Guid UserId, string Username);
 
 public record SocialLinkDto(SocialPlatform Platform, string Url);

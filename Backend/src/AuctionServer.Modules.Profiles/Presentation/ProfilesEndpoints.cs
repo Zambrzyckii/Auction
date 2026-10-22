@@ -1,11 +1,17 @@
 using System.Security.Claims;
+using AuctionServer.Modules.Profiles.Application.Command.AcceptFriendRequest;
+using AuctionServer.Modules.Profiles.Application.Command.CreateWarehouseInvite;
+using AuctionServer.Modules.Profiles.Application.Command.DeclineFriendRequest;
 using AuctionServer.Modules.Profiles.Application.Command.DeleteAvatar;
+using AuctionServer.Modules.Profiles.Application.Command.RemoveFriend;
 using AuctionServer.Modules.Profiles.Application.Command.ReplaceSocialLinks;
+using AuctionServer.Modules.Profiles.Application.Command.RequestFriendship;
 using AuctionServer.Modules.Profiles.Application.Command.UploadAvatar;
 using AuctionServer.Modules.Profiles.Application.Options;
 using AuctionServer.Modules.Profiles.Application.Queries.GetAvatar;
 using AuctionServer.Modules.Profiles.Application.Queries.GetOwnProfile;
 using AuctionServer.Modules.Profiles.Application.Queries.GetProfile;
+using AuctionServer.Modules.Profiles.Application.Queries.GetWarehouseInvites;
 using AuctionServer.Modules.Profiles.Presentation.Request;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -60,6 +66,50 @@ public static class ProfilesEndpoints
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new DeleteAvatarCommand(userId));
             return Results.NoContent();
+        }).RequireAuthorization();
+
+        group.MapPost("/friends/requests", async (FriendRequestRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new RequestFriendshipCommand(userId, request.UserId));
+            return Results.Created($"/api/profiles/friends/requests/{result.PublicFriendshipId}", result);
+        }).RequireAuthorization();
+
+        group.MapPost("/friends/requests/{publicFriendshipId:guid}/accept",
+            async (Guid publicFriendshipId, ClaimsPrincipal user, ISender sender) =>
+            {
+                var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                await sender.Send(new AcceptFriendRequestCommand(userId, publicFriendshipId));
+                return Results.Ok();
+            }).RequireAuthorization();
+
+        group.MapPost("/friends/requests/{publicFriendshipId:guid}/decline",
+            async (Guid publicFriendshipId, ClaimsPrincipal user, ISender sender) =>
+            {
+                var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                await sender.Send(new DeclineFriendRequestCommand(userId, publicFriendshipId));
+                return Results.Ok();
+            }).RequireAuthorization();
+
+        group.MapDelete("/friends/{userId:guid}", async (Guid userId, ClaimsPrincipal user, ISender sender) =>
+        {
+            var callerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new RemoveFriendCommand(callerId, userId));
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        group.MapPost("/warehouse-invites", async (WarehouseInviteRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new CreateWarehouseInviteCommand(userId, request.FriendUserId, request.PublicWarehouseId));
+            return Results.Created("/api/profiles/warehouse-invites", null);
+        }).RequireAuthorization();
+
+        group.MapGet("/warehouse-invites", async (ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new GetWarehouseInvitesQuery(userId));
+            return Results.Ok(result);
         }).RequireAuthorization();
 
         group.MapGet("/{publicUserId:guid}/avatar", async (Guid publicUserId, HttpContext http, ISender sender) =>

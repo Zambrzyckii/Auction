@@ -7,6 +7,8 @@ namespace AuctionServer.Modules.Profiles.Infrastructure.Persistence;
 public sealed class ProfilesDbContext(DbContextOptions<ProfilesDbContext> options) : DbContext(options)
 {
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+    public DbSet<Friendship> Friendships => Set<Friendship>();
+    public DbSet<WarehouseInvite> WarehouseInvites => Set<WarehouseInvite>();
     public DbSet<ProcessedMessage> ProcessedMessages => Set<ProcessedMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
