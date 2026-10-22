@@ -10,6 +10,8 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
     {
         builder.HasKey(x => x.UserId);
         builder.Property(x => x.Username).HasMaxLength(64);
+        builder.Property(x => x.AvatarContentType).HasMaxLength(32);
+        builder.Property(x => x.AvatarHash).HasMaxLength(64);
         builder.Property(x => x.Version).IsConcurrencyToken();
         builder.OwnsMany(x => x.SocialLinks, link =>
         {

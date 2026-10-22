@@ -9,6 +9,9 @@ public sealed class UserProfile
     public string Username { get; private set; } = null!;
     public int Level { get; private set; }
     public DateTime CreatedOn { get; private set; }
+    public string? AvatarContentType { get; private set; }
+    public string? AvatarHash { get; private set; }
+    public DateTime? AvatarUpdatedOn { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
     private readonly List<SocialLink> _socialLinks = [];
 
@@ -21,6 +24,22 @@ public sealed class UserProfile
     {
         if (newLevel <= Level) return;
         Level = newLevel;
+        Version = Guid.NewGuid();
+    }
+
+    public void SetAvatar(string contentType, string hash, DateTime now)
+    {
+        AvatarContentType = contentType;
+        AvatarHash = hash;
+        AvatarUpdatedOn = now;
+        Version = Guid.NewGuid();
+    }
+
+    public void ClearAvatar()
+    {
+        AvatarContentType = null;
+        AvatarHash = null;
+        AvatarUpdatedOn = null;
         Version = Guid.NewGuid();
     }
 

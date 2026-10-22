@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Profiles.Application.Interfaces;
 using AuctionServer.Modules.Profiles.Application.Options;
 using AuctionServer.Modules.Profiles.Infrastructure.Persistence;
+using AuctionServer.Modules.Profiles.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,6 +17,8 @@ public static class ProfilesModuleExtensions
         services.AddDbContext<ProfilesDbContext>(o => o.UseNpgsql(connectionString));
         services.AddSingleton(options);
         services.AddScoped<IProfilesRepository, ProfilesRepository>();
+        services.AddSingleton<IAvatarStorage>(sp =>
+            new S3AvatarStorage(sp.GetRequiredService<ProfilesOptions>().Storage));
 
         return services;
     }

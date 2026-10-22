@@ -18,6 +18,19 @@ services:
       timeout: 3s
       retries: 15
 
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.48
+    command: server -s3 -dir=/data
+    # no published ports on purpose: the S3 gateway runs without auth,
+    # so it must stay reachable only from the compose network
+    volumes:
+      - seaweeddata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8333/"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   api:
     build: ./Backend
     ports:
@@ -27,9 +40,13 @@ services:
       Jwt__Key: "local-dev-signing-key-at-least-32-chars-long"
       Bots__ApiKey: "local-dev-bot-api-key"
       Database__MigrateOnStartup: "true"
+      Profiles__Storage__ServiceUrl: "http://seaweedfs:8333"
     depends_on:
       postgres:
+        condition: service_healthy
+      seaweedfs:
         condition: service_healthy
 
 volumes:
   pgdata:
+  seaweeddata:

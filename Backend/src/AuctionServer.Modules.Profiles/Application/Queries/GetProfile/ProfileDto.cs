@@ -7,6 +7,7 @@ public record ProfileDto(
     string Username,
     int Level,
     DateTime MemberSince,
+    string? AvatarUrl,
     IReadOnlyList<SocialLinkDto> SocialLinks);
 
 public record SocialLinkDto(SocialPlatform Platform, string Url);

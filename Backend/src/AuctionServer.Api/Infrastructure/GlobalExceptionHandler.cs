@@ -15,6 +15,13 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
             return true;
         }
 
+        if (exception is BadHttpRequestException badHttpRequest)
+        {
+            context.Response.StatusCode = badHttpRequest.StatusCode;
+            await context.Response.WriteAsJsonAsync(new { Error = badHttpRequest.Message }, token);
+            return true;
+        }
+
         if (exception is DbUpdateConcurrencyException)
         {
             context.Response.StatusCode = StatusCodes.Status409Conflict;

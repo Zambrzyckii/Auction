@@ -12,4 +12,13 @@ public static class ProfilesExceptions
 
     public sealed class InvalidSocialLinkException(string message)
         : AppException(message, 400);
+
+    public sealed class InvalidAvatarException(string message)
+        : AppException(message, 400);
+
+    public sealed class AvatarNotFoundException()
+        : AppException("Avatar was not found", 404);
+
+    public sealed class AvatarStorageUnavailableException()
+        : AppException("Avatar storage is unavailable", 503);
 }

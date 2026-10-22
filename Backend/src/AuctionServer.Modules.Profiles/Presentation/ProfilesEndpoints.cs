@@ -1,12 +1,18 @@
 using System.Security.Claims;
+using AuctionServer.Modules.Profiles.Application.Command.DeleteAvatar;
 using AuctionServer.Modules.Profiles.Application.Command.ReplaceSocialLinks;
+using AuctionServer.Modules.Profiles.Application.Command.UploadAvatar;
+using AuctionServer.Modules.Profiles.Application.Options;
+using AuctionServer.Modules.Profiles.Application.Queries.GetAvatar;
 using AuctionServer.Modules.Profiles.Application.Queries.GetOwnProfile;
 using AuctionServer.Modules.Profiles.Application.Queries.GetProfile;
 using AuctionServer.Modules.Profiles.Presentation.Request;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AuctionServer.Modules.Profiles.Presentation;
 
@@ -28,6 +34,41 @@ public static class ProfilesEndpoints
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new ReplaceSocialLinksCommand(userId, request.Links));
             return Results.NoContent();
+        }).RequireAuthorization();
+
+        group.MapPut("/me/avatar", async (IFormFile file, ClaimsPrincipal user, ISender sender) =>
+            {
+                var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                using var buffer = new MemoryStream();
+                await file.CopyToAsync(buffer);
+                await sender.Send(new UploadAvatarCommand(userId, buffer.ToArray()));
+                return Results.Ok();
+            })
+            .RequireAuthorization()
+            .DisableAntiforgery()
+            .AddEndpointFilter(async (context, next) =>
+            {
+                var options = context.HttpContext.RequestServices.GetRequiredService<ProfilesOptions>();
+                var feature = context.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+                if (feature is not null && !feature.IsReadOnly)
+                    feature.MaxRequestBodySize = options.Avatar.MaxBytes + 8192;
+                return await next(context);
+            });
+
+        group.MapDelete("/me/avatar", async (ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new DeleteAvatarCommand(userId));
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        group.MapGet("/{publicUserId:guid}/avatar", async (Guid publicUserId, HttpContext http, ISender sender) =>
+        {
+            var result = await sender.Send(new GetAvatarQuery(publicUserId));
+            http.Response.Headers["X-Content-Type-Options"] = "nosniff";
+            http.Response.Headers.ETag = $"\"{result.Hash}\"";
+            http.Response.Headers.CacheControl = "private, max-age=86400";
+            return Results.Stream(result.Content, result.ContentType);
         }).RequireAuthorization();
 
         group.MapGet("/{publicUserId:guid}", async (Guid publicUserId, ISender sender) =>
