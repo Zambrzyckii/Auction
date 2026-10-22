@@ -1,0 +1,79 @@
+flowchart TB
+
+    subgraph Clients ["clients"]
+        Spa["Angular SPA"]:::client
+        Bots["AI market bots<br/>Python"]:::client
+        K6["k6 load tests<br/>synthetic traffic"]:::shared
+    end
+
+    subgraph Edge ["edge - the only published address"]
+        Gateway["nginx gateway<br/>TLS, IP rate limits, body caps, gzip"]:::host
+    end
+
+    subgraph App ["application"]
+        Api["AuctionServer.Api<br/>modular monolith, nine modules,<br/>OpenTelemetry, per-user rate limiter"]:::host
+    end
+
+    subgraph Data ["data plane - compose network only"]
+        PgBouncer["PgBouncer<br/>transaction pooling"]:::db
+        Postgres[("PostgreSQL<br/>one database, nine contexts")]:::db
+        Backup["pg_dump cron<br/>retention volume"]:::db
+        Redis[("Redis<br/>hot auction reads, TTL 2 s")]:::db
+        Seaweed[("SeaweedFS<br/>avatars via S3 gateway")]:::db
+        Rabbit["RabbitMQ<br/>topic exchange auction.events,<br/>retry tiers + dead queue"]:::shared
+        Vault["OpenBao<br/>KV v2 secrets, AppRole"]:::shared
+    end
+
+    subgraph Telemetry ["observability"]
+        Otel["OTel Collector"]:::shared
+        Backends["Prometheus + Tempo"]:::shared
+        Grafana["Grafana"]:::shared
+    end
+
+    subgraph Platform ["platform - back of the head"]
+        K8s["Kubernetes<br/>Deployments + HPA, Ingress,<br/>Postgres and RabbitMQ operators"]:::planned
+        Oidc["Keycloak / OIDC<br/>optional external token issuer"]:::planned
+    end
+
+    Spa -->|"HTTPS + JWT"| Gateway
+    Bots -->|"commands"| Gateway
+    K6 -->|"load"| Gateway
+    Bots -->|"market events,<br/>own queue"| Rabbit
+    Gateway --> Api
+
+    Api --> PgBouncer --> Postgres
+    Api -.->|"migrations only,<br/>bypass the pooler"| Postgres
+    Backup -->|"pg_dump"| Postgres
+    Api -->|"HybridCache L1+L2"| Redis
+    Api -->|"IAvatarStorage"| Seaweed
+    Api -->|"outbox publisher with confirms,<br/>sequential host consumer"| Rabbit
+    Api -->|"secrets at startup,<br/>AppRole"| Vault
+    Api -->|"OTLP"| Otel --> Backends --> Grafana
+
+    Grafana ~~~ K8s
+
+    style Clients fill:#F8FAFC,stroke:#475569,stroke-width:2px,color:#0F172A
+    style Edge fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    style App fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    style Data fill:#FDF4FF,stroke:#9333EA,stroke-width:2px,color:#581C87
+    style Telemetry fill:#F8FAFC,stroke:#475569,stroke-width:2px,color:#0F172A
+    style Platform fill:#FAFAFA,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
+
+    style Spa stroke-dasharray:6 4
+    style Bots stroke-dasharray:6 4
+    style K6 stroke-dasharray:6 4
+    style Gateway stroke-dasharray:6 4
+    style PgBouncer stroke-dasharray:6 4
+    style Backup stroke-dasharray:6 4
+    style Redis stroke-dasharray:6 4
+    style Rabbit stroke-dasharray:6 4
+    style Vault stroke-dasharray:6 4
+    style Otel stroke-dasharray:6 4
+    style Backends stroke-dasharray:6 4
+    style Grafana stroke-dasharray:6 4
+
+    classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
+    classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
+    classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

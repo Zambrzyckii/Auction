@@ -36,13 +36,21 @@ AuctionServer is a gamified auction house: registered users receive a wallet wit
 
 ## 4. Target system
 
-The system-context diagram in [ARCHITECTURE.md](ARCHITECTURE.md) shows the target with dashed borders; it comes from the project's original design note (`AGENTS.md`, deleted on 2026-08-15) and the previous README:
+The original target comes from the project's design note (`AGENTS.md`, deleted on 2026-08-15) and the previous README; on 2026-10-22 the owner extended it with the server-infrastructure plan. The diagram below shows the full picture, including the parts deliberately parked at the back of the head. A solid border runs today, a dashed border is the target.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/vision-01-target-architecture.dark.svg">
+  <img alt="Target architecture diagram" src="../diagrams/vision-01-target-architecture.svg">
+</picture>
 
 - an **Angular frontend** as the user interface;
-- an **API gateway** as the single entry point for the frontend and the bots;
-- the **backend API**, the modular monolith that exists today, kept as one deployable;
-- **RabbitMQ** as the transport for integration events leaving the monolith, plugged into the `IIntegrationEventPublisher` seam;
-- **AI bots** written in Python that listen to market events on RabbitMQ and act through the gateway.
+- an **nginx API gateway** as the single published address and entry point for the frontend and the bots, carrying TLS, IP rate limits, body caps and compression, while per-user limits and CORS stay in the backend;
+- the **backend API**, the modular monolith that exists today, kept as one deployable and instrumented with OpenTelemetry;
+- a **data plane** reachable only inside the Compose network: PostgreSQL behind PgBouncer (transaction pooling, migrations bypass the pooler, cron `pg_dump` backups), Redis as the distributed level of the hot-auction-read cache, SeaweedFS for avatars and OpenBao for secrets;
+- **RabbitMQ** as the transport for integration events leaving the monolith, plugged into the `IIntegrationEventPublisher` seam, with retry tiers, a dead queue and a sequential host-side consumer;
+- **AI bots** written in Python that listen to market events on their own RabbitMQ queue and act through the gateway;
+- an **observability stack** (OTel Collector, Prometheus, Tempo, Grafana) fed over OTLP, with k6 load tests as the measurement tool for every performance change;
+- at the back of the head and deliberately not planned yet: **Kubernetes** (Deployments with HPA, an Ingress, Postgres and RabbitMQ operators) and an optional **Keycloak/OIDC** issuer replacing the hand-rolled JWT.
 
 ## 5. What exists today
 

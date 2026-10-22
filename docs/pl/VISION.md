@@ -36,13 +36,21 @@ AuctionServer to zgamifikowany dom aukcyjny: zarejestrowani użytkownicy dostaj�
 
 ## 4. Docelowy system
 
-Diagram kontekstu systemu w [ARCHITECTURE.md](ARCHITECTURE.md) pokazuje cel z przerywanymi obwódkami; pochodzi on z pierwotnej notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15) i poprzedniego README:
+Pierwotny cel pochodzi z notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15) i poprzedniego README; 2026-10-22 właściciel rozszerzył go o plan infrastruktury serwerowej. Diagram poniżej pokazuje pełny obraz, łącznie z częściami celowo odłożonymi z tyłu głowy. Ciągła obwódka działa dziś, przerywana jest celem.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/vision-01-target-architecture.dark.svg">
+  <img alt="Target architecture diagram" src="../diagrams/vision-01-target-architecture.svg">
+</picture>
 
 - **frontend Angular** jako interfejs użytkownika;
-- **API gateway** jako jedyny punkt wejścia dla frontendu i botów;
-- **backend API**, czyli istniejący dziś modular monolith, utrzymany jako jeden artefakt wdrożeniowy;
-- **RabbitMQ** jako transport zdarzeń integracyjnych opuszczających monolit, wpięty w szew `IIntegrationEventPublisher`;
-- **boty AI** napisane w Pythonie, które nasłuchują zdarzeń rynkowych na RabbitMQ i działają przez gateway.
+- **gateway nginx** jako jedyny publikowany adres i punkt wejścia dla frontendu i botów, niosący TLS, limity IP, limity rozmiaru body i kompresję, podczas gdy limity per użytkownik i CORS zostają w backendzie;
+- **backend API**, czyli istniejący dziś modular monolith, utrzymany jako jeden artefakt wdrożeniowy i oprzyrządowany OpenTelemetry;
+- **warstwa danych** osiągalna tylko wewnątrz sieci Compose: PostgreSQL za PgBouncerem (pooling transakcyjny, migracje omijają poolera, kopie `pg_dump` z crona), Redis jako rozproszony poziom cache gorących odczytów aukcji, SeaweedFS na awatary i OpenBao na sekrety;
+- **RabbitMQ** jako transport zdarzeń integracyjnych opuszczających monolit, wpięty w szew `IIntegrationEventPublisher`, z kolejkami retry, kolejką dead i sekwencyjnym konsumentem po stronie hosta;
+- **boty AI** napisane w Pythonie, które nasłuchują zdarzeń rynkowych na własnej kolejce RabbitMQ i działają przez gateway;
+- **stack obserwowalności** (OTel Collector, Prometheus, Tempo, Grafana) zasilany po OTLP, z testami obciążeniowymi k6 jako narzędziem pomiaru każdej zmiany wydajnościowej;
+- z tyłu głowy i celowo jeszcze nieplanowane: **Kubernetes** (Deploymenty z HPA, Ingress, operatory Postgresa i RabbitMQ) oraz opcjonalny **Keycloak/OIDC** zastępujący własnoręczne wydawanie JWT.
 
 ## 5. Co istnieje dziś
 

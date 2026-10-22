@@ -13,7 +13,7 @@
 - `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino and Profiles (consume-only, no outbox) and the contracts project `Shared.Integration`; 51 endpoints, 37 integration events, 38 tables, eight `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper`.
 - Tests: nine xUnit projects, 741 test methods (414 offline, 327 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` and its GitHub Actions mirror `.github/workflows/ci.yml`, both with `build`, `unit-tests` and `integration-tests`.
-- Documentation: `docs/en` and `docs/pl` with this set of pages and 18 rendered diagrams; root `README.md` and `README.pl.md`.
+- Documentation: `docs/en` and `docs/pl` with this set of pages and 19 rendered diagrams; root `README.md` and `README.pl.md`.
 - `Backend/Dockerfile` and a root `compose.yaml` (API + PostgreSQL + SeaweedFS for avatars, migrations applied at startup behind `Database:MigrateOnStartup`).
 - CORS for the configured frontend origins (`Cors:AllowedOrigins`), the OpenAPI document at `/openapi/v1.json` and `/health` with a database check.
 - Not in the repository: frontend, bots, gateway, message broker.
