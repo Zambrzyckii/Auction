@@ -1,4 +1,3 @@
-# Local development only: the credentials and keys below guard nothing but this machine.
 services:
   postgres:
     image: postgres:16-alpine
@@ -6,8 +5,6 @@ services:
       POSTGRES_USER: auction
       POSTGRES_PASSWORD: auction
       POSTGRES_DB: auctionserver
-    # 5436 on the host: 5432 is usually a locally installed PostgreSQL,
-    # the API reaches the container through the compose network anyway
     ports:
       - "5436:5432"
     volumes:
@@ -21,8 +18,6 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
     command: server -s3 -dir=/data
-    # no published ports on purpose: the S3 gateway runs without auth,
-    # so it must stay reachable only from the compose network
     volumes:
       - seaweeddata:/data
     healthcheck:
