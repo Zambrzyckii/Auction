@@ -21,7 +21,7 @@ services:
     volumes:
       - seaweeddata:/data
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8333/"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/"]
       interval: 2s
       timeout: 3s
       retries: 15

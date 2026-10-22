@@ -42,24 +42,23 @@ public static class ProfilesEndpoints
             return Results.NoContent();
         }).RequireAuthorization();
 
-        group.MapPut("/me/avatar", async (IFormFile file, ClaimsPrincipal user, ISender sender) =>
-            {
-                var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-                using var buffer = new MemoryStream();
-                await file.CopyToAsync(buffer);
-                await sender.Send(new UploadAvatarCommand(userId, buffer.ToArray()));
-                return Results.Ok();
-            })
-            .RequireAuthorization()
-            .DisableAntiforgery()
-            .AddEndpointFilter(async (context, next) =>
-            {
-                var options = context.HttpContext.RequestServices.GetRequiredService<ProfilesOptions>();
-                var feature = context.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
-                if (feature is not null && !feature.IsReadOnly)
-                    feature.MaxRequestBodySize = options.Avatar.MaxBytes + 8192;
-                return await next(context);
-            });
+        group.MapPut("/me/avatar", async (HttpContext http, ClaimsPrincipal user, ISender sender) =>
+        {
+            var options = http.RequestServices.GetRequiredService<ProfilesOptions>();
+            var feature = http.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (feature is not null && !feature.IsReadOnly)
+                feature.MaxRequestBodySize = options.Avatar.MaxBytes + 8192;
+
+            var form = await http.Request.ReadFormAsync();
+            var file = form.Files.GetFile("file");
+            if (file is null) return Results.BadRequest(new { Error = "Multipart field 'file' is required" });
+
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            using var buffer = new MemoryStream();
+            await file.CopyToAsync(buffer);
+            await sender.Send(new UploadAvatarCommand(userId, buffer.ToArray()));
+            return Results.Ok();
+        }).RequireAuthorization();
 
         group.MapDelete("/me/avatar", async (ClaimsPrincipal user, ISender sender) =>
         {
