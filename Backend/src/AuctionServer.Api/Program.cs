@@ -20,6 +20,7 @@ using AuctionServer.Api.Infrastructure;
 using AuctionServer.Api.Infrastructure.Authentication;
 using AuctionServer.Api.Infrastructure.Health;
 using AuctionServer.Api.Infrastructure.Messaging;
+using AuctionServer.Api.Infrastructure.Observability;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Modules.Identity.Presentation;
@@ -159,6 +160,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.AddObservability();
 
 var app = builder.Build();
 
