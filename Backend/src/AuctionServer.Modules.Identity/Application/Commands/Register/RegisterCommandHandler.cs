@@ -19,7 +19,7 @@ public class RegisterCommandHandler(IAuthRepository repository) : IRequestHandle
         var newUser = new User(request.Email, hashedPassword, request.Username, request.Name, request.Surname, request.Birthday);
 
         var eventId = Guid.NewGuid();
-        var registeredEvent = new UserRegisteredEvent(eventId, newUser.PublicUserId, newUser.Email);
+        var registeredEvent = new UserRegisteredEvent(eventId, newUser.PublicUserId, newUser.Email, newUser.Username);
         var outboxMessage = new OutboxMessage
         {
             Id = eventId,

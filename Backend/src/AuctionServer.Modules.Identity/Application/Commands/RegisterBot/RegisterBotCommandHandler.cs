@@ -20,7 +20,7 @@ public sealed class RegisterBotCommandHandler(IAuthRepository repository) : IReq
         newUser.ChangeRole(Role.Bot);
 
         var eventId = Guid.NewGuid();
-        var registeredEvent = new UserRegisteredEvent(eventId, newUser.PublicUserId, newUser.Email);
+        var registeredEvent = new UserRegisteredEvent(eventId, newUser.PublicUserId, newUser.Email, newUser.Username);
         var outboxMessage = new OutboxMessage
         {
             Id = eventId,

@@ -42,6 +42,7 @@ public class RegisterBotCommandHandlerTests(IdentityPostgresFixture fixture)
         Assert.NotNull(registeredEvent);
         Assert.Equal(id, registeredEvent.PublicUserId);
         Assert.Equal(outboxMessage.Id, registeredEvent.EventId);
+        Assert.Equal("bot-one", registeredEvent.Username);
     }
 
     [Fact]
