@@ -10,8 +10,8 @@
 
 ## Co istnieje
 
-- `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino i Profiles (wyłącznie konsumujący, bez outboxa) oraz projekt kontraktów `Shared.Integration`; 50 endpointów, 37 zdarzeń integracyjnych, 38 tabel, osiem `OutboxProcessor`ów, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` i `CasinoKeeper`.
-- Testy: dziewięć projektów xUnit, 730 metod testowych (410 offline, 320 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
+- `Backend/`: host `AuctionServer.Api`, moduły Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino i Profiles (wyłącznie konsumujący, bez outboxa) oraz projekt kontraktów `Shared.Integration`; 51 endpointów, 37 zdarzeń integracyjnych, 38 tabel, osiem `OutboxProcessor`ów, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` i `CasinoKeeper`.
+- Testy: dziewięć projektów xUnit, 741 metod testowych (414 offline, 327 integracyjnych przez Testcontainers), żadna nie przekracza granicy modułu.
 - CI: `.gitlab-ci.yml` i jego lustro na GitHub Actions `.github/workflows/ci.yml`, oba z `build`, `unit-tests` i `integration-tests`.
 - Dokumentacja: `docs/en` i `docs/pl` z tym zestawem stron i 18 wyrenderowanymi diagramami; główne `README.md` i `README.pl.md`.
 - `Backend/Dockerfile` i `compose.yaml` w korzeniu (API + PostgreSQL + SeaweedFS dla awatarów, migracje aplikowane na starcie za flagą `Database:MigrateOnStartup`).
@@ -31,7 +31,7 @@
 
 ## Następny krok
 
-2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki. Pierwsza partia (pakiet startowy, przelewy między graczami) weszła tego samego dnia, wojny magazynowe, bank i lombard 2026-10-15, kasyno 2026-10-17, a profile użytkowników, ostatni punkt rozgrywkowy, 2026-10-22. Roadmapa [VISION.md](VISION.md) wskazuje teraz na pracę platformową: RabbitMQ za szwem publishera, frontend Angular, boty AI i API gateway; opcja prywatnego profilu pozostaje odłożona.
+2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki. Pierwsza partia (pakiet startowy, przelewy między graczami) weszła tego samego dnia, wojny magazynowe, bank i lombard 2026-10-15, kasyno 2026-10-17, a profile użytkowników, ostatni punkt rozgrywkowy, 2026-10-22, z opcją prywatnego profilu dowiezioną tego samego dnia. Roadmapa [VISION.md](VISION.md) wskazuje teraz na pracę platformową: RabbitMQ za szwem publishera, frontend Angular, boty AI i API gateway.
 
 ## Powiązane dokumenty
 

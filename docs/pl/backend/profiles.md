@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/profiles.md](../../en/backend/profiles.md)
 
-`AuctionServer.Modules.Profiles` to dziewiąty moduł i warstwa społecznościowa gry: publiczny profil gracza ze snapshotem nazwy, poziom zdobywany z obrotu portfela, awatar przechowywany w SeaweedFS, do sześciu kont społecznościowych, znajomi z zaproszeniami i akceptacją oraz zaproszenia znajomych do wojen magazynowych. To pierwszy moduł **wyłącznie konsumujący**: nie publikuje żadnych zdarzeń, więc nie ma tabeli outboxa, nie ma `OutboxProcessor`a ani keepera, jedynie inbox `ProfilesProcessedMessages`. Dwanaście endpointów żyje pod `/api/profiles`, wszystkie za JWT.
+`AuctionServer.Modules.Profiles` to dziewiąty moduł i warstwa społecznościowa gry: publiczny profil gracza ze snapshotem nazwy, poziom zdobywany z obrotu portfela, awatar przechowywany w SeaweedFS, do sześciu kont społecznościowych, znajomi z zaproszeniami i akceptacją, zaproszenia znajomych do wojen magazynowych oraz przełącznik prywatności, który ukrywa przed obcymi wszystko poza nazwą i awatarem. To pierwszy moduł **wyłącznie konsumujący**: nie publikuje żadnych zdarzeń, więc nie ma tabeli outboxa, nie ma `OutboxProcessor`a ani keepera, jedynie inbox `ProfilesProcessedMessages`. Trzynaście endpointów żyje pod `/api/profiles`, wszystkie za JWT.
 
 ## Przegląd
 
@@ -29,7 +29,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Profiles --startup
 dotnet test tests/AuctionServer.Modules.Profiles.Tests
 ```
 
-Migracje żyją w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Persistence/Migrations). `20261022112555_Initial_Profiles` tworzy tabele profilu i inboxa, `20261022160220_Add_Profiles_Socials` tabelę owned kont społecznościowych, `20261022161705_Add_Profiles_Avatars` trzy kolumny awatara, `20261022170106_Add_Profiles_Friendships` tabelę znajomości z unikalnym indeksem pary, a `20261022170145_Add_Profiles_Warehouse_Invites` tabelę zaproszeń z unikalnym indeksem trójki.
+Migracje żyją w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Persistence/Migrations). `20261022112555_Initial_Profiles` tworzy tabele profilu i inboxa, `20261022160220_Add_Profiles_Socials` tabelę owned kont społecznościowych, `20261022161705_Add_Profiles_Avatars` trzy kolumny awatara, `20261022170106_Add_Profiles_Friendships` tabelę znajomości z unikalnym indeksem pary, `20261022170145_Add_Profiles_Warehouse_Invites` tabelę zaproszeń z unikalnym indeksem trójki, a `20261022180614_Add_Profiles_Privacy` kolumnę `IsPrivate`.
 
 Testy awatarów potrzebują Dockera dwa razy: handlery biegną na Testcontainerze PostgreSQL z `FakeAvatarStorage`, a `S3AvatarStorageTests` stawiają prawdziwy kontener `chrislusf/seaweedfs:4.48` przez generyczny `ContainerBuilder` (`ProfilesStorageFixture`), pierwszy nie-postgresowy Testcontainer w repozytorium. `ProfilesApiSmokeTests` bootują całego hosta przez `ProfilesCustomApi` i podmieniają storage na fake przez `ConfigureTestServices`.
 
@@ -54,6 +54,7 @@ Cała sekcja `Profiles` z `appsettings.json` binduje się do `ProfilesOptions`, 
 | `UserId` | `uuid` | klucz główny, publiczne id użytkownika z Identity |
 | `Username` | `text(64)` | snapshot z `UserRegisteredEvent`, fallback `Player` dla starych payloadów bez nazwy; relacje zawsze po id |
 | `Level` | `integer` | nakładany z `PlayerLevelledUpEvent`, monotonicznie |
+| `IsPrivate` | `boolean` | domyślnie `false`; profil prywatny pokazuje obcym tylko nazwę i awatar |
 | `AvatarContentType?` | `text(32)` | typ ze sniffowania, nigdy deklaracja klienta |
 | `AvatarHash?` | `text(64)` | SHA-256 zapisanych bajtów, hex; napędza cache-buster `?v=` i ETag |
 | `AvatarUpdatedOn?` | `timestamptz` | |
@@ -78,13 +79,14 @@ Cała sekcja `Profiles` z `appsettings.json` binduje się do `ProfilesOptions`, 
 
 ## API
 
-Wszystkie dwanaście tras wymaga JWT.
+Wszystkie trzynaście tras wymaga JWT.
 
 | Metoda i trasa | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|
-| `GET /api/profiles/me` | brak | 200 z własnym profilem: nazwa, poziom, `avatarUrl`, znajomi, przychodzące i wychodzące oczekujące zaproszenia, konta społecznościowe. 404 zanim zdarzenie rejestracji zostanie skonsumowane | `GetOwnProfileQueryHandler` |
-| `GET /api/profiles/{publicUserId}` | brak | 200 z nazwą, poziomem, `avatarUrl`, zaakceptowanymi znajomymi i kontami; 404 dla graczy bez profilu | `GetProfileQueryHandler` |
+| `GET /api/profiles/me` | brak | 200 z własnym profilem: nazwa, `isPrivate`, poziom, `avatarUrl`, znajomi, przychodzące i wychodzące oczekujące zaproszenia, konta społecznościowe. 404 zanim zdarzenie rejestracji zostanie skonsumowane | `GetOwnProfileQueryHandler` |
+| `GET /api/profiles/{publicUserId}` | brak | 200 z nazwą, `isPrivate`, poziomem, `avatarUrl`, zaakceptowanymi znajomymi i kontami; profil prywatny oglądany przez obcego zachowuje tylko nazwę, `isPrivate` i `avatarUrl`, a resztę nulluje; 404 dla graczy bez profilu | `GetProfileQueryHandler` |
 | `PUT /api/profiles/me/socials` | `{ links: [{ platform, url }] }` | 204; wymienia cały zestaw, pusta lista czyści. 400 za siódmy link, duplikat platformy, url bez https albo host spoza domeny platformy | `ReplaceSocialLinksCommandHandler` |
+| `PUT /api/profiles/me/privacy` | `{ isPrivate }` | 204; idempotentnie, ustawienie wartości już obowiązującej nie rusza tokenu `Version` | `SetProfilePrivacyCommandHandler` |
 | `PUT /api/profiles/me/avatar` | multipart `file` | 200; endpoint sam ogranicza body i czyta formularz, bajty są sniffowane, deklarowany typ ignorowany. 400 za wszystko poza jpeg, png i webp, 413 ponad limit rozmiaru, 503 gdy storage nieosiągalny | `UploadAvatarCommandHandler` |
 | `DELETE /api/profiles/me/avatar` | brak | 204, idempotentnie | `DeleteAvatarCommandHandler` |
 | `GET /api/profiles/{publicUserId}/avatar` | brak | 200 streamując bajty ze sniffowanym `Content-Type`, `X-Content-Type-Options: nosniff`, `ETag` z hasha i `Cache-Control: private, max-age=86400`; 404 bez awatara albo gdy obiekt zniknął ze storage | `GetAvatarQueryHandler` |
@@ -115,6 +117,12 @@ Znajomość to jeden wiersz na jedną parę. `FriendshipPair.Normalize` porządk
 
 Zaproszenie magazynowe to wskaźnik, nie rezerwacja: utworzenie sprawdza zaakceptowaną znajomość i unikalną trójkę, ale nigdy nie rozmawia z Warehouses, nie rezerwuje miejsca w lobby i nie weryfikuje, czy wojna wciąż istnieje. Zaproszony czyta zaproszenia, otwiera magazyn i dołącza zwykłym `POST /api/warehouses/{id}/join`. Wygasanie jest odczytowe, lista pokazuje wiersze młodsze niż `Profiles:Invites:Lifetime`, a handler tworzenia oportunistycznie czyści wygasłe wiersze `ExecuteDeleteAsync` przed insertem, co chroni unikalną trójkę przed odrzuceniem ponownego zaproszenia zablokowanego wyłącznie przez martwy wiersz. Usunięcie znajomego kasuje zaproszenia pary w tym samym zapisie.
 
+## Prywatność
+
+Profil jest domyślnie publiczny. `PUT /api/profiles/me/privacy` przestawia `UserProfile.IsPrivate`, a `GetProfileQueryHandler` stosuje regułę przy odczycie: właściciel i zaakceptowani znajomi zawsze dostają pełny profil, obcy oglądający profil prywatny dostaje tylko nazwę, flagę `isPrivate` i `avatarUrl`, a poziom, data dołączenia, znajomi i konta społecznościowe są nullowane albo puste. Znajomość jest sprawdzana tym samym kanonicznym wyszukaniem pary, którego używa handler zaproszeń, więc odczyt prywatności dokłada jedno indeksowane zapytanie tylko wtedy, gdy profil faktycznie jest prywatny. Trasa pobrania awatara zostaje otwarta, bo zdjęcie to jedyna rzecz, którą profil prywatny nadal pokazuje.
+
+Nazwa pozostaje widoczna celowo: i tak pojawia się na listach znajomych innych graczy i w oczekujących zaproszeniach, więc ukrycie jej na samej trasie profilu udawałoby gwarancję, której moduł nie umie dotrzymać. Zaproszenia do znajomych wysłane do profilu prywatnego nadal działają, spójnie z brakiem block listy w v1.
+
 ## Zdarzenia
 
 | Kierunek | Zdarzenie | Handler i efekt |
@@ -134,6 +142,7 @@ Moduł niczego nie publikuje. Konta społecznościowe, awatary, znajomi i zapros
 - Pieniądze znajomych zostają w Wallets. Prezenty używają otwartego endpointu przelewów, który już dziś omija opłaty i obrót, więc zero nowej ścieżki pieniędzy i nowej bramy do audytu.
 - Zaproszenia są wskaźnikami. Bez rezerwacji miejsca i bez sagi z Warehouses; nieświeże zaproszenie kosztuje jeden klik w martwe lobby, rezerwacja kosztowałaby protokół między modułami.
 - Nazwa użytkownika jest snapshotem. Nic dziś nie aktualizuje nazw (`UpdateCredentials` bez wywołań), nazwy nie są unikalne, a każda relacja używa id; przyszła zmiana nazwy to nowe zdarzenie, nie join do Identity.
+- Prywatność to reguła odczytu, nie zmiana danych (decyzja właściciela, 2026-10-22). Zaakceptowani znajomi widzą pełny profil prywatny, bo znajomość wymaga zgody obu stron, a obcy zachowuje nazwę, bo listy znajomych i oczekujące zaproszenia i tak ją ujawniają; ukrycie jej w jednej trasie byłoby fałszywą obietnicą.
 
 Zaakceptowane ryzyka, zapisane przez właściciela 2026-10-22:
 

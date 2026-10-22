@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/profiles.md](../../pl/backend/profiles.md)
 
-`AuctionServer.Modules.Profiles` is the ninth module and the social layer of the game: a public profile per player with a username snapshot, a level earned from wallet turnover, an avatar stored in SeaweedFS, up to six social links, friends with requests and acceptance, and warehouse-war invites for friends. It is the first **consume-only** module: it publishes no events, so it has no outbox table, no `OutboxProcessor` and no keeper, only the inbox `ProfilesProcessedMessages`. Twelve endpoints live under `/api/profiles`, all behind JWT.
+`AuctionServer.Modules.Profiles` is the ninth module and the social layer of the game: a public profile per player with a username snapshot, a level earned from wallet turnover, an avatar stored in SeaweedFS, up to six social links, friends with requests and acceptance, warehouse-war invites for friends, and a privacy toggle that hides everything except the username and the avatar from strangers. It is the first **consume-only** module: it publishes no events, so it has no outbox table, no `OutboxProcessor` and no keeper, only the inbox `ProfilesProcessedMessages`. Thirteen endpoints live under `/api/profiles`, all behind JWT.
 
 ## Overview
 
@@ -29,7 +29,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Profiles --startup
 dotnet test tests/AuctionServer.Modules.Profiles.Tests
 ```
 
-Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Persistence/Migrations). `20261022112555_Initial_Profiles` creates the profile and inbox tables, `20261022160220_Add_Profiles_Socials` the owned social-links table, `20261022161705_Add_Profiles_Avatars` the three avatar columns, `20261022170106_Add_Profiles_Friendships` the friendships table with the unique pair index and `20261022170145_Add_Profiles_Warehouse_Invites` the invites table with the unique triple index.
+Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Persistence/Migrations). `20261022112555_Initial_Profiles` creates the profile and inbox tables, `20261022160220_Add_Profiles_Socials` the owned social-links table, `20261022161705_Add_Profiles_Avatars` the three avatar columns, `20261022170106_Add_Profiles_Friendships` the friendships table with the unique pair index, `20261022170145_Add_Profiles_Warehouse_Invites` the invites table with the unique triple index and `20261022180614_Add_Profiles_Privacy` the `IsPrivate` column.
 
 The avatar tests need Docker twice: the handlers run against the PostgreSQL Testcontainer with a `FakeAvatarStorage`, and `S3AvatarStorageTests` start a real `chrislusf/seaweedfs:4.48` container through the generic `ContainerBuilder` (`ProfilesStorageFixture`), the first non-PostgreSQL Testcontainer in the repository. `ProfilesApiSmokeTests` boot the whole host through `ProfilesCustomApi` and swap the storage for the fake with `ConfigureTestServices`.
 
@@ -54,6 +54,7 @@ The whole `Profiles` section of `appsettings.json` binds to `ProfilesOptions`, a
 | `UserId` | `uuid` | primary key, the public user id from Identity |
 | `Username` | `text(64)` | snapshot from `UserRegisteredEvent`, fallback `Player` for legacy payloads without a username; relations always use ids |
 | `Level` | `integer` | applied from `PlayerLevelledUpEvent`, monotonic |
+| `IsPrivate` | `boolean` | default `false`; a private profile shows strangers only the username and the avatar |
 | `AvatarContentType?` | `text(32)` | sniffed type, never the client's declaration |
 | `AvatarHash?` | `text(64)` | SHA-256 of the stored bytes, hex; drives the `?v=` cache-buster and the ETag |
 | `AvatarUpdatedOn?` | `timestamptz` | |
@@ -78,13 +79,14 @@ The whole `Profiles` section of `appsettings.json` binds to `ProfilesOptions`, a
 
 ## API
 
-All twelve routes require a JWT.
+All thirteen routes require a JWT.
 
 | Method and route | Request | Response | Handler |
 |---|---|---|---|
-| `GET /api/profiles/me` | none | 200 with the own profile: username, level, `avatarUrl`, friends, incoming and outgoing pending friend requests, social links. 404 before the registration event is consumed | `GetOwnProfileQueryHandler` |
-| `GET /api/profiles/{publicUserId}` | none | 200 with username, level, `avatarUrl`, accepted friends and social links; 404 for players without a profile | `GetProfileQueryHandler` |
+| `GET /api/profiles/me` | none | 200 with the own profile: username, `isPrivate`, level, `avatarUrl`, friends, incoming and outgoing pending friend requests, social links. 404 before the registration event is consumed | `GetOwnProfileQueryHandler` |
+| `GET /api/profiles/{publicUserId}` | none | 200 with username, `isPrivate`, level, `avatarUrl`, accepted friends and social links; a private profile viewed by a stranger keeps only the username, `isPrivate` and `avatarUrl` and nulls the rest; 404 for players without a profile | `GetProfileQueryHandler` |
 | `PUT /api/profiles/me/socials` | `{ links: [{ platform, url }] }` | 204; replaces the whole set, an empty list clears it. 400 for a seventh link, a duplicate platform, a non-https url or a host outside the platform's domain | `ReplaceSocialLinksCommandHandler` |
+| `PUT /api/profiles/me/privacy` | `{ isPrivate }` | 204; idempotent, setting the value already in force does not touch the `Version` token | `SetProfilePrivacyCommandHandler` |
 | `PUT /api/profiles/me/avatar` | multipart `file` | 200; the endpoint caps the body and reads the form itself, the bytes are sniffed, the declared content type is ignored. 400 for anything but jpeg, png or webp, 413 over the size limit, 503 when the storage is unreachable | `UploadAvatarCommandHandler` |
 | `DELETE /api/profiles/me/avatar` | none | 204, idempotent | `DeleteAvatarCommandHandler` |
 | `GET /api/profiles/{publicUserId}/avatar` | none | 200 streaming the bytes with the sniffed `Content-Type`, `X-Content-Type-Options: nosniff`, an `ETag` from the hash and `Cache-Control: private, max-age=86400`; 404 without an avatar or when the object vanished from storage | `GetAvatarQueryHandler` |
@@ -115,6 +117,12 @@ A friendship is one row for one pair. `FriendshipPair.Normalize` orders the two 
 
 A warehouse invite is a pointer, not a reservation: creating one checks the accepted friendship and the unique triple but never talks to Warehouses, reserves no lobby seat and does not verify the war still exists. The invitee reads the invites, opens the warehouse and joins through the normal `POST /api/warehouses/{id}/join`. Expiry is read-time, the list shows rows younger than `Profiles:Invites:Lifetime`, and the create handler opportunistically `ExecuteDeleteAsync`-purges expired rows before inserting, which keeps the unique triple from rejecting a re-invite blocked only by a dead row. Removing a friend deletes the pair's invites in the same save.
 
+## Privacy
+
+A profile is public by default. `PUT /api/profiles/me/privacy` flips `UserProfile.IsPrivate`, and `GetProfileQueryHandler` applies the rule at read time: the owner and accepted friends always get the full profile, while a stranger viewing a private profile receives only the username, the `isPrivate` flag and the `avatarUrl`, with the level, the member-since date, the friends and the social links nulled or empty. Friendship is checked through the same canonical pair lookup the invite handler uses, so the privacy read adds one indexed query only when the profile is actually private. The avatar download route stays open because the picture is the one thing a private profile still shows.
+
+The username stays visible on purpose: it already appears in other players' friend lists and in pending friend requests, so hiding it on the profile route alone would fake a guarantee the module cannot keep. Friend requests to a private profile remain possible, consistent with there being no block list in v1.
+
 ## Events
 
 | Direction | Event | Handler and effect |
@@ -134,6 +142,7 @@ The module publishes nothing. Social links, avatars, friends and invites are syn
 - Friend money stays in Wallets. Gifts reuse the open transfers endpoint, which already skips fees and turnover, so no new money path and no new gate to audit.
 - Invites are pointers. No seat reservation and no saga with Warehouses; a stale invite costs one click on a dead lobby, a reservation would cost a cross-module protocol.
 - The username is a snapshot. Nothing updates usernames today (`UpdateCredentials` has no callers), names are not unique, and every relation uses ids; a future rename means a new event, not a join into Identity.
+- Privacy is a read-time rule, not a data change (owner decision, 2026-10-22). Accepted friends see the full private profile, because a friendship needs both sides' consent, and strangers keep the username, because friend lists and pending requests leak it anyway; hiding it in one route would be a false promise.
 
 Accepted risks, recorded by the owner on 2026-10-22:
 

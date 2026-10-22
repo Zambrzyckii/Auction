@@ -10,7 +10,7 @@ flowchart LR
     subgraph ProfilesM ["Modules.Profiles - consume-only, no outbox, no background services"]
         Inbox["ProfilesProcessedMessages<br/>inbox, EventId as PK"]:::profiles
         Handlers["UserRegisteredEventHandler creates the profile,<br/>PlayerLevelledUpEventHandler applies the absolute level monotonically"]:::profiles
-        Endpoints["12 endpoints under /api/profiles<br/>profile, socials, avatar, friends, warehouse invites"]:::profiles
+        Endpoints["13 endpoints under /api/profiles<br/>profile, privacy, socials, avatar, friends, warehouse invites"]:::profiles
         Seam["IAvatarStorage seam<br/>S3AvatarStorage: AWSSDK.S3, path style,<br/>anonymous credentials, lazy bucket"]:::profiles
     end
 

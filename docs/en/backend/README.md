@@ -17,7 +17,7 @@ The backend is the whole code base of the repository: the solution [`Backend/Auc
 | [`AuctionServer.Modules.Banking`](../../../Backend/src/AuctionServer.Modules.Banking/AuctionServer.Modules.Banking.csproj) | bank loans: turnover-gated offers, maturity collection, overdue retries | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Pawnshop`](../../../Backend/src/AuctionServer.Modules.Pawnshop/AuctionServer.Modules.Pawnshop.csproj) | pawnshop with premises, a bot ladder, timed stock and automatic sale | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Casino`](../../../Backend/src/AuctionServer.Modules.Casino/AuctionServer.Modules.Casino.csproj) | casino: chips, european roulette, blackjack | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
-| [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | player profiles: levels, avatars in SeaweedFS, social links, friends, warehouse invites | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
+| [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | player profiles: levels, avatars in SeaweedFS, social links, friends, warehouse invites, privacy toggle | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) | event contracts, `AppException`, publisher seam, validation behavior | FluentValidation 12.1.1, MediatR 14.2.0 | none |
 | `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Profiles,Wallets,Warehouses}.Tests` | one xUnit project per module | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (direct override of a vulnerable transitive dependency, GHSA-q939-rpr3-3284); Identity, Wallets and Profiles add Microsoft.AspNetCore.Mvc.Testing 10.0.9 | the module under test; Identity, Wallets and Profiles tests also reference `AuctionServer.Api` |
 
@@ -146,7 +146,7 @@ Each test project has an offline part (`Application/`, `Domain/`, `Infrastructur
 | `AuctionServer.Modules.Identity.Tests` | 33 | 20 | 13 |
 | `AuctionServer.Modules.Inventory.Tests` | 94 | 47 | 47 |
 | `AuctionServer.Modules.Pawnshop.Tests` | 89 | 62 | 27 |
-| `AuctionServer.Modules.Profiles.Tests` | 84 | 30 | 54 |
+| `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
 | `AuctionServer.Modules.Wallets.Tests` | 142 | 60 | 82 |
 | `AuctionServer.Modules.Warehouses.Tests` | 64 | 43 | 21 |
 
@@ -169,7 +169,7 @@ The GitLab pipeline runs the first filter for Auctions in `unit-tests` and the f
 7. [Banking](banking.md) - bank loans: turnover-gated offers, maturity collection, penalties and retries.
 8. [Pawnshop](pawnshop.md) - premises, bot ladder, timed stock, withdrawal or automatic sale.
 9. [Casino](casino.md) - chips, european roulette, blackjack, the measured house edge.
-10. [Profiles](profiles.md) - levels, avatars in SeaweedFS, social links, friends, warehouse invites.
+10. [Profiles](profiles.md) - levels, avatars in SeaweedFS, social links, friends, warehouse invites, privacy.
 
 ## Related documents
 

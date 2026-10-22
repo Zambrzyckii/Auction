@@ -73,6 +73,7 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-10-22 | Zaproszenia do wojen magazynowych to rekordy wskaźnikowe w Profiles, bez rezerwacji miejsca i bez walidacji w Warehouses | właściciel | rezerwacja wymagałaby sagi między modułami; nieświeże zaproszenie kosztuje jeden klik w martwe lobby, a zaproszony dołącza zwykłym endpointem |
 | 2026-10-22 | Krzyżowe zaproszenie do znajomych auto-akceptuje wiszące zamiast odpowiadać 409 | właściciel | obie strony wyraziły intencję, więc wymaganie rytualnego kliku akceptacji byłoby biurokracją |
 | 2026-10-22 | Profiles jest wyłącznie konsumujący: inbox bez outboxa, bez `OutboxProcessor`a, bez keepera | agent (propozycja, zaakceptowana) | moduł nie posiada faktu potrzebnego innemu modułowi; pierwsze odejście od reguły kopiowania do każdego modułu, zapisane w messaging.md, a przyszły publikator dodaje standardową kopię z powrotem |
+| 2026-10-22 | Profil prywatny ukrywa wszystko poza nazwą i awatarem; właściciel i zaakceptowani znajomi widzą pełny profil | właściciel | znajomość wymaga zgody obu stron, a nazwa i tak wycieka przez listy znajomych i oczekujące zaproszenia, więc ukrycie jej w jednej trasie udawałoby gwarancję |
 
 ## Powiązane dokumenty
 

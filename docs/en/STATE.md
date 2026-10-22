@@ -10,8 +10,8 @@
 
 ## What exists
 
-- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino and Profiles (consume-only, no outbox) and the contracts project `Shared.Integration`; 50 endpoints, 37 integration events, 38 tables, eight `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper`.
-- Tests: nine xUnit projects, 730 test methods (410 offline, 320 integration through Testcontainers), none crossing a module boundary.
+- `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino and Profiles (consume-only, no outbox) and the contracts project `Shared.Integration`; 51 endpoints, 37 integration events, 38 tables, eight `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper`.
+- Tests: nine xUnit projects, 741 test methods (414 offline, 327 integration through Testcontainers), none crossing a module boundary.
 - CI: `.gitlab-ci.yml` and its GitHub Actions mirror `.github/workflows/ci.yml`, both with `build`, `unit-tests` and `integration-tests`.
 - Documentation: `docs/en` and `docs/pl` with this set of pages and 18 rendered diagrams; root `README.md` and `README.pl.md`.
 - `Backend/Dockerfile` and a root `compose.yaml` (API + PostgreSQL + SeaweedFS for avatars, migrations applied at startup behind `Database:MigrateOnStartup`).
@@ -31,7 +31,7 @@
 
 ## Next step
 
-On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day, the warehouse wars, the bank and the pawnshop followed on 2026-10-15, the casino on 2026-10-17 and the user profiles, the last gameplay item, on 2026-10-22. The [VISION.md](VISION.md) roadmap now points at the platform work: RabbitMQ behind the publisher seam, the Angular frontend, the AI bots and the API gateway; the private-profile option remains deferred.
+On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day, the warehouse wars, the bank and the pawnshop followed on 2026-10-15, the casino on 2026-10-17 and the user profiles, the last gameplay item, on 2026-10-22, with the private-profile option following the same day. The [VISION.md](VISION.md) roadmap now points at the platform work: RabbitMQ behind the publisher seam, the Angular frontend, the AI bots and the API gateway.
 
 ## Related documents
 

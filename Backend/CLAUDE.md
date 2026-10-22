@@ -106,8 +106,9 @@ stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Pr
 inbox), `Add_Casino_Roulette` (spins plus the owned bets table) and `Add_Casino_Blackjack` (hands with `integer[]`
 card columns). Profiles follows the same layout with `Initial_Profiles` (profiles, inbox — the module has no
 outbox), `Add_Profiles_Socials` (owned social links), `Add_Profiles_Avatars` (avatar columns),
-`Add_Profiles_Friendships` (friendships with the unique canonical pair index) and
-`Add_Profiles_Warehouse_Invites` (invites with the unique triple index). `Add_Auction_Status_And_Item_Snapshot` is the one
+`Add_Profiles_Friendships` (friendships with the unique canonical pair index),
+`Add_Profiles_Warehouse_Invites` (invites with the unique triple index) and `Add_Profiles_Privacy` (the `IsPrivate`
+column). `Add_Auction_Status_And_Item_Snapshot` is the one
 hand-edited migration: it adds `Status`, backfills it from `IsClosed` with raw SQL and only then drops the column,
 so pre-existing open auctions stay `Active` instead of falling back to the `Pending` default — keep that order if you
 ever regenerate it.
@@ -526,8 +527,12 @@ endpoint filters run after `IFormFile` binding has already read the body, which 
 413 belonged — and `AvatarImage.Sniff` decides the type by magic bytes (jpeg/png/webp, SVG rejected). Social links
 are capped at 6 and validated by `SocialLinkPolicy` (https, no user info, host equal to or a subdomain of the
 platform's domain). Friends use request/accept with auto-accept on a cross request; warehouse invites are pointer
-records with read-time expiry (`Profiles:Invites:Lifetime`) and an opportunistic purge before insert. Twelve
-endpoints under `/api/profiles` (50 total), event registry at 37, tables at 38. The chain was probed live against a
+records with read-time expiry (`Profiles:Invites:Lifetime`) and an opportunistic purge before insert. The
+private-profile option followed the same day: `UserProfile.IsPrivate` (migration `Add_Profiles_Privacy`) is flipped
+by `PUT /api/profiles/me/privacy`, and `GetProfileQueryHandler` applies the rule at read time — the owner and
+accepted friends (checked through the canonical pair lookup) see the full profile, a stranger gets only the
+username, the `isPrivate` flag and the `avatarUrl`, and the avatar route stays open. Thirteen
+endpoints under `/api/profiles` (51 total), event registry at 37, tables at 38. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`

@@ -271,7 +271,7 @@ Wszystkie dziewięć `DbContext`ów wskazuje tę samą bazę i dzielą domyśln�
 | `CasinoRouletteSpins`, `CasinoRouletteBets` | Casino | niezmienna historia spinów z posiadaną kolekcją zakładów, indeksowana (`UserId`, `PlacedOn`) |
 | `CasinoBlackjackHands` | Casino | rozdania blackjacka z kartami jako `integer[]`, unikalnym `UserId` dopóki `Status = 0` i tokenem `Version` |
 | `CasinoOutboxMessages`, `CasinoProcessedMessages` | Casino | outbox, inbox |
-| `ProfilesUserProfiles` | Profiles | jeden profil na gracza z kluczem `PublicUserId`: snapshot nazwy, lustrzany poziom, typ, hash i data awatara, token `Version` |
+| `ProfilesUserProfiles` | Profiles | jeden profil na gracza z kluczem `PublicUserId`: snapshot nazwy, lustrzany poziom, flaga `IsPrivate`, typ, hash i data awatara, token `Version` |
 | `ProfilesSocialLinks` | Profiles | owned konta społecznościowe, klucz złożony (`ProfileUserId`, `Platform`), najwyżej sześć na profil |
 | `ProfilesFriendships` | Profiles | jeden wiersz na parę z kanonicznym unikalnym indeksem (`UserLowId`, `UserHighId`), `Status` `Pending`/`Accepted` |
 | `ProfilesWarehouseInvites` | Profiles | wskaźnikowe zaproszenia do wojen magazynowych, unikalna trójka (`InviterId`, `InviteeId`, `PublicWarehouseId`), wygasanie odczytowe |

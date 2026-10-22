@@ -17,7 +17,7 @@ Backend to cały kod repozytorium: rozwiązanie [`Backend/AuctionServer.slnx`](.
 | [`AuctionServer.Modules.Banking`](../../../Backend/src/AuctionServer.Modules.Banking/AuctionServer.Modules.Banking.csproj) | pożyczki bankowe: oferty bramkowane obrotem, pobranie w terminie zapadalności, ponowienia po terminie | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Pawnshop`](../../../Backend/src/AuctionServer.Modules.Pawnshop/AuctionServer.Modules.Pawnshop.csproj) | lombard z lokalem, drabinką botów, towarem czasowym i automatyczną sprzedażą | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Casino`](../../../Backend/src/AuctionServer.Modules.Casino/AuctionServer.Modules.Casino.csproj) | kasyno: żetony, ruletka europejska, blackjack | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
-| [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | profile graczy: poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, referencja frameworka `Microsoft.AspNetCore.App` |
+| [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | profile graczy: poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe, przełącznik prywatności | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, referencja frameworka `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) | kontrakty zdarzeń, `AppException`, szew publishera, behavior walidacji | FluentValidation 12.1.1, MediatR 14.2.0 | brak |
 | `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Profiles,Wallets,Warehouses}.Tests` | jeden projekt xUnit na moduł | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (bezpośrednie nadpisanie podatnej zależności przechodniej, GHSA-q939-rpr3-3284); Identity, Wallets i Profiles dodają Microsoft.AspNetCore.Mvc.Testing 10.0.9 | testowany moduł; testy Identity, Wallets i Profiles referencują też `AuctionServer.Api` |
 
@@ -146,7 +146,7 @@ Każdy projekt testowy ma część offline (`Application/`, `Domain/`, `Infrastr
 | `AuctionServer.Modules.Identity.Tests` | 33 | 20 | 13 |
 | `AuctionServer.Modules.Inventory.Tests` | 94 | 47 | 47 |
 | `AuctionServer.Modules.Pawnshop.Tests` | 89 | 62 | 27 |
-| `AuctionServer.Modules.Profiles.Tests` | 84 | 30 | 54 |
+| `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
 | `AuctionServer.Modules.Wallets.Tests` | 142 | 60 | 82 |
 | `AuctionServer.Modules.Warehouses.Tests` | 64 | 43 | 21 |
 
@@ -169,7 +169,7 @@ Pipeline GitLaba uruchamia pierwszy filtr dla Auctions w `unit-tests`, a pełne 
 7. [Banking](banking.md) - pożyczki bankowe: oferty bramkowane obrotem, pobranie w terminie zapadalności, kary i ponowienia.
 8. [Pawnshop](pawnshop.md) - lokal, drabinka botów, towar czasowy, wycofanie albo automatyczna sprzedaż.
 9. [Casino](casino.md) - żetony, ruletka europejska, blackjack, zmierzona przewaga kasyna.
-10. [Profiles](profiles.md) - poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe.
+10. [Profiles](profiles.md) - poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe, prywatność.
 
 ## Powiązane dokumenty
 

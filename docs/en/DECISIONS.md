@@ -73,6 +73,7 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-22 | Warehouse-war invites are pointer records in Profiles with no seat reservation and no validation against Warehouses | owner | a reservation would need a cross-module saga; a stale invite costs one click on a dead lobby, and the invitee joins through the normal endpoint |
 | 2026-10-22 | A cross friend request auto-accepts the pending one instead of answering 409 | owner | both sides have expressed the intent, so demanding the ritual accept click would be bureaucracy |
 | 2026-10-22 | Profiles is consume-only: an inbox without an outbox, no `OutboxProcessor`, no keeper | agent (proposal, accepted) | the module owns no fact another module needs; the first departure from the copy-into-every-module rule, recorded in messaging.md, and a future publisher adds the standard copy back |
+| 2026-10-22 | A private profile hides everything except the username and the avatar; the owner and accepted friends see the full profile | owner | a friendship needs both sides' consent, and the username already leaks through friend lists and pending requests, so hiding it on one route would fake a guarantee |
 
 ## Related documents
 

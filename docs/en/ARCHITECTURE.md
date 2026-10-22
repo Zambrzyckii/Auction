@@ -271,7 +271,7 @@ All nine `DbContext`s point at the same database and share the default `__EFMigr
 | `CasinoRouletteSpins`, `CasinoRouletteBets` | Casino | immutable spin history with the owned bets collection, indexed (`UserId`, `PlacedOn`) |
 | `CasinoBlackjackHands` | Casino | blackjack hands with the cards as `integer[]`, a unique `UserId` while `Status = 0` and a `Version` token |
 | `CasinoOutboxMessages`, `CasinoProcessedMessages` | Casino | outbox, inbox |
-| `ProfilesUserProfiles` | Profiles | one profile per player keyed by `PublicUserId`: the username snapshot, the mirrored level, the avatar type, hash and date, a `Version` token |
+| `ProfilesUserProfiles` | Profiles | one profile per player keyed by `PublicUserId`: the username snapshot, the mirrored level, the `IsPrivate` flag, the avatar type, hash and date, a `Version` token |
 | `ProfilesSocialLinks` | Profiles | owned social links, composite key (`ProfileUserId`, `Platform`), at most six per profile |
 | `ProfilesFriendships` | Profiles | one row per pair with the canonical (`UserLowId`, `UserHighId`) unique index, `Status` `Pending`/`Accepted` |
 | `ProfilesWarehouseInvites` | Profiles | pointer invites to warehouse wars, unique (`InviterId`, `InviteeId`, `PublicWarehouseId`), read-time expiry |
