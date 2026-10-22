@@ -1,6 +1,6 @@
 flowchart TB
 
-    subgraph Host ["AuctionServer.Api - ProjectReference to the eight modules"]
+    subgraph Host ["AuctionServer.Api - ProjectReference to the nine modules"]
         Program["Program.cs<br/>DI, authentication schemes and policies,<br/>MediatR + FluentValidation registered per module assembly"]:::host
         ApiInfra["Infrastructure/<br/>ApiKeyAuthenticationHandler, GlobalExceptionHandler,<br/>Messaging/InProcessEventPublisher"]:::host
     end
@@ -14,12 +14,13 @@ flowchart TB
         Banking["Modules.Banking<br/>BankingDbContext, OutboxProcessor, BankKeeper"]:::banking
         Pawnshop["Modules.Pawnshop<br/>PawnshopDbContext, OutboxProcessor, PawnshopKeeper"]:::pawnshop
         Casino["Modules.Casino<br/>CasinoDbContext, OutboxProcessor, CasinoKeeper"]:::casino
+        Profiles["Modules.Profiles<br/>ProfilesDbContext, consume-only: no outbox, no background services"]:::profiles
     end
 
-    Shared["AuctionServer.Shared.Integration<br/>Events/ (36 records), AppException, IIntegrationEventPublisher,<br/>IntegrationEventTypes, ValidationBehaviour"]:::shared
+    Shared["AuctionServer.Shared.Integration<br/>Events/ (37 records), AppException, IIntegrationEventPublisher,<br/>IntegrationEventTypes, ValidationBehaviour"]:::shared
 
-    Program --> Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino
-    Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino --> Shared
+    Program --> Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino & Profiles
+    Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino & Profiles --> Shared
     ApiInfra -.->|"implements IIntegrationEventPublisher"| Shared
 
     style Host fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
@@ -35,6 +36,7 @@ flowchart TB
     classDef banking   fill:#ECFCCB,stroke:#65A30D,stroke-width:2px,color:#365314
     classDef pawnshop  fill:#FAE8FF,stroke:#C026D3,stroke-width:2px,color:#701A75
     classDef casino    fill:#CFFAFE,stroke:#0891B2,stroke-width:2px,color:#164E63
+    classDef profiles  fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95
     classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
     classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
     classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

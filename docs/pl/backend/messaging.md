@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/messaging.md](../../en/backend/messaging.md)
 
-`AuctionServer.Shared.Integration` to jedyny projekt referencowany przez każdy moduł, a tabele outboxa i inboxa to jedyna droga, którą moduły wpływają na siebie nawzajem. Ten rozdział opisuje projekt współdzielony, wiersz outboxa i jego procesor, politykę ponowień i martwych wiadomości, wzorzec inboxa po stronie konsumenta, szew publishera, który zastąpiłby broker wiadomości, oraz katalog trzydziestu sześciu zdarzeń integracyjnych.
+`AuctionServer.Shared.Integration` to jedyny projekt referencowany przez każdy moduł, a tabele outboxa i inboxa to jedyna droga, którą moduły wpływają na siebie nawzajem. Ten rozdział opisuje projekt współdzielony, wiersz outboxa i jego procesor, politykę ponowień i martwych wiadomości, wzorzec inboxa po stronie konsumenta, szew publishera, który zastąpiłby broker wiadomości, oraz katalog trzydziestu siedmiu zdarzeń integracyjnych.
 
 ## Przegląd
 
@@ -10,7 +10,7 @@
 
 | Folder | Zawartość |
 |---|---|
-| `Events/` | trzydzieści sześć typów `record` implementujących `INotification` z MediatR, plus rekordy ładunku `WarehouseStockItem` i `PawnshopStockItem`, pogrupowane tematycznie w `Auctions/`, `Banking/`, `Casino/`, `Funds/`, `Items/`, `Pawnshop/`, `Users/` i `Warehouses/`; każdy rekord zdarzenia zaczyna się od `Guid EventId` |
+| `Events/` | trzydzieści siedem typów `record` implementujących `INotification` z MediatR, plus rekordy ładunku `WarehouseStockItem` i `PawnshopStockItem`, pogrupowane tematycznie w `Auctions/`, `Banking/`, `Casino/`, `Funds/`, `Items/`, `Pawnshop/`, `Players/`, `Users/` i `Warehouses/`; każdy rekord zdarzenia zaczyna się od `Guid EventId` |
 | `Exceptions/` | `AppException(message, statusCode)`, abstrakcyjna baza każdego wyjątku domenowego, oraz `RequestValidationException` (400) |
 | `Messaging/` | `IIntegrationEventPublisher` (szew publishera) i `IntegrationEventTypes` (rejestr nazwa→typ używany do deserializacji wierszy outboxa) |
 | `Validators/` | `ValidationBehaviour<,>`, behavior pipeline'u MediatR uruchamiający walidatory FluentValidation przed handlerem |
@@ -26,7 +26,7 @@ Diagram pokazuje jedno zdarzenie wędrujące z transakcji modułu produkującego
   <img alt="Diagram: z outboxa do inboxa" src="../../diagrams/backend-messaging-01-outbox-to-inbox.svg">
 </picture>
 
-Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) i [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); osiem kopii różni się tylko używanym `DbContext`em oraz, w Identity, dwoma publicznymi setterami (`Errors`, `IsDead`) i klasą procesora bez `sealed`. Tabele to `OutboxMessages` (Auctions, bez wywołania `ToTable`), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` i `CasinoOutboxMessages`.
+Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) i [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); osiem kopii różni się tylko używanym `DbContext`em oraz, w Identity, dwoma publicznymi setterami (`Errors`, `IsDead`) i klasą procesora bez `sealed`. Tabele to `OutboxMessages` (Auctions, bez wywołania `ToTable`), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` i `CasinoOutboxMessages`. Profiles niczego nie publikuje i jest jedynym modułem bez kopii outboxa i bez `OutboxProcessor`a; przyszły publikator w tym module dodałby standardową kopię z powrotem.
 
 | Kolumna | Typ | Znaczenie |
 |---|---|---|
@@ -42,7 +42,7 @@ Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionS
 
 Producent nigdy nie publikuje bezpośrednio: dodaje wiersz do `DbContext`u modułu i zapisuje go razem ze zmianą encji (`CreateAuctionAsync`, `SaveChangesWithOutboxAsync`, `AddUserWithOutboxAsync` oraz warianty inbox-i-outbox wymienione niżej), więc albo oba commitują się razem, albo żaden.
 
-`OutboxProcessor` to `BackgroundService` rejestrowany przez każde wywołanie `Add<Module>Module`. Jego pętla uruchamia `ProcessPendingMessagesAsync`, loguje `Outbox processing cycle failed` przy dowolnym wyjątku i czeka 3 s (`Task.Delay(3000)`) przed kolejnym cyklem. Jeden cykl otwiera scope DI, pobiera `DbContext` modułu, wybiera do 20 wierszy, w których `ProcessedOn` jest null, `IsDead` jest false, a `NextAttemptOn` jest null lub w przeszłości, uporządkowanych po `CreatedOn`, i obsługuje je po kolei: `PublishAsync(Id, Type, Content)` przez `IIntegrationEventPublisher` pobrany ze świeżego scope tworzonego dla tej jednej wiadomości, potem `MarkAsProcessed()`, a przy wyjątku `FailedAttempt(e.Message)`, `MarkMessageAsDead()`, gdy `AttemptCount` przekroczy 5, oraz wpis w logu `Failed to process outbox message {MessageId}`. `SaveChangesAsync` wykonuje się po każdej wiadomości, więc jeden zatruty wiersz nie blokuje wierszy za nim. Scope per wiadomość daje każdemu handlerowi odbiorcy świeży `DbContext`, więc encje pozostawione w śledzeniu przez jeden nieudany handler nie psują zapisów wiadomości za nim.
+`OutboxProcessor` to `BackgroundService` rejestrowany przez wywołanie `Add<Module>Module` każdego modułu publikującego (wszystkie poza Profiles). Jego pętla uruchamia `ProcessPendingMessagesAsync`, loguje `Outbox processing cycle failed` przy dowolnym wyjątku i czeka 3 s (`Task.Delay(3000)`) przed kolejnym cyklem. Jeden cykl otwiera scope DI, pobiera `DbContext` modułu, wybiera do 20 wierszy, w których `ProcessedOn` jest null, `IsDead` jest false, a `NextAttemptOn` jest null lub w przeszłości, uporządkowanych po `CreatedOn`, i obsługuje je po kolei: `PublishAsync(Id, Type, Content)` przez `IIntegrationEventPublisher` pobrany ze świeżego scope tworzonego dla tej jednej wiadomości, potem `MarkAsProcessed()`, a przy wyjątku `FailedAttempt(e.Message)`, `MarkMessageAsDead()`, gdy `AttemptCount` przekroczy 5, oraz wpis w logu `Failed to process outbox message {MessageId}`. `SaveChangesAsync` wykonuje się po każdej wiadomości, więc jeden zatruty wiersz nie blokuje wierszy za nim. Scope per wiadomość daje każdemu handlerowi odbiorcy świeży `DbContext`, więc encje pozostawione w śledzeniu przez jeden nieudany handler nie psują zapisów wiadomości za nim.
 
 ## Ponowienia i martwe wiadomości
 
@@ -71,7 +71,7 @@ SELECT "Id", "Type", "AttemptCount", "Errors" FROM "OutboxMessages" WHERE "IsDea
 
 ## Inbox
 
-Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolumną, `EventId` (klucz główny), plus `ProcessedOn`; encją jest [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs), a tabele to `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages`, `WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages` i `CasinoProcessedMessages`. Identity nie konsumuje zdarzeń i nie ma inboxa. Każdy handler konsumujący wykonuje te same kroki:
+Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolumną, `EventId` (klucz główny), plus `ProcessedOn`; encją jest [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs), a tabele to `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages`, `WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`, `CasinoProcessedMessages` i `ProfilesProcessedMessages`. Identity nie konsumuje zdarzeń i nie ma inboxa. Każdy handler konsumujący wykonuje te same kroki:
 
 1. Woła `WasEventProcessedAsync(EventId)` i kończy, gdy id jest już zapisane.
 2. Ładuje agregat i wykonuje zmianę domenową.
@@ -119,6 +119,8 @@ Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolum
 | `CasinoCashOutEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
 | `CasinoChipPurchaseCompletedEventHandler` | Casino | `SaveChangesWithInboxAsync` | brak |
 | `CasinoChipPurchaseRejectedEventHandler` | Casino | `SaveChangesWithInboxAsync` | brak; na zakupie `Expired` odrzucenie to cichy no-op |
+| `UserRegisteredEventHandler` | Profiles | `AddProfileWithInboxAsync` | brak; profil ze snapshotem nazwy |
+| `PlayerLevelledUpEventHandler` | Profiles | `SaveChangesWithInboxAsync` | brak; nakłada absolutny poziom monotonicznie |
 
 Łapany jest wyłącznie `EventAlreadyProcessedException`. Brakujący agregat (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), reguła domenowa (`InsufficientFundsException`, `LockNotFoundException`, `ItemNotLockedException`, `InvalidAuctionStateTransitionException`, `InvalidLoanStateTransitionException`, `InvalidShopStateTransitionException`, `InvalidPurchaseStateTransitionException`) i `DbUpdateConcurrencyException` propagują do `OutboxProcessor`a producenta, gdzie liczą się jako nieudana próba. Zamysł to widoczna porażka: wiadomość, której nie da się zastosować, kończy jako martwa z zapisanym powodem, zamiast zostać pominięta.
 
@@ -132,7 +134,7 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 
 | Zdarzenie | Ładunek (poza `EventId`) | Producent | Konsumenci | `Id` outboxa równe `EventId` |
 |---|---|---|---|---|
-| `UserRegisteredEvent` | `PublicUserId`, `Email` | Identity `RegisterCommandHandler`, `RegisterBotCommandHandler` | Wallets `UserRegisteredEventHandler` | tak |
+| `UserRegisteredEvent` | `PublicUserId`, `Email`, `Username?` (parametr z wartością domyślną, więc payloady sprzed pola deserializują się do null) | Identity `RegisterCommandHandler`, `RegisterBotCommandHandler` | Wallets, Inventory i Profiles `UserRegisteredEventHandler` | tak |
 | `ItemLockRequestedEvent` | `PublicAuctionId`, `PublicItemId`, `SellerUserId` | Auctions `CreateAuctionCommandHandler` | Inventory `ItemLockRequestedEventHandler` | tak |
 | `ItemLockedEvent` | `PublicAuctionId`, `PublicItemId`, `ItemName`, `ItemRarity`, `OfficialPrice` | Inventory `ItemLockRequestedEventHandler` | Auctions `ItemLockedEventHandler` | tak |
 | `ItemLockRejectedEvent` | `PublicAuctionId`, `PublicItemId`, `Reason` | Inventory `ItemLockRequestedEventHandler` | Auctions `ItemLockRejectedEventHandler` | tak |
@@ -168,10 +170,11 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 | `CasinoChipPurchaseCompletedEvent` | `PublicPurchaseId`, `UserId` | Wallets `CasinoChipPurchaseRequestedEventHandler` | Casino `CasinoChipPurchaseCompletedEventHandler` | tak |
 | `CasinoChipPurchaseRejectedEvent` | `PublicPurchaseId`, `UserId`, `Reason` | Wallets `CasinoChipPurchaseRequestedEventHandler` | Casino `CasinoChipPurchaseRejectedEventHandler` | tak |
 | `CasinoCashOutEvent` | `UserId`, `Amount` | Casino `CashOutChipsCommandHandler` | Wallets `CasinoCashOutEventHandler` | tak |
+| `PlayerLevelledUpEvent` | `UserId`, `PreviousLevel`, `NewLevel`, `RewardAmount` | Wallets `WalletDbContext.SaveChangesAsync`, które drenuje oczekujące awanse portfela do wierszy outboxa przed zapisem bazowym | Profiles `PlayerLevelledUpEventHandler` | tak |
 
 ## Decyzje
 
-- Outbox i inbox są skopiowane do każdego modułu zamiast leżeć w `Shared.Integration`, dzięki czemu projekt współdzielony pozostaje assembly z samymi kontraktami, bez zależności od EF Core; ceną jest osiem identycznych klas do utrzymania w synchronizacji (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md)).
+- Outbox i inbox są skopiowane do każdego modułu zamiast leżeć w `Shared.Integration`, dzięki czemu projekt współdzielony pozostaje assembly z samymi kontraktami, bez zależności od EF Core; ceną jest osiem identycznych klas do utrzymania w synchronizacji (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md)). Profiles konsumuje bez publikowania i niesie wyłącznie kopię inboxa.
 - Szyna jest in-process, a publisher to szew, więc moduły od początku były pisane pod dostarczanie at-least-once i broker można wprowadzić bez ich dotykania (zobacz [ADR-003](../adr/003-in-process-event-bus-before-rabbitmq.md)).
 - Handlery celowo wypuszczają nieoczekiwane wyjątki, więc wiadomość, której nie da się zastosować, staje się martwym wierszem z historią błędów, a nie cichym pominięciem.
 

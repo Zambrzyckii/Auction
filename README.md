@@ -2,16 +2,16 @@
 
 > English version. Polish counterpart: [README.pl.md](README.pl.md)
 
-**AuctionServer** is a gamified auction house built as a **modular monolith in .NET 10 on PostgreSQL**: users register, receive a virtual wallet, collect and craft items, trade them through timed auctions with anti-sniping, automatic closing and exactly-once settlement, bid in fast warehouse wars over hidden stock, take bank loans gated by their lifetime market turnover, earn passive income from a pawnshop staffed by bots and gamble their money away at a casino with roulette and blackjack. It is a portfolio and learning project whose point is the architecture: strict module boundaries, event-driven integration through a transactional outbox and inbox, and correctness guarantees (idempotency, optimistic concurrency, atomic writes) that demo projects usually skip.
+**AuctionServer** is a gamified auction house built as a **modular monolith in .NET 10 on PostgreSQL**: users register, receive a virtual wallet, collect and craft items, trade them through timed auctions with anti-sniping, automatic closing and exactly-once settlement, bid in fast warehouse wars over hidden stock, take bank loans gated by their lifetime market turnover, earn passive income from a pawnshop staffed by bots, gamble their money away at a casino with roulette and blackjack and show it all off on a profile with turnover-driven levels, an avatar and friends. It is a portfolio and learning project whose point is the architecture: strict module boundaries, event-driven integration through a transactional outbox and inbox, and correctness guarantees (idempotency, optimistic concurrency, atomic writes) that demo projects usually skip.
 
 ## Status
 
-The backend is complete for the main flow: eight modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino), 38 endpoints, 36 integration events, 646 test methods and CI pipelines for GitLab and GitHub Actions. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 50 endpoints, 37 integration events, 730 test methods and CI pipelines for GitLab and GitHub Actions. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 
 ```bash
-docker compose up -d        # PostgreSQL + the API on http://localhost:8080, migrations applied at startup
+docker compose up -d        # PostgreSQL + SeaweedFS + the API on http://localhost:8080, migrations applied at startup
 ```
 
 Then `POST /api/users/register`, `POST /api/users/login` and call the rest with the returned token; the endpoints are listed in [docs/en/backend/README.md](docs/en/backend/README.md). The manual, IDE-friendly path (local PostgreSQL, user secrets, migrations per module, `dotnet run`) is described in [docs/en/backend/README.md#running](docs/en/backend/README.md#running).

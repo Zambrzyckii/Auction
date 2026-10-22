@@ -249,6 +249,40 @@ erDiagram
     CASINO__CasinoProcessedMessages {
         uuid EventId PK
     }
+    PROFILES__ProfilesUserProfiles {
+        uuid UserId PK "equals Users.PublicUserId"
+        varchar Username "max 64 snapshot, fallback Player"
+        integer Level "mirrored from PlayerLevelledUpEvent"
+        varchar AvatarContentType "nullable, max 32, sniffed type"
+        varchar AvatarHash "nullable, max 64, SHA-256 hex"
+        timestamptz AvatarUpdatedOn "nullable"
+        timestamptz CreatedOn
+        uuid Version "concurrency token"
+    }
+    PROFILES__ProfilesSocialLinks {
+        uuid ProfileUserId PK "composite with Platform, real FK, owned"
+        integer Platform PK "Twitch=0 YouTube=1 X=2 Instagram=3 GitHub=4 Steam=5 Discord=6 Website=7"
+        varchar Url "max 200, https only"
+    }
+    PROFILES__ProfilesFriendships {
+        uuid PublicFriendshipId PK
+        uuid RequesterId "indexed"
+        uuid AddresseeId "indexed"
+        uuid UserLowId "unique with UserHighId, canonical pair"
+        uuid UserHighId
+        integer Status "Pending=0 Accepted=1"
+        timestamptz CreatedOn
+    }
+    PROFILES__ProfilesWarehouseInvites {
+        uuid Id PK
+        uuid InviterId "unique triple with InviteeId and PublicWarehouseId"
+        uuid InviteeId "indexed"
+        uuid PublicWarehouseId "pointer, no validation"
+        timestamptz CreatedOn "read-time expiry"
+    }
+    PROFILES__ProfilesProcessedMessages {
+        uuid EventId PK "the module has no outbox"
+    }
     AUCTIONS__Auctions ||..o{ AUCTIONS__AuctionsBids : "PublicAuctionId, no FK"
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
@@ -272,3 +306,9 @@ erDiagram
     CASINO__CasinoRouletteSpins ||--o{ CASINO__CasinoRouletteBets : "SpinId, real FK, owned by the aggregate"
     IDENTITY__Users ||..o{ CASINO__CasinoBlackjackHands : "UserId, no FK"
     WALLETS__Wallets |o..o{ CASINO__CasinoChipPurchases : "UserId, purchases and cash-outs via events only"
+    IDENTITY__Users ||..o| PROFILES__ProfilesUserProfiles : "UserId = PublicUserId, no FK"
+    PROFILES__ProfilesUserProfiles ||--o{ PROFILES__ProfilesSocialLinks : "ProfileUserId, real FK, owned by the aggregate"
+    PROFILES__ProfilesUserProfiles ||..o{ PROFILES__ProfilesFriendships : "RequesterId and AddresseeId, no FK"
+    PROFILES__ProfilesUserProfiles ||..o{ PROFILES__ProfilesWarehouseInvites : "InviterId and InviteeId, no FK"
+    WAREHOUSES__WarehousesWars |o..o{ PROFILES__ProfilesWarehouseInvites : "PublicWarehouseId, pointer only, no FK"
+    WALLETS__Wallets |o..o| PROFILES__ProfilesUserProfiles : "level mirrored via PlayerLevelledUpEvent only"

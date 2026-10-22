@@ -2,13 +2,13 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/README.md](../../en/backend/README.md)
 
-Backend to cały kod repozytorium: rozwiązanie [`Backend/AuctionServer.slnx`](../../../Backend/AuctionServer.slnx) zawiera dziesięć projektów źródłowych w `src/` i osiem projektów testowych w `tests/`, wszystkie celujące w `net10.0`. Ta strona wymienia projekty i ich pakiety, układ folderów wewnątrz modułu, sposób uruchomienia i konfiguracji hosta, drogę żądania przez pipeline, kontrakt błędów i organizację testów. Każda komenda poniżej jest uruchamiana z `Backend/`.
+Backend to cały kod repozytorium: rozwiązanie [`Backend/AuctionServer.slnx`](../../../Backend/AuctionServer.slnx) zawiera jedenaście projektów źródłowych w `src/` i dziewięć projektów testowych w `tests/`, wszystkie celujące w `net10.0`. Ta strona wymienia projekty i ich pakiety, układ folderów wewnątrz modułu, sposób uruchomienia i konfiguracji hosta, drogę żądania przez pipeline, kontrakt błędów i organizację testów. Każda komenda poniżej jest uruchamiana z `Backend/`.
 
 ## Projekty
 
 | Projekt | Rola | Kluczowe pakiety | Referencje |
 |---|---|---|---|
-| [`AuctionServer.Api`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.csproj) | host (`Microsoft.NET.Sdk.Web`), id user-secrets `577a6cdc-f271-456d-bdda-b8da6c8d3aa5` | FluentValidation 12.1.1 z rozszerzeniami DI, MediatR 14.2.0, Microsoft.AspNetCore.Diagnostics 2.3.11, Microsoft.AspNetCore.Http 2.3.11, Microsoft.AspNetCore.OpenApi 10.0.13, Microsoft.EntityFrameworkCore.Design 10.0.9 | osiem modułów |
+| [`AuctionServer.Api`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.csproj) | host (`Microsoft.NET.Sdk.Web`), id user-secrets `577a6cdc-f271-456d-bdda-b8da6c8d3aa5` | FluentValidation 12.1.1 z rozszerzeniami DI, MediatR 14.2.0, Microsoft.AspNetCore.Diagnostics 2.3.11, Microsoft.AspNetCore.Http 2.3.11, Microsoft.AspNetCore.OpenApi 10.0.13, Microsoft.EntityFrameworkCore.Design 10.0.9 | dziewięć modułów |
 | [`AuctionServer.Modules.Auctions`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionServer.Modules.Auctions.csproj) | aukcje i licytacja | Dapper 2.1.79, MediatR 14.2.0, Microsoft.AspNetCore.Http 2.3.11, Microsoft.EntityFrameworkCore 10.0.9, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Identity`](../../../Backend/src/AuctionServer.Modules.Identity/AuctionServer.Modules.Identity.csproj) | konta, logowanie, JWT, provisioning botów | BCrypt.Net-Next 4.2.0, FluentValidation 12.1.1, Microsoft.AspNetCore.Authentication.JwtBearer 10.0.9, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration` |
 | [`AuctionServer.Modules.Inventory`](../../../Backend/src/AuctionServer.Modules.Inventory/AuctionServer.Modules.Inventory.csproj) | przedmioty, crafting, sklep, blokady | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
@@ -17,8 +17,9 @@ Backend to cały kod repozytorium: rozwiązanie [`Backend/AuctionServer.slnx`](.
 | [`AuctionServer.Modules.Banking`](../../../Backend/src/AuctionServer.Modules.Banking/AuctionServer.Modules.Banking.csproj) | pożyczki bankowe: oferty bramkowane obrotem, pobranie w terminie zapadalności, ponowienia po terminie | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Pawnshop`](../../../Backend/src/AuctionServer.Modules.Pawnshop/AuctionServer.Modules.Pawnshop.csproj) | lombard z lokalem, drabinką botów, towarem czasowym i automatyczną sprzedażą | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Casino`](../../../Backend/src/AuctionServer.Modules.Casino/AuctionServer.Modules.Casino.csproj) | kasyno: żetony, ruletka europejska, blackjack | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
+| [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | profile graczy: poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, referencja frameworka `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) | kontrakty zdarzeń, `AppException`, szew publishera, behavior walidacji | FluentValidation 12.1.1, MediatR 14.2.0 | brak |
-| `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Wallets,Warehouses}.Tests` | jeden projekt xUnit na moduł | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (bezpośrednie nadpisanie podatnej zależności przechodniej, GHSA-q939-rpr3-3284); Identity i Wallets dodają Microsoft.AspNetCore.Mvc.Testing 10.0.9 | testowany moduł; testy Identity i Wallets referencują też `AuctionServer.Api` |
+| `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Profiles,Wallets,Warehouses}.Tests` | jeden projekt xUnit na moduł | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (bezpośrednie nadpisanie podatnej zależności przechodniej, GHSA-q939-rpr3-3284; w Profiles.Tests nadpisania jeszcze nie ma); Identity, Wallets i Profiles dodają Microsoft.AspNetCore.Mvc.Testing 10.0.9 | testowany moduł; testy Identity, Wallets i Profiles referencują też `AuctionServer.Api` |
 
 Każda paczka w stosie to wydanie 10.0.x; `BackgroundService` i abstrakcje hostingu pochodzą z framework reference `Microsoft.AspNetCore.App`, nie z paczki.
 
@@ -42,13 +43,13 @@ Backend/
     └── AuctionServer.Modules.<Name>.Tests/ Application/, Domain/, Infrastructure/ (offline) i IntegrationTests/ (Testcontainers)
 ```
 
-Nazwy folderów nie są idealnie jednolite: Auctions i Identity używają `Application/Commands/`, Inventory, Wallets i Warehouses `Application/Command/`; Auctions używa `Infrastructure/Configurations/`, pozostałe `Infrastructure/Configuration/`; migracje Auctions są rozdzielone między `Migrations/` (migracja początkowa i snapshot) i `Infrastructure/Migrations/`, podczas gdy pozostałe moduły trzymają je w `Infrastructure/Persistence/Migrations/`.
+Nazwy folderów nie są idealnie jednolite: Auctions i Identity używają `Application/Commands/`, Inventory, Wallets, Warehouses, Casino i Profiles `Application/Command/`; Auctions używa `Infrastructure/Configurations/`, pozostałe `Infrastructure/Configuration/`; migracje Auctions są rozdzielone między `Migrations/` (migracja początkowa i snapshot) i `Infrastructure/Migrations/`, podczas gdy pozostałe moduły trzymają je w `Infrastructure/Persistence/Migrations/`.
 
 ## Uruchomienie
 
-Ścieżka na jedną komendę to plik Compose w korzeniu repozytorium: `docker compose up -d` buduje obraz hosta ([`Backend/Dockerfile`](../../../Backend/Dockerfile)), stawia `postgres:16-alpine` (port hosta 5436) i API na `http://localhost:8080` z kluczami tylko deweloperskimi, a host aplikuje migracje wszystkich ośmiu modułów przed obsługą ruchu, bo Compose ustawia `Database__MigrateOnStartup=true` (flaga domyślnie `false` w [`appsettings.json`](../../../Backend/src/AuctionServer.Api/appsettings.json)).
+Ścieżka na jedną komendę to plik Compose w korzeniu repozytorium: `docker compose up -d` buduje obraz hosta ([`Backend/Dockerfile`](../../../Backend/Dockerfile)), stawia `postgres:16-alpine` (port hosta 5436), `chrislusf/seaweedfs:4.48` (magazyn awatarów, osiągalny tylko wewnątrz sieci Compose) i API na `http://localhost:8080` z kluczami tylko deweloperskimi, a host aplikuje migracje wszystkich dziewięciu modułów przed obsługą ruchu, bo Compose ustawia `Database__MigrateOnStartup=true` (flaga domyślnie `false` w [`appsettings.json`](../../../Backend/src/AuctionServer.Api/appsettings.json)).
 
-Ręczna ścieżka poniżej uruchamia hosta ze źródeł: potrzebuje osiągalnego PostgreSQL, trzech sekretów i schematu wszystkich ośmiu modułów. Do kroku z migracjami wymagane jest narzędzie `dotnet ef`.
+Ręczna ścieżka poniżej uruchamia hosta ze źródeł: potrzebuje osiągalnego PostgreSQL, trzech sekretów i schematu wszystkich dziewięciu modułów; endpointy awatarów potrzebują dodatkowo osiągalnego SeaweedFS i bez niego odpowiadają 503, podczas gdy cała reszta działa normalnie. Do kroku z migracjami wymagane jest narzędzie `dotnet ef`.
 
 ```bash
 # 1. PostgreSQL (zadziała dowolna instancja; ta nasłuchuje na 6767)
@@ -81,11 +82,11 @@ Poza endpointami biznesowymi host serwuje `/health` (`SELECT 1` na bazie) i doku
 
 ## Konfiguracja
 
-Ustawienia są czytane przez `IConfiguration`, więc każdy klucz może pochodzić z `appsettings.json`, user secrets albo zmiennej środowiskowej z separatorem `__` (`ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey`), i tak dostarczają je testy integracyjne oraz dostarczałby kontener. `Cors:AllowedOrigins` (tablica, domyślnie `http://localhost:4200`) zasila politykę CORS, a `Database:MigrateOnStartup` (domyślnie `false`) aplikuje migracje wszystkich ośmiu modułów, zanim host zacznie obsługiwać ruch.
+Ustawienia są czytane przez `IConfiguration`, więc każdy klucz może pochodzić z `appsettings.json`, user secrets albo zmiennej środowiskowej z separatorem `__` (`ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey`), i tak dostarczają je testy integracyjne oraz dostarczałby kontener. `Cors:AllowedOrigins` (tablica, domyślnie `http://localhost:4200`) zasila politykę CORS, a `Database:MigrateOnStartup` (domyślnie `false`) aplikuje migracje wszystkich dziewięciu modułów, zanim host zacznie obsługiwać ruch.
 
 | Klucz | Domyślnie | Wymagany | Gdy brak | Używany przez |
 |---|---|---|---|---|
-| `ConnectionStrings:DefaultConnection` | brak | tak | bez sprawdzenia na starcie; pierwszy dostęp do bazy zawodzi | osiem `DbContext`ów i `SqlConnectionFactory` |
+| `ConnectionStrings:DefaultConnection` | brak | tak | bez sprawdzenia na starcie; pierwszy dostęp do bazy zawodzi | dziewięć `DbContext`ów i `SqlConnectionFactory` |
 | `Jwt:Key` | brak | tak, co najmniej 32 znaki | każde żądanie, także anonimowe, dostaje 500 `Unhandled error occurred`, bo opcje bearera są budowane przy każdym żądaniu i bez klucza nie da się ich zbudować; klucz krótszy niż 32 znaki pozwala hostowi działać, ale logowanie z poprawnymi danymi dostaje 500 `Server configuration error` | walidacja bearera w [`Program.cs`](../../../Backend/src/AuctionServer.Api/Program.cs), wystawianie tokenu w `LoginCommandHandler` |
 | `Jwt:Issuer` | `AuctionServer` | nie | — | walidacja bearera i wystawianie tokenu |
 | `Jwt:Audience` | `AuctionServer.Client` | nie | — | walidacja bearera i wystawianie tokenu |
@@ -95,6 +96,8 @@ Ustawienia są czytane przez `IConfiguration`, więc każdy klucz może pochodzi
 | `Warehouses` (cała sekcja) | zobacz [warehouses.md](warehouses.md) | tak | start rzuca `Missing configuration section 'Warehouses'`; nieprawidłowe wartości zawodzą w `AddWarehousesModule` | `WarehousesOptions`, konsumowane przez keepera, handlery i zapytania |
 | `Banking` (cała sekcja) | zobacz [banking.md](banking.md) | tak | start rzuca `Missing configuration section 'Banking'`; nieprawidłowe wartości zawodzą w `AddBankingModule` | `BankingOptions`, konsumowane przez keepera, handlery i zapytania |
 | `Pawnshop` (cała sekcja) | zobacz [pawnshop.md](pawnshop.md) | tak | start rzuca `Missing configuration section 'Pawnshop'`, a nieprawidłowe wartości zawodzą w `AddPawnshopModule` | `PawnshopOptions`, konsumowane przez keepera, handlery i zapytania |
+| `Casino` (cała sekcja) | zobacz [casino.md](casino.md) | tak | start rzuca `Missing configuration section 'Casino'`, a nieprawidłowe wartości zawodzą w `AddCasinoModule` | `CasinoOptions`, konsumowane przez keepera, handlery i zapytania |
+| `Profiles` (cała sekcja) | zobacz [profiles.md](profiles.md#konfiguracja) | tak | start rzuca `Missing configuration section 'Profiles'`, a nieprawidłowe wartości zawodzą w `AddProfilesModule` | `ProfilesOptions`, konsumowane przez pipeline awatarów, handlery zaproszeń i `S3AvatarStorage` |
 | `Logging:LogLevel` | `Information`, `Microsoft.AspNetCore` na `Warning` | nie | — | domyślni dostawcy logowania |
 
 `Backend/.env.example` wymienia `DB_USER` i `DB_PASSWORD`, ale żaden kod nie czyta pliku `.env`; powyższy connection string to jedyne ustawienie bazy, które zna host.
@@ -133,7 +136,7 @@ Większość porażek to obiekt JSON `{ "error": "<komunikat>" }` ze statusem z 
 
 ## Testy
 
-Każdy projekt testowy ma część offline (`Application/`, `Domain/`, `Infrastructure/`: walidatory, encje, `OutboxMessage`) oraz namespace `IntegrationTests/`, który uruchamia `postgres:latest` przez Testcontainers w fixturze kolekcji o nazwie `<Module>PostgresFixture`, migruje własny kontekst modułu i uruchamia na nim handlery oraz repozytoria. Identity i Wallets dodatkowo podnoszą cały host przez `WebApplicationFactory<Program>` ([`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs), [`CustomAPI`](../../../Backend/tests/AuctionServer.Modules.Wallets.Tests/IntegrationTests/CustomAPI.cs)); te fabryki ustawiają `ConnectionStrings__DefaultConnection`, `Jwt__Key` oraz, w Identity, `Bots__ApiKey` jako zmienne środowiskowe procesu i migrują tylko własny kontekst, więc `OutboxProcessor`y pozostałych modułów, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` i `CasinoKeeper` logują w czasie tych testów błędy o brakujących tabelach. Metody testowe mają nazwy według `Method_WhenCondition_ShouldResult`, na przykład `RequestBid_WhenBidderIsSeller_ShouldThrowCannotBidOwnItemException`.
+Każdy projekt testowy ma część offline (`Application/`, `Domain/`, `Infrastructure/`: walidatory, encje, `OutboxMessage`) oraz namespace `IntegrationTests/`, który uruchamia `postgres:latest` przez Testcontainers w fixturze kolekcji o nazwie `<Module>PostgresFixture`, migruje własny kontekst modułu i uruchamia na nim handlery oraz repozytoria. Identity, Wallets i Profiles dodatkowo podnoszą cały host przez `WebApplicationFactory<Program>` ([`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs), [`CustomAPI`](../../../Backend/tests/AuctionServer.Modules.Wallets.Tests/IntegrationTests/CustomAPI.cs), [`ProfilesCustomApi`](../../../Backend/tests/AuctionServer.Modules.Profiles.Tests/IntegrationTests/ProfilesCustomApi.cs)); te fabryki ustawiają `ConnectionStrings__DefaultConnection`, `Jwt__Key` oraz, w Identity, `Bots__ApiKey` jako zmienne środowiskowe procesu i migrują tylko własny kontekst, więc `OutboxProcessor`y pozostałych modułów, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` i `CasinoKeeper` logują w czasie tych testów błędy o brakujących tabelach. Fabryka Profiles podmienia też `IAvatarStorage` na fake w pamięci przez `ConfigureTestServices`, a `S3AvatarStorageTests` uruchamiają prawdziwy adapter na Testcontainerze `chrislusf/seaweedfs:4.48`, pierwszym nie-postgresowym kontenerze w zestawie. Metody testowe mają nazwy według `Method_WhenCondition_ShouldResult`, na przykład `RequestBid_WhenBidderIsSeller_ShouldThrowCannotBidOwnItemException`.
 
 | Projekt | Metody testowe | Offline | Integracyjne |
 |---|---|---|---|
@@ -143,6 +146,7 @@ Każdy projekt testowy ma część offline (`Application/`, `Domain/`, `Infrastr
 | `AuctionServer.Modules.Identity.Tests` | 33 | 20 | 13 |
 | `AuctionServer.Modules.Inventory.Tests` | 94 | 47 | 47 |
 | `AuctionServer.Modules.Pawnshop.Tests` | 89 | 62 | 27 |
+| `AuctionServer.Modules.Profiles.Tests` | 84 | 30 | 54 |
 | `AuctionServer.Modules.Wallets.Tests` | 142 | 60 | 82 |
 | `AuctionServer.Modules.Warehouses.Tests` | 64 | 43 | 21 |
 
@@ -152,7 +156,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedN
 dotnet test tests/AuctionServer.Modules.Wallets.Tests                                                    # jeden moduł, offline + integracyjne
 ```
 
-Pipeline GitLaba uruchamia pierwszy filtr dla Auctions w `unit-tests`, a pełne projekty Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop i Casino plus testy integracyjne Auctions w `integration-tests`; workflow GitHub Actions ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) odwzorowuje ten sam podział; zobacz [Build i CI](../ARCHITECTURE.md#build-i-ci). Żaden test nie przekracza granicy modułu: handlery zdarzeń są wołane bezpośrednio z ręcznie zbudowanymi zdarzeniami.
+Pipeline GitLaba uruchamia pierwszy filtr dla Auctions w `unit-tests`, a pełne projekty Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino i Profiles plus testy integracyjne Auctions w `integration-tests`; workflow GitHub Actions ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) odwzorowuje ten sam podział; zobacz [Build i CI](../ARCHITECTURE.md#build-i-ci). Żaden test nie przekracza granicy modułu: handlery zdarzeń są wołane bezpośrednio z ręcznie zbudowanymi zdarzeniami.
 
 ## Rozdziały
 
@@ -165,6 +169,7 @@ Pipeline GitLaba uruchamia pierwszy filtr dla Auctions w `unit-tests`, a pełne 
 7. [Banking](banking.md) - pożyczki bankowe: oferty bramkowane obrotem, pobranie w terminie zapadalności, kary i ponowienia.
 8. [Pawnshop](pawnshop.md) - lokal, drabinka botów, towar czasowy, wycofanie albo automatyczna sprzedaż.
 9. [Casino](casino.md) - żetony, ruletka europejska, blackjack, zmierzona przewaga kasyna.
+10. [Profiles](profiles.md) - poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe.
 
 ## Powiązane dokumenty
 

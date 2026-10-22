@@ -42,7 +42,8 @@ Brak wartości zatrzymuje host (`Missing configuration value 'Wallets:StartingFu
 | `UserId` | `uuid` | klucz główny; równy `PublicUserId` z Identity z `UserRegisteredEvent` |
 | `AvailableFunds` | `numeric(18,2)` | pieniądze, którymi użytkownik może licytować |
 | `LockedFunds` | `numeric(18,2)` | pieniądze zatrzymane na aukcje, w których użytkownik aktualnie prowadzi |
-| `LifetimeTurnover` | `numeric(18,2)` | suma wszystkich wpływów z gospodarki, jakie kiedykolwiek otrzymał (sprzedaże do sklepu, rozliczenia aukcji, doładowania botów, wypłaty pożyczek, wypłaty lombardu); przelewy, środki startowe i wypłaty z kasyna się nie liczą; nigdy nie maleje; bramkuje oferty banku i lokal lombardu. Nie da się uzupełnić historii wstecz, portfele sprzed migracji startują od 0 |
+| `LifetimeTurnover` | `numeric(18,2)` | suma wszystkich wpływów z gospodarki, jakie kiedykolwiek otrzymał (sprzedaże do sklepu, rozliczenia aukcji, doładowania botów, wypłaty pożyczek, wypłaty lombardu); przelewy, środki startowe i wypłaty z kasyna się nie liczą; nigdy nie maleje; bramkuje oferty banku i lokal lombardu oraz napędza poziomy graczy. Nie da się uzupełnić historii wstecz, portfele sprzed migracji startują od 0 |
+| `RewardedLevel` | `integer` | najwyższy poziom już wypłacony, znacznik wysokiej wody podnoszony wyłącznie przez `AwardLevelRewards`; portfele sprzed migracji startują od 0 i nadrabiają przy pierwszym liczącym wpływie |
 | `IsSuspendedWallet` | `boolean` | ustawiane tylko przez `SuspendAccount`, które nie ma wywołań; indeks unikalny na `UserId` jest filtrowany po `"IsSuspendedWallet" = false`, ale `UserId` jest też kluczem głównym, więc ten indeks nie dodaje żadnego ograniczenia |
 | `Version` | `uuid` | token współbieżności, generowany na nowo przez każdą metodę pieniężną |
 
@@ -63,6 +64,8 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 | `ConsumeLock(auctionId)` | istnieje aktywna blokada dla aukcji | oznacza ją `Consumed`, zmniejsza `LockedFunds`; pieniądze opuszczają portfel; zwraca kwotę |
 | `SpendLock(id, amount)` | `amount > 0`, istnieje aktywna blokada dla id, `amount <= lock.Amount` | oznacza blokadę `Consumed`, zmniejsza `LockedFunds` o całą blokadę, resztę (`lock.Amount - amount`) oddaje do `AvailableFunds`; wydana kwota opuszcza obieg |
 | `SuspendAccount()`, `UnsuspendAccount()` | — | przełączają `IsSuspendedWallet`; brak wywołań w `src/` |
+
+Poziomy graczy żyją tam, gdzie żyje obrót. [`PlayerLevels`](../../../Backend/src/AuctionServer.Modules.Wallets/Domain/PlayerLevels.cs) trzyma stałe: poziom `n` wymaga `1000 * n^2` życiowego obrotu i płaci `10 * n^2`, a `MaxRewardedLevel = 100` ogranicza drabinę, więc pełna wspinaczka przy 10 000 000 obrotu płaci dokładnie 3 383 500. Licząca gałąź prywatnego `Credit` woła `AwardLevelRewards`, całkowitoliczbową pętlę, która podnosi `RewardedLevel` dopóki kolejny próg jest osiągnięty, i dodaje zsumowane nagrody wprost do `AvailableFunds`, nigdy przez `Credit`, więc nagroda nie może karmić obrotu, który ją wypłaca. Przekroczone poziomy stają się jednym scalonym rekordem `LevelUp(FromLevel, ToLevel, Reward)` na niemapowanej liście, a nadpisane `WalletDbContext.SaveChangesAsync` drenuje tę listę z każdego śledzonego portfela do wierszy outboxa `PlayerLevelledUpEvent` (jeden świeży `Guid` jako `Id` wiersza i `EventId` naraz) przed zapisem bazowym, więc pieniądze, znacznik poziomu i zdarzenie commitują się razem, którakolwiek z pięciu ścieżek wpływu je wywołała.
 
 | Wyjątek | Status | Komunikat |
 |---|---|---|
@@ -111,6 +114,7 @@ Moduł posiada też `WalletsFundsLocks`, księgę blokad per oferta (`Id`, `Wall
 | konsumowane | `CasinoChipPurchaseRequestedEvent` | `CasinoChipPurchaseRequestedEventHandler` obciąża przez `Withdraw(Amount)` (bez bramki obrotu) i odpowiada `CasinoChipPurchaseCompletedEvent` albo `CasinoChipPurchaseRejectedEvent` z komunikatem `InsufficientFundsException`, wszystko w jednym `SaveUserFundsWithInboxAndOutboxAsync` |
 | konsumowane | `CasinoCashOutEvent` | `CasinoCashOutEventHandler` woła `ReceiveCasinoCashOut(Amount)`, więc wypłaty z kasyna nigdy nie budują obrotu; jedno `SaveUserFundsWithInboxAsync` |
 | publikowane | `CasinoChipPurchaseCompletedEvent`, `CasinoChipPurchaseRejectedEvent` | zapisywane przez `CasinoChipPurchaseRequestedEventHandler` i konsumowane przez Casino, które uznaje żetony albo odrzuca zakup |
+| publikowane | `PlayerLevelledUpEvent` | zapisywane przez nadpisane `WalletDbContext.SaveChangesAsync`, które drenuje oczekujące awanse każdego śledzonego portfela przed zapisem bazowym; konsumowane przez Profiles, które odbija poziom |
 
 Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota też startuje ze `StartingFunds`; zdarzenie nie niesie roli.
 
@@ -126,6 +130,7 @@ Boty są rejestrowane przez to samo `UserRegisteredEvent`, więc portfel bota te
 - Każdy wpływ przechodzi przez prywatny helper `Credit(amount, countsTowardTurnover)`, jedyne miejsce, w którym `LifetimeTurnover` może rosnąć. Cztery publiczne metody uznania niosą intencję w nazwach (`AddFunds` liczy, `ReceiveTransfer`, `GrantStartingFunds` i `ReceiveCasinoCashOut` nie), zamiast wystawiać boolean w miejscach wywołania. Obciążenia, zwolnienia blokad i reszta ze `SpendLock` nigdy nie dotykają licznika, bo obrót mierzy otrzymane pieniądze, a nie pieniądze przesuwane w kółko.
 - `ReceiveCasinoCashOut` celowo nie buduje obrotu: gracz stawiający w ruletce jednocześnie na czerwone i czarne traci średnio tylko 1/37 obrotu, więc wypłaty liczone do obrotu sprzedawałyby bramkę 1M lombardu za około 28 tysięcy. Własny pieniądz gracza tylko wraca z żetonów, jak przy przelewie.
 - `CollectUpTo` działa z założenia w trybie best effort: bank musi zawsze dostać odpowiedź, nawet "pobrano zero", inaczej saga pożyczki utknęłaby w `CollectionPending`. Zerowe pobranie niczego nie zmienia, więc nie generuje na nowo `Version` i nie może przewrócić równoległej blokady środków.
+- Progi i nagrody poziomów to stałe domeny w `PlayerLevels`, jak tabele wypłat kasyna: żadna wartość konfiguracji nie zmieni, ile płaci poziom. Nagrody celowo omijają `Credit`, więc kran nie może karmić własnej bramki, a drenaż siedzi w `SaveChangesAsync` zamiast w pięciu miejscach wywołań wpływów, jedno przewężenie zamiast pięciu handlerów do synchronizacji.
 - `PayForPawnshop` jest lustrem `DisburseLoan`. Bramka obrotu i obciążenie to jedno wywołanie, więc odrzucony zakup niczego nie zmienia. Obciążenie idzie przez `Withdraw`, które nigdy nie dotyka `LifetimeTurnover`, więc wydatki w lombardzie nie mogą zniekształcić bramki. Wypłaty przychodzą przez `AddFunds` jak każdy inny wpływ z gospodarki, więc wliczają się do obrotu.
 
 ## Powiązane dokumenty

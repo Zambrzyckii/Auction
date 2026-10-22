@@ -8,10 +8,16 @@ flowchart LR
         Wallets["Modules.Wallets<br/>/api/wallets"]:::wallets
         Auctions["Modules.Auctions<br/>/api/auctions"]:::auctions
         Inventory["Modules.Inventory<br/>/api/inventory"]:::inventory
-        Api --> Identity & Wallets & Auctions & Inventory
+        Warehouses["Modules.Warehouses<br/>/api/warehouses"]:::warehouses
+        Banking["Modules.Banking<br/>/api/bank"]:::banking
+        Pawnshop["Modules.Pawnshop<br/>/api/pawnshop"]:::pawnshop
+        Casino["Modules.Casino<br/>/api/casino"]:::casino
+        Profiles["Modules.Profiles<br/>/api/profiles"]:::profiles
+        Api --> Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino & Profiles
     end
 
-    Identity & Wallets & Auctions & Inventory --> Db[("PostgreSQL<br/>one database, 11 tables<br/>EF Core via Npgsql, Dapper reads in Auctions")]:::db
+    Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino & Profiles --> Db[("PostgreSQL<br/>one database, 38 tables<br/>EF Core via Npgsql, Dapper reads in Auctions")]:::db
+    Profiles --> Seaweed[("SeaweedFS<br/>avatar objects via the S3 gateway,<br/>compose network only")]:::db
 
     Frontend["Angular frontend<br/>(planned)"]:::planned -.-> Gateway["API gateway<br/>(planned)"]:::planned
     Gateway -.-> Api
@@ -27,6 +33,11 @@ flowchart LR
     classDef wallets   fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B
     classDef auctions  fill:#E0F2FE,stroke:#0284C7,stroke-width:2px,color:#0C4A6E
     classDef inventory fill:#FFE4E6,stroke:#E11D48,stroke-width:2px,color:#881337
+    classDef warehouses fill:#CCFBF1,stroke:#0D9488,stroke-width:2px,color:#134E4A
+    classDef banking   fill:#ECFCCB,stroke:#65A30D,stroke-width:2px,color:#365314
+    classDef pawnshop  fill:#FAE8FF,stroke:#C026D3,stroke-width:2px,color:#701A75
+    classDef casino    fill:#CFFAFE,stroke:#0891B2,stroke-width:2px,color:#164E63
+    classDef profiles  fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95
     classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A
     classDef planned   fill:#F4F4F5,stroke:#71717A,stroke-width:2px,stroke-dasharray:6 4,color:#27272A
     classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

@@ -123,6 +123,8 @@ Wszystkie pięć tras wymaga JWT.
 - Cena końcowa to zlew pieniędzy: nie istnieje sprzedawca, więc `Wallet.SpendLock` konsumuje blokadę zwycięzcy, oddaje resztę, a sama cena znika. Znane ograniczenie: zmintowane przedmioty można sprzedać do sklepu za `OfficialPrice` (kran pieniędzy), więc jeśli typowe ceny końcowe będą niżej typowych wartości manifestów, wojny drukują pieniądze; dźwigniami są warianty zwodzenia i strojenie tierów.
 - Uczestnicy `PendingLock` rezerwują miejsce przed zapłatą, inaczej pięć równoczesnych dołączeń przeszłoby kontrolę pojemności. Odrzucona blokada zwalnia miejsce; blokada potwierdzona po tym, jak wojna poszła dalej, wraca gałęzią osieroconych blokad.
 
+Znajomych można zaprosić do wojny przez Profiles (`POST /api/profiles/warehouse-invites`): zaproszenie to rekord wskaźnikowy w tamtym module, nie rezerwuje miejsca, nigdy nie dotyka tego modułu, a zaproszony dołącza zwykłym `POST /api/warehouses/{id}/join`. Zobacz [profiles.md](profiles.md).
+
 ## Powiązane dokumenty
 
 - [README.md](README.md) - przegląd backendu, uruchamianie, konfiguracja, testy.

@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../pl/ARCHITECTURE.md](../pl/ARCHITECTURE.md)
 
-AuctionServer is a .NET 10 modular monolith for a gamified auction house: eight modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino) run in one ASP.NET Core process, share one PostgreSQL database and talk to each other only through integration events carried by a transactional outbox and consumed through an inbox. This page covers the system context, the module layering, request handling, cross-module messaging, the three auction flows, the warehouse-war flow, the bank-loan flow, the pawnshop flow and the casino flow, the data model, the CI pipeline, the design patterns in use and the known limitations. Module-level detail lives in the [backend chapters](backend/README.md).
+AuctionServer is a .NET 10 modular monolith for a gamified auction house: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles) run in one ASP.NET Core process, share one PostgreSQL database and talk to each other only through integration events carried by a transactional outbox and consumed through an inbox; avatars additionally live in a SeaweedFS object store behind an S3 seam. This page covers the system context, the module layering, request handling, cross-module messaging, the three auction flows, the warehouse-war flow, the bank-loan flow, the pawnshop flow, the casino flow and the profiles flow, the data model, the CI pipeline, the design patterns in use and the known limitations. Module-level detail lives in the [backend chapters](backend/README.md).
 
 ## System context
 
@@ -17,9 +17,10 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 
 | Component | Status | Documented in |
 |---|---|---|
-| `AuctionServer.Api` host with the eight modules | exists | [backend/README.md](backend/README.md) |
-| PostgreSQL, one database, 33 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
-| Docker Compose (API image plus PostgreSQL) | exists | [backend/README.md](backend/README.md) |
+| `AuctionServer.Api` host with the nine modules | exists | [backend/README.md](backend/README.md) |
+| PostgreSQL, one database, 38 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
+| SeaweedFS object storage for avatars | exists (Compose service, no published ports) | [backend/profiles.md](backend/profiles.md) |
+| Docker Compose (API image plus PostgreSQL and SeaweedFS) | exists | [backend/README.md](backend/README.md) |
 | GitLab CI and GitHub Actions pipelines | exist | [Build and CI](#build-and-ci) |
 | Angular frontend | planned | [frontend.md](frontend.md) |
 | API gateway, RabbitMQ | planned | [infrastructure.md](infrastructure.md) |
@@ -27,14 +28,14 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 
 ## Modules and layering
 
-The diagram shows the project references: the host references the eight modules, every module references only `AuctionServer.Shared.Integration`, and no module references another module.
+The diagram shows the project references: the host references the nine modules, every module references only `AuctionServer.Shared.Integration`, and no module references another module.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-02-module-layering.dark.svg">
   <img alt="Modules and layering diagram" src="../diagrams/architecture-02-module-layering.svg">
 </picture>
 
-Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints and request records), `Application/` (MediatR commands, queries and validators, event handlers, repository interfaces), `Domain/` (entities, enums, exceptions) and `Infrastructure/` (DbContext, repositories, EF configurations, outbox, inbox, background services, migrations). The module project files declare a single `ProjectReference`, to [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), which holds the thirty-six event records, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` and `ValidationBehaviour`. The host wires a module with one extension method per module (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`, `AddCasinoModule`) and maps its endpoints with `Map*Endpoints`; both calls sit in [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
+Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints and request records), `Application/` (MediatR commands, queries and validators, event handlers, repository interfaces), `Domain/` (entities, enums, exceptions) and `Infrastructure/` (DbContext, repositories, EF configurations, outbox, inbox, background services, migrations). The module project files declare a single `ProjectReference`, to [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), which holds the thirty-seven event records, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` and `ValidationBehaviour`. The host wires a module with one extension method per module (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`, `AddCasinoModule`, `AddProfilesModule`) and maps its endpoints with `Map*Endpoints`; both calls sit in [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
 
 | Module | Route prefix | DbContext | Tables | Background services | Tests |
 |---|---|---|---|---|---|
@@ -46,6 +47,7 @@ Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints a
 | [Banking](backend/banking.md) | `/api/bank` | `BankingDbContext` | `BankingLoans`, `BankingOutboxMessages`, `BankingProcessedMessages` | `OutboxProcessor`, `BankKeeper` | `AuctionServer.Modules.Banking.Tests` |
 | [Pawnshop](backend/pawnshop.md) | `/api/pawnshop` | `PawnshopDbContext` | `PawnshopShops`, `PawnshopStockItems`, `PawnshopOutboxMessages`, `PawnshopProcessedMessages` | `OutboxProcessor`, `PawnshopKeeper` | `AuctionServer.Modules.Pawnshop.Tests` |
 | [Casino](backend/casino.md) | `/api/casino` | `CasinoDbContext` | `CasinoAccounts`, `CasinoChipPurchases`, `CasinoRouletteSpins`, `CasinoRouletteBets`, `CasinoBlackjackHands`, `CasinoOutboxMessages`, `CasinoProcessedMessages` | `OutboxProcessor`, `CasinoKeeper` | `AuctionServer.Modules.Casino.Tests` |
+| [Profiles](backend/profiles.md) | `/api/profiles` | `ProfilesDbContext` | `ProfilesUserProfiles`, `ProfilesSocialLinks`, `ProfilesFriendships`, `ProfilesWarehouseInvites`, `ProfilesProcessedMessages` | none; the first consume-only module | `AuctionServer.Modules.Profiles.Tests` |
 
 The module rules are enforced by convention, not by tooling: no cross-module project reference, no cross-module database query, and `Domain/` and `Application/` free of ASP.NET Core types. The last rule holds for ASP.NET Core itself, but `Application/` handlers do reference their own module's `Infrastructure.Outbox` and `Infrastructure.Inbox` types to build outbox and inbox rows, and `LoginCommandHandler` reads `IConfiguration` directly.
 
@@ -217,16 +219,29 @@ The diagram shows the chip saga around the synchronous games: money enters and l
 3. The keeper's second sweep auto-stands blackjack hands abandoned for `HandTimeout`: the dealer plays, the hand settles with `AutoStood` set and any payout is credited in the same cycle.
 4. `POST /api/casino/chips/cashouts` debits the chips and writes `CasinoCashOutEvent` in one save; Wallets credits through `Wallet.ReceiveCasinoCashOut`, which never builds `LifetimeTurnover`, so hedged casino play cannot farm the bank or pawnshop gates. Full detail in [backend/casino.md](backend/casino.md).
 
+### Profiles (registration snapshot, level mirror, avatars in SeaweedFS)
+
+Profiles has no saga and publishes nothing; it is the first consume-only module. The diagram shows the two inbound event flows and the storage seam.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-12-profiles.dark.svg">
+  <img alt="Profiles diagram" src="../diagrams/architecture-12-profiles.svg">
+</picture>
+
+1. `UserRegisteredEvent` creates the profile with the username snapshot (legacy payloads without the field fall back to `Player`), through the inbox like every consumer.
+2. Every counting credit in Wallets may award levels: `AwardLevelRewards` pays `10 * n^2` per level straight into the balance and the overridden `WalletDbContext.SaveChangesAsync` emits one coalesced `PlayerLevelledUpEvent` with absolute levels, which Profiles applies monotonically, so reordered retries cannot regress the mirror.
+3. Avatars, social links, friends and warehouse invites are synchronous writes inside the module. Avatar bytes go to SeaweedFS through the `IAvatarStorage` seam under the stable key `avatars/{userId}`; the queryable facts (sniffed type, SHA-256 hash, date) stay as profile columns, and the download proxy streams the object back with `nosniff` and an ETag. Full detail in [backend/profiles.md](backend/profiles.md).
+
 ## Data model
 
-The diagram shows the thirty-three tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
+The diagram shows the thirty-eight tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
   <img alt="Data model diagram" src="../diagrams/architecture-06-data-model.svg">
 </picture>
 
-All eight `DbContext`s point at the same database and share the default `__EFMigrationsHistory` table (no context overrides the history table), so isolation rests on discipline and on distinct table names. Identifiers cross module boundaries as copied Guids: `Wallets.UserId` and `Auctions.SellerUserId` hold `Users.PublicUserId`, `Auctions.ItemId` holds `InventoryItems.PublicItemId`, and `InventoryItems.LockedForAuctionId` holds `Auctions.PublicAuctionId`. Column types come from the EF model snapshots in each module's migrations folder.
+All nine `DbContext`s point at the same database and share the default `__EFMigrationsHistory` table (no context overrides the history table), so isolation rests on discipline and on distinct table names. Identifiers cross module boundaries as copied Guids: `Wallets.UserId` and `Auctions.SellerUserId` hold `Users.PublicUserId`, `Auctions.ItemId` holds `InventoryItems.PublicItemId`, and `InventoryItems.LockedForAuctionId` holds `Auctions.PublicAuctionId`. Column types come from the EF model snapshots in each module's migrations folder.
 
 | Table | Module | Purpose |
 |---|---|---|
@@ -256,6 +271,11 @@ All eight `DbContext`s point at the same database and share the default `__EFMig
 | `CasinoRouletteSpins`, `CasinoRouletteBets` | Casino | immutable spin history with the owned bets collection, indexed (`UserId`, `PlacedOn`) |
 | `CasinoBlackjackHands` | Casino | blackjack hands with the cards as `integer[]`, a unique `UserId` while `Status = 0` and a `Version` token |
 | `CasinoOutboxMessages`, `CasinoProcessedMessages` | Casino | outbox, inbox |
+| `ProfilesUserProfiles` | Profiles | one profile per player keyed by `PublicUserId`: the username snapshot, the mirrored level, the avatar type, hash and date, a `Version` token |
+| `ProfilesSocialLinks` | Profiles | owned social links, composite key (`ProfileUserId`, `Platform`), at most six per profile |
+| `ProfilesFriendships` | Profiles | one row per pair with the canonical (`UserLowId`, `UserHighId`) unique index, `Status` `Pending`/`Accepted` |
+| `ProfilesWarehouseInvites` | Profiles | pointer invites to warehouse wars, unique (`InviterId`, `InviteeId`, `PublicWarehouseId`), read-time expiry |
+| `ProfilesProcessedMessages` | Profiles | inbox; the module has no outbox |
 
 Every outbox table has the same nine columns (`Id`, `Type`, `Content`, `CreatedOn`, `ProcessedOn`, `AttemptCount`, `Errors`, `IsDead`, `NextAttemptOn`) and every inbox table has `EventId` and `ProcessedOn`; see [backend/messaging.md](backend/messaging.md).
 
@@ -276,10 +296,10 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 
 ## Design patterns in use
 
-- **Modular monolith.** One deployable, eight modules with private tables and private `DbContext`s, a single shared contracts project.
+- **Modular monolith.** One deployable, nine modules with private tables and private `DbContext`s, a single shared contracts project.
 - **CQRS in Auctions, CQS elsewhere.** Auctions writes through EF Core and reads through Dapper over `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory, Warehouses, Banking, Pawnshop and Casino read through EF Core with `AsNoTracking`.
 - **Transactional outbox.** Eight copies of `OutboxMessage` and `OutboxProcessor`, one per module; the event row commits with the state change.
-- **Inbox (idempotent consumer).** `ProcessedMessages` tables in Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop and Casino, checked before the change and inserted with it.
+- **Inbox (idempotent consumer).** `ProcessedMessages` tables in Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino and Profiles, checked before the change and inserted with it.
 - **Saga by choreography.** Auction creation, auction settlement, the warehouse stock quote, the warehouse entry lock, the warehouse settlement, the loan grant, the loan collection, the pawnshop payment, the pawnshop spawn quote and the casino chip purchase are chains of events across modules with no orchestrator; each hop is a local transaction.
 - **Optimistic concurrency.** `Version` is a Guid concurrency token on `Auction`, `Wallet`, `Item`, `WarehouseWar`, `Loan`, `Shop`, `StockItem`, `ChipAccount`, `ChipPurchase` and `BlackjackHand`, regenerated inside every mutating method; conflicts surface as 409 or as a retried background cycle.
 - **Global error contract.** Domain exceptions derive from `AppException(message, statusCode)` and are mapped by one `IExceptionHandler`.
@@ -291,7 +311,7 @@ The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitla
 
 ## Known limitations
 
-1. The Auctions outbox table is named `OutboxMessages` without a module prefix; the other six outbox tables are prefixed ([`AuctionDbContext`](../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/AuctionDbContext.cs) has no `ToTable` for it).
+1. The Auctions outbox table is named `OutboxMessages` without a module prefix; the other seven outbox tables are prefixed ([`AuctionDbContext`](../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/AuctionDbContext.cs) has no `ToTable` for it).
 2. No automated test crosses a module boundary; event handlers are tested by direct invocation. The two `WebApplicationFactory` fixtures ([`CustomAPI`](../../Backend/tests/AuctionServer.Modules.Wallets.Tests/IntegrationTests/CustomAPI.cs) in Wallets, `CustomApi` in Identity) migrate only their own module's context, so the other `OutboxProcessor`s, `AuctionCloser` and the three keepers log an error during those tests.
 3. `Role.Admin` is defined in [`Role.cs`](../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs) but never assigned or checked.
 4. [`Backend/.env.example`](../../Backend/.env.example) (`DB_USER`, `DB_PASSWORD`) has no reader; configuration comes from user secrets or `__` environment variables.

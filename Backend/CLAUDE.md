@@ -25,19 +25,22 @@ docker compose up -d                              # from the repo ROOT: API on :
 
 ### Tests
 
-Eight test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
+Nine test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
 
-- All eight mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
+- All nine mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
   `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull
   `postgres:latest`; each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
   on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
-  runs in `integration-tests` next to the other six projects. `Wallets.Tests` and `Identity.Tests` additionally boot the whole
-  host through a `WebApplicationFactory<Program>` fixture (`CustomApi`) that sets `ConnectionStrings__DefaultConnection`,
+  runs in `integration-tests` next to the other seven projects. `Wallets.Tests`, `Identity.Tests` and `Profiles.Tests` additionally boot the whole
+  host through a `WebApplicationFactory<Program>` fixture (`CustomApi`, in Profiles `ProfilesCustomApi`) that sets `ConnectionStrings__DefaultConnection`,
   `Jwt__Key` (Identity also `Bots__ApiKey`) as process env vars and migrates only its own module — the other modules'
-  outbox processors log errors against missing tables; that noise is expected.
+  outbox processors log errors against missing tables; that noise is expected. `Profiles.Tests` also swaps
+  `IAvatarStorage` for an in-memory fake via `ConfigureTestServices`, and its `S3AvatarStorageTests` start a real
+  `chrislusf/seaweedfs:4.48` container through the generic `ContainerBuilder` (`ProfilesStorageFixture`), the first
+  non-PostgreSQL Testcontainer in the suite.
 
 Run one project / one test:
 
@@ -77,6 +80,9 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Pawnshop \
 dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Casino \
   --startup-project src/AuctionServer.Api --context CasinoDbContext \
   --output-dir Infrastructure/Persistence/Migrations
+dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Profiles \
+  --startup-project src/AuctionServer.Api --context ProfilesDbContext \
+  --output-dir Infrastructure/Persistence/Migrations
 ```
 
 `--output-dir` matters for Auctions: the module has **two** migration folders. `Migrations/` holds the initial
@@ -98,7 +104,10 @@ share one schema. Inventory follows the same layout (snapshot `InventoryDbContex
 stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Precision` (`numeric(5,4)` for
 `PendingStockPayoutRate`). Casino follows the same layout with `Initial_Casino` (chip accounts, purchases, outbox,
 inbox), `Add_Casino_Roulette` (spins plus the owned bets table) and `Add_Casino_Blackjack` (hands with `integer[]`
-card columns). `Add_Auction_Status_And_Item_Snapshot` is the one
+card columns). Profiles follows the same layout with `Initial_Profiles` (profiles, inbox — the module has no
+outbox), `Add_Profiles_Socials` (owned social links), `Add_Profiles_Avatars` (avatar columns),
+`Add_Profiles_Friendships` (friendships with the unique canonical pair index) and
+`Add_Profiles_Warehouse_Invites` (invites with the unique triple index). `Add_Auction_Status_And_Item_Snapshot` is the one
 hand-edited migration: it adds `Status`, backfills it from `IsClosed` with raw SQL and only then drops the column,
 so pre-existing open auctions stay `Active` instead of falling back to the `Pending` default — keep that order if you
 ever regenerate it.
@@ -139,6 +148,12 @@ The whole `Casino` section (purchase timeout, roulette and blackjack table limit
 `CasinoOptions`) has the same fail-fast in `Program.cs`. `AddCasinoModule` validates the values (nested `Roulette`
 and `Blackjack` sections present, whole-number bet limits with `1 <= MinBet <= MaxBet`, `MaxBetsPerSpin` within
 `[1, 50]`, `HandTimeout` within `[30 s, 1 d]`, `PurchaseTimeout >= 10 min`).
+The whole `Profiles` section (avatar size limit, invite lifetime and the SeaweedFS storage endpoint, bound to
+`ProfilesOptions`) has the same fail-fast in `Program.cs`. `AddProfilesModule` validates the values (all three
+subsections present, `MaxBytes` within `[1 KiB, 5 MiB]`, `Lifetime >= 1 min`, `ServiceUrl` an absolute http or
+https url — the scheme check matters because `Uri.TryCreate` parses `seaweedfs:8333` as a valid absolute uri —
+and a bucket name of 3-63 characters). The compose file overrides `Profiles__Storage__ServiceUrl` to
+`http://seaweedfs:8333`; without a reachable SeaweedFS only the avatar endpoints fail (503), the host starts fine.
 `Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
 it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app starts and `POST /api/users/bots` answers 401.
 
@@ -168,6 +183,7 @@ AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden m
 AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wallet turnover, grant and collection sagas with Wallets, one repayment at maturity pulled by BankKeeper, one-time overdue penalty with retries; CQS — EF Core for both
 AuctionServer.Modules.Pawnshop     pawnshop: turnover-gated premises, one bot slot on an upgrade-only ladder, goods spawned through Inventory quotes, auto-sold for a share of the price by PawnshopKeeper or withdrawn to Inventory at full price, CQS with EF Core for both
 AuctionServer.Modules.Casino       casino: wallet money exchanged 1:1 for chips through a purchase saga, european roulette and blackjack played synchronously on the chip balance, cash-outs excluded from turnover, CQS with EF Core for both
+AuctionServer.Modules.Profiles     player profiles: username snapshot + turnover-driven level mirrored from Wallets events, avatars in SeaweedFS behind IAvatarStorage, social links, friends, warehouse invites; the first consume-only module (inbox, no outbox, no background services)
 AuctionServer.Shared.Integration   the only shared project: integration events + AppException
 ```
 
@@ -208,7 +224,8 @@ it for the reply they emit (`ItemLockRequestedEventHandler.cs`, `ItemLockedEvent
 
 Active event flows:
 
-- `UserRegisteredEvent` → Wallets creates the wallet credited with `WalletsOptions.StartingFunds` (`UserRegisteredEventHandler.cs:14`).
+- `UserRegisteredEvent` → Wallets creates the wallet credited with `WalletsOptions.StartingFunds` (`UserRegisteredEventHandler.cs:14`), Inventory grants the starter pack and Profiles creates the profile with the `Username` snapshot (the event's `Username` is a defaulted parameter, so pre-field payloads deserialize to null and Profiles falls back to `Player`).
+- **Player levels** (Wallets → Profiles): the counting branch of `Wallet.Credit` calls `AwardLevelRewards` (`PlayerLevels`: level `n` at `1000*n^2` turnover, reward `10*n^2` added straight to `AvailableFunds`, cap 100), and the overridden `WalletDbContext.SaveChangesAsync` drains each tracked wallet's pending level-ups into one coalesced `PlayerLevelledUpEvent` outbox row (fresh Guid as both row `Id` and `EventId`) before the base save. Profiles' `PlayerLevelledUpEventHandler` applies the absolute level monotonically, so reordered retries cannot regress a profile. Profiles publishes nothing back.
 - **Funds-reservation saga** (choreography, mirror of the item-lock saga): `PlaceBidCommandHandler` stores the bid
   via `Auction.RequestBid` as `PendingBidderId`/`PendingBidAmount` (one pending bid per auction, 409
   `BidInProgressException`; `EndsOn` extended by the anti-sniping window at request time) and writes
@@ -294,7 +311,7 @@ Active event flows:
 Delivery is at-least-once, so every cross-module consumer is idempotent via an **inbox** — one table per consuming
 module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`,
 `WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`,
-`CasinoProcessedMessages`), event id as PK,
+`CasinoProcessedMessages`, `ProfilesProcessedMessages`), event id as PK,
 `ProcessedMessage` entity under `Infrastructure/Inbox/`. The handler checks the inbox first (`WasEventProcessedAsync`)
 and silently returns on a replay; entity changes and the inbox row are still saved in one `SaveChangesAsync`
 (`SaveChangesWithInboxAsync`, or `SaveChangesWithInboxAndOutboxAsync` when the handler also replies), so the PK
@@ -312,7 +329,8 @@ Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`; Banking: `LoanApprovedEventHandler`,
 `LoanRejectedEventHandler`, `LoanRepaymentCollectedEventHandler`; Pawnshop: `PawnshopPaymentCompletedEventHandler`,
 `PawnshopPaymentRejectedEventHandler`, `PawnshopStockedEventHandler`; Casino:
-`CasinoChipPurchaseCompletedEventHandler`, `CasinoChipPurchaseRejectedEventHandler`); `UserRegisteredEventHandler` relies on the wallet
+`CasinoChipPurchaseCompletedEventHandler`, `CasinoChipPurchaseRejectedEventHandler`; Profiles:
+`UserRegisteredEventHandler`, `PlayerLevelledUpEventHandler`); Wallets' `UserRegisteredEventHandler` relies on the wallet
 unique index instead. Handlers deliberately do **not** catch illegal state transitions —
 `InvalidAuctionStateTransitionException` (409), `ItemNotLockedException`, the 404 from `GetItemLockedForAuctionAsync`
 — so no inbox row is written, the outbox row retries and finally dead-letters with the reason in `Errors`. A visible
@@ -321,10 +339,11 @@ failure beats a silent skip.
 Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
 exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the poll query. The
 outbox entity and processor exist as eight separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
-Banking, Pawnshop, Casino) — a change to one must be mirrored in the others.
+Banking, Pawnshop, Casino) — a change to one must be mirrored in the others. Profiles is the only module without
+the copy: it consumes without publishing, so it carries just the inbox, no outbox table and no `OutboxProcessor`.
 
 Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Banking/`, `Casino/`, `Funds/`,
-`Items/`, `Pawnshop/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
+`Items/`, `Pawnshop/`, `Players/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
 `Type` column and the `IntegrationEventTypes` registry use the simple type name, so the folders are purely for
 readability — moving an event never touches stored rows.
 
@@ -407,12 +426,18 @@ Casino uses the idiom twice: one chip purchase in flight and one active blackjac
 `HasIndex(UserId).IsUnique().HasFilter("\"Status\" = 0")`, so `ChipPurchaseStatus.Pending` and
 `BlackjackHandStatus.InProgress` must stay `0`, and the repository translates the violations into
 `PurchaseInProgressException` and `HandInProgressException` (409).
+Profiles uses plain (unfiltered) unique indexes with the same translation habit: one on the canonical friendship
+pair (`UserLowId`, `UserHighId`), normalized by `FriendshipPair.Normalize` in .NET because .NET `Guid` ordering
+differs from PostgreSQL `uuid` ordering (hence no SQL CHECK), one on the warehouse-invite triple
+(`InviterId`, `InviteeId`, `PublicWarehouseId`), translated into `FriendshipAlreadyExistsException` and
+`DuplicateWarehouseInviteException` (409). `SocialPlatform` (`Twitch=0 ... Website=7`) and `FriendshipStatus`
+(`Pending=0, Accepted=1`) are stored as integers and must never be renumbered.
 
 ### Entity configuration
 
-All eight contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
+All nine contexts call `ApplyConfigurationsFromAssembly` (`AuctionDbContext.cs:17`, `WalletDbContext.cs:20`,
 `IdentityDbContext.cs:15`, `InventoryDbContext.cs:18`, `WarehouseDbContext.cs:18`, `BankingDbContext.cs`,
-`PawnshopDbContext.cs:17`, `CasinoDbContext.cs`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
+`PawnshopDbContext.cs:17`, `CasinoDbContext.cs`, `ProfilesDbContext.cs`), so every `IEntityTypeConfiguration<T>` in a module assembly is live
 (Auctions keeps them in `Infrastructure/Configurations/`, the other modules in `Infrastructure/Configuration/`).
 
 Auctions keys: the primary key is the `int AuctionId` identity column (`AuctionConfiguration.cs:11`), and
@@ -431,7 +456,7 @@ Where the documentation, the README roadmap and the code disagree, the code wins
 **Implemented** (register → wallet via outbox → login/JWT → funds → create auction as `Pending` → item locked
 in Inventory → auction activated with item snapshot → pessimistic bid confirmed by a funds lock (anti-sniping) → background auto-close →
 exactly-once settlement via inbox → `AuctionSettledEvent` → item transferred to the winner, or unlocked when
-nobody bid): all eight modules are fully wired — authentication, eight outbox processors, `AuctionCloser`,
+nobody bid): all nine modules are fully wired — authentication, eight outbox processors (Profiles runs none), `AuctionCloser`,
 `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper`, `CasinoKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
 included — was verified manually end-to-end on 2026-10-14 against the compose stack: insufficient-funds rejection,
 409 on a second in-flight bid, confirm, release of the previous leader's lock, close, settlement by consuming the
@@ -488,6 +513,22 @@ hands auto-stood by the keeper). Cash-outs flow through the new `Wallet.ReceiveC
 `docs/en/backend/casino.md`. It was probed live against the compose stack on 2026-10-17 with 34 checks (free entry,
 purchase saga with a rejection, hedged spin, hidden hole card in the raw JSON, keeper auto-stand of an abandoned
 hand, cash-out without turnover) and zero dead or stale pending rows across all eight outboxes.
+
+On 2026-10-22 the ninth module, Profiles, landed — the first consume-only module (inbox `ProfilesProcessedMessages`,
+no outbox, no background services). Player levels are computed in Wallets (`PlayerLevels` constants, `RewardedLevel`
+high-water mark, rewards paid straight into `AvailableFunds` and excluded from turnover, the level-up drain in the
+overridden `WalletDbContext.SaveChangesAsync`) and mirrored monotonically from `PlayerLevelledUpEvent`;
+`UserRegisteredEvent` gained a defaulted `Username` for the profile snapshot. Avatars live in SeaweedFS
+(`chrislusf/seaweedfs:4.48` in compose, no published ports) behind `IAvatarStorage`/`S3AvatarStorage`
+(AWSSDK.S3 4.0.104.6, path style, checksums `WHEN_REQUIRED`, anonymous credentials, lazy bucket creation); the
+upload endpoint caps the body through `IHttpMaxRequestBodySizeFeature` **before** reading the form itself — minimal-API
+endpoint filters run after `IFormFile` binding has already read the body, which the E2E probe caught as a 400 where a
+413 belonged — and `AvatarImage.Sniff` decides the type by magic bytes (jpeg/png/webp, SVG rejected). Social links
+are capped at 6 and validated by `SocialLinkPolicy` (https, no user info, host equal to or a subdomain of the
+platform's domain). Friends use request/accept with auto-accept on a cross request; warehouse invites are pointer
+records with read-time expiry (`Profiles:Invites:Lifetime`) and an opportunistic purge before insert. Twelve
+endpoints under `/api/profiles` (50 total), event registry at 37, tables at 38. The chain was probed live against a
+fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
 column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `LoginCommandHandler.cs:34`, the

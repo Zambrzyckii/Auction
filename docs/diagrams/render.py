@@ -30,6 +30,7 @@ PALETTE = {
     "#ECFCCB": "#365314", "#65A30D": "#A3E635", "#365314": "#ECFCCB",  # banking (lime)
     "#FAE8FF": "#701A75", "#C026D3": "#E879F9", "#701A75": "#FAE8FF",  # pawnshop (fuchsia)
     "#CFFAFE": "#164E63", "#0891B2": "#22D3EE", "#164E63": "#CFFAFE",  # casino (cyan)
+    "#EDE9FE": "#4C1D95", "#7C3AED": "#A78BFA", "#4C1D95": "#EDE9FE",  # profiles (violet)
     "#E2E8F0": "#334155", "#475569": "#94A3B8", "#0F172A": "#F1F5F9",  # shared (slate)
     "#F4F4F5": "#27272A", "#71717A": "#A1A1AA", "#27272A": "#F4F4F5",  # planned (zinc, dashed)
     "#F3E8FF": "#581C87", "#9333EA": "#C084FC", "#581C87": "#F3E8FF",  # db (purple)

@@ -2,14 +2,14 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/README.md](../en/README.md)
 
-AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .NET 10 na PostgreSQL: osiem modułów w jednym procesie, rozmawiające przez transakcyjny outbox i inbox. Te strony opisują, jak system jest złożony, jak przechodzi przez niego aukcja i co jest planowane; są pisane dla dewelopera, który otwiera repozytorium po raz pierwszy. Każda strona istnieje po angielsku i po polsku w tej samej strukturze.
+AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .NET 10 na PostgreSQL: dziewięć modułów w jednym procesie, rozmawiających przez transakcyjny outbox i inbox. Te strony opisują, jak system jest złożony, jak przechodzi przez niego aukcja i co jest planowane; są pisane dla dewelopera, który otwiera repozytorium po raz pierwszy. Każda strona istnieje po angielsku i po polsku w tej samej strukturze.
 
 ## Kolejność czytania
 
 1. [ARCHITECTURE.md](ARCHITECTURE.md) - kontekst systemu, moduły, trzy przepływy aukcji, model danych i znane ograniczenia. Zacznij tutaj.
 2. [backend/README.md](backend/README.md) - projekty, uruchomienie i konfiguracja hosta, pipeline żądania, kontrakt błędów i testy.
 3. [backend/messaging.md](backend/messaging.md) - outbox, inbox, polityka ponowień i katalog zdarzeń integracyjnych.
-4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md), [backend/identity.md](backend/identity.md) - jeden rozdział na moduł.
+4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md), [backend/profiles.md](backend/profiles.md), [backend/identity.md](backend/identity.md) - jeden rozdział na moduł.
 5. [STATE.md](STATE.md) i [VISION.md](VISION.md) - gdzie projekt stoi i dokąd zmierza.
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) i [adr/](adr) - reguły i powody.
 7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - moduły, które jeszcze nie istnieją.
@@ -28,6 +28,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 | [backend/banking.md](backend/banking.md) | Jak pożyczka jest udzielana przez bramkę obrotu, pobierana w terminie zapadalności i karana po przeterminowaniu? |
 | [backend/pawnshop.md](backend/pawnshop.md) | Jak gracz kupuje lokal przez bramkę obrotu i zatrudnia bota oraz co dzieje się z towarem, który bot tworzy? |
 | [backend/casino.md](backend/casino.md) | Jak płyną pieniądze portfela i żetony kasyna oraz dlaczego każda gra statystycznie sprzyja kasynu? |
+| [backend/profiles.md](backend/profiles.md) | Skąd biorą się poziomy graczy i awatary oraz czemu jedyny wyłącznie konsumujący moduł trzyma pliki w SeaweedFS? |
 | [backend/identity.md](backend/identity.md) | Jak działają rejestracja, logowanie, JWT i provisioning botów? |
 | [VISION.md](VISION.md) | Czym jest produkt, co znaczą pojęcia, co jest planowane dalej? |
 | [CONVENTIONS.md](CONVENTIONS.md) | Jak utrzymywane są kod, testy i dokumentacja, czym jest definition of done? |

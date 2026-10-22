@@ -123,6 +123,8 @@ All five routes require a JWT.
 - The final price is a money sink: no seller exists, so `Wallet.SpendLock` consumes the winner's lock, returns the change and the price itself vanishes. Known limitation: the minted items can be sold to the shop at `OfficialPrice` (a money faucet), so if typical final prices stay below typical manifest values the wars print money; the deception variants and tier tuning are the levers to watch.
 - Participants in `PendingLock` reserve a seat before paying, otherwise five concurrent joins could all pass the capacity check. A rejected lock frees the seat; a lock confirmed after the war moved on is refunded by the orphaned-lock branch.
 
+Friends can be invited to a war through Profiles (`POST /api/profiles/warehouse-invites`): the invite is a pointer record in that module, reserves no seat, never touches this one, and the invitee joins through the normal `POST /api/warehouses/{id}/join`. See [profiles.md](profiles.md).
+
 ## Related documents
 
 - [README.md](README.md) - backend overview, running, configuration, tests.

@@ -81,7 +81,7 @@ Token wystawiany przez `LoginCommandHandler` to JWT podpisany `HmacSha256Signatu
 
 | Kierunek | Zdarzenie | Gdzie |
 |---|---|---|
-| publikowane | `UserRegisteredEvent(EventId, PublicUserId, Email)` | `RegisterCommandHandler` i `RegisterBotCommandHandler`, przez `AddUserWithOutboxAsync` w tym samym `SaveChangesAsync` co wiersz użytkownika |
+| publikowane | `UserRegisteredEvent(EventId, PublicUserId, Email, Username?)` | `RegisterCommandHandler` i `RegisterBotCommandHandler`, przez `AddUserWithOutboxAsync` w tym samym `SaveChangesAsync` co wiersz użytkownika. `Username` to parametr z wartością domyślną dodany dla snapshotu w Profiles, więc payloady sprzed pola deserializują się do null, a Profiles daje fallback `Player` |
 
 Wallets konsumuje zdarzenie i tworzy portfel ze `Wallets:StartingFunds`; ponieważ zdarzenie nie niesie roli, konto bota dostaje te same środki startowe co gracz.
 

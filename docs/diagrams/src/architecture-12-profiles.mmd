@@ -1,0 +1,35 @@
+flowchart LR
+
+    Client["Player<br/>JWT"]:::client
+
+    subgraph Producers ["publishing modules"]
+        IdentityM["Modules.Identity<br/>RegisterCommandHandler,<br/>RegisterBotCommandHandler"]:::identity
+        WalletsM["Modules.Wallets<br/>counting Credit calls AwardLevelRewards,<br/>WalletDbContext.SaveChangesAsync drains the level-ups"]:::wallets
+    end
+
+    subgraph ProfilesM ["Modules.Profiles - consume-only, no outbox, no background services"]
+        Inbox["ProfilesProcessedMessages<br/>inbox, EventId as PK"]:::profiles
+        Handlers["UserRegisteredEventHandler creates the profile,<br/>PlayerLevelledUpEventHandler applies the absolute level monotonically"]:::profiles
+        Endpoints["12 endpoints under /api/profiles<br/>profile, socials, avatar, friends, warehouse invites"]:::profiles
+        Seam["IAvatarStorage seam<br/>S3AvatarStorage: AWSSDK.S3, path style,<br/>anonymous credentials, lazy bucket"]:::profiles
+    end
+
+    IdentityM -->|"UserRegisteredEvent<br/>PublicUserId, Email, Username?"| Inbox
+    WalletsM -->|"PlayerLevelledUpEvent<br/>UserId, PreviousLevel, NewLevel, RewardAmount"| Inbox
+    Inbox --> Handlers
+
+    Client -->|"PUT /me/avatar multipart<br/>body cap before ReadFormAsync, magic-byte sniff"| Endpoints
+    Endpoints --> Seam
+
+    Handlers --> Db[("PostgreSQL<br/>ProfilesUserProfiles, ProfilesSocialLinks,<br/>ProfilesFriendships, ProfilesWarehouseInvites")]:::db
+    Endpoints --> Db
+    Seam -->|"PUT / GET / DELETE<br/>stable key avatars/userId"| Seaweed[("SeaweedFS<br/>S3 gateway :8333,<br/>compose network only")]:::db
+
+    style Producers fill:#F8FAFC,stroke:#475569,stroke-width:2px,color:#0F172A
+    style ProfilesM fill:#FDF4FF,stroke:#7C3AED,stroke-width:2px,color:#4C1D95
+
+    classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef identity  fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#78350F
+    classDef wallets   fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#064E3B
+    classDef profiles  fill:#EDE9FE,stroke:#7C3AED,stroke-width:2px,color:#4C1D95
+    classDef db        fill:#F3E8FF,stroke:#9333EA,stroke-width:2px,color:#581C87

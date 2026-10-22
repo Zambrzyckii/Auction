@@ -81,7 +81,7 @@ A token issued by `LoginCommandHandler` is a JWT signed with `HmacSha256Signatur
 
 | Direction | Event | Where |
 |---|---|---|
-| published | `UserRegisteredEvent(EventId, PublicUserId, Email)` | `RegisterCommandHandler` and `RegisterBotCommandHandler`, through `AddUserWithOutboxAsync` in the same `SaveChangesAsync` as the user row |
+| published | `UserRegisteredEvent(EventId, PublicUserId, Email, Username?)` | `RegisterCommandHandler` and `RegisterBotCommandHandler`, through `AddUserWithOutboxAsync` in the same `SaveChangesAsync` as the user row. `Username` is a defaulted parameter added for the Profiles snapshot, so payloads from before the field deserialize to null and Profiles falls back to `Player` |
 
 Wallets consumes the event and creates the wallet with `Wallets:StartingFunds`; because the event carries no role, a bot account receives the same starting funds as a player.
 

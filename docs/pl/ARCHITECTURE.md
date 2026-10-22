@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/ARCHITECTURE.md](../en/ARCHITECTURE.md)
 
-AuctionServer to modular monolith w .NET 10 dla zgamifikowanego domu aukcyjnego: osiem modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino) działa w jednym procesie ASP.NET Core, dzieli jedną bazę PostgreSQL i rozmawia ze sobą wyłącznie przez zdarzenia integracyjne przenoszone transakcyjnym outboxem i konsumowane przez inbox. Ta strona opisuje kontekst systemu, warstwy modułów, obsługę żądań, komunikację między modułami, trzy przepływy aukcji, przepływ wojny magazynowej, przepływ pożyczek bankowych, przepływ lombardu i przepływ kasyna, model danych, pipeline CI, stosowane wzorce projektowe i znane ograniczenia. Szczegóły poszczególnych modułów są w [rozdziałach backendu](backend/README.md).
+AuctionServer to modular monolith w .NET 10 dla zgamifikowanego domu aukcyjnego: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles) działa w jednym procesie ASP.NET Core, dzieli jedną bazę PostgreSQL i rozmawia ze sobą wyłącznie przez zdarzenia integracyjne przenoszone transakcyjnym outboxem i konsumowane przez inbox; awatary żyją dodatkowo w object storage SeaweedFS za szwem S3. Ta strona opisuje kontekst systemu, warstwy modułów, obsługę żądań, komunikację między modułami, trzy przepływy aukcji, przepływ wojny magazynowej, przepływ pożyczek bankowych, przepływ lombardu, przepływ kasyna i przepływ profili, model danych, pipeline CI, stosowane wzorce projektowe i znane ograniczenia. Szczegóły poszczególnych modułów są w [rozdziałach backendu](backend/README.md).
 
 ## Kontekst systemu
 
@@ -17,9 +17,10 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 
 | Komponent | Status | Opisany w |
 |---|---|---|
-| Host `AuctionServer.Api` z ośmioma modułami | istnieje | [backend/README.md](backend/README.md) |
-| PostgreSQL, jedna baza, 33 tabele | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
-| Docker Compose (obraz API plus PostgreSQL) | istnieje | [backend/README.md](backend/README.md) |
+| Host `AuctionServer.Api` z dziewięcioma modułami | istnieje | [backend/README.md](backend/README.md) |
+| PostgreSQL, jedna baza, 38 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
+| Object storage SeaweedFS dla awatarów | istnieje (serwis Compose, bez publikowanych portów) | [backend/profiles.md](backend/profiles.md) |
+| Docker Compose (obraz API plus PostgreSQL i SeaweedFS) | istnieje | [backend/README.md](backend/README.md) |
 | Pipeline'y GitLab CI i GitHub Actions | istnieją | [Build i CI](#build-i-ci) |
 | Frontend Angular | planowany | [frontend.md](frontend.md) |
 | API gateway, RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
@@ -27,14 +28,14 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 
 ## Moduły i warstwy
 
-Diagram pokazuje referencje między projektami: host referencuje osiem modułów, każdy moduł referencuje wyłącznie `AuctionServer.Shared.Integration`, a żaden moduł nie referencuje innego modułu.
+Diagram pokazuje referencje między projektami: host referencuje dziewięć modułów, każdy moduł referencuje wyłącznie `AuctionServer.Shared.Integration`, a żaden moduł nie referencuje innego modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-02-module-layering.dark.svg">
   <img alt="Diagram: moduły i warstwy" src="../diagrams/architecture-02-module-layering.svg">
 </picture>
 
-Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minimal API i rekordy żądań), `Application/` (komendy, zapytania i walidatory MediatR, handlery zdarzeń, interfejsy repozytoriów), `Domain/` (encje, enumy, wyjątki) oraz `Infrastructure/` (DbContext, repozytoria, konfiguracje EF, outbox, inbox, serwisy tła, migracje). Pliki projektów modułów deklarują jedną `ProjectReference`, do [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), które zawiera trzydzieści sześć rekordów zdarzeń, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` i `ValidationBehaviour`. Host podpina moduł jedną metodą rozszerzającą na moduł (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`, `AddCasinoModule`) i mapuje jego endpointy przez `Map*Endpoints`; oba wywołania są w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
+Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minimal API i rekordy żądań), `Application/` (komendy, zapytania i walidatory MediatR, handlery zdarzeń, interfejsy repozytoriów), `Domain/` (encje, enumy, wyjątki) oraz `Infrastructure/` (DbContext, repozytoria, konfiguracje EF, outbox, inbox, serwisy tła, migracje). Pliki projektów modułów deklarują jedną `ProjectReference`, do [`AuctionServer.Shared.Integration`](../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj), które zawiera trzydzieści siedem rekordów zdarzeń, `AppException`, `IIntegrationEventPublisher`, `IntegrationEventTypes` i `ValidationBehaviour`. Host podpina moduł jedną metodą rozszerzającą na moduł (`AddAuctionModule`, `AddWalletsModule`, `AddIdentityModule`, `AddInventoryModule`, `AddWarehousesModule`, `AddBankingModule`, `AddPawnshopModule`, `AddCasinoModule`, `AddProfilesModule`) i mapuje jego endpointy przez `Map*Endpoints`; oba wywołania są w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs).
 
 | Moduł | Prefiks tras | DbContext | Tabele | Serwisy tła | Testy |
 |---|---|---|---|---|---|
@@ -46,6 +47,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 | [Banking](backend/banking.md) | `/api/bank` | `BankingDbContext` | `BankingLoans`, `BankingOutboxMessages`, `BankingProcessedMessages` | `OutboxProcessor`, `BankKeeper` | `AuctionServer.Modules.Banking.Tests` |
 | [Pawnshop](backend/pawnshop.md) | `/api/pawnshop` | `PawnshopDbContext` | `PawnshopShops`, `PawnshopStockItems`, `PawnshopOutboxMessages`, `PawnshopProcessedMessages` | `OutboxProcessor`, `PawnshopKeeper` | `AuctionServer.Modules.Pawnshop.Tests` |
 | [Casino](backend/casino.md) | `/api/casino` | `CasinoDbContext` | `CasinoAccounts`, `CasinoChipPurchases`, `CasinoRouletteSpins`, `CasinoRouletteBets`, `CasinoBlackjackHands`, `CasinoOutboxMessages`, `CasinoProcessedMessages` | `OutboxProcessor`, `CasinoKeeper` | `AuctionServer.Modules.Casino.Tests` |
+| [Profiles](backend/profiles.md) | `/api/profiles` | `ProfilesDbContext` | `ProfilesUserProfiles`, `ProfilesSocialLinks`, `ProfilesFriendships`, `ProfilesWarehouseInvites`, `ProfilesProcessedMessages` | brak; pierwszy moduł wyłącznie konsumujący | `AuctionServer.Modules.Profiles.Tests` |
 
 Reguły modułów są egzekwowane konwencją, nie narzędziami: brak referencji projektowych między modułami, brak zapytań do bazy innego modułu oraz `Domain/` i `Application/` wolne od typów ASP.NET Core. Ostatnia reguła jest spełniona dla samego ASP.NET Core, ale handlery w `Application/` referencują typy `Infrastructure.Outbox` i `Infrastructure.Inbox` własnego modułu, żeby budować wiersze outboxa i inboxa, a `LoginCommandHandler` czyta `IConfiguration` bezpośrednio.
 
@@ -217,16 +219,29 @@ Diagram pokazuje sagę żetonów wokół synchronicznych gier: pieniądze wchodz
 3. Drugie zamiatanie keepera automatycznie pasuje rozdania porzucone na `HandTimeout`: krupier gra, rozdanie rozlicza się z flagą `AutoStood`, a ewentualna wypłata jest uznawana w tym samym cyklu.
 4. `POST /api/casino/chips/cashouts` zdejmuje żetony i pisze `CasinoCashOutEvent` w jednym zapisie; Wallets uznaje przez `Wallet.ReceiveCasinoCashOut`, które nigdy nie buduje `LifetimeTurnover`, więc hedgowana gra w kasynie nie może farmić bramek banku ani lombardu. Pełny opis w [backend/casino.md](backend/casino.md).
 
+### Profiles (snapshot rejestracji, lustro poziomów, awatary w SeaweedFS)
+
+Profiles nie ma sagi i niczego nie publikuje; to pierwszy moduł wyłącznie konsumujący. Diagram pokazuje dwa przychodzące przepływy zdarzeń i szew storage.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-12-profiles.dark.svg">
+  <img alt="Diagram Profiles" src="../diagrams/architecture-12-profiles.svg">
+</picture>
+
+1. `UserRegisteredEvent` tworzy profil ze snapshotem nazwy (stare payloady bez pola dostają fallback `Player`), przez inbox jak każdy konsument.
+2. Każdy liczący wpływ w Wallets może przyznać poziomy: `AwardLevelRewards` płaci `10 * n^2` za poziom wprost do salda, a nadpisane `WalletDbContext.SaveChangesAsync` emituje jedno scalone `PlayerLevelledUpEvent` z absolutnymi poziomami, które Profiles nakłada monotonicznie, więc retry w złej kolejności nie cofną lustra.
+3. Awatary, konta społecznościowe, znajomi i zaproszenia magazynowe to synchroniczne zapisy wewnątrz modułu. Bajty awatara idą do SeaweedFS przez szew `IAvatarStorage` pod stabilnym kluczem `avatars/{userId}`; przeszukiwalne fakty (sniffowany typ, hash SHA-256, data) zostają kolumnami profilu, a proxy pobrania streamuje obiekt z powrotem z `nosniff` i ETagiem. Pełny opis w [backend/profiles.md](backend/profiles.md).
+
 ## Model danych
 
-Diagram pokazuje trzydzieści trzy tabele pogrupowane według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
+Diagram pokazuje trzydzieści osiem tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
   <img alt="Diagram: model danych" src="../diagrams/architecture-06-data-model.svg">
 </picture>
 
-Wszystkie osiem `DbContext`ów wskazuje tę samą bazę i dzielą domyślną tabelę `__EFMigrationsHistory` (żaden kontekst nie nadpisuje tabeli historii), więc izolacja opiera się na dyscyplinie i na różnych nazwach tabel. Identyfikatory przekraczają granice modułów jako kopiowane Guidy: `Wallets.UserId` i `Auctions.SellerUserId` trzymają `Users.PublicUserId`, `Auctions.ItemId` trzyma `InventoryItems.PublicItemId`, a `InventoryItems.LockedForAuctionId` trzyma `Auctions.PublicAuctionId`. Typy kolumn pochodzą ze snapshotów modelu EF w folderze migracji każdego modułu.
+Wszystkie dziewięć `DbContext`ów wskazuje tę samą bazę i dzielą domyślną tabelę `__EFMigrationsHistory` (żaden kontekst nie nadpisuje tabeli historii), więc izolacja opiera się na dyscyplinie i na różnych nazwach tabel. Identyfikatory przekraczają granice modułów jako kopiowane Guidy: `Wallets.UserId` i `Auctions.SellerUserId` trzymają `Users.PublicUserId`, `Auctions.ItemId` trzyma `InventoryItems.PublicItemId`, a `InventoryItems.LockedForAuctionId` trzyma `Auctions.PublicAuctionId`. Typy kolumn pochodzą ze snapshotów modelu EF w folderze migracji każdego modułu.
 
 | Tabela | Moduł | Przeznaczenie |
 |---|---|---|
@@ -256,6 +271,11 @@ Wszystkie osiem `DbContext`ów wskazuje tę samą bazę i dzielą domyślną tab
 | `CasinoRouletteSpins`, `CasinoRouletteBets` | Casino | niezmienna historia spinów z posiadaną kolekcją zakładów, indeksowana (`UserId`, `PlacedOn`) |
 | `CasinoBlackjackHands` | Casino | rozdania blackjacka z kartami jako `integer[]`, unikalnym `UserId` dopóki `Status = 0` i tokenem `Version` |
 | `CasinoOutboxMessages`, `CasinoProcessedMessages` | Casino | outbox, inbox |
+| `ProfilesUserProfiles` | Profiles | jeden profil na gracza z kluczem `PublicUserId`: snapshot nazwy, lustrzany poziom, typ, hash i data awatara, token `Version` |
+| `ProfilesSocialLinks` | Profiles | owned konta społecznościowe, klucz złożony (`ProfileUserId`, `Platform`), najwyżej sześć na profil |
+| `ProfilesFriendships` | Profiles | jeden wiersz na parę z kanonicznym unikalnym indeksem (`UserLowId`, `UserHighId`), `Status` `Pending`/`Accepted` |
+| `ProfilesWarehouseInvites` | Profiles | wskaźnikowe zaproszenia do wojen magazynowych, unikalna trójka (`InviterId`, `InviteeId`, `PublicWarehouseId`), wygasanie odczytowe |
+| `ProfilesProcessedMessages` | Profiles | inbox; moduł nie ma outboxa |
 
 Każda tabela outboxa ma te same dziewięć kolumn (`Id`, `Type`, `Content`, `CreatedOn`, `ProcessedOn`, `AttemptCount`, `Errors`, `IsDead`, `NextAttemptOn`), a każda tabela inboxa ma `EventId` i `ProcessedOn`; zobacz [backend/messaging.md](backend/messaging.md).
 
@@ -276,10 +296,10 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 
 ## Stosowane wzorce projektowe
 
-- **Modular monolith.** Jeden deployowalny artefakt, osiem modułów z prywatnymi tabelami i prywatnymi `DbContext`ami, jeden współdzielony projekt kontraktów.
+- **Modular monolith.** Jeden deployowalny artefakt, dziewięć modułów z prywatnymi tabelami i prywatnymi `DbContext`ami, jeden współdzielony projekt kontraktów.
 - **CQRS w Auctions, CQS w pozostałych.** Auctions zapisuje przez EF Core i czyta Dapperem przez `ISqlConnectionFactory` ([`GetActiveAuctionsQueryHandler`](../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs)); Wallets, Inventory, Warehouses, Banking, Pawnshop i Casino czytają przez EF Core z `AsNoTracking`.
 - **Transakcyjny outbox.** Osiem kopii `OutboxMessage` i `OutboxProcessor`, po jednej na moduł; wiersz zdarzenia commituje się razem ze zmianą stanu.
-- **Inbox (idempotentny konsument).** Tabele `ProcessedMessages` w Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop i Casino, sprawdzane przed zmianą i wstawiane razem z nią.
+- **Inbox (idempotentny konsument).** Tabele `ProcessedMessages` w Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino i Profiles, sprawdzane przed zmianą i wstawiane razem z nią.
 - **Saga przez choreografię.** Tworzenie aukcji, rozliczenie aukcji, wycena magazynu, blokada wpisowego, rozliczenie magazynu, udzielenie pożyczki, pobranie pożyczki, płatność lombardu, wycena spawnu lombardu i zakup żetonów kasyna to łańcuchy zdarzeń między modułami bez orkiestratora; każdy skok to lokalna transakcja.
 - **Optymistyczna współbieżność.** `Version` to Guidowy token współbieżności na `Auction`, `Wallet`, `Item`, `WarehouseWar`, `Loan`, `Shop`, `StockItem`, `ChipAccount`, `ChipPurchase` i `BlackjackHand`, generowany na nowo w każdej metodzie mutującej; konflikty ujawniają się jako 409 albo jako ponowiony cykl w tle.
 - **Globalny kontrakt błędów.** Wyjątki domenowe dziedziczą po `AppException(message, statusCode)` i są mapowane przez jeden `IExceptionHandler`.
@@ -291,7 +311,7 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 
 ## Znane ograniczenia
 
-1. Tabela outboxa Auctions nazywa się `OutboxMessages` bez prefiksu modułu; pozostałe sześć tabel outboxa ma prefiks ([`AuctionDbContext`](../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/AuctionDbContext.cs) nie ma dla niej `ToTable`).
+1. Tabela outboxa Auctions nazywa się `OutboxMessages` bez prefiksu modułu; pozostałe siedem tabel outboxa ma prefiks ([`AuctionDbContext`](../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/AuctionDbContext.cs) nie ma dla niej `ToTable`).
 2. Żaden zautomatyzowany test nie przekracza granicy modułu; handlery zdarzeń są testowane przez bezpośrednie wywołanie. Dwie fixtury `WebApplicationFactory` ([`CustomAPI`](../../Backend/tests/AuctionServer.Modules.Wallets.Tests/IntegrationTests/CustomAPI.cs) w Wallets, `CustomApi` w Identity) migrują tylko kontekst własnego modułu, więc pozostałe `OutboxProcessor`y, `AuctionCloser` i trzy keepery logują błąd podczas tych testów.
 3. `Role.Admin` jest zdefiniowane w [`Role.cs`](../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), ale nigdy nie jest przypisywane ani sprawdzane.
 4. [`Backend/.env.example`](../../Backend/.env.example) (`DB_USER`, `DB_PASSWORD`) nie ma czytelnika; konfiguracja pochodzi z user secrets albo zmiennych środowiskowych z `__`.
