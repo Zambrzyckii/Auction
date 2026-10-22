@@ -15,7 +15,7 @@ public class ProfileQueryHandlerTests(ProfilesPostgresFixture fixture)
 
         await using var context = fixture.CreateContext();
         var handler = new GetProfileQueryHandler(new ProfilesRepository(context));
-        var dto = await handler.Handle(new GetProfileQuery(userId), CancellationToken.None);
+        var dto = await handler.Handle(new GetProfileQuery(userId, Guid.NewGuid()), CancellationToken.None);
 
         Assert.Equal(userId, dto.UserId);
         Assert.Equal("visible-player", dto.Username);
@@ -29,7 +29,7 @@ public class ProfileQueryHandlerTests(ProfilesPostgresFixture fixture)
         var handler = new GetProfileQueryHandler(new ProfilesRepository(context));
 
         await Assert.ThrowsAsync<ProfilesExceptions.ProfileNotFoundException>(() =>
-            handler.Handle(new GetProfileQuery(Guid.NewGuid()), CancellationToken.None));
+            handler.Handle(new GetProfileQuery(Guid.NewGuid(), Guid.NewGuid()), CancellationToken.None));
     }
 
     [Fact]

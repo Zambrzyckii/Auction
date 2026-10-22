@@ -19,7 +19,7 @@ public sealed class GetOwnProfileQueryHandler(IProfilesRepository repository)
         var friends = await repository.GetAcceptedFriendsAsync(request.UserId, cancellationToken);
         var pending = await repository.GetPendingFriendshipsAsync(request.UserId, cancellationToken);
 
-        return new OwnProfileDto(profile.UserId, profile.Username, profile.Level, profile.CreatedOn,
+        return new OwnProfileDto(profile.UserId, profile.Username, profile.IsPrivate, profile.Level, profile.CreatedOn,
             avatarUrl,
             friends.Select(f => new FriendDto(f.UserId, f.Username)).ToList(),
             pending.Where(p => p.Incoming)

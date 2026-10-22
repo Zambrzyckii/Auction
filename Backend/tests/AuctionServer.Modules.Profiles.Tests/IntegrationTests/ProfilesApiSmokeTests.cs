@@ -100,6 +100,25 @@ public class ProfilesApiSmokeTests(ProfilesCustomApi factory)
         Assert.Equal(JsonValueKind.Null, me.GetProperty("avatarUrl").ValueKind);
     }
 
+    [Fact]
+    public async Task PutPrivacy_ShouldHideProfileDetailsFromStrangers()
+    {
+        var ownerId = await SeedProfileAsync();
+        var strangerId = await SeedProfileAsync();
+        var owner = CreateAuthorizedClient(ownerId);
+        var stranger = CreateAuthorizedClient(strangerId);
+
+        var response = await owner.PutAsJsonAsync("/api/profiles/me/privacy", new { IsPrivate = true });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        var me = await owner.GetFromJsonAsync<JsonElement>("/api/profiles/me");
+        Assert.True(me.GetProperty("isPrivate").GetBoolean());
+        var profile = await stranger.GetFromJsonAsync<JsonElement>($"/api/profiles/{ownerId}");
+        Assert.True(profile.GetProperty("isPrivate").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, profile.GetProperty("level").ValueKind);
+        Assert.Equal("smoke-player", profile.GetProperty("username").GetString());
+    }
+
     private async Task<Guid> SeedProfileAsync()
     {
         using var scope = factory.Services.CreateScope();

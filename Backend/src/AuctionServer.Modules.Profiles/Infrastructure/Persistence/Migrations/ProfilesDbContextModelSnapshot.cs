@@ -78,6 +78,9 @@ namespace AuctionServer.Modules.Profiles.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsPrivate")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Level")
                         .HasColumnType("integer");
 

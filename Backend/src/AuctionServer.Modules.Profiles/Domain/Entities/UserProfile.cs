@@ -8,6 +8,7 @@ public sealed class UserProfile
     public Guid UserId { get; init; }
     public string Username { get; private set; } = null!;
     public int Level { get; private set; }
+    public bool IsPrivate { get; private set; }
     public DateTime CreatedOn { get; private set; }
     public string? AvatarContentType { get; private set; }
     public string? AvatarHash { get; private set; }
@@ -24,6 +25,13 @@ public sealed class UserProfile
     {
         if (newLevel <= Level) return;
         Level = newLevel;
+        Version = Guid.NewGuid();
+    }
+
+    public void SetPrivacy(bool isPrivate)
+    {
+        if (IsPrivate == isPrivate) return;
+        IsPrivate = isPrivate;
         Version = Guid.NewGuid();
     }
 

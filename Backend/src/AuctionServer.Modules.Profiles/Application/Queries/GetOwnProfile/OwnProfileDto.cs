@@ -5,6 +5,7 @@ namespace AuctionServer.Modules.Profiles.Application.Queries.GetOwnProfile;
 public record OwnProfileDto(
     Guid UserId,
     string Username,
+    bool IsPrivate,
     int Level,
     DateTime MemberSince,
     string? AvatarUrl,

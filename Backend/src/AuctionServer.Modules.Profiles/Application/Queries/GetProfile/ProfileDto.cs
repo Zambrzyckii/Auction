@@ -5,8 +5,9 @@ namespace AuctionServer.Modules.Profiles.Application.Queries.GetProfile;
 public record ProfileDto(
     Guid UserId,
     string Username,
-    int Level,
-    DateTime MemberSince,
+    bool IsPrivate,
+    int? Level,
+    DateTime? MemberSince,
     string? AvatarUrl,
     IReadOnlyList<FriendDto> Friends,
     IReadOnlyList<SocialLinkDto> SocialLinks);

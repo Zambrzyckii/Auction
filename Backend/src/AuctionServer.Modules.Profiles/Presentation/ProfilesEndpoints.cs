@@ -6,6 +6,7 @@ using AuctionServer.Modules.Profiles.Application.Command.DeleteAvatar;
 using AuctionServer.Modules.Profiles.Application.Command.RemoveFriend;
 using AuctionServer.Modules.Profiles.Application.Command.ReplaceSocialLinks;
 using AuctionServer.Modules.Profiles.Application.Command.RequestFriendship;
+using AuctionServer.Modules.Profiles.Application.Command.SetProfilePrivacy;
 using AuctionServer.Modules.Profiles.Application.Command.UploadAvatar;
 using AuctionServer.Modules.Profiles.Application.Options;
 using AuctionServer.Modules.Profiles.Application.Queries.GetAvatar;
@@ -39,6 +40,13 @@ public static class ProfilesEndpoints
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
             await sender.Send(new ReplaceSocialLinksCommand(userId, request.Links));
+            return Results.NoContent();
+        }).RequireAuthorization();
+
+        group.MapPut("/me/privacy", async (SetPrivacyRequest request, ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await sender.Send(new SetProfilePrivacyCommand(userId, request.IsPrivate));
             return Results.NoContent();
         }).RequireAuthorization();
 
@@ -120,9 +128,10 @@ public static class ProfilesEndpoints
             return Results.Stream(result.Content, result.ContentType);
         }).RequireAuthorization();
 
-        group.MapGet("/{publicUserId:guid}", async (Guid publicUserId, ISender sender) =>
+        group.MapGet("/{publicUserId:guid}", async (Guid publicUserId, ClaimsPrincipal user, ISender sender) =>
         {
-            var result = await sender.Send(new GetProfileQuery(publicUserId));
+            var viewerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new GetProfileQuery(publicUserId, viewerId));
             return Results.Ok(result);
         }).RequireAuthorization();
 
