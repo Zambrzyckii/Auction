@@ -13,6 +13,8 @@ public sealed class GetProfileQueryHandler(IProfilesRepository repository)
 
         if (profile is null) throw new ProfilesExceptions.ProfileNotFoundException();
 
-        return new ProfileDto(profile.UserId, profile.Username, profile.Level, profile.CreatedOn);
+        return new ProfileDto(profile.UserId, profile.Username, profile.Level, profile.CreatedOn,
+            profile.SocialLinks.OrderBy(l => l.Platform)
+                .Select(l => new SocialLinkDto(l.Platform, l.Url)).ToList());
     }
 }

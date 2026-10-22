@@ -61,6 +61,32 @@ namespace AuctionServer.Modules.Profiles.Infrastructure.Persistence.Migrations
 
                     b.ToTable("ProfilesProcessedMessages", (string)null);
                 });
+
+            modelBuilder.Entity("AuctionServer.Modules.Profiles.Domain.Entities.UserProfile", b =>
+                {
+                    b.OwnsMany("AuctionServer.Modules.Profiles.Domain.Entities.SocialLink", "SocialLinks", b1 =>
+                        {
+                            b1.Property<Guid>("ProfileUserId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Platform")
+                                .HasColumnType("integer");
+
+                            b1.Property<string>("Url")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)");
+
+                            b1.HasKey("ProfileUserId", "Platform");
+
+                            b1.ToTable("ProfilesSocialLinks", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProfileUserId");
+                        });
+
+                    b.Navigation("SocialLinks");
+                });
 #pragma warning restore 612, 618
         }
     }

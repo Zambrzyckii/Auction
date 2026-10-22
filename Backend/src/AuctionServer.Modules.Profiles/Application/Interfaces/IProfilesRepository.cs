@@ -10,4 +10,5 @@ public interface IProfilesRepository
     Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
     Task AddProfileWithInboxAsync(UserProfile profile, ProcessedMessage message, CancellationToken token);
     Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token);
+    Task SaveChangesAsync(CancellationToken token);
 }

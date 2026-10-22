@@ -31,6 +31,9 @@ public sealed class ProfilesRepository(ProfilesDbContext context) : IProfilesRep
         await SaveTranslatingUniqueViolationAsync(token);
     }
 
+    public async Task SaveChangesAsync(CancellationToken token) =>
+        await context.SaveChangesAsync(token);
+
     public async Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token)
     {
         context.ProcessedMessages.Add(message);

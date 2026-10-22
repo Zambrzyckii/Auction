@@ -9,4 +9,7 @@ public static class ProfilesExceptions
 
     public sealed class EventAlreadyProcessedException()
         : AppException("Event was already processed", 409);
+
+    public sealed class InvalidSocialLinkException(string message)
+        : AppException(message, 400);
 }

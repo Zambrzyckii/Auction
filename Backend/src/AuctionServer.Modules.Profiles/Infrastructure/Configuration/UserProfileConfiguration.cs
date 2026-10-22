@@ -11,6 +11,14 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
         builder.HasKey(x => x.UserId);
         builder.Property(x => x.Username).HasMaxLength(64);
         builder.Property(x => x.Version).IsConcurrencyToken();
+        builder.OwnsMany(x => x.SocialLinks, link =>
+        {
+            link.ToTable("ProfilesSocialLinks");
+            link.WithOwner().HasForeignKey("ProfileUserId");
+            link.HasKey("ProfileUserId", nameof(SocialLink.Platform));
+            link.Property(x => x.Url).HasMaxLength(200);
+        });
+        builder.Navigation(x => x.SocialLinks).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.ToTable("ProfilesUserProfiles");
     }
 }
