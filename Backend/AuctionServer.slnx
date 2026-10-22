@@ -17,4 +17,6 @@
   <Project Path="tests/AuctionServer.Modules.Pawnshop.Tests/AuctionServer.Modules.Pawnshop.Tests.csproj" />
   <Project Path="src/AuctionServer.Modules.Casino/AuctionServer.Modules.Casino.csproj" />
   <Project Path="tests/AuctionServer.Modules.Casino.Tests/AuctionServer.Modules.Casino.Tests.csproj" />
+  <Project Path="src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj" />
+  <Project Path="tests/AuctionServer.Modules.Profiles.Tests/AuctionServer.Modules.Profiles.Tests.csproj" />
 </Solution>

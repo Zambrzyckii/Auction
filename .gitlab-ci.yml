@@ -33,3 +33,4 @@ integration-tests:
     - dotnet test Backend/tests/AuctionServer.Modules.Banking.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Pawnshop.Tests
     - dotnet test Backend/tests/AuctionServer.Modules.Casino.Tests
+    - dotnet test Backend/tests/AuctionServer.Modules.Profiles.Tests
