@@ -35,7 +35,6 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var eventPublisher = scope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
 
         var messages = await context.OutboxMessages
             .Where(m => m.ProcessedOn == null && !m.IsDead && (m.NextAttemptOn == null || m.NextAttemptOn <= DateTime.UtcNow))
@@ -47,6 +46,8 @@ public class OutboxProcessor(IServiceProvider serviceProvider, ILogger<OutboxPro
         {
             try
             {
+                using var publishScope = serviceProvider.CreateScope();
+                var eventPublisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
                 await eventPublisher.PublishAsync(message.Id, message.Type, message.Content, stoppingToken);
                 message.MarkAsProcessed();
             }
