@@ -9,10 +9,12 @@ public sealed class Wallet
     public decimal AvailableFunds { get; private set; }
     public decimal LockedFunds { get; private set; }
     public decimal LifetimeTurnover { get; private set; }
+    public int RewardedLevel { get; private set; }
 
     public bool IsSuspendedWallet { get; private set; }
     public Guid Version { get; private set; } = Guid.NewGuid();
     private readonly List<FundsLock> _fundsLocks = [];
+    private readonly List<LevelUp> _pendingLevelUps = [];
     
     public IReadOnlyCollection<FundsLock> FundsLocks => _fundsLocks;
     public void SuspendAccount() => IsSuspendedWallet = true;
@@ -52,11 +54,41 @@ public sealed class Wallet
     private void Credit(decimal amount, bool countsTowardTurnover)
     {
         if (amount <= 0) throw new WalletExceptions.InvalidAmountException();
-        
+
         AvailableFunds += amount;
-        if (countsTowardTurnover) LifetimeTurnover += amount;
-        
+        if (countsTowardTurnover)
+        {
+            LifetimeTurnover += amount;
+            AwardLevelRewards();
+        }
+
         Version = Guid.NewGuid();
+    }
+
+    private void AwardLevelRewards()
+    {
+        var startedLevel = RewardedLevel;
+        decimal rewardsSum = 0m;
+        while (RewardedLevel < PlayerLevels.MaxRewardedLevel &&
+               LifetimeTurnover >= PlayerLevels.TurnoverRequired(RewardedLevel + 1))
+        {
+            RewardedLevel++;
+            rewardsSum += PlayerLevels.Reward(RewardedLevel);
+        }
+
+        if (RewardedLevel > startedLevel)
+        {
+            AvailableFunds += rewardsSum;
+            _pendingLevelUps.Add(new LevelUp(startedLevel, RewardedLevel, rewardsSum));
+        }
+    }
+
+    internal List<LevelUp> TakePendingLevelUps()
+    {
+        if (_pendingLevelUps.Count == 0) return [];
+        var taken = new List<LevelUp>(_pendingLevelUps);
+        _pendingLevelUps.Clear();
+        return taken;
     }
 
     public void Withdraw(decimal amount)

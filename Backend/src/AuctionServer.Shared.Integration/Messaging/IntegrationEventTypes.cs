@@ -5,6 +5,7 @@ using AuctionServer.Shared.Integration.Events.Casino;
 using AuctionServer.Shared.Integration.Events.Funds;
 using AuctionServer.Shared.Integration.Events.Items;
 using AuctionServer.Shared.Integration.Events.Pawnshop;
+using AuctionServer.Shared.Integration.Events.Players;
 using AuctionServer.Shared.Integration.Events.Users;
 using AuctionServer.Shared.Integration.Events.Warehouses;
 using MediatR;
@@ -50,7 +51,8 @@ public static class IntegrationEventTypes
         [nameof(CasinoChipPurchaseRequestedEvent)] = typeof(CasinoChipPurchaseRequestedEvent),
         [nameof(CasinoChipPurchaseCompletedEvent)] = typeof(CasinoChipPurchaseCompletedEvent),
         [nameof(CasinoChipPurchaseRejectedEvent)] = typeof(CasinoChipPurchaseRejectedEvent),
-        [nameof(CasinoCashOutEvent)] = typeof(CasinoCashOutEvent)
+        [nameof(CasinoCashOutEvent)] = typeof(CasinoCashOutEvent),
+        [nameof(PlayerLevelledUpEvent)] = typeof(PlayerLevelledUpEvent)
     };
 
     public static INotification Deserialize(string type, string content)

@@ -74,6 +74,9 @@ namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<int>("RewardedLevel")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("uuid");
