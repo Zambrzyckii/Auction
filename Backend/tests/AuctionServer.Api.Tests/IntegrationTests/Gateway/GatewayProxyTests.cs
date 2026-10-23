@@ -2,6 +2,7 @@ using System.Net;
 
 namespace AuctionServer.Api.Tests.IntegrationTests.Gateway;
 
+[Collection(GatewayCollection.Name)]
 public class GatewayProxyTests(GatewayFixture gateway) : IClassFixture<GatewayFixture>
 {
     private async Task<UpstreamRequest> SendThroughGatewayAsync(HttpRequestMessage request)
