@@ -6,12 +6,12 @@
 
 ## Status
 
-Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpointów, 37 zdarzeń integracyjnych, 763 metody testowe, pipeline'y CI dla GitLaba i GitHub Actions oraz stack obserwowalności OpenTelemetry mierzony k6. Frontend Angular, boty AI, API gateway i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
+Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpointów, 37 zdarzeń integracyjnych, 797 metod testowych, pipeline'y CI dla GitLaba i GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6 oraz gateway nginx przed API. Frontend Angular, boty AI i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
 
 ## Szybki start
 
 ```bash
-docker compose up -d        # PostgreSQL + SeaweedFS + API na http://localhost:8080, migracje aplikowane na starcie
+docker compose up -d        # gateway nginx na http://localhost:8080 przed API, PostgreSQL, SeaweedFS i telemetria, migracje aplikowane na starcie
 ```
 
 Potem `POST /api/users/register`, `POST /api/users/login` i reszta wywołań ze zwróconym tokenem; endpointy są wymienione w [docs/pl/backend/README.md](docs/pl/backend/README.md). Ręczna ścieżka pod IDE (lokalny PostgreSQL, user secrets, migracje per moduł, `dotnet run`) jest opisana w [docs/pl/backend/README.md#uruchomienie](docs/pl/backend/README.md#uruchomienie).
@@ -20,7 +20,7 @@ Potem `POST /api/users/register`, `POST /api/users/login` i reszta wywołań ze 
 <summary>Testy</summary>
 
 ```bash
-dotnet test AuctionServer.slnx      # każdy projekt stawia PostgreSQL przez Testcontainers, więc Docker musi działać
+dotnet test AuctionServer.slnx      # projekty modułów stawiają PostgreSQL, a projekt hosta nginx przez Testcontainers, więc Docker musi działać
 ```
 
 </details>

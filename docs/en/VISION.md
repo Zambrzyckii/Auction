@@ -81,7 +81,7 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 Still planned after these:
 
 - RabbitMQ as the event transport behind `IIntegrationEventPublisher`.
-- Angular frontend, AI market bots and the API gateway.
+- Angular frontend and AI market bots.
 
 ## 7. Ground rules
 

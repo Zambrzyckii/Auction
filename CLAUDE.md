@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository map
 
-Gamified auction system. Only `Backend/` contains code — everything below it is a .NET 10 modular monolith
+Gamified auction system. Only `Backend/` contains application code — everything below it is a .NET 10 modular monolith
 backed by PostgreSQL.
 
 ```
 Backend/          the entire codebase (solution: AuctionServer.slnx)
 Frontend/         planned Angular client, not started
 Bots/             planned AI market bots, not started
-Infrastructure/   planned RabbitMQ / API Gateway / compose setup, not started
+Infrastructure/   nginx gateway, telemetry configuration and k6 scenarios (platform phases 1 and 2)
 ```
 
-The three non-Backend directories are **planned work** and may be absent from the tree entirely (git does not
+`Frontend/` and `Bots/` are **planned work** and may be absent from the tree entirely (git does not
 track empty directories) — that is not a broken checkout. Do not scaffold anything into them unless asked.
+`Infrastructure/` exists since 2026-10-23 and is described in `docs/en/infrastructure.md`.
 
 ## Entry point
 

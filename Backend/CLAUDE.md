@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Scope
 
-This file covers the .NET backend in `Backend/`. `Frontend/`, `Bots/` and `Infrastructure/` are planned work
-with no code — they may not even exist in the tree yet.
+This file covers the .NET backend in `Backend/`. `Frontend/` and `Bots/` are planned work
+with no code — they may not even exist in the tree yet. `Infrastructure/` holds the nginx gateway, the telemetry
+configuration and the k6 scenarios (`docs/en/infrastructure.md`).
 
 The original design note (`AGENTS.md`) was deleted on 2026-08-15; the target architecture now lives in
 `docs/en/VISION.md` and `docs/en/ARCHITECTURE.md`. Parts of it are not implemented yet;
@@ -20,12 +21,12 @@ Projects live under `src/` (application code) and `tests/` (test projects).
 dotnet build AuctionServer.slnx
 dotnet run --project src/AuctionServer.Api        # http://localhost:5244 (https profile: 7009)
 dotnet test AuctionServer.slnx                    # NOTE: starts Docker containers, see below
-docker compose up -d                              # from the repo ROOT: API on :8080 + postgres (host port 5436), migrates at startup
+docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres (host port 5436), migrates at startup
 ```
 
 ### Tests
 
-Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests) and runs offline:
+Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well:
 
 - All nine mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
@@ -34,7 +35,7 @@ Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`)
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
   on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
-  runs in `integration-tests` next to the other seven projects. `Wallets.Tests`, `Identity.Tests` and `Profiles.Tests` additionally boot the whole
+  runs in `integration-tests` next to the other nine projects. `Wallets.Tests`, `Identity.Tests` and `Profiles.Tests` additionally boot the whole
   host through a `WebApplicationFactory<Program>` fixture (`CustomApi`, in Profiles `ProfilesCustomApi`) that sets `ConnectionStrings__DefaultConnection`,
   `Jwt__Key` (Identity also `Bots__ApiKey`) as process env vars and migrates only its own module — the other modules'
   outbox processors log errors against missing tables; that noise is expected. `Profiles.Tests` also swaps
@@ -119,7 +120,7 @@ context overrides `MigrationsHistoryTable`, they also share a single `__EFMigrat
 
 ### Configuration
 
-`appsettings.json` has **no** `ConnectionStrings` section, yet `AuctionServer.Api/Program.cs:33` reads
+`appsettings.json` has **no** `ConnectionStrings` section, yet `AuctionServer.Api/Program.cs:51` reads
 `DefaultConnection` and passes it with `!`. The connection string comes from User Secrets
 (`UserSecretsId` `577a6cdc-…` in `AuctionServer.Api.csproj`) or from the
 `ConnectionStrings__DefaultConnection` environment variable. With neither set, both modules are registered with a
@@ -134,11 +135,11 @@ dotnet user-secrets set "Bots:ApiKey" "<random-string>" --project src/AuctionSer
 
 `Jwt:Key` is equally mandatory and equally absent from `appsettings.json` (only `Jwt:Issuer`/`Jwt:Audience` live
 there). Without it the app **starts fine but every request 500s**: `JwtBearerOptions` initialize lazily on the
-first request and `Encoding.UTF8.GetBytes(null)` throws (`Program.cs:42`). Supply it via user secrets or the
+first request and `Encoding.UTF8.GetBytes(null)` throws (`Program.cs:64`). Supply it via user secrets or the
 `Jwt__Key` environment variable. `Wallets:StartingFunds` (not a secret — lives in `appsettings.json`) has a startup fail-fast:
-`Program.cs:34` throws `InvalidOperationException` when it is missing and `AddWalletsModule(connectionString, startingFunds)`
+`Program.cs:52` throws `InvalidOperationException` when it is missing and `AddWalletsModule(connectionString, startingFunds)`
 throws `ArgumentOutOfRangeException` when it is `<= 0`. The whole `Warehouses` section (tiers, estimates, pool and
-timing knobs, bound to `WarehousesOptions`) has the same fail-fast at `Program.cs:36`.
+timing knobs, bound to `WarehousesOptions`) has the same fail-fast at `Program.cs:54`.
 The whole `Banking` section (penalty rate, retry interval, both timeouts and the loan offers, bound to `BankingOptions`)
 has the same fail-fast in `Program.cs`; `AddBankingModule` validates the values (offers non-empty and unique, timeouts
 `>= 10 min`).
@@ -156,7 +157,16 @@ https url — the scheme check matters because `Uri.TryCreate` parses `seaweedfs
 and a bucket name of 3-63 characters). The compose file overrides `Profiles__Storage__ServiceUrl` to
 `http://seaweedfs:8333`; without a reachable SeaweedFS only the avatar endpoints fail (503), the host starts fine.
 `Jwt:Key` still has no startup check, and neither has `Bots:ApiKey` (secret — user-secrets or `Bots__ApiKey`):
-it is read into the `ApiKey` scheme at `Program.cs:46-47`; when missing the app starts and `POST /api/users/bots` answers 401.
+it is read into the `ApiKey` scheme at `Program.cs:68-69`; when missing the app starts and `POST /api/users/bots` answers 401.
+The optional `Gateway` section (`Enabled`, `TrustedNetworks`) is off when absent. Enabled, `GatewayOptions.Load` fails fast
+on an empty list and on any entry that is not a canonical CIDR (`172.16.80.1/24` is rejected with the canonical form in the
+message), and `AddGateway` (`Program.cs:169`) sets `ForwardedHeadersOptions.KnownIPNetworks` to exactly those networks, so
+`app.UseForwardedHeaders()` (`Program.cs:187`, the first middleware) honours `X-Forwarded-For` and `X-Forwarded-Proto`
+from them only. The root `compose.yaml` enables it for the `edge` network `172.16.80.0/24`, where the nginx gateway
+(`Infrastructure/gateway/nginx.conf`) is the only published service and the API has no port of its own
+(`compose.debug.yaml` publishes it on `127.0.0.1:8081`). Health is split by tags in `MapHealthEndpoints`
+(`Program.cs:194`), where `/health/live` runs no checks, `/health/ready` runs the checks tagged `ready` (the database
+check registered at `Program.cs:163`) and `/health` runs all of them.
 
 `.env` / `.env.example` (`DB_USER`, `DB_PASSWORD`) have no consumer in the repository — the root `compose.yaml`
 deliberately does not read them (dev-only values are inline there) and no code reads them either. Treat them as
@@ -200,7 +210,7 @@ Each module exposes two static extension classes; the host calls both and nothin
   build a MediatR message and `sender.Send(...)`, no logic in the endpoint
   (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`).
 
-MediatR and FluentValidation are registered per module assembly in `Program.cs:80-142` — each module gets its own
+MediatR and FluentValidation are registered per module assembly in `Program.cs:81-142` — each module gets its own
 `AddValidatorsFromAssembly(...)` plus an `AddMediatR(...)` block that also re-adds the shared
 `ValidationBehaviour<,>` open behavior (MediatR 14 deduplicates repeated `AddOpenBehavior` registrations, so this
 is safe). Adding a module means adding both lines — assembly scanning is not automatic.
@@ -358,7 +368,7 @@ LIMIT @Limit`, `GetActiveAuctionsQueryHandler.cs:11`) and `GetAuctionById` (`Que
 `GetAuctionByIdQueryHandler.cs:11`). Each query owns its DTO in its own folder (`ActiveAuctionQueryDto`,
 `AuctionByIdQueryDto`) — identical ten fields today, kept separate on purpose so they can diverge. Dapper matches the
 record constructor **by column name**, so a DTO parameter must be spelled exactly like the column; `Status` is an
-`integer` column that Dapper maps to `AuctionStatus` and the host serializes as a string (`Program.cs:81-82`).
+`integer` column that Dapper maps to `AuctionStatus` and the host serializes as a string (`Program.cs:166-167`).
 Writes go through `IAuctionRepository` + EF Core. Wallets does not do this — it reads through EF with `AsNoTracking()`
 (`Infrastructure/Persistence/WalletRepository.cs:24`).
 
@@ -387,7 +397,7 @@ Domain exceptions derive from `AppException(message, statusCode)` (`Shared.Integ
 and are grouped as nested classes in a per-module static container (`WalletExceptions`, `AuctionExceptions`,
 `IdentityException`). `GlobalExceptionHandler` (`AuctionServer.Api/Infrastructure/GlobalExceptionHandler.cs:9`)
 maps `AppException` → its own status code, `DbUpdateConcurrencyException` → 409, everything else → 500, and always
-writes `{ "Error": "..." }`. Endpoints therefore contain no try/catch. The handler only runs because
+writes `{ "error": "..." }` (camelCase on the wire). Endpoints therefore contain no try/catch. The handler only runs because
 `app.UseExceptionHandler()` is called in `Program.cs` — `AddExceptionHandler` alone registers it in DI but does
 not put the middleware in the pipeline (this was once missing and every `AppException` surfaced as 500).
 
@@ -537,19 +547,20 @@ fresh compose stack the same day with 53 checks, all passed, zero dead and zero 
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
 column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `LoginCommandHandler.cs:34`, the
-`"Bot"` policy registered in `Program.cs:36-44`, and two bot-only endpoints — `POST /api/wallets/funds`
+`"Bot"` policy registered in `Program.cs:71-79`, and two bot-only endpoints — `POST /api/wallets/funds`
 (`WalletEndpoints.cs:29`) and `POST /api/inventory/items` (`InventoryEndpoints.cs:41-46`, `GrantItemCommand` →
 `Item.Create`). The policy name is a plain string repeated in the host and both modules — keep it `"Bot"`.
 `WalletApiSmokeTests` proves the claim → JWT → `RequireRole` chain (200 for `Bot`, 403 for `User`) and the
 owner-only rule on `GET /api/wallets/{id}` (401 anonymous, 403 for someone else's wallet). `HostSmokeTests` covers
 `/health` (a `SELECT 1` through `DatabaseHealthCheck` in the host), the OpenAPI document at `/openapi/v1.json`
 (`AddOpenApi`/`MapOpenApi`) and the CORS preflight for `Cors:AllowedOrigins` (default `http://localhost:4200`).
+`/health/live` and `/health/ready` are covered separately by `HealthEndpointsTests` in `AuctionServer.Api.Tests`.
 Both classes share one `CustomApi` through the `HostIntegration` xUnit collection — the fixture sets process-wide
 environment variables, so a second parallel instance corrupts the first; never attach it via `IClassFixture`.
 
 Bot provisioning: `POST /api/users/bots` (`IdentityEndpoints.cs:31-36`; `RegisterBotCommand` → `RegisterBotCommandHandler` =
 `/register` + `User.ChangeRole(Role.Bot)`, returns `PublicUserId`) sits behind the `"BotProvisioning"` policy, bound to the
-`ApiKey` scheme only (`Program.cs:33-44`; `Api/Infrastructure/Authentication/ApiKeyAuthenticationHandler.cs` — header
+`ApiKey` scheme only (`Program.cs:60-79`; `Api/Infrastructure/Authentication/ApiKeyAuthenticationHandler.cs` — header
 `X-Api-Key`, secret `Bots:ApiKey`, constant-time compare, `Scheme.Name` as the identity's authentication type). A JWT
 alone never satisfies it and the API-key principal never satisfies `"Bot"`; `BotProvisioningApiTests` proves both.
 Bot JWTs live 24 h, player JWTs 15 min (`LoginCommandHandler.cs:27`); there is no token revocation. Policy literals:
@@ -560,7 +571,7 @@ Still aspirational — verify before building on them:
 
 - **Auctions created before the saga** (any `ItemId`, no locked item) dead-letter in Inventory with a 404 when
   they close; Wallets still settles them correctly. Clean the dev database rather than special-casing them.
-- **RabbitMQ, API Gateway, Angular frontend and AI bots do not exist** in this repository — no packages, no code.
+- **RabbitMQ, Angular frontend and AI bots do not exist** in this repository — no packages, no code.
   The transport seam is in place (`IIntegrationEventPublisher`), but `InProcessEventPublisher` is its only
   implementation; a broker means adding an AMQP publisher + a host-side consumer that feeds `IPublisher`, not
   touching the modules.

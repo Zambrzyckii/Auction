@@ -20,7 +20,7 @@ The backend is the whole code base of the repository: the solution [`Backend/Auc
 | [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | player profiles: levels, avatars in SeaweedFS, social links, friends, warehouse invites, privacy toggle | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) | event contracts, `AppException`, publisher seam, validation behavior | FluentValidation 12.1.1, MediatR 14.2.0 | none |
 | `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Profiles,Wallets,Warehouses}.Tests` | one xUnit project per module | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (direct override of a vulnerable transitive dependency, GHSA-q939-rpr3-3284); Identity, Wallets and Profiles add Microsoft.AspNetCore.Mvc.Testing 10.0.9 | the module under test; Identity, Wallets and Profiles tests also reference `AuctionServer.Api` |
-| `AuctionServer.Api.Tests` | host tests: observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Microsoft.AspNetCore.Mvc.Testing 10.0.9, Microsoft.Extensions.Diagnostics.Testing 10.11.0 | `AuctionServer.Api` |
+| `AuctionServer.Api.Tests` | host tests: observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke, gateway options and forwarded headers, health endpoints, and the nginx gateway itself against traefik/whoami through Testcontainers | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Microsoft.AspNetCore.Mvc.Testing 10.0.9, Microsoft.Extensions.Diagnostics.Testing 10.11.0, Testcontainers 4.12.0 | `AuctionServer.Api` |
 
 Every package on the stack is a 10.0.x release; `BackgroundService` and the hosting abstractions come from the `Microsoft.AspNetCore.App` framework reference, not from a package.
 
@@ -48,7 +48,7 @@ The folder names are not perfectly uniform: Auctions and Identity use `Applicati
 
 ## Running
 
-The one-command path is the Compose file in the repository root: `docker compose up -d` builds the host image ([`Backend/Dockerfile`](../../../Backend/Dockerfile)), starts `postgres:16-alpine` (host port 5436), `chrislusf/seaweedfs:4.48` (the avatar storage, reachable only inside the Compose network) and the API on `http://localhost:8080` with dev-only keys, and the host applies all nine modules' migrations before serving traffic because Compose sets `Database__MigrateOnStartup=true` (the flag defaults to `false` in [`appsettings.json`](../../../Backend/src/AuctionServer.Api/appsettings.json)).
+The one-command path is the Compose file in the repository root: `docker compose up -d` builds the host image ([`Backend/Dockerfile`](../../../Backend/Dockerfile)), starts `postgres:16-alpine` (host port 5436), `chrislusf/seaweedfs:4.48` (the avatar storage, reachable only inside the Compose network) and the API with dev-only keys behind the nginx gateway on `http://localhost:8080`, and the host applies all nine modules' migrations before serving traffic because Compose sets `Database__MigrateOnStartup=true` (the flag defaults to `false` in [`appsettings.json`](../../../Backend/src/AuctionServer.Api/appsettings.json)).
 
 The manual path below runs the host from source: it needs a reachable PostgreSQL, three secrets and the schema of all nine modules; avatar endpoints additionally need a reachable SeaweedFS and answer 503 without one, while everything else runs fine. The `dotnet ef` tool is required for the migration step.
 
@@ -79,7 +79,7 @@ dotnet run --project src/AuctionServer.Api
 dotnet test AuctionServer.slnx
 ```
 
-Besides the business endpoints the host serves `/health` (a `SELECT 1` against the database) and the OpenAPI document at `/openapi/v1.json`. The first useful call is `POST /api/users/register`, followed by `POST /api/users/login` to obtain a token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) still contains the project-template request to `/weatherforecast/`, which does not exist.
+Besides the business endpoints the host serves `/health/live` (no checks), `/health/ready` and `/health` (both run the `SELECT 1` database check) and the OpenAPI document at `/openapi/v1.json`, which the gateway opens to private networks only. The first useful call is `POST /api/users/register`, followed by `POST /api/users/login` to obtain a token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) still contains the project-template request to `/weatherforecast/`, which does not exist.
 
 ## Configuration
 
@@ -150,7 +150,7 @@ Each module test project has an offline part (`Application/`, `Domain/`, `Infras
 | `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
 | `AuctionServer.Modules.Wallets.Tests` | 142 | 60 | 82 |
 | `AuctionServer.Modules.Warehouses.Tests` | 64 | 43 | 21 |
-| `AuctionServer.Api.Tests` | 22 | 22 | 0 |
+| `AuctionServer.Api.Tests` | 56 | 32 | 24 |
 
 ```bash
 dotnet test AuctionServer.slnx                                                                       # everything, needs Docker
@@ -158,7 +158,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedN
 dotnet test tests/AuctionServer.Modules.Wallets.Tests                                                    # one module, offline + integration
 ```
 
-The GitLab pipeline runs the first filter for Auctions in `unit-tests` and the full Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino and Profiles projects plus the Auctions integration tests in `integration-tests`; the GitHub Actions workflow ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) mirrors the same split; see [Build and CI](../ARCHITECTURE.md#build-and-ci). No test crosses a module boundary: event handlers are invoked directly with hand-built events.
+The GitLab pipeline runs the first filter for Auctions in `unit-tests` and the full Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles and Api projects plus the Auctions integration tests in `integration-tests`, and `nginx -t` on the gateway configuration in `gateway-config`; the GitHub Actions workflow ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) mirrors the same split; see [Build and CI](../ARCHITECTURE.md#build-and-ci). No test crosses a module boundary: event handlers are invoked directly with hand-built events.
 
 ## Chapters
 

@@ -6,7 +6,7 @@ This module does not exist yet: the repository contains no `Bots/` folder and no
 
 ## Status
 
-Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous actors that listen to market events on RabbitMQ and send commands through the API gateway, written in Python; neither the broker nor the gateway exists, so a first bot would have to poll the HTTP API.
+Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous actors that listen to market events on RabbitMQ and send commands through the API gateway, written in Python; the broker does not exist yet, so a first bot would have to poll the HTTP API through the gateway.
 
 ## Target design
 
@@ -27,7 +27,7 @@ Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous
 ## What is missing
 
 - No event feed outside the process: `AuctionActivatedEvent` and the other events reach only in-process MediatR handlers, so a bot cannot subscribe to anything until the RabbitMQ transport exists.
-- No gateway and no rate limiting, so a bot talks straight to the host and nothing throttles it.
+- The gateway limits a bot like any other client by its address (60 requests per second with a bearer token) and does not tell bots apart, because the bot zone keyed on `X-Api-Key` was left out ([ADR-006](adr/006-nginx-gateway.md)). Several bots on one machine share one address and therefore one bucket of 60 requests per second.
 - No bid history and no "my auctions" query, so a bot has to remember what it did.
 - No token revocation and no endpoint to disable an account, so a bot token stays valid for its full 24 hours.
 

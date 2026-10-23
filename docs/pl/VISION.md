@@ -81,7 +81,7 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 Planowane nadal po nich:
 
 - RabbitMQ jako transport zdarzeń za `IIntegrationEventPublisher`.
-- Frontend Angular, boty rynkowe AI i API gateway.
+- Frontend Angular i boty rynkowe AI.
 
 ## 7. Zasady projektu
 

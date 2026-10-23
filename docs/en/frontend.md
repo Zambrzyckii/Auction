@@ -10,7 +10,7 @@ Planned. The previous README named it "Angular frontend" and the deleted design 
 
 ## Target design
 
-- An Angular single-page application that talks to the backend only through the planned API gateway (today it would call the host directly at `http://localhost:5244`).
+- An Angular single-page application that talks to the backend only through the API gateway on `http://localhost:8080`, which exists since 2026-10-23.
 - Player flows: register and log in, browse active auctions, see an auction with its item snapshot, place bids, manage the inventory (craft, sell to the shop, list an item), read the wallet balances.
 - Authentication with the JWT from `POST /api/users/login` stored on the client and sent as a bearer token; player tokens expire after 15 minutes, so the client needs a re-login or a future refresh flow.
 
@@ -42,7 +42,7 @@ Planned. The previous README named it "Angular frontend" and the deleted design 
 ## Decisions
 
 - Angular was named as the frontend framework in the original design note; the version and the tooling are open.
-- In the target design the frontend talks only to the gateway; until the gateway exists it calls the host directly, which is possible since 2026-10-14: the host has CORS for `http://localhost:4200`, the OpenAPI document at `/openapi/v1.json` and `/health`.
+- The frontend talks only to the gateway, which passes CORS preflights through to the host (checked on 2026-10-23, a preflight from `http://localhost:4200` gets 204 with the matching `Access-Control-Allow-Origin`). The host has CORS for `http://localhost:4200`, the OpenAPI document at `/openapi/v1.json` (open to private networks through the gateway) and the health routes `/health`, `/health/live` and `/health/ready`.
 
 ## Related documents
 

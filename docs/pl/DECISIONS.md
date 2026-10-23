@@ -77,9 +77,13 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-10-22 | Siedmiofazowy plan infrastruktury serwerowej: najpierw obserwowalność i baseline k6, potem gateway nginx, PgBouncer, cache odczytów Redis, RabbitMQ, OpenBao i hardening; Compose zostaje, Identity zostaje wydawcą JWT, Kubernetes i OIDC tylko udokumentowane | właściciel | pomiar przed optymalizacją; osobny serwis auth i Infisical odrzucone jako koszt bez zysku przy jednym monolicie; zob. ADR-005 |
 | 2026-10-22 | OTel Collector + Prometheus + Tempo + Grafana jako stack telemetrii | właściciel | przemysłowy stack zamiast lżejszego Aspire Dashboard, wybrany, żeby go przećwiczyć; zob. ADR-005 |
 | 2026-10-23 | Progi k6 (p95 < 67 ms, błędy < 1%, `visibility_lag` p95 < 6 s) i zamrożone limity zasobów (`api` 2 CPU/1 GB, `postgres` 1 CPU/512 MB) | właściciel | progi dobrane z baseline z zapasem, żeby kolejne fazy failowały głośno zamiast degradować się po cichu; limity zamrożone dla porównywalności; zob. performance.md |
+| 2026-10-23 | Gateway nginx jako jedyna publikowana usługa z limitami IP w trzech strefach rozdzielonych nagłówkiem `Authorization` (anonimowa 20 r/s burst 40, uwierzytelniona 60 r/s burst 120, logowanie i rejestracja 1 r/s burst 5), limitem body 64 KB z 4 MB dla wysyłki awatara, `/openapi/` tylko dla sieci prywatnych i 429/413 w kształcie błędu JSON z api | właściciel (z agentem) | jedno wejście, które zatrzymuje nadmiarowy ruch, zanim ten cokolwiek kosztuje hosta, a strefa zapisów, strefa botów i `limit_conn` z planu wypadły, żeby pierwsza wersja była mała, zob. ADR-006 |
+| 2026-10-23 | Host ufa `X-Forwarded-*` tylko z całej przypiętej sieci `edge` `172.16.80.0/24`, wymienionej jako kanoniczny CIDR w sekcji fail-fast `Gateway` | agent (propozycja, przyjęta) | zaufanie do całej sieci działa też z drugim gatewayem (obawa właściciela o pojedynczy punkt awarii), a `172.16.80.0/24` leży w liście `allow` dla `/openapi/` i poza automatycznymi pulami Dockera i siecią domową, zob. ADR-006 |
+| 2026-10-23 | nginx co 5 s odświeża adres api przez DNS Dockera zamiast restartować gateway razem z api (`depends_on` z `restart: true`) | agent (propozycja, przyjęta) | działa też, gdy Docker podnosi kontenery przy starcie bez Compose, kosztem jednego zapytania DNS co 5 s, sprawdzone na żywo wymuszeniem nowego adresu api |
+| 2026-10-23 | TLS na gatewayu odłożony, docelowo wyłącznie HTTPS z własnym certyfikatem | właściciel | certyfikat nie może stać się pojedynczym punktem awarii, więc będzie odnawiany automatycznie albo serwowany przez redundantną parę, a do tego czasu stack nie może być wystawiony do internetu |
 
 ## Powiązane dokumenty
 
-- [adr/](adr) - pięć rekordów decyzji architektonicznych.
+- [adr/](adr) - sześć rekordów decyzji architektonicznych.
 - [CHANGELOG.md](CHANGELOG.md) - kamienie milowe, do których należą te decyzje.
 - [CONVENTIONS.md](CONVENTIONS.md) - reguły, które z nich wynikają.

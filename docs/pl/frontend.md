@@ -10,7 +10,7 @@ Planowany. Poprzednie README nazywało go „Angular frontend", a usunięta nota
 
 ## Projekt docelowy
 
-- Aplikacja jednostronicowa w Angularze, która rozmawia z backendem wyłącznie przez planowany API gateway (dziś wołałaby host bezpośrednio na `http://localhost:5244`).
+- Aplikacja jednostronicowa w Angularze, która rozmawia z backendem wyłącznie przez API gateway na `http://localhost:8080`, który istnieje od 2026-10-23.
 - Przepływy gracza: rejestracja i logowanie, przeglądanie aktywnych aukcji, podgląd aukcji ze snapshotem przedmiotu, składanie ofert, zarządzanie ekwipunkiem (crafting, sprzedaż do sklepu, wystawienie przedmiotu), odczyt sald portfela.
 - Uwierzytelnianie JWT z `POST /api/users/login` przechowywanym po stronie klienta i wysyłanym jako bearer token; tokeny graczy wygasają po 15 minutach, więc klient potrzebuje ponownego logowania albo przyszłego przepływu odświeżania.
 
@@ -42,7 +42,7 @@ Planowany. Poprzednie README nazywało go „Angular frontend", a usunięta nota
 ## Decyzje
 
 - Angular został wskazany jako framework frontendu w pierwotnej notatce projektowej; wersja i narzędzia są otwarte.
-- W projekcie docelowym frontend rozmawia tylko z gatewayem; dopóki gateway nie istnieje, woła host bezpośrednio, co od 2026-10-14 jest możliwe: host ma CORS dla `http://localhost:4200`, dokument OpenAPI pod `/openapi/v1.json` i `/health`.
+- Frontend rozmawia tylko z gatewayem, który przepuszcza preflighty CORS do hosta (sprawdzone 2026-10-23, preflight z `http://localhost:4200` dostaje 204 z pasującym `Access-Control-Allow-Origin`). Host ma CORS dla `http://localhost:4200`, dokument OpenAPI pod `/openapi/v1.json` (przez gateway otwarty dla sieci prywatnych) i ścieżki zdrowia `/health`, `/health/live` i `/health/ready`.
 
 ## Powiązane dokumenty
 

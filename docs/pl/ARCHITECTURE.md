@@ -13,17 +13,18 @@ Diagram pokazuje jedyny istniejący dziś proces, bazę PostgreSQL za nim oraz, 
   <img alt="Diagram: kontekst systemu" src="../diagrams/architecture-01-system-context.svg">
 </picture>
 
-Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backend/src/AuctionServer.Api/Program.cs), nasłuchujący w trybie deweloperskim na `http://localhost:5244` ([`launchSettings.json`](../../Backend/src/AuctionServer.Api/Properties/launchSettings.json)). Klienci wołają endpointy minimal API z JSON-em; repozytorium nie zawiera frontendu, gatewaya, brokera wiadomości ani kodu botów. Docelowy kształt, opisany w usuniętym `AGENTS.md` i w poprzednim README, stawia frontend Angulara i boty AI w Pythonie za API gatewayem i przenosi zdarzenia integracyjne do RabbitMQ; szew `IIntegrationEventPublisher` to miejsce, w które ten transport zostałby wpięty.
+Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backend/src/AuctionServer.Api/Program.cs), nasłuchujący w trybie deweloperskim na `http://localhost:5244` ([`launchSettings.json`](../../Backend/src/AuctionServer.Api/Properties/launchSettings.json)). Klienci wołają endpointy minimal API z JSON-em; repozytorium nie zawiera frontendu, brokera wiadomości ani kodu botów, a w stacku Compose przed hostem stoi gateway nginx ([infrastructure.md](infrastructure.md#gateway)). Docelowy kształt, opisany w usuniętym `AGENTS.md` i w poprzednim README, stawia frontend Angulara i boty AI w Pythonie za API gatewayem i przenosi zdarzenia integracyjne do RabbitMQ; szew `IIntegrationEventPublisher` to miejsce, w które ten transport zostałby wpięty.
 
 | Komponent | Status | Opisany w |
 |---|---|---|
 | Host `AuctionServer.Api` z dziewięcioma modułami | istnieje | [backend/README.md](backend/README.md) |
 | PostgreSQL, jedna baza, 38 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
 | Object storage SeaweedFS dla awatarów | istnieje (serwis Compose, bez publikowanych portów) | [backend/profiles.md](backend/profiles.md) |
-| Docker Compose (obraz API plus PostgreSQL i SeaweedFS) | istnieje | [backend/README.md](backend/README.md) |
+| Docker Compose (gateway nginx, obraz API, PostgreSQL, SeaweedFS i stack telemetrii) | istnieje | [infrastructure.md](infrastructure.md) |
 | Pipeline'y GitLab CI i GitHub Actions | istnieją | [Build i CI](#build-i-ci) |
 | Frontend Angular | planowany | [frontend.md](frontend.md) |
-| API gateway, RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
+| API gateway nginx | istnieje (usługa Compose, jedyne publikowane wejście) | [infrastructure.md](infrastructure.md#gateway) |
+| RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
 | Boty AI (Python) | planowane | [bots.md](bots.md) |
 
 ## Moduły i warstwy
@@ -53,7 +54,7 @@ Reguły modułów są egzekwowane konwencją, nie narzędziami: brak referencji 
 
 ## Obsługa żądań
 
-Każde żądanie przechodzi przez cztery middleware'y zarejestrowane w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs): `UseExceptionHandler` (oparty na [`GlobalExceptionHandler`](../../Backend/src/AuctionServer.Api/Infrastructure/GlobalExceptionHandler.cs)), `UseCors` (originy z `Cors:AllowedOrigins`, domyślnie `http://localhost:4200`), `UseAuthentication` i `UseAuthorization`. Poza endpointami biznesowymi host serwuje dokument OpenAPI pod `/openapi/v1.json` oraz `/health`, który wykonuje `SELECT 1` na bazie przez [`DatabaseHealthCheck`](../../Backend/src/AuctionServer.Api/Infrastructure/Health/DatabaseHealthCheck.cs). Endpointy odczytują id wołającego z claimu `ClaimTypes.NameIdentifier`, budują komendę lub zapytanie MediatR i wołają `ISender.Send`; nie zawierają logiki biznesowej ani try/catch. Diagram pipeline'u żądania i szczegóły uwierzytelniania są w [backend/README.md](backend/README.md).
+Każde żądanie przechodzi przez pięć middleware'ów zarejestrowanych w [`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs): `UseForwardedHeaders` (nic nie robi, dopóki sekcja `Gateway` nie jest włączona, a wtedy ufa `X-Forwarded-For` i `X-Forwarded-Proto` tylko z wymienionych sieci), `UseExceptionHandler` (oparty na [`GlobalExceptionHandler`](../../Backend/src/AuctionServer.Api/Infrastructure/GlobalExceptionHandler.cs)), `UseCors` (originy z `Cors:AllowedOrigins`, domyślnie `http://localhost:4200`), `UseAuthentication` i `UseAuthorization`. Poza endpointami biznesowymi host serwuje dokument OpenAPI pod `/openapi/v1.json` i trzy ścieżki zdrowia, `/health/live` bez checków, `/health/ready` z checkami z tagiem `ready` i `/health` ze wszystkimi. Jedyny check wykonuje dziś `SELECT 1` na bazie przez [`DatabaseHealthCheck`](../../Backend/src/AuctionServer.Api/Infrastructure/Health/DatabaseHealthCheck.cs). Endpointy odczytują id wołającego z claimu `ClaimTypes.NameIdentifier`, budują komendę lub zapytanie MediatR i wołają `ISender.Send`; nie zawierają logiki biznesowej ani try/catch. Diagram pipeline'u żądania i szczegóły uwierzytelniania są w [backend/README.md](backend/README.md).
 
 - **Walidacja.** [`ValidationBehaviour<,>`](../../Backend/src/AuctionServer.Shared.Integration/Validators/ValidationBehaviour.cs) jest zarejestrowany jako otwarty behavior MediatR dla każdego assembly modułu; uruchamia wszystkie walidatory FluentValidation danego żądania i rzuca `RequestValidationException` (400) z komunikatami połączonymi przez `; `.
 - **Błędy.** `AppException` niesie własny status HTTP, więc handler zwraca ten status z `{ "error": "<komunikat>" }`; `DbUpdateConcurrencyException` staje się 409 `Data corrupted, try again`; wszystko inne jest logowane i zwracane jako 500 `Unhandled error occurred`.
@@ -288,11 +289,11 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
   <img alt="Diagram: build i CI" src="../diagrams/architecture-07-ci-pipeline.svg">
 </picture>
 
-- Każdy job działa w obrazie `mcr.microsoft.com/dotnet/sdk:10.0` z serwisem `docker:dind`; `DOCKER_HOST=tcp://docker:2375` i `TESTCONTAINERS_HOST_OVERRIDE=docker` pozwalają Testcontainers uruchomić PostgreSQL wewnątrz runnera.
+- Każdy job .NET działa w obrazie `mcr.microsoft.com/dotnet/sdk:10.0` z serwisem `docker:dind`; `DOCKER_HOST=tcp://docker:2375` i `TESTCONTAINERS_HOST_OVERRIDE=docker` pozwalają Testcontainers uruchomić PostgreSQL wewnątrz runnera.
 - Stage `build` uruchamia `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` ma dwa joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop i Casino.
+- Stage `test` ma trzy joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles i Api, a `gateway-config` uruchamia `nginx -t` na `Infrastructure/gateway/nginx.conf` w przypiętym obrazie `nginx:1.28.3-alpine` bez Dockera.
 - Nie ma stage'u deploy, artefaktów ani cache'owania; obraz aplikacji istnieje tylko do użytku lokalnego ([`Backend/Dockerfile`](../../Backend/Dockerfile), budowany przez [`compose.yaml`](../../compose.yaml) z korzenia), pipeline go nie buduje ani nie publikuje.
-- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) odwzorowuje te same trzy joby na GitHub Actions, wyzwalane pushami i pull requestami do `main`; joby testowe zależą od `build` przez `needs`, a `ubuntu-latest` ma preinstalowanego Dockera, więc serwis dind i override Testcontainers zostają tylko po stronie GitLaba.
+- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) odwzorowuje te same cztery joby na GitHub Actions, wyzwalane pushami i pull requestami do `main`; joby testowe .NET zależą od `build` przez `needs`, a `gateway-config` działa samodzielnie, a `ubuntu-latest` ma preinstalowanego Dockera, więc serwis dind i override Testcontainers zostają tylko po stronie GitLaba.
 
 ## Stosowane wzorce projektowe
 
@@ -319,7 +320,7 @@ Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitla
 6. `AuctionActivatedEvent` jest produkowane i zarejestrowane, ale nie ma handlera.
 7. `Jwt:Key` i `Bots:ApiKey` nie są walidowane na starcie. Bez `Jwt:Key` nie da się zbudować opcji bearera ([`Program.cs`](../../Backend/src/AuctionServer.Api/Program.cs)), więc każde żądanie, także anonimowe, dostaje 500 `Unhandled error occurred`; klucz krótszy niż 32 znaki psuje tylko logowanie, które przy poprawnych danych dostaje 500 `Server configuration error`; brakujący klucz API sprawia, że `POST /api/users/bots` odpowiada 401.
 8. [`SellItemToShopCommandHandler`](../../Backend/src/AuctionServer.Modules.Inventory/Application/Command/SellItemToShop/SellItemToShopCommandHandler.cs) używa różnych Guidów dla `Id` wiersza outboxa i `EventId` zdarzenia; każdy inny producent używa jednego Guida dla obu.
-9. Job CI `unit-tests` obejmuje tylko testy offline `Auctions.Tests`; testy offline pozostałych sześciu projektów działają wyłącznie w `integration-tests`, który potrzebuje Dockera.
+9. Job CI `unit-tests` obejmuje tylko testy offline `Auctions.Tests`; testy offline pozostałych dziewięciu projektów działają wyłącznie w `integration-tests`, który potrzebuje Dockera.
 10. Ekonomia wojen magazynowych ma kran obok zlewu: cena końcowa zwycięzcy znika, ale zmintowane przedmioty można sprzedać do sklepu za `OfficialPrice`, więc gdy typowe ceny końcowe są niżej typowych wartości manifestów, wojny tworzą pieniądze. Zwodnicze widełki i konfiguracja tierów to dźwignie strojenia; obserwować, gdy zagrają boty.
 11. Lombard to kran, który crafting wzmacnia. Przedmiot wycofany w oknie zachowuje pełną cenę, a `Item.Craft` zamienia trzy przedmioty jednej rzadkości w jeden przedmiot następnej rzadkości z nowym losowaniem ceny, więc każdy stopień mnoży wartość około 3.3 raza. Właściciel zaakceptował to 2026-10-15, a ten sam kran już istnieje dla przedmiotów wygranych w wojnach magazynowych. Liczby są w [backend/pawnshop.md](backend/pawnshop.md#decyzje).
 12. Rozliczony towar lombardu nigdy nie jest usuwany. Bot `Pawn Clerk` dodaje około 2 880 wierszy na dobę do `PawnshopStockItems`, `GET /api/pawnshop` ogranicza rozliczoną historię do 20, a zamiatania retencji nie ma.

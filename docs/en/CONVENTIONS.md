@@ -41,7 +41,7 @@ These are the rules the repository follows today, taken from the code and the gi
 - Each module has one xUnit project with offline tests (`Application/`, `Domain/`, `Infrastructure/`) and an `IntegrationTests/` namespace that runs against PostgreSQL started by Testcontainers (`postgres:latest`), never against a mocked database.
 - Integration fixtures are collection fixtures named `<Module>PostgresFixture`; API-level tests use `WebApplicationFactory<Program>` (`CustomApi`).
 - Test methods are named `Method_WhenCondition_ShouldResult` and follow arrange, act, assert.
-- CI runs the offline Auctions tests in `unit-tests` and everything else in `integration-tests`; both jobs must pass.
+- CI runs the offline Auctions tests in `unit-tests`, everything else in `integration-tests` and `nginx -t` on the gateway configuration in `gateway-config`, and all three jobs must pass.
 
 ## 5. Configuration and secrets
 

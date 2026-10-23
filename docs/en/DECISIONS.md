@@ -77,9 +77,13 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-22 | Seven-phase server-infrastructure plan: observability and a k6 baseline first, then nginx gateway, PgBouncer, Redis read cache, RabbitMQ, OpenBao and hardening; Compose stays, Identity stays the JWT issuer, Kubernetes and OIDC are documented only | owner | measurement before optimization; a separate auth service and Infisical rejected as cost without benefit at one monolith; see ADR-005 |
 | 2026-10-22 | OTel Collector + Prometheus + Tempo + Grafana as the telemetry stack | owner | the industry stack over the lighter Aspire Dashboard, chosen to practice it; see ADR-005 |
 | 2026-10-23 | k6 thresholds (p95 < 67 ms, failures < 1%, `visibility_lag` p95 < 6 s) and frozen resource limits (`api` 2 CPU/1 GB, `postgres` 1 CPU/512 MB) | owner | thresholds set from the baseline with headroom so later phases fail loudly instead of degrading silently; limits frozen for comparability; see performance.md |
+| 2026-10-23 | nginx gateway as the only published service with IP rate limits in three zones split by the `Authorization` header (anonymous 20 r/s burst 40, authenticated 60 r/s burst 120, login and register 1 r/s burst 5), a 64 KB body cap with 4 MB for the avatar upload, `/openapi/` for private networks only and 429/413 in the api's JSON error shape | owner (with agent) | one entry point that stops excess traffic before it costs the host anything, the writes zone, the bot zone and `limit_conn` from the plan were dropped to keep the first version small, see ADR-006 |
+| 2026-10-23 | The host trusts `X-Forwarded-*` only from the whole pinned `edge` network `172.16.80.0/24`, listed as canonical CIDRs in a fail-fast `Gateway` section | agent (proposal, accepted) | trusting the whole network keeps working with a second gateway (the owner's single-point-of-failure concern), and `172.16.80.0/24` lies inside the `/openapi/` allow list and outside both Docker's automatic pools and the home LAN, see ADR-006 |
+| 2026-10-23 | nginx re-resolves the api through Docker's DNS every 5 s instead of restarting the gateway with the api (`depends_on` with `restart: true`) | agent (proposal, accepted) | also works when Docker restarts containers on boot without Compose, at the price of one DNS query every 5 s, verified live by forcing a new api address |
+| 2026-10-23 | TLS on the gateway deferred, with HTTPS only and an own certificate as the target | owner | the certificate must not become a single point of failure, so it will be renewed automatically or served by a redundant pair, and until then the stack must not face the internet |
 
 ## Related documents
 
-- [adr/](adr) - the five architecture decision records.
+- [adr/](adr) - the six architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.

@@ -6,7 +6,7 @@ Ten moduł jeszcze nie istnieje: repozytorium nie zawiera folderu `Bots/` ani ko
 
 ## Status
 
-Planowane. Usunięta notatka projektowa (`AGENTS.md`) opisuje „AI BOTS" jako autonomicznych aktorów, którzy nasłuchują zdarzeń rynkowych na RabbitMQ i wysyłają komendy przez API gateway, napisanych w Pythonie; ani broker, ani gateway nie istnieją, więc pierwszy bot musiałby odpytywać HTTP API.
+Planowane. Usunięta notatka projektowa (`AGENTS.md`) opisuje „AI BOTS" jako autonomicznych aktorów, którzy nasłuchują zdarzeń rynkowych na RabbitMQ i wysyłają komendy przez API gateway, napisanych w Pythonie; broker jeszcze nie istnieje, więc pierwszy bot musiałby odpytywać HTTP API przez gateway.
 
 ## Projekt docelowy
 
@@ -27,7 +27,7 @@ Planowane. Usunięta notatka projektowa (`AGENTS.md`) opisuje „AI BOTS" jako a
 ## Czego brakuje
 
 - Brak strumienia zdarzeń poza procesem: `AuctionActivatedEvent` i pozostałe zdarzenia docierają tylko do handlerów MediatR w procesie, więc bot nie może niczego subskrybować, dopóki nie powstanie transport RabbitMQ.
-- Brak gatewaya i brak limitowania żądań, więc bot rozmawia prosto z hostem i nic go nie dławi.
+- Gateway ogranicza bota jak każdego klienta po adresie (60 żądań na sekundę z tokenem bearer) i nie odróżnia botów, bo strefa botów po `X-Api-Key` wypadła ([ADR-006](adr/006-nginx-gateway.md)). Kilka botów na jednej maszynie dzieli jeden adres, a więc jedną pulę 60 żądań na sekundę.
 - Brak historii ofert i zapytania „moje aukcje", więc bot musi pamiętać, co zrobił.
 - Brak unieważniania tokenów i endpointu wyłączającego konto, więc token bota pozostaje ważny przez pełne 24 godziny.
 

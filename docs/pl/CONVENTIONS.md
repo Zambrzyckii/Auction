@@ -41,7 +41,7 @@ To reguły, których repozytorium przestrzega dziś, wzięte z kodu i historii g
 - Każdy moduł ma jeden projekt xUnit z testami offline (`Application/`, `Domain/`, `Infrastructure/`) i namespace `IntegrationTests/`, który działa na PostgreSQL uruchamianym przez Testcontainers (`postgres:latest`), nigdy na zamockowanej bazie.
 - Fixtury integracyjne to fixtury kolekcji o nazwie `<Module>PostgresFixture`; testy na poziomie API używają `WebApplicationFactory<Program>` (`CustomApi`).
 - Metody testowe mają nazwy `Method_WhenCondition_ShouldResult` i układ arrange, act, assert.
-- CI uruchamia testy offline Auctions w `unit-tests`, a całą resztę w `integration-tests`; oba joby muszą przejść.
+- CI uruchamia testy offline Auctions w `unit-tests`, całą resztę w `integration-tests` i `nginx -t` na konfiguracji gatewaya w `gateway-config`, a wszystkie trzy joby muszą przejść.
 
 ## 5. Konfiguracja i sekrety
 
