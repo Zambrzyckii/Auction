@@ -22,6 +22,15 @@ unit-tests:
   script:
     - dotnet test Backend/tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedName!~IntegrationTests"
 
+gateway-config:
+  stage: test
+  image:
+    name: nginx:1.28.3-alpine
+    entrypoint: [""]
+  services: []
+  script:
+    - nginx -t -c "$CI_PROJECT_DIR/Infrastructure/gateway/nginx.conf"
+
 integration-tests:
   stage: test
   script:
