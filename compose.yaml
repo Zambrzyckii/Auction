@@ -1,14 +1,19 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: auction
       POSTGRES_PASSWORD: auction
       POSTGRES_DB: auctionserver
+    cpus: 1
+    mem_limit: 512m
     ports:
       - "5436:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U auction -d auctionserver"]
       interval: 2s
@@ -18,8 +23,11 @@ services:
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
     command: server -s3 -dir=/data
+    restart: unless-stopped
     volumes:
       - seaweeddata:/data
+    networks:
+      - data
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8333/"]
       interval: 2s
@@ -28,6 +36,9 @@ services:
 
   api:
     build: ./Backend
+    restart: unless-stopped
+    cpus: 2
+    mem_limit: 1g
     ports:
       - "8080:8080"
     environment:
@@ -36,12 +47,70 @@ services:
       Bots__ApiKey: "local-dev-bot-api-key"
       Database__MigrateOnStartup: "true"
       Profiles__Storage__ServiceUrl: "http://seaweedfs:8333"
+      Observability__Enabled: "true"
+      Observability__OtlpEndpoint: "http://otel-collector:4317"
+    networks:
+      - edge
+      - data
     depends_on:
       postgres:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.163.2
+    restart: unless-stopped
+    volumes:
+      - ./Infrastructure/observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    networks:
+      - data
+
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./Infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    networks:
+      - data
+
+  tempo:
+    image: grafana/tempo:3.1.1
+    restart: unless-stopped
+    command:
+      - "-config.file=/etc/tempo/tempo.yaml"
+    volumes:
+      - ./Infrastructure/observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempodata:/var/tempo
+    networks:
+      - data
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./Infrastructure/observability/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - grafanadata:/var/lib/grafana
+    networks:
+      - edge
+      - data
+    depends_on:
+      - prometheus
+      - tempo
+
+networks:
+  edge:
+  data:
+
 volumes:
   pgdata:
   seaweeddata:
+  prometheusdata:
+  tempodata:
+  grafanadata:
