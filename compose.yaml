@@ -73,6 +73,8 @@ services:
   gateway:
     image: nginx:1.28.3-alpine
     restart: unless-stopped
+    cpus: 1
+    mem_limit: 128m
     ports:
       - "8080:80"
     environment:
