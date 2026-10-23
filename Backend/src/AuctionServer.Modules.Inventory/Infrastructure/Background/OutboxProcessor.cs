@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Messaging;
+using AuctionServer.Shared.Integration.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -50,6 +51,7 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
                 var eventPublisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
                 await eventPublisher.PublishAsync(message.Id, message.Type, message.Content, stoppingToken);
                 message.MarkAsProcessed();
+                OutboxMetrics.RecordProcessed("Inventory", DateTime.UtcNow - message.CreatedOn);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -58,7 +60,12 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
             catch (Exception e)
             {
                 message.FailedAttempt(e.Message);
-                if(message.AttemptCount > 5) message.MarkMessageAsDead();
+                OutboxMetrics.RecordFailed("Inventory");
+                if(message.AttemptCount > 5)
+                {
+                    message.MarkMessageAsDead();
+                    OutboxMetrics.RecordDead("Inventory");
+                }
                 logger.LogError(e, "Failed to process outbox message {MessageId}", message.Id);
             }
 

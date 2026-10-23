@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Messaging;
+using AuctionServer.Shared.Integration.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -49,6 +50,7 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
                 var eventPublisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
                 await eventPublisher.PublishAsync(message.Id, message.Type, message.Content, stoppingToken);
                 message.MarkAsProcessed();
+                OutboxMetrics.RecordProcessed("Wallets", DateTime.UtcNow - message.CreatedOn);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -57,7 +59,12 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
             catch (Exception e)
             {
                 message.FailedAttempt(e.Message);
-                if(message.AttemptCount > 5) message.MarkMessageAsDead();
+                OutboxMetrics.RecordFailed("Wallets");
+                if(message.AttemptCount > 5)
+                {
+                    message.MarkMessageAsDead();
+                    OutboxMetrics.RecordDead("Wallets");
+                }
                 logger.LogError(e, "Failed to process outbox message {MessageId}", message.Id);
             }
 

@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Messaging;
+using AuctionServer.Shared.Integration.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -49,6 +50,7 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
                 var eventPublisher = publishScope.ServiceProvider.GetRequiredService<IIntegrationEventPublisher>();
                 await eventPublisher.PublishAsync(message.Id, message.Type, message.Content, stoppingToken);
                 message.MarkAsProcessed();
+                OutboxMetrics.RecordProcessed("Pawnshop", DateTime.UtcNow - message.CreatedOn);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -57,7 +59,12 @@ public sealed class OutboxProcessor(IServiceProvider serviceProvider, ILogger<Ou
             catch (Exception e)
             {
                 message.FailedAttempt(e.Message);
-                if(message.AttemptCount > 5) message.MarkMessageAsDead();
+                OutboxMetrics.RecordFailed("Pawnshop");
+                if(message.AttemptCount > 5)
+                {
+                    message.MarkMessageAsDead();
+                    OutboxMetrics.RecordDead("Pawnshop");
+                }
                 logger.LogError(e, "Failed to process outbox message {MessageId}", message.Id);
             }
 
