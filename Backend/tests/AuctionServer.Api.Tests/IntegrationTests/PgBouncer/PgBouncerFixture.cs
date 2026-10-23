@@ -34,6 +34,7 @@ public sealed class PgBouncerFixture : IAsyncLifetime
             .WithEnvironment("DB_USER", Username)
             .WithEnvironment("DB_PASSWORD", _password)
             .WithEnvironment("AUTH_TYPE", "scram-sha-256")
+            .WithEnvironment("PGPASSWORD", _password)
             .WithResourceMapping(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "pgbouncer", "pgbouncer.ini")), "/etc/pgbouncer/pgbouncer.ini")
             .WithPortBinding(PgBouncerPort, true)
             .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted(
@@ -59,6 +60,19 @@ public sealed class PgBouncerFixture : IAsyncLifetime
         Password = _password,
         NoResetOnClose = true
     }.ConnectionString;
+
+    public async Task<IReadOnlyDictionary<string, string>> ShowPoolAsync()
+    {
+        var result = await _pgBouncer.ExecAsync(["psql", "-h", "127.0.0.1", "-p", $"{PgBouncerPort}", "-U", Username, "-d", "pgbouncer", "--csv", "-c", "SHOW POOLS"]);
+        var lines = result.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        if (lines.Length == 0)
+            throw new InvalidOperationException($"SHOW POOLS returned nothing: {result.Stderr}");
+
+        var columns = lines[0].Split(',');
+        var values = lines.Skip(1).Select(line => line.Split(',')).Single(row => row[0] == DatabaseName);
+        return columns.Zip(values).ToDictionary(pair => pair.First, pair => pair.Second);
+    }
 
     public async Task InitializeAsync()
     {
