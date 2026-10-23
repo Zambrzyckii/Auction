@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 
 namespace AuctionServer.Api.Tests.IntegrationTests.Gateway;
 
@@ -93,5 +94,41 @@ public class GatewayProxyTests(GatewayFixture gateway) : IClassFixture<GatewayFi
         var upstream = await SendThroughGatewayAsync(request);
 
         Assert.Matches("^[0-9a-f]{32}$", upstream.Header("X-Request-Id") ?? "");
+    }
+
+    [Fact]
+    public async Task OpenApi_FromDockerNetwork_ShouldReachUpstream()
+    {
+        var upstream = await SendThroughGatewayAsync(new HttpRequestMessage(HttpMethod.Get, "/openapi/v1.json"));
+
+        Assert.Equal("GET /openapi/v1.json HTTP/1.1", upstream.RequestLine);
+    }
+
+    [Fact]
+    public async Task LargeResponse_WhenClientAcceptsGzip_ShouldBeCompressed()
+    {
+        using var client = gateway.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auctions");
+        request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+        request.Headers.Add("X-Padding", new string('a', 2048));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("gzip", response.Content.Headers.ContentEncoding);
+        Assert.Contains("Accept-Encoding", response.Headers.Vary);
+    }
+
+    [Fact]
+    public async Task SmallResponse_WhenClientAcceptsGzip_ShouldNotBeCompressed()
+    {
+        using var client = gateway.CreateClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auctions");
+        request.Headers.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(response.Content.Headers.ContentEncoding);
     }
 }

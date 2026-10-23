@@ -30,6 +30,22 @@ public class GatewayBodyLimitTests(GatewayFixture gateway) : IClassFixture<Gatew
     }
 
     [Fact]
+    public async Task Post_WhenBodyExceedsDefaultLimit_ShouldExplainInJson()
+    {
+        using var client = gateway.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auctions")
+        {
+            Content = new ByteArrayContent(new byte[512 * KiB])
+        };
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("""{"error":"Request body too large"}""", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task AvatarPut_WhenBodyIsAtApiRequestLimit_ShouldReachUpstream()
     {
         Assert.Equal(HttpStatusCode.OK,
