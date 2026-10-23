@@ -48,7 +48,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Missing configuration value 'ConnectionStrings:DefaultConnection'");
 var startingFunds = builder.Configuration.GetValue<decimal?>("Wallets:StartingFunds") ?? throw new InvalidOperationException("Missing configuration value 'Wallets:StartingFunds'");
 var starterItems = builder.Configuration.GetSection("Inventory:StarterItems").Get<List<StarterItemDefinition>>() ?? [];
 var warehousesOptions = builder.Configuration.GetSection("Warehouses").Get<WarehousesOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Warehouses'");
@@ -141,15 +141,15 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
 });
 
-builder.Services.AddAuctionModule(connectionString!);
-builder.Services.AddWalletsModule(connectionString!, startingFunds);
-builder.Services.AddIdentityModule(connectionString!);
-builder.Services.AddInventoryModule(connectionString!, starterItems);
-builder.Services.AddWarehousesModule(connectionString!, warehousesOptions);
-builder.Services.AddBankingModule(connectionString!, bankingOptions);
-builder.Services.AddPawnshopModule(connectionString!, pawnshopOptions);
-builder.Services.AddCasinoModule(connectionString!, casinoOptions);
-builder.Services.AddProfilesModule(connectionString!, profilesOptions);
+builder.Services.AddAuctionModule(connectionString);
+builder.Services.AddWalletsModule(connectionString, startingFunds);
+builder.Services.AddIdentityModule(connectionString);
+builder.Services.AddInventoryModule(connectionString, starterItems);
+builder.Services.AddWarehousesModule(connectionString, warehousesOptions);
+builder.Services.AddBankingModule(connectionString, bankingOptions);
+builder.Services.AddPawnshopModule(connectionString, pawnshopOptions);
+builder.Services.AddCasinoModule(connectionString, casinoOptions);
+builder.Services.AddProfilesModule(connectionString, profilesOptions);
 builder.Services.AddSingleton<MessagingMetrics>();
 builder.Services.AddScoped<InProcessEventPublisher>();
 builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
