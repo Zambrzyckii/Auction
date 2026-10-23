@@ -42,7 +42,7 @@ public class AuthRepositoryTests(IdentityPostgresFixture fixture)
         await using (var context = fixture.CreateContext())
         {
             var repository = new AuthRepository(context);
-            await Assert.ThrowsAsync<IdentityException.InvalidCredentialsException>(
+            await Assert.ThrowsAsync<IdentityException.EmailAlreadyTakenException>(
                 () => repository.AddUserWithOutboxAsync(CreateUser(email), message, CancellationToken.None));
         }
 

@@ -70,9 +70,9 @@ Diagram pokazuje, jak host uwierzytelnia żądanie i jakiej polityki wymaga każ
 
 | Status | Komunikat | Kiedy |
 |---|---|---|
-| 400 | `This email is taken` | e-mail istnieje (wstępne sprawdzenie lub indeks unikalny) |
 | 400 | `Invalid credentials provided` | nieznany e-mail lub złe hasło; komunikat jest ten sam w obu przypadkach |
 | 401 | puste ciało | `POST /api/users/bots` bez poprawnego `X-Api-Key`; sam JWT bota też jest odrzucany |
+| 409 | `This email is taken` | e-mail istnieje (wstępne sprawdzenie lub indeks unikalny) |
 | 500 | `Server configuration error` | logowanie z poprawnymi danymi, gdy `Jwt:Key` jest krótszy niż 32 znaki; bez klucza każde żądanie zawodzi wcześniej z `Unhandled error occurred` |
 
 Token wystawiany przez `LoginCommandHandler` to JWT podpisany `HmacSha256Signature`, którego claimy to `ClaimTypes.Name` = e-mail, `ClaimTypes.NameIdentifier` = `PublicUserId` i `ClaimTypes.Role` = `UserRoles.ToString()`, z `Issuer`, `Audience` i `Expires` z konfiguracji oraz czasem życia zależnym od roli. Nie ma refresh tokenów ani unieważniania; token jest ważny do wygaśnięcia.

@@ -13,7 +13,7 @@ public class RegisterCommandHandler(IAuthRepository repository) : IRequestHandle
     public async Task Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         var isEmailTaken = await repository.DoesUserWithThisEmailExists(request.Email, cancellationToken);
-        if (isEmailTaken) throw new IdentityException.InvalidCredentialsException("This email is taken");
+        if (isEmailTaken) throw new IdentityException.EmailAlreadyTakenException();
 
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
         var newUser = new User(request.Email, hashedPassword, request.Username, request.Name, request.Surname, request.Birthday);

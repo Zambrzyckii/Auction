@@ -92,7 +92,7 @@ public class BotProvisioningApiTests(CustomApi factory) : IClassFixture<CustomAp
     }
 
     [Fact]
-    public async Task RegisterBot_WhenEmailIsTaken_ShouldReturnBadRequest()
+    public async Task RegisterBot_WhenEmailIsTaken_ShouldReturnConflict()
     {
         var client = CreateProvisioningClient();
         var request = CreateBotRequest(IdentityPostgresFixture.UniqueEmail());
@@ -100,7 +100,7 @@ public class BotProvisioningApiTests(CustomApi factory) : IClassFixture<CustomAp
 
         var response = await PostBotAsync(client, request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ErrorResponse>();
         Assert.Equal("This email is taken", body?.Error);
     }

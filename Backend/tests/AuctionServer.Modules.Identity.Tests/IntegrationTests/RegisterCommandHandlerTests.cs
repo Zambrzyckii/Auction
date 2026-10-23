@@ -45,12 +45,12 @@ public class RegisterCommandHandlerTests(IdentityPostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Handle_WhenEmailIsTaken_ShouldThrowInvalidCredentialsAndPersistNothing()
+    public async Task Handle_WhenEmailIsTaken_ShouldThrowEmailAlreadyTakenAndPersistNothing()
     {
         var email = IdentityPostgresFixture.UniqueEmail();
         await fixture.SeedUserAsync(email);
 
-        await Assert.ThrowsAsync<IdentityException.InvalidCredentialsException>(() => HandleAsync(CreateCommand(email)));
+        await Assert.ThrowsAsync<IdentityException.EmailAlreadyTakenException>(() => HandleAsync(CreateCommand(email)));
 
         await using var context = fixture.CreateContext();
         Assert.Equal(1, await context.Users.CountAsync(u => u.Email == email));

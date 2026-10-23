@@ -30,7 +30,7 @@ public class AuthRepository(IdentityDbContext context) : IAuthRepository
         catch (DbUpdateException e)
             when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            throw new IdentityException.InvalidCredentialsException("This email is taken");
+            throw new IdentityException.EmailAlreadyTakenException();
         }
     }
 }

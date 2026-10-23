@@ -70,9 +70,9 @@ The diagram shows how a request is authenticated by the host and which policy ea
 
 | Status | Message | When |
 |---|---|---|
-| 400 | `This email is taken` | the e-mail exists (pre-check or unique index) |
 | 400 | `Invalid credentials provided` | unknown e-mail or wrong password; the message is the same in both cases |
 | 401 | empty body | `POST /api/users/bots` without a valid `X-Api-Key`; a bot JWT alone is rejected too |
+| 409 | `This email is taken` | the e-mail exists (pre-check or unique index) |
 | 500 | `Server configuration error` | a login with valid credentials while `Jwt:Key` is shorter than 32 characters; without any key every request fails earlier with `Unhandled error occurred` |
 
 A token issued by `LoginCommandHandler` is a JWT signed with `HmacSha256Signature` whose claims are `ClaimTypes.Name` = e-mail, `ClaimTypes.NameIdentifier` = `PublicUserId` and `ClaimTypes.Role` = `UserRoles.ToString()`, with `Issuer`, `Audience` and `Expires` from the configuration and the role-based lifetime. There are no refresh tokens and no revocation; a token stays valid until it expires.

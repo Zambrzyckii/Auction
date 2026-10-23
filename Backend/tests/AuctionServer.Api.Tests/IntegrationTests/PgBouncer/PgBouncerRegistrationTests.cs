@@ -27,6 +27,6 @@ public class PgBouncerRegistrationTests(PgBouncerFixture fixture)
         var statuses = responses.Select(response => response.StatusCode).ToList();
 
         Assert.Single(statuses, status => status == HttpStatusCode.Created);
-        Assert.Equal(Attempts - 1, statuses.Count(status => status == HttpStatusCode.BadRequest));
+        Assert.Equal(Attempts - 1, statuses.Count(status => status == HttpStatusCode.Conflict));
     }
 }
