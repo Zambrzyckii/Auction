@@ -13,6 +13,7 @@ const rejected = new Counter('bids_rejected');
 const BIDDERS = Number(__ENV.BIDDERS || 10);
 
 export const options = {
+    summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
     thresholds: {
         http_req_failed: ['rate<0.06'],
         http_req_duration: ['p(95)<67'],

@@ -11,6 +11,7 @@ const bidsConflicted = new Counter('bids_conflicted');
 const BIDDERS = Number(__ENV.BIDDERS || 10);
 
 export const options = {
+    summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
     thresholds: {
         http_req_failed: ['rate<0.01'],
         http_req_duration: ['p(95)<67'],
