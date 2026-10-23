@@ -32,6 +32,7 @@ public class GatewayFixture : IAsyncLifetime
         _gateway = new ContainerBuilder("nginx:1.28.3-alpine")
             .WithNetwork(_network)
             .WithNetworkAliases(GatewayAlias)
+            .WithEnvironment("NGINX_ENTRYPOINT_QUIET_LOGS", "1")
             .WithResourceMapping(
                 File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "gateway", "nginx.conf")),
                 "/etc/nginx/nginx.conf")
@@ -56,6 +57,12 @@ public class GatewayFixture : IAsyncLifetime
             throw new InvalidOperationException($"wget got no HTTP response: {result.Stderr}");
 
         return (HttpStatusCode)int.Parse(statusLine.Groups[1].Value);
+    }
+
+    public async Task<string[]> GetAccessLogAsync()
+    {
+        var (stdout, _) = await _gateway.GetLogsAsync(timestampsEnabled: false);
+        return stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries);
     }
 
     public async Task InitializeAsync()
