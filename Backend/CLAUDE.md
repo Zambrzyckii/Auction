@@ -25,7 +25,7 @@ docker compose up -d                              # from the repo ROOT: API on :
 
 ### Tests
 
-Nine test projects, one per module (`tests/AuctionServer.Modules.<Module>.Tests`):
+Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests) and runs offline:
 
 - All nine mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
@@ -200,7 +200,7 @@ Each module exposes two static extension classes; the host calls both and nothin
   build a MediatR message and `sender.Send(...)`, no logic in the endpoint
   (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`).
 
-MediatR and FluentValidation are registered per module assembly in `Program.cs:59-92` — each module gets its own
+MediatR and FluentValidation are registered per module assembly in `Program.cs:80-142` — each module gets its own
 `AddValidatorsFromAssembly(...)` plus an `AddMediatR(...)` block that also re-adds the shared
 `ValidationBehaviour<,>` open behavior (MediatR 14 deduplicates repeated `AddOpenBehavior` registrations, so this
 is safe). Adding a module means adding both lines — assembly scanning is not automatic.
@@ -258,7 +258,7 @@ Active event flows:
   same transaction) has **two consumers**: Wallets consumes the winner's `FundsLock` for the auction (`ConsumeLock`) and credits the seller with that amount, and in the same `SaveChangesAsync`,
   writes `AuctionSettledEvent` to `WalletsOutboxMessages`; Inventory's `AuctionFinishedEventHandler` unlocks the
   item (`Item.UnlockItem`) only when there is no winner. MediatR runs them in registration order (Wallets before
-  Inventory, `Program.cs:67,81`); an exception in Inventory retries the whole publish and Wallets' inbox makes its
+  Inventory, `Program.cs:88,102`); an exception in Inventory retries the whole publish and Wallets' inbox makes its
   part a no-op. `WarehouseWonEvent` leans on the same order: money is spent before items are minted.
 - `AuctionSettledEvent` → Inventory's `AuctionSettledEventHandler` finds the item by `LockedForAuctionId`
   (`GetItemLockedForAuctionAsync`, 404 when nothing is locked for that auction) and `Item.TransferTo(winner)`.

@@ -74,9 +74,12 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-22 | A cross friend request auto-accepts the pending one instead of answering 409 | owner | both sides have expressed the intent, so demanding the ritual accept click would be bureaucracy |
 | 2026-10-22 | Profiles is consume-only: an inbox without an outbox, no `OutboxProcessor`, no keeper | agent (proposal, accepted) | the module owns no fact another module needs; the first departure from the copy-into-every-module rule, recorded in messaging.md, and a future publisher adds the standard copy back |
 | 2026-10-22 | A private profile hides everything except the username and the avatar; the owner and accepted friends see the full profile | owner | a friendship needs both sides' consent, and the username already leaks through friend lists and pending requests, so hiding it on one route would fake a guarantee |
+| 2026-10-22 | Seven-phase server-infrastructure plan: observability and a k6 baseline first, then nginx gateway, PgBouncer, Redis read cache, RabbitMQ, OpenBao and hardening; Compose stays, Identity stays the JWT issuer, Kubernetes and OIDC are documented only | owner | measurement before optimization; a separate auth service and Infisical rejected as cost without benefit at one monolith; see ADR-005 |
+| 2026-10-22 | OTel Collector + Prometheus + Tempo + Grafana as the telemetry stack | owner | the industry stack over the lighter Aspire Dashboard, chosen to practice it; see ADR-005 |
+| 2026-10-23 | k6 thresholds (p95 < 67 ms, failures < 1%, `visibility_lag` p95 < 6 s) and frozen resource limits (`api` 2 CPU/1 GB, `postgres` 1 CPU/512 MB) | owner | thresholds set from the baseline with headroom so later phases fail loudly instead of degrading silently; limits frozen for comparability; see performance.md |
 
 ## Related documents
 
-- [adr/](adr) - the four architecture decision records.
+- [adr/](adr) - the five architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.

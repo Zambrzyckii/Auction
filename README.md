@@ -6,7 +6,7 @@
 
 ## Status
 
-The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 37 integration events, 741 test methods and CI pipelines for GitLab and GitHub Actions. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 37 integration events, 763 test methods, CI pipelines for GitLab and GitHub Actions and an OpenTelemetry observability stack measured with k6. The Angular frontend, the AI bots, the API gateway and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 

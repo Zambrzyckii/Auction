@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/README.md](../../pl/backend/README.md)
 
-The backend is the whole code base of the repository: the solution [`Backend/AuctionServer.slnx`](../../../Backend/AuctionServer.slnx) holds eleven source projects under `src/` and nine test projects under `tests/`, all targeting `net10.0`. This page lists the projects and their packages, the folder layout inside a module, how to run and configure the host, how a request travels through the pipeline, the error contract and how the tests are organised. Every command below runs from `Backend/`.
+The backend is the whole code base of the repository: the solution [`Backend/AuctionServer.slnx`](../../../Backend/AuctionServer.slnx) holds eleven source projects under `src/` and ten test projects under `tests/`, all targeting `net10.0`. This page lists the projects and their packages, the folder layout inside a module, how to run and configure the host, how a request travels through the pipeline, the error contract and how the tests are organised. Every command below runs from `Backend/`.
 
 ## Projects
 
@@ -20,6 +20,7 @@ The backend is the whole code base of the repository: the solution [`Backend/Auc
 | [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | player profiles: levels, avatars in SeaweedFS, social links, friends, warehouse invites, privacy toggle | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) | event contracts, `AppException`, publisher seam, validation behavior | FluentValidation 12.1.1, MediatR 14.2.0 | none |
 | `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Profiles,Wallets,Warehouses}.Tests` | one xUnit project per module | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (direct override of a vulnerable transitive dependency, GHSA-q939-rpr3-3284); Identity, Wallets and Profiles add Microsoft.AspNetCore.Mvc.Testing 10.0.9 | the module under test; Identity, Wallets and Profiles tests also reference `AuctionServer.Api` |
+| `AuctionServer.Api.Tests` | host tests: observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Microsoft.AspNetCore.Mvc.Testing 10.0.9, Microsoft.Extensions.Diagnostics.Testing 10.11.0 | `AuctionServer.Api` |
 
 Every package on the stack is a 10.0.x release; `BackgroundService` and the hosting abstractions come from the `Microsoft.AspNetCore.App` framework reference, not from a package.
 
@@ -74,7 +75,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Casino --startup-p
 # 4. Run (http://localhost:5244, profile "http" in launchSettings.json)
 dotnet run --project src/AuctionServer.Api
 
-# 5. Tests (every project starts PostgreSQL through Testcontainers, so Docker must be running)
+# 5. Tests (every module project starts PostgreSQL through Testcontainers, so Docker must be running)
 dotnet test AuctionServer.slnx
 ```
 
@@ -136,7 +137,7 @@ Most failures are a JSON object `{ "error": "<message>" }` with the status below
 
 ## Testing
 
-Each test project has an offline part (`Application/`, `Domain/`, `Infrastructure/`: validators, entities, `OutboxMessage`) and an `IntegrationTests/` namespace that starts `postgres:latest` through Testcontainers in a collection fixture named `<Module>PostgresFixture`, migrates the module's own context and runs handlers and repositories against it. Identity, Wallets and Profiles additionally boot the whole host through `WebApplicationFactory<Program>` ([`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs), [`CustomAPI`](../../../Backend/tests/AuctionServer.Modules.Wallets.Tests/IntegrationTests/CustomAPI.cs), [`ProfilesCustomApi`](../../../Backend/tests/AuctionServer.Modules.Profiles.Tests/IntegrationTests/ProfilesCustomApi.cs)); these factories set `ConnectionStrings__DefaultConnection`, `Jwt__Key` and, in Identity, `Bots__ApiKey` as process environment variables and migrate only their own context, so the other modules' `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper` log errors against missing tables while those tests run. The Profiles factory also swaps `IAvatarStorage` for an in-memory fake with `ConfigureTestServices`, and `S3AvatarStorageTests` run the real adapter against a `chrislusf/seaweedfs:4.48` Testcontainer, the first non-PostgreSQL container in the suite. Test methods follow `Method_WhenCondition_ShouldResult`, for example `RequestBid_WhenBidderIsSeller_ShouldThrowCannotBidOwnItemException`.
+Each module test project has an offline part (`Application/`, `Domain/`, `Infrastructure/`: validators, entities, `OutboxMessage`) and an `IntegrationTests/` namespace that starts `postgres:latest` through Testcontainers in a collection fixture named `<Module>PostgresFixture`, migrates the module's own context and runs handlers and repositories against it. Identity, Wallets and Profiles additionally boot the whole host through `WebApplicationFactory<Program>` ([`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs), [`CustomAPI`](../../../Backend/tests/AuctionServer.Modules.Wallets.Tests/IntegrationTests/CustomAPI.cs), [`ProfilesCustomApi`](../../../Backend/tests/AuctionServer.Modules.Profiles.Tests/IntegrationTests/ProfilesCustomApi.cs)); these factories set `ConnectionStrings__DefaultConnection`, `Jwt__Key` and, in Identity, `Bots__ApiKey` as process environment variables and migrate only their own context, so the other modules' `OutboxProcessor`s, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper` log errors against missing tables while those tests run. The Profiles factory also swaps `IAvatarStorage` for an in-memory fake with `ConfigureTestServices`, and `S3AvatarStorageTests` run the real adapter against a `chrislusf/seaweedfs:4.48` Testcontainer, the first non-PostgreSQL container in the suite. Test methods follow `Method_WhenCondition_ShouldResult`, for example `RequestBid_WhenBidderIsSeller_ShouldThrowCannotBidOwnItemException`. The host project `AuctionServer.Api.Tests` is the exception to the shape above: all of its methods run offline, booting the host through `WebApplicationFactory` with `UseSetting` where a running application is needed, so it needs no Docker.
 
 | Project | Test methods | Offline | Integration |
 |---|---|---|---|
@@ -149,6 +150,7 @@ Each test project has an offline part (`Application/`, `Domain/`, `Infrastructur
 | `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
 | `AuctionServer.Modules.Wallets.Tests` | 142 | 60 | 82 |
 | `AuctionServer.Modules.Warehouses.Tests` | 64 | 43 | 21 |
+| `AuctionServer.Api.Tests` | 22 | 22 | 0 |
 
 ```bash
 dotnet test AuctionServer.slnx                                                                       # everything, needs Docker

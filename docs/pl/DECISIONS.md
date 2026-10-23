@@ -74,9 +74,12 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-10-22 | Krzyżowe zaproszenie do znajomych auto-akceptuje wiszące zamiast odpowiadać 409 | właściciel | obie strony wyraziły intencję, więc wymaganie rytualnego kliku akceptacji byłoby biurokracją |
 | 2026-10-22 | Profiles jest wyłącznie konsumujący: inbox bez outboxa, bez `OutboxProcessor`a, bez keepera | agent (propozycja, zaakceptowana) | moduł nie posiada faktu potrzebnego innemu modułowi; pierwsze odejście od reguły kopiowania do każdego modułu, zapisane w messaging.md, a przyszły publikator dodaje standardową kopię z powrotem |
 | 2026-10-22 | Profil prywatny ukrywa wszystko poza nazwą i awatarem; właściciel i zaakceptowani znajomi widzą pełny profil | właściciel | znajomość wymaga zgody obu stron, a nazwa i tak wycieka przez listy znajomych i oczekujące zaproszenia, więc ukrycie jej w jednej trasie udawałoby gwarancję |
+| 2026-10-22 | Siedmiofazowy plan infrastruktury serwerowej: najpierw obserwowalność i baseline k6, potem gateway nginx, PgBouncer, cache odczytów Redis, RabbitMQ, OpenBao i hardening; Compose zostaje, Identity zostaje wydawcą JWT, Kubernetes i OIDC tylko udokumentowane | właściciel | pomiar przed optymalizacją; osobny serwis auth i Infisical odrzucone jako koszt bez zysku przy jednym monolicie; zob. ADR-005 |
+| 2026-10-22 | OTel Collector + Prometheus + Tempo + Grafana jako stack telemetrii | właściciel | przemysłowy stack zamiast lżejszego Aspire Dashboard, wybrany, żeby go przećwiczyć; zob. ADR-005 |
+| 2026-10-23 | Progi k6 (p95 < 67 ms, błędy < 1%, `visibility_lag` p95 < 6 s) i zamrożone limity zasobów (`api` 2 CPU/1 GB, `postgres` 1 CPU/512 MB) | właściciel | progi dobrane z baseline z zapasem, żeby kolejne fazy failowały głośno zamiast degradować się po cichu; limity zamrożone dla porównywalności; zob. performance.md |
 
 ## Powiązane dokumenty
 
-- [adr/](adr) - cztery rekordy decyzji architektonicznych.
+- [adr/](adr) - pięć rekordów decyzji architektonicznych.
 - [CHANGELOG.md](CHANGELOG.md) - kamienie milowe, do których należą te decyzje.
 - [CONVENTIONS.md](CONVENTIONS.md) - reguły, które z nich wynikają.

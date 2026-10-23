@@ -33,10 +33,11 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 | [VISION.md](VISION.md) | What is the product, what do the terms mean, what is planned next? |
 | [CONVENTIONS.md](CONVENTIONS.md) | How are code, tests and documentation kept, what is the definition of done? |
 | [DECISIONS.md](DECISIONS.md) | Which decisions were taken when, and why? |
-| [adr/](adr) | The four decisions with lasting consequences, in context, decision and consequences form. |
+| [adr/](adr) | The five decisions with lasting consequences, in context, decision and consequences form. |
 | [STATE.md](STATE.md) | What exists right now, what is the environment, what is the next step? |
 | [CHANGELOG.md](CHANGELOG.md) | How did the project get here, milestone by milestone? |
 | [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | What is planned for each missing module, and what does the backend already offer it? |
+| [performance.md](performance.md) | How is performance measured, and what did each k6 run show? |
 | [../diagrams/README.md](../diagrams/README.md) | How are the diagrams authored and re-rendered? |
 
 ## Conventions
