@@ -18,6 +18,7 @@ using AuctionServer.Modules.Profiles.Infrastructure.Persistence;
 using AuctionServer.Modules.Profiles.Presentation;
 using AuctionServer.Api.Infrastructure;
 using AuctionServer.Api.Infrastructure.Authentication;
+using AuctionServer.Api.Infrastructure.Gateway;
 using AuctionServer.Api.Infrastructure.Health;
 using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Api.Infrastructure.Observability;
@@ -165,6 +166,7 @@ builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.AddObservability();
+builder.AddGateway();
 
 var app = builder.Build();
 
@@ -182,6 +184,7 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await scope.ServiceProvider.GetRequiredService<ProfilesDbContext>().Database.MigrateAsync();
 }
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseCors();
 app.UseAuthentication();
