@@ -104,6 +104,21 @@ services:
       - prometheus
       - tempo
 
+  k6:
+    image: grafana/k6:2.3.0
+    profiles:
+      - loadtest
+    user: "1000:1000"
+    environment:
+      BASE_URL: "http://api:8080"
+    volumes:
+      - ./Infrastructure/k6:/scripts
+    working_dir: /scripts
+    networks:
+      - edge
+    depends_on:
+      - api
+
 networks:
   edge:
   data:

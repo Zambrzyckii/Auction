@@ -2,3 +2,5 @@
 .idea/
 bin/
 obj/
+
+Infrastructure/k6/results/
