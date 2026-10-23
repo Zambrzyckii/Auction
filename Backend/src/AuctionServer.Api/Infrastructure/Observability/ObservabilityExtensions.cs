@@ -19,7 +19,7 @@ public static class ObservabilityExtensions
             .ConfigureResource(resource => resource.AddService(options.ServiceName))
             .WithTracing(tracing => tracing
                 .SetSampler(new ParentBasedSampler(
-                    new DropOrphanDatabaseSpansSampler(new TraceIdRatioBasedSampler(options.TraceSampleRatio))))
+                    new DropOrphanClientSpansSampler(new TraceIdRatioBasedSampler(options.TraceSampleRatio))))
                 .AddAspNetCoreInstrumentation(instrumentation =>
                     instrumentation.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
                 .AddHttpClientInstrumentation()
