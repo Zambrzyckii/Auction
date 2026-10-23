@@ -4,6 +4,10 @@ import { BASE_URL } from './lib/config.js';
 import { registerPlayer, login, waitForItems, createAuction, waitForActive } from './lib/seed.js';
 
 export const options = {
+    thresholds: {
+        http_req_failed: ['rate<0.01'],
+        http_req_duration: ['p(95)<67'],
+    },
     scenarios: {
         browse: {
             executor: 'constant-arrival-rate',
