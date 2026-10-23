@@ -160,7 +160,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
         .AllowAnyHeader()
         .AllowAnyMethod()));
 builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
+builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: [HealthEndpoints.ReadyTag]);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -191,7 +191,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapOpenApi();
-app.MapHealthChecks("/health");
+app.MapHealthEndpoints();
 app.MapInventoryEndpoints();
 app.MapAuctionEndpoints();
 app.MapWalletEndpoints();
