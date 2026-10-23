@@ -149,7 +149,11 @@ builder.Services.AddBankingModule(connectionString!, bankingOptions);
 builder.Services.AddPawnshopModule(connectionString!, pawnshopOptions);
 builder.Services.AddCasinoModule(connectionString!, casinoOptions);
 builder.Services.AddProfilesModule(connectionString!, profilesOptions);
-builder.Services.AddScoped<IIntegrationEventPublisher, InProcessEventPublisher>();
+builder.Services.AddSingleton<MessagingMetrics>();
+builder.Services.AddScoped<InProcessEventPublisher>();
+builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
+    provider.GetRequiredService<InProcessEventPublisher>(),
+    provider.GetRequiredService<MessagingMetrics>()));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
         .AllowAnyHeader()
