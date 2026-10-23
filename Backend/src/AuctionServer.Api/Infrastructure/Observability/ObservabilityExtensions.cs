@@ -18,7 +18,8 @@ public static class ObservabilityExtensions
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(options.ServiceName))
             .WithTracing(tracing => tracing
-                .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(options.TraceSampleRatio)))
+                .SetSampler(new ParentBasedSampler(
+                    new DropOrphanDatabaseSpansSampler(new TraceIdRatioBasedSampler(options.TraceSampleRatio))))
                 .AddAspNetCoreInstrumentation(instrumentation =>
                     instrumentation.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
                 .AddHttpClientInstrumentation()
