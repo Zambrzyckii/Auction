@@ -20,6 +20,28 @@ services:
       timeout: 3s
       retries: 15
 
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.26.1-p0
+    restart: unless-stopped
+    cpus: 1
+    mem_limit: 64m
+    environment:
+      DB_USER: auction
+      DB_PASSWORD: auction
+      AUTH_TYPE: scram-sha-256
+    volumes:
+      - ./Infrastructure/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U auction -d auctionserver"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   seaweedfs:
     image: chrislusf/seaweedfs:4.48
     command: server -s3 -dir=/data
@@ -40,7 +62,7 @@ services:
     cpus: 2
     mem_limit: 1g
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=auctionserver;Username=auction;Password=auction"
+      ConnectionStrings__DefaultConnection: "Host=pgbouncer;Port=6432;Database=auctionserver;Username=auction;Password=auction;No Reset On Close=true"
       Jwt__Key: "local-dev-signing-key-at-least-32-chars-long"
       Bots__ApiKey: "local-dev-bot-api-key"
       Database__MigrateOnStartup: "true"
@@ -54,6 +76,8 @@ services:
       - data
     depends_on:
       postgres:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
