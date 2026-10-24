@@ -81,9 +81,11 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-10-23 | Host ufa `X-Forwarded-*` tylko z całej przypiętej sieci `edge` `172.16.80.0/24`, wymienionej jako kanoniczny CIDR w sekcji fail-fast `Gateway` | agent (propozycja, przyjęta) | zaufanie do całej sieci działa też z drugim gatewayem (obawa właściciela o pojedynczy punkt awarii), a `172.16.80.0/24` leży w liście `allow` dla `/openapi/` i poza automatycznymi pulami Dockera i siecią domową, zob. ADR-006 |
 | 2026-10-23 | nginx co 5 s odświeża adres api przez DNS Dockera zamiast restartować gateway razem z api (`depends_on` z `restart: true`) | agent (propozycja, przyjęta) | działa też, gdy Docker podnosi kontenery przy starcie bez Compose, kosztem jednego zapytania DNS co 5 s, sprawdzone na żywo wymuszeniem nowego adresu api |
 | 2026-10-23 | TLS na gatewayu odłożony, docelowo wyłącznie HTTPS z własnym certyfikatem | właściciel | certyfikat nie może stać się pojedynczym punktem awarii, więc będzie odnawiany automatycznie albo serwowany przez redundantną parę, a do tego czasu stack nie może być wystawiony do internetu |
+| 2026-10-23 | PgBouncer w trybie transaction, z migracjami idącymi przez poolera na jednym connection stringu (bez `MigrationConnection`) i rozmiarami pul właściciela `default_pool_size` 25, `reserve_pool_size` 10, `max_db_connections` 40, `max_client_conn` 500 | właściciel | blokada migracji w Npgsql EF 10 to blokada tabeli wewnątrz transakcji migracji, więc osobne bezpośrednie połączenie niczego by nie chroniło, rozmiary ograniczają jedną instancję api do 35 ze 100 miejsc postgresa, a api zostaje przy puli Npgsql z `No Reset On Close=true`, zob. ADR-007 |
+| 2026-10-24 | Zajęty email odpowiada 409 zamiast 400, przy rejestracji i przy provisioningu botów | właściciel | to samo żądanie kończy się sukcesem albo konfliktem zależnie od istniejącego stanu, czyli semantyka 409 zgodna z konfliktami Pawnshop i Warehouses, a logowanie zostaje przy neutralnym 400, które nie zdradza, czy email istnieje |
 
 ## Powiązane dokumenty
 
-- [adr/](adr) - sześć rekordów decyzji architektonicznych.
+- [adr/](adr) - siedem rekordów decyzji architektonicznych.
 - [CHANGELOG.md](CHANGELOG.md) - kamienie milowe, do których należą te decyzje.
 - [CONVENTIONS.md](CONVENTIONS.md) - reguły, które z nich wynikają.

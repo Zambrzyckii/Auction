@@ -21,7 +21,7 @@ Projects live under `src/` (application code) and `tests/` (test projects).
 dotnet build AuctionServer.slnx
 dotnet run --project src/AuctionServer.Api        # http://localhost:5244 (https profile: 7009)
 dotnet test AuctionServer.slnx                    # NOTE: starts Docker containers, see below
-docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres (host port 5436), migrates at startup
+docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436), migrates at startup
 ```
 
 ### Tests
@@ -120,11 +120,11 @@ context overrides `MigrationsHistoryTable`, they also share a single `__EFMigrat
 
 ### Configuration
 
-`appsettings.json` has **no** `ConnectionStrings` section, yet `AuctionServer.Api/Program.cs:51` reads
-`DefaultConnection` and passes it with `!`. The connection string comes from User Secrets
+`appsettings.json` has **no** `ConnectionStrings` section. `AuctionServer.Api/Program.cs:51` reads
+`DefaultConnection` and fails fast with `InvalidOperationException` when it is missing (until 2026-10-23 the
+null went through with `!` and every database call failed later). The connection string comes from User Secrets
 (`UserSecretsId` `577a6cdc-…` in `AuctionServer.Api.csproj`) or from the
-`ConnectionStrings__DefaultConnection` environment variable. With neither set, both modules are registered with a
-null connection string and every database call fails.
+`ConnectionStrings__DefaultConnection` environment variable.
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<npgsql-connection-string>" \
@@ -168,13 +168,16 @@ from them only. The root `compose.yaml` enables it for the `edge` network `172.1
 (`Program.cs:194`), where `/health/live` runs no checks, `/health/ready` runs the checks tagged `ready` (the database
 check registered at `Program.cs:163`) and `/health` runs all of them.
 
-`.env` / `.env.example` (`DB_USER`, `DB_PASSWORD`) have no consumer in the repository — the root `compose.yaml`
-deliberately does not read them (dev-only values are inline there) and no code reads them either. Treat them as
-leftovers, not as the app's configuration path.
+`.env` / `.env.example` (`DB_USER`, `DB_PASSWORD`) have no consumer in the repository — Compose reads a `.env`
+only from the project root (the repo root, not `Backend/`), the root `compose.yaml` deliberately uses none
+(dev-only values are inline there) and no code reads these files either. The `DB_USER`/`DB_PASSWORD` variables
+of the `pgbouncer` service are the edoburu image's own env names set inline in `compose.yaml`, unrelated to
+these leftover files.
 
-The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all eight
-contexts' migrations between `Build()` and `Run()`, before the outbox processors start. The flag defaults to
-`false` in `appsettings.json`, so `dotnet run` and the test fixtures keep migrating explicitly.
+The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all nine
+contexts' migrations between `Build()` and `Run()`, before the outbox processors start, through PgBouncer like
+every other query. The flag defaults to `false` in `appsettings.json`, so `dotnet run` and the test fixtures
+keep migrating explicitly.
 
 No `.editorconfig`, `Directory.Build.props` or `global.json` exists, and no formatter/linter is configured.
 `AuctionServer.sln.DotSettings.user` is per-user Rider state, not a shared standard.

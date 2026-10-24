@@ -46,7 +46,7 @@ Pierwotny cel pochodzi z notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15
 - **frontend Angular** jako interfejs użytkownika;
 - **gateway nginx** jako jedyny publikowany adres i punkt wejścia dla frontendu i botów, niosący TLS, limity IP, limity rozmiaru body i kompresję, podczas gdy limity per użytkownik i CORS zostają w backendzie;
 - **backend API**, czyli istniejący dziś modular monolith, utrzymany jako jeden artefakt wdrożeniowy i oprzyrządowany OpenTelemetry;
-- **warstwa danych** osiągalna tylko wewnątrz sieci Compose: PostgreSQL za PgBouncerem (pooling transakcyjny, migracje omijają poolera, kopie `pg_dump` z crona), Redis jako rozproszony poziom cache gorących odczytów aukcji, SeaweedFS na awatary i OpenBao na sekrety;
+- **warstwa danych** osiągalna tylko wewnątrz sieci Compose: PostgreSQL za PgBouncerem (pooling transakcyjny, migracje też przez poolera, kopie `pg_dump` z crona), Redis jako rozproszony poziom cache gorących odczytów aukcji, SeaweedFS na awatary i OpenBao na sekrety;
 - **RabbitMQ** jako transport zdarzeń integracyjnych opuszczających monolit, wpięty w szew `IIntegrationEventPublisher`, z kolejkami retry, kolejką dead i sekwencyjnym konsumentem po stronie hosta;
 - **boty AI** napisane w Pythonie, które nasłuchują zdarzeń rynkowych na własnej kolejce RabbitMQ i działają przez gateway;
 - **stack obserwowalności** (OTel Collector, Prometheus, Tempo, Grafana) zasilany po OTLP, z testami obciążeniowymi k6 jako narzędziem pomiaru każdej zmiany wydajnościowej;

@@ -6,12 +6,12 @@
 
 ## Status
 
-The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 37 integration events, 797 test methods, CI pipelines for GitLab and GitHub Actions, an OpenTelemetry observability stack measured with k6 and an nginx gateway in front of the API. The Angular frontend, the AI bots and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 37 integration events, 819 test methods, CI pipelines for GitLab and GitHub Actions, an OpenTelemetry observability stack measured with k6, an nginx gateway in front of the API and PgBouncer in front of PostgreSQL. The Angular frontend, the AI bots and RabbitMQ are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 
 ```bash
-docker compose up -d        # the nginx gateway on http://localhost:8080 in front of the API, PostgreSQL, SeaweedFS and telemetry, migrations applied at startup
+docker compose up -d        # the nginx gateway on http://localhost:8080 in front of the API, PostgreSQL behind PgBouncer, SeaweedFS and telemetry, migrations applied at startup
 ```
 
 Then `POST /api/users/register`, `POST /api/users/login` and call the rest with the returned token; the endpoints are listed in [docs/en/backend/README.md](docs/en/backend/README.md). The manual, IDE-friendly path (local PostgreSQL, user secrets, migrations per module, `dotnet run`) is described in [docs/en/backend/README.md#running](docs/en/backend/README.md#running).

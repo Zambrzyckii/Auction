@@ -81,9 +81,11 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-23 | The host trusts `X-Forwarded-*` only from the whole pinned `edge` network `172.16.80.0/24`, listed as canonical CIDRs in a fail-fast `Gateway` section | agent (proposal, accepted) | trusting the whole network keeps working with a second gateway (the owner's single-point-of-failure concern), and `172.16.80.0/24` lies inside the `/openapi/` allow list and outside both Docker's automatic pools and the home LAN, see ADR-006 |
 | 2026-10-23 | nginx re-resolves the api through Docker's DNS every 5 s instead of restarting the gateway with the api (`depends_on` with `restart: true`) | agent (proposal, accepted) | also works when Docker restarts containers on boot without Compose, at the price of one DNS query every 5 s, verified live by forcing a new api address |
 | 2026-10-23 | TLS on the gateway deferred, with HTTPS only and an own certificate as the target | owner | the certificate must not become a single point of failure, so it will be renewed automatically or served by a redundant pair, and until then the stack must not face the internet |
+| 2026-10-23 | PgBouncer in transaction mode, with the migrations going through the pooler on the one connection string (no `MigrationConnection`) and the owner's pool sizes `default_pool_size` 25, `reserve_pool_size` 10, `max_db_connections` 40, `max_client_conn` 500 | owner | the Npgsql EF 10 migration lock is a table lock inside the migration transaction, so a separate direct connection would guard nothing, the sizes cap one api instance at 35 of postgres's 100 slots, and the api keeps Npgsql pooling with `No Reset On Close=true`, see ADR-007 |
+| 2026-10-24 | A taken email answers 409 instead of 400, on registration and on bot provisioning | owner | the same request succeeds or conflicts depending on existing state, which is 409 semantics matching the Pawnshop and Warehouses conflicts, while login keeps a neutral 400 that does not reveal whether an email exists |
 
 ## Related documents
 
-- [adr/](adr) - the six architecture decision records.
+- [adr/](adr) - the seven architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.

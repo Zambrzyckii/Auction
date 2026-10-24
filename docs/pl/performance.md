@@ -20,6 +20,25 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
 - Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 6 s. Pęknięty próg failuje przebieg kodem wyjścia 99.
 
+## PgBouncer — 2026-10-24, commit `f0f5aaa`
+
+Faza trzecia stawia PgBouncera (transaction pooling, `default_pool_size` 25, rezerwa 10) między api a postgresem. Oba wiersze pary używają tego samego obrazu api i zamrożonych limitów, "bezpośrednio" łączy się wprost z postgresem, a "przez poolera" idzie przez `pgbouncer:6432` z `No Reset On Close=true`. Sztorm to `browse.js` przy 2000 iteracji na sekundę przez 30 s, obciążenie, które przed poolerem wyczerpało postgresa. "DB" to szczytowa liczba backendów `auction` wewnątrz kontenera postgresa, próbkowana co sekundę.
+
+| Scenariusz | Obciążenie | req/s | p50 | p95 | p99 | max | Błędy | DB |
+|---|---|---|---|---|---|---|---|---|
+| browse, bezpośrednio | 50 iteracji/s, 60 s | 46.0 | 0.80 ms | 1.23 ms | 1.96 ms | 172 ms | 0% | 11 |
+| browse, przez poolera | 50 iteracji/s, 60 s | 46.0 | 0.78 ms | 1.06 ms | 1.77 ms | 172 ms | 0% | 3 |
+| bid-storm, bezpośrednio | 10 botów, 60 s | 84.0 | 0.97 ms | 1.75 ms | 3.67 ms | 167 ms | 4.78% | 11 |
+| bid-storm, przez poolera | 10 botów, 60 s | 82.9 | 0.84 ms | 1.44 ms | 2.72 ms | 150 ms | 4.77% | 4 |
+| mixed, bezpośrednio | 30 iteracji/s, 60 s | 24.5 | 0.82 ms | 1.58 ms | 7.89 ms | 146 ms | 0% | 11 |
+| mixed, przez poolera | 30 iteracji/s, 60 s | 24.5 | 0.84 ms | 1.70 ms | 8.13 ms | 146 ms | 0% | 4 |
+| sztorm, bezpośrednio | 2000 iteracji/s, 30 s | 1737.8 | 0.51 ms | 1.42 ms | 58.02 ms | 576 ms | 0%, 402 odrzucone | 29, potem 100 |
+| sztorm, przez poolera | 2000 iteracji/s, 30 s | 1609.3 | 0.41 ms | 0.63 ms | 1.88 ms | 132 ms | 0%, 0 odrzuconych | 11 |
+
+- Przy zwykłych obciążeniach pooler nie kosztuje nic mierzalnego, różnice mieszczą się w szumie, a całe api obsługują 3-4 backendy zamiast 11.
+- Sednem fazy jest sztorm. Bezpośrednio Npgsql otworzył wszystkie 100 połączeń, na które pozwala postgres, trzymał je uśpione po przebiegu, a administracyjny `psql` został odbity z "sorry, too many clients already" (29 w tabeli to tyle, ile złapał sekundowy sampler w trakcie przebiegu). Przez poolera postgres osiągnął szczytowo 11 backendów i wrócił tam po przebiegu. Ogon się złożył (p99 z 58 ms do 1.9 ms, max z 576 ms do 132 ms) i żadna iteracja nie została odrzucona, za cenę około 7% przepustowości, koszt kolejkowania w poolerze zamiast przeciążania postgresa.
+- Oba przebiegi mixed pękły na progu `visibility_lag` tak samo (p95 6.03 s wobec dozwolonych 6 s, med 5.3-5.5 s wobec 3.0 s z baseline), więc pooler nie jest przyczyną. Dryf zdarzył się między baseline a tym pomiarem, z danymi narosłymi w trwałym wolumenie jako niezweryfikowanym podejrzanym, i zostaje sprawą otwartą.
+
 ## Gateway — 2026-10-23, commit `32b9507`
 
 Faza druga stawia nginx przed api. W Compose wszyscy wirtualni użytkownicy k6 mają jeden adres klienta, więc przez gateway anonimowy scenariusz ma sufit 20 żądań na sekundę. Dlatego narzut jest mierzony przy 15 iteracjach na sekundę, raz bezpośrednio i raz przez gateway, a `gateway-limits.js` przepycha każdą strefę limitów ponad jej limit. Gateway działa z 1 CPU i 128 MB.

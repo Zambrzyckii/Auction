@@ -2,11 +2,11 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/infrastructure.md](../en/infrastructure.md)
 
-Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/` i gateway nginx w `Infrastructure/gateway/`. Pooler połączeń, cache, broker i usługa sekretów pozostają planowane. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), a tego samego dnia, 2026-10-23, faza druga (gateway nginx). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
+Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/` i konfigurację PgBouncera w `Infrastructure/pgbouncer/`. Cache, broker i usługa sekretów pozostają planowane. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), a 2026-10-24 faza trzecia (PgBouncer). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
 
 ## Status
 
-Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. Broker dochodzi w kolejnej fazie.
+Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. Broker dochodzi w kolejnej fazie.
 
 ## Co istnieje dziś
 
@@ -15,6 +15,7 @@ Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usł
 | gateway | nginx:1.28.3-alpine | 8080 | jedyne wejście, opisane w [Gateway](#gateway) |
 | api | build `Backend/` | brak (127.0.0.1:8081 z `compose.debug.yaml`) | host, telemetria włączana sekcją `Observability`, nagłówki forwarded zaufane z sieci `edge` |
 | postgres | postgres:16-alpine | 5436 | jedyna baza |
+| pgbouncer | edoburu/pgbouncer:v1.26.1-p0 | brak | transaction pooling między api a postgresem, opisany w [Pooling połączeń](#pooling-połączeń) |
 | seaweedfs | chrislusf/seaweedfs:4.48 | brak | object storage na awatary |
 | otel-collector | otel/opentelemetry-collector-contrib:0.163.2 | brak | przyjmuje OTLP z api, rozdziela po backendach |
 | prometheus | prom/prometheus:v3.15.1 | brak | zbiera z collectora co 10 s, trzyma metryki 7 dni |
@@ -46,10 +47,20 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 - Zdrowie. `/health/live` nie uruchamia żadnych checków, `/health/ready` uruchamia checki z tagiem `ready` (dziś baza), a `/health` wszystkie. Kontener api sonduje `/health/ready` przez bash `/dev/tcp`, bo obraz runtime nie ma klienta HTTP. Compose nigdy nie restartuje kontenera unhealthy, stan tylko wstrzymuje start gatewaya i widać go w `docker compose ps`.
 - Debugowanie bez nginx. `docker compose -f compose.yaml -f compose.debug.yaml up -d` publikuje api na `127.0.0.1:8081`, osiągalnym tylko z tego komputera.
 
+## Pooling połączeń
+
+`Infrastructure/pgbouncer/pgbouncer.ini` to cała konfiguracja poolera. Compose montuje go tylko do odczytu w usłudze `pgbouncer`, entrypoint obrazu generuje `userlist.txt` z `DB_USER` i `DB_PASSWORD`, a api, razem z migracjami startowymi, dociera do postgresa wyłącznie przez `pgbouncer:6432`. Zapis decyzji to [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
+
+- Transaction pooling. Połączenie serwerowe jest wypożyczane na czas jednej transakcji, więc do `max_client_conn` (500) połączeń klienckich dzieli `default_pool_size` (25) połączeń serwerowych plus `reserve_pool_size` (10) sięganych po 5 s czekania, z `max_db_connections` (40) jako sufitem dla wszystkich pul razem. Jedna instancja api kosztuje postgresa najwyżej 35 ze 100 miejsc.
+- Api zostawia pulę Npgsql włączoną i dodaje `No Reset On Close=true`, więc oddane połączenie nie wysyła `DISCARD ALL`, które czyściłoby połączenie serwerowe współdzielone z innymi klientami.
+- Nieznany parametr w `pgbouncer.ini` jest fatalny, więc literówka zatrzymuje kontener na starcie, zamiast zostać po cichu zignorowana.
+- Stanu sesyjnego (advisory locki, tabele tymczasowe, LISTEN/NOTIFY, prepared statements) nie wolno wprowadzić bez zdjęcia tego wołającego z poolera. Dziś kod nie ma żadnego.
+- `SHOW POOLS` pokazuje połączenia klienckie i serwerowe na żywo, przez `docker compose exec -e PGPASSWORD=auction pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. Testy integracyjne robią asercje na jego liczbach.
+
 ## Projekt docelowy
 
 - **API gateway nginx** (faza 2): wszedł 2026-10-23, zob. [Gateway](#gateway). Nadal brakuje TLS.
-- **PgBouncer** (faza 3): transaction pooling przed PostgreSQL; migracje zachowują bezpośrednie połączenie, bo `MigrateAsync` bierze sesyjny advisory lock.
+- **PgBouncer** (faza 3): wszedł 2026-10-24, zob. [Pooling połączeń](#pooling-połączeń). Migracje też idą przez poolera.
 - **Redis** (faza 4): rozproszony poziom cache gorących odczytów aukcji za szwem modułu, samo TTL.
 - **RabbitMQ** (faza 5): transport zdarzeń integracyjnych za `IIntegrationEventPublisher`, z poziomami retry, martwą kolejką i sekwencyjnym konsumentem po stronie hosta; zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
 - **OpenBao** (faza 6): usługa sekretów czytana na starcie przez własny provider konfiguracji.
@@ -85,6 +96,7 @@ Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który n
 
 - Stack telemetrii to OTel Collector + Prometheus + Grafana + Tempo, wybór właściciela zamiast lżejszego Aspire Dashboard; zob. [ADR-005](adr/005-observability-and-k6.md).
 - Gateway to nginx z limitami IP, limitami body, błędami w JSON i modelem zaufania CIDR dla nagłówków forwarded, zob. [ADR-006](adr/006-nginx-gateway.md).
+- Pooler to PgBouncer w trybie transaction i migracje idą przez niego, bo blokada migracji w Npgsql EF 10 to blokada tabeli wewnątrz transakcji migracji, z włączoną pulą Npgsql plus `No Reset On Close=true`, zob. [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
 - Testy obciążeniowe celują w `http://api:8080` bezpośrednio z sieci Compose, żeby baseline pozostał porównywalny teraz, gdy gateway stoi przed api. Przez gateway idzie tylko `gateway-limits.js`, uruchamiany z `BASE_URL=http://gateway`.
 - Transport wchodzi za istniejący szew zamiast przez zmianę modułów, zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
 
