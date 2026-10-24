@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
 using AuctionServer.Modules.Auctions;
+using AuctionServer.Modules.Auctions.Application.Options;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Modules.Auctions.Presentation;
 using AuctionServer.Modules.Banking;
@@ -56,6 +57,7 @@ var bankingOptions = builder.Configuration.GetSection("Banking").Get<BankingOpti
 var pawnshopOptions = builder.Configuration.GetSection("Pawnshop").Get<PawnshopOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Pawnshop'");
 var casinoOptions = builder.Configuration.GetSection("Casino").Get<CasinoOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Casino'");
 var profilesOptions = builder.Configuration.GetSection("Profiles").Get<ProfilesOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Profiles'");
+var auctionReadCacheOptions = builder.Configuration.GetSection("Auctions:ReadCache").Get<AuctionReadCacheOptions>() ?? new AuctionReadCacheOptions();
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -141,7 +143,7 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
 });
 
-builder.Services.AddAuctionModule(connectionString);
+builder.Services.AddAuctionModule(connectionString, auctionReadCacheOptions);
 builder.Services.AddWalletsModule(connectionString, startingFunds);
 builder.Services.AddIdentityModule(connectionString);
 builder.Services.AddInventoryModule(connectionString, starterItems);
