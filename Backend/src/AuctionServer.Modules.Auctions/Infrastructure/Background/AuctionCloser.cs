@@ -3,6 +3,7 @@ using AuctionServer.Modules.Auctions.Domain.Enums;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Auctions;
+using AuctionServer.Shared.Integration.Events.Funds;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,6 +14,7 @@ namespace AuctionServer.Modules.Auctions.Infrastructure.Background;
 public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<AuctionCloser> logger) : BackgroundService
 {
     private static readonly TimeSpan PendingActivationTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan PendingBidTimeout = TimeSpan.FromMinutes(1);
     private const string TimeoutReason = "Activation timed out";
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -22,6 +24,7 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
             {
                 await CloseExpiredAuctionAsync(stoppingToken);
                 await CancelTimedOutPendingAuctionAsync(stoppingToken);
+                await RejectTimedOutPendingBidsAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -62,6 +65,35 @@ public sealed class AuctionCloser(IServiceProvider serviceProvider, ILogger<Auct
         }
 
         if (expiredAuctions.Count > 0) await context.SaveChangesAsync(stoppingToken);
+    }
+
+    private async Task RejectTimedOutPendingBidsAsync(CancellationToken stoppingToken)
+    {
+        using var scope = serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();
+
+        var deadline = DateTime.UtcNow - PendingBidTimeout;
+        var staleAuctions = await context.Auctions
+            .Where(a => a.PendingBidderId != null && a.PendingBidRequestedOn <= deadline)
+            .Take(20)
+            .ToListAsync(stoppingToken);
+
+        foreach (var auction in staleAuctions)
+        {
+            var bidderId = auction.PendingBidderId!.Value;
+            auction.RejectPendingBid();
+
+            var eventId = Guid.NewGuid();
+            context.OutboxMessages.Add(new OutboxMessage
+            {
+                Id = eventId,
+                Type = nameof(FundsUnlockRequestedEvent),
+                Content = JsonSerializer.Serialize(new FundsUnlockRequestedEvent(eventId, auction.PublicAuctionId,
+                    bidderId))
+            });
+        }
+
+        if (staleAuctions.Count > 0) await context.SaveChangesAsync(stoppingToken);
     }
 
     private async Task CancelTimedOutPendingAuctionAsync(CancellationToken stoppingToken)
