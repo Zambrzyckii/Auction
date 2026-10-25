@@ -91,7 +91,7 @@ A consuming module keeps a `ProcessedMessages` table with a single meaningful co
 | `WarehouseWonEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | none |
 | `ItemLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `AuctionActivatedEvent` |
 | `ItemLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | none |
-| `FundsLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `BidPlacedEvent`, or `FundsUnlockRequestedEvent` when the auction is no longer `Active` |
+| `FundsLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `BidPlacedEvent`, or `FundsUnlockRequestedEvent` when the auction is no longer `Active` or the reply's `RequestId` does not match the pending bid |
 | `FundsLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | none |
 | `UserRegisteredEventHandler` | Inventory | `AddItemsWithInboxAsync` | none; the starter pack |
 | `ItemLockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `ItemLockedEvent` or `ItemLockRejectedEvent` |
@@ -145,8 +145,8 @@ Replacing the in-process bus with a broker means one new `IIntegrationEventPubli
 | `AuctionSettledEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId`, `FinalPrice` | Wallets `AuctionFinishedEventHandler` | Inventory `AuctionSettledEventHandler` | yes |
 | `ItemSoldToShopEvent` | `PublicItemId`, `OwnerUserId`, `Price` | Inventory `SellItemToShopCommandHandler` | Wallets `ItemSoldToShopEventHandler` | no, two separate `Guid.NewGuid()` calls |
 | `FundsLockRequestedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Auctions `PlaceBidCommandHandler` | Wallets `FundsLockRequestedEventHandler` | yes |
-| `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | yes |
-| `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | yes |
+| `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount`, `RequestId` (the request's `EventId`, defaulted) | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | yes |
+| `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason`, `RequestId` (the request's `EventId`, defaulted) | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | yes |
 | `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId`; for warehouse refunds `PublicAuctionId` carries the warehouse id | Auctions `FundsLockedEventHandler`; Warehouses `LeaveWarehouseWarCommandHandler`, `WarehouseEntryLockedEventHandler` and `WarehouseKeeper` | Wallets `FundsUnlockRequestedEventHandler` | yes |
 | `WarehouseStockRequestedEvent` | `PublicWarehouseId`, `Rarities` | Warehouses `WarehouseKeeper` | Inventory `WarehouseStockRequestedEventHandler` | yes |
 | `WarehouseStockedEvent` | `PublicWarehouseId`, `Stock` (list of `WarehouseStockItem`) | Inventory `WarehouseStockRequestedEventHandler` | Warehouses `WarehouseStockedEventHandler` | yes |

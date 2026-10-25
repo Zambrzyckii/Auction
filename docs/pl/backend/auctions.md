@@ -27,7 +27,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests                          
 dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedName!~IntegrationTests"   # tylko offline, jak w jobie CI unit-tests
 ```
 
-Migracje są rozdzielone między dwa foldery: [`Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Migrations) zawiera `20260707073128_InitialAuctions` i snapshot modelu `AppDbContextModelSnapshot.cs`, a [`Infrastructure/Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) dziewięć późniejszych: `Sync_Auctions_Fix`, `Align_Auctions_With_Configuration`, `Add_EndsOn_And_ItemId_Index`, `Add_Auction_Version`, `Add_Outbox_DeadLetter_And_Backoff`, `Add_Auction_Status_And_Item_Snapshot` (edytowana ręcznie, zawiera wywołanie `migrationBuilder.Sql`) , `Add_Auctions_Inbox`, `Add_Auction_CreatedOn` i `Add_Auction_Pending_Bid`. Nowe migracje trzeba tworzyć z `--output-dir Infrastructure/Migrations`, żeby trafiły obok pozostałych.
+Migracje są rozdzielone między dwa foldery: [`Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Migrations) zawiera `20260707073128_InitialAuctions` i snapshot modelu `AppDbContextModelSnapshot.cs`, a [`Infrastructure/Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) dziesięć późniejszych: `Sync_Auctions_Fix`, `Align_Auctions_With_Configuration`, `Add_EndsOn_And_ItemId_Index`, `Add_Auction_Version`, `Add_Outbox_DeadLetter_And_Backoff`, `Add_Auction_Status_And_Item_Snapshot` (edytowana ręcznie, zawiera wywołanie `migrationBuilder.Sql`) , `Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid` i `Add_Auction_Pending_Bid_Request`. Nowe migracje trzeba tworzyć z `--output-dir Infrastructure/Migrations`, żeby trafiły obok pozostałych.
 
 ## Konfiguracja
 
@@ -37,6 +37,7 @@ Moduł nie ma własnych kluczy konfiguracji; connection string dostaje z `AddAuc
 |---|---|---|
 | okno anty-snajperskie | 30 s (`AntiSnipingWindow`) | `Auction.RequestBid` |
 | interwał i partia closera | co 3 s, do 20 aukcji | `AuctionCloser` |
+| timeout oferty oczekującej | 1 min (`PendingBidTimeout`) | `AuctionCloser` |
 | interwał i partia odpytywania outboxa | co 3 s, do 20 wierszy | `OutboxProcessor` |
 | `EndsOn` akceptowane przez walidator | później niż teraz i wcześniej niż teraz + 30 dni | `CreateAuctionCommandValidator` |
 | `EndsOn` akceptowane przez encję | co najmniej teraz + 1 minuta | `Auction.Create` |
@@ -67,7 +68,7 @@ Każda metoda przejścia najpierw woła `EnsureStatus`, więc nieoczekiwany stat
 | `CancellationReason` | `text`, nullowalna | `Reason` z `ItemLockRejectedEvent` |
 | `EndsOn` | `timestamptz` | wydłużane o 30 s przez późne oferty |
 | `CreatedOn` | `timestamptz` | ustawiane przy utworzeniu; `AuctionCloser` anuluje aukcje `Pending` dłużej niż 10 minut |
-| `PendingBidderId`, `PendingBidAmount` | `uuid`, `numeric(18,2)`, oba nullable | oferta w locie sagi rezerwacji środków; czyszczona przy potwierdzeniu lub odrzuceniu |
+| `PendingBidderId`, `PendingBidAmount`, `PendingBidRequestId`, `PendingBidRequestedOn` | `uuid`, `numeric(18,2)`, `uuid`, `timestamptz`, wszystkie nullable | oferta w locie sagi rezerwacji środków z id prośby (`EventId` zdarzenia `FundsLockRequestedEvent`) i znacznikiem czasu; czyszczona przy potwierdzeniu, odrzuceniu lub timeoutcie closera |
 | `Version` | `uuid` | token współbieżności, generowany na nowo przez każdą metodę mutującą |
 
 Moduł posiada też `AuctionsBids` — append-only historię ofert (`Id`, `PublicAuctionId` z indeksem, `BidderUserId`, `Amount`, `PlacedOn`); wiersz dopisuje `FundsLockedEventHandler` w tej samej `SaveChangesAsync` co `ConfirmPendingBid`, więc zapisywane są tylko potwierdzone oferty — oraz `OutboxMessages` (jego outbox, jedyna tabela bez prefiksu modułu) i `AuctionsProcessedMessages` (jego inbox); dwie ostatnie są opisane w [messaging.md](messaging.md).
@@ -104,7 +105,7 @@ Odczyty omijają EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionS
 
 ## Serwisy tła
 
-[`AuctionCloser`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/AuctionCloser.cs) to `BackgroundService`, który co 3 s ładuje do 20 aukcji ze `Status = Active` i `EndsOn` w przeszłości, woła `CloseAuction()` na każdej i dodaje wiersz outboxa `AuctionFinishedEvent`, którego `WinnerUserId` i `FinalPrice` są null, gdy nikt nie licytował; cała partia to jeden `SaveChangesAsync`. `DbUpdateConcurrencyException` (oferta zapisana między załadowaniem a zapisem) wywraca cykl, co jest logowane jako `Auction closing cycle failed` i powtarzane 3 s później ze świeżym załadowaniem. `OutboxProcessor` modułu to wspólna implementacja opisana w [messaging.md](messaging.md).
+[`AuctionCloser`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/AuctionCloser.cs) to `BackgroundService`, który co 3 s ładuje do 20 aukcji ze `Status = Active` i `EndsOn` w przeszłości, woła `CloseAuction()` na każdej i dodaje wiersz outboxa `AuctionFinishedEvent`, którego `WinnerUserId` i `FinalPrice` są null, gdy nikt nie licytował; cała partia to jeden `SaveChangesAsync`. `DbUpdateConcurrencyException` (oferta zapisana między załadowaniem a zapisem) wywraca cykl, co jest logowane jako `Auction closing cycle failed` i powtarzane 3 s później ze świeżym załadowaniem. Trzeci obchód odrzuca oferty oczekujące starsze niż `PendingBidTimeout` (1 minuta): pola oferty są czyszczone, a wiersz `FundsUnlockRequestedEvent` zwalnia środki, które mogły zostać zablokowane; odpowiedź o środkach, która nadejdzie później, nie pasuje już do zapisanego `PendingBidRequestId`, więc dostaje kolejny zwrot zamiast zatwierdzić cudzą ofertę. `OutboxProcessor` modułu to wspólna implementacja opisana w [messaging.md](messaging.md).
 
 ## Zdarzenia
 
@@ -123,6 +124,7 @@ Odczyty omijają EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionS
 - Nazwa, rzadkość i cena oficjalna przedmiotu są kopiowane na aukcję przy aktywacji, więc ścieżka odczytu nigdy nie potrzebuje danych Inventory, a ogłoszenie przetrwa późniejsze zmiany przedmiotu.
 - Odczyty używają Dappera i surowego SQL, a zapisy zostają na EF Core; kompromis jest zapisany w [ADR-004](../adr/004-dapper-read-path-in-auctions.md).
 - `Version` jest generowane na nowo przez każdą metodę mutującą, więc closer i spóźniony licytujący nie mogą wygrać oboje: jeden z nich dostaje `DbUpdateConcurrencyException`, widoczny jako 409 albo jako powtórzony cykl closera.
+- Odpowiedź o środkach jest dopasowywana do oferty oczekującej po id prośby (`EventId` zdarzenia `FundsLockRequestedEvent`, odbijany jako `RequestId`), a closer odrzuca oferty oczekujące starsze niż minuta, więc martwa lub spóźniona prośba o blokadę nie może ani zamrozić aukcji do `EndsOn`, ani zatwierdzić innej oferty.
 - Oferta jest przyjmowana, zanim Wallets potwierdzi środki; konsekwencje i planowana pesymistyczna oferta są opisane w [../ARCHITECTURE.md](../ARCHITECTURE.md#znane-ograniczenia).
 
 ## Powiązane dokumenty

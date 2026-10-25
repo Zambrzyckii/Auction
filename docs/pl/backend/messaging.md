@@ -91,7 +91,7 @@ Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolum
 | `WarehouseWonEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
 | `ItemLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `AuctionActivatedEvent` |
 | `ItemLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | brak |
-| `FundsLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `BidPlacedEvent`, albo `FundsUnlockRequestedEvent`, gdy aukcja nie jest już `Active` |
+| `FundsLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `BidPlacedEvent`, albo `FundsUnlockRequestedEvent`, gdy aukcja nie jest już `Active` lub `RequestId` odpowiedzi nie pasuje do oferty oczekującej |
 | `FundsLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | brak |
 | `UserRegisteredEventHandler` | Inventory | `AddItemsWithInboxAsync` | brak; pakiet startowy |
 | `ItemLockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `ItemLockedEvent` albo `ItemLockRejectedEvent` |
@@ -145,8 +145,8 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 | `AuctionSettledEvent` | `PublicAuctionId`, `SellerUserId`, `WinnerUserId`, `FinalPrice` | Wallets `AuctionFinishedEventHandler` | Inventory `AuctionSettledEventHandler` | tak |
 | `ItemSoldToShopEvent` | `PublicItemId`, `OwnerUserId`, `Price` | Inventory `SellItemToShopCommandHandler` | Wallets `ItemSoldToShopEventHandler` | nie, dwa osobne wywołania `Guid.NewGuid()` |
 | `FundsLockRequestedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Auctions `PlaceBidCommandHandler` | Wallets `FundsLockRequestedEventHandler` | tak |
-| `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | tak |
-| `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason` | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | tak |
+| `FundsLockedEvent` | `PublicAuctionId`, `BidderUserId`, `Amount`, `RequestId` (`EventId` prośby, z wartością domyślną) | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockedEventHandler` | tak |
+| `FundsLockRejectedEvent` | `PublicAuctionId`, `BidderUserId`, `Reason`, `RequestId` (`EventId` prośby, z wartością domyślną) | Wallets `FundsLockRequestedEventHandler` | Auctions `FundsLockRejectedEventHandler` | tak |
 | `FundsUnlockRequestedEvent` | `PublicAuctionId`, `BidderUserId`; przy zwrotach magazynowych `PublicAuctionId` niesie id magazynu | Auctions `FundsLockedEventHandler`; Warehouses `LeaveWarehouseWarCommandHandler`, `WarehouseEntryLockedEventHandler` i `WarehouseKeeper` | Wallets `FundsUnlockRequestedEventHandler` | tak |
 | `WarehouseStockRequestedEvent` | `PublicWarehouseId`, `Rarities` | Warehouses `WarehouseKeeper` | Inventory `WarehouseStockRequestedEventHandler` | tak |
 | `WarehouseStockedEvent` | `PublicWarehouseId`, `Stock` (lista `WarehouseStockItem`) | Inventory `WarehouseStockRequestedEventHandler` | Warehouses `WarehouseStockedEventHandler` | tak |

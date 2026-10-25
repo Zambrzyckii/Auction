@@ -241,17 +241,21 @@ Active event flows:
 - `UserRegisteredEvent` → Wallets creates the wallet credited with `WalletsOptions.StartingFunds` (`UserRegisteredEventHandler.cs:14`), Inventory grants the starter pack and Profiles creates the profile with the `Username` snapshot (the event's `Username` is a defaulted parameter, so pre-field payloads deserialize to null and Profiles falls back to `Player`).
 - **Player levels** (Wallets → Profiles): the counting branch of `Wallet.Credit` calls `AwardLevelRewards` (`PlayerLevels`: level `n` at `1000*n^2` turnover, reward `10*n^2` added straight to `AvailableFunds`, cap 100), and the overridden `WalletDbContext.SaveChangesAsync` drains each tracked wallet's pending level-ups into one coalesced `PlayerLevelledUpEvent` outbox row (fresh Guid as both row `Id` and `EventId`) before the base save. Profiles' `PlayerLevelledUpEventHandler` applies the absolute level monotonically, so reordered retries cannot regress a profile. Profiles publishes nothing back.
 - **Funds-reservation saga** (choreography, mirror of the item-lock saga): `PlaceBidCommandHandler` stores the bid
-  via `Auction.RequestBid` as `PendingBidderId`/`PendingBidAmount` (one pending bid per auction, 409
+  via `Auction.RequestBid` as `PendingBidderId`/`PendingBidAmount` plus `PendingBidRequestId`/`PendingBidRequestedOn`
+  (the request's `EventId` and timestamp; one pending bid per auction, 409
   `BidInProgressException`; `EndsOn` extended by the anti-sniping window at request time) and writes
   `FundsLockRequestedEvent` → Wallets' `FundsLockRequestedEventHandler` calls `Wallet.LockFunds(auctionId, amount)`,
   adding an `Active` row to the per-bid `FundsLock` ledger (owned collection, table `WalletsFundsLocks`), and
-  replies `FundsLockedEvent` or, on insufficient funds / duplicate lock, `FundsLockRejectedEvent` → Auctions'
-  `FundsLockedEventHandler` runs `ConfirmPendingBid` and emits `BidPlacedEvent` (now meaning "bid confirmed",
-  carrying the previous leader), or, when the auction stopped being `Active`, runs `RejectPendingBid` and emits
-  `FundsUnlockRequestedEvent`; `FundsLockRejectedEventHandler` just clears the pending bid. `BidPlacedEvent` →
+  replies `FundsLockedEvent` or, on insufficient funds / duplicate lock, `FundsLockRejectedEvent`, both echoing the
+  request's `EventId` as a defaulted `RequestId` → Auctions' `FundsLockedEventHandler` matches the reply against
+  `PendingBidRequestId`: on a match it runs `ConfirmPendingBid` and emits `BidPlacedEvent` (now meaning "bid
+  confirmed", carrying the previous leader), or, when the auction stopped being `Active`, runs `RejectPendingBid`
+  and emits `FundsUnlockRequestedEvent`; an unmatched (stale) reply only emits the unlock and leaves the pending bid
+  alone, and `FundsLockRejectedEventHandler` clears the pending bid only on a matching `RequestId`. `BidPlacedEvent` →
   Wallets releases the previous leader's lock (`ReleaseLock`, amount from the ledger); `FundsUnlockRequestedEvent`
-  → Wallets releases the late lock, treating a missing lock as a valid outcome. A bid becomes visible after
-  ~3-9 s (two outbox polls).
+  → Wallets releases the late lock, treating a missing lock as a valid outcome. `AuctionCloser` rejects pending bids
+  older than `PendingBidTimeout` (1 min) with the same unlock, so a dead lock request cannot freeze the auction.
+  A bid becomes visible after ~3-9 s (two outbox polls).
 - **Auction creation saga** (choreography, no orchestrator): `CreateAuctionCommandHandler` stores the auction as
   `Pending` and `ItemLockRequestedEvent` in one transaction → Inventory's `ItemLockRequestedEventHandler` loads the
   item through `GetUserItemAsync` (ownership + existence), calls `Item.LockForAuction(publicAuctionId)` and replies
