@@ -13,7 +13,7 @@ public sealed class FundsLockRejectedEventHandler(IAuctionRepository repository)
         if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
 
         var auction = await repository.GetAuctionByIdAsync(notification.PublicAuctionId, cancellationToken);
-        auction.RejectPendingBid();
+        if (auction.PendingBidRequestId == notification.RequestId) auction.RejectPendingBid();
 
         var processedMessage = new ProcessedMessage { EventId = notification.EventId };
         try

@@ -10,12 +10,14 @@ namespace AuctionServer.Modules.Auctions.Tests.IntegrationTests;
 [Collection(AuctionsIntegrationCollection.Name)]
 public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
 {
-    private async Task RequestBidAsync(Guid publicAuctionId, Guid bidderId, decimal amount)
+    private async Task<Guid> RequestBidAsync(Guid publicAuctionId, Guid bidderId, decimal amount)
     {
+        var requestId = Guid.NewGuid();
         await using var context = fixture.CreateContext();
         var auction = await context.Auctions.SingleAsync(a => a.PublicAuctionId == publicAuctionId);
-        auction.RequestBid(bidderId, amount, Guid.NewGuid());
+        auction.RequestBid(bidderId, amount, requestId);
         await context.SaveChangesAsync();
+        return requestId;
     }
 
     private async Task HandleAsync(FundsLockedEvent notification)
@@ -34,13 +36,22 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
         return rows.Select(r => JsonSerializer.Deserialize<BidPlacedEvent>(r.Content)!).ToList();
     }
 
+    private async Task<List<FundsUnlockRequestedEvent>> GetUnlockEventsAsync(Guid publicAuctionId)
+    {
+        await using var context = fixture.CreateContext();
+        var rows = await context.OutboxMessages
+            .Where(m => m.Type == nameof(FundsUnlockRequestedEvent) && m.Content.Contains(publicAuctionId.ToString()))
+            .ToListAsync();
+        return rows.Select(r => JsonSerializer.Deserialize<FundsUnlockRequestedEvent>(r.Content)!).ToList();
+    }
+
     [Fact]
     public async Task Handle_WhenBidIsPending_ShouldPromoteLeaderAndStoreBidPlacedEventAndInboxRow()
     {
         var seeded = await fixture.SeedAuctionAsync(activate: true);
         var bidderId = Guid.NewGuid();
-        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
-        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m);
+        var requestId = await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m, requestId);
 
         await HandleAsync(notification);
 
@@ -49,6 +60,8 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
         Assert.Equal(100m, auction.CurrentPrice);
         Assert.Null(auction.PendingBidderId);
         Assert.Null(auction.PendingBidAmount);
+        Assert.Null(auction.PendingBidRequestId);
+        Assert.Null(auction.PendingBidRequestedOn);
 
         var bidPlaced = Assert.Single(await GetBidPlacedEventsAsync(seeded.PublicAuctionId));
         Assert.Equal(bidderId, bidPlaced.NewWinningUserId);
@@ -66,11 +79,11 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
         var seeded = await fixture.SeedAuctionAsync(activate: true);
         var firstBidderId = Guid.NewGuid();
         var secondBidderId = Guid.NewGuid();
-        await RequestBidAsync(seeded.PublicAuctionId, firstBidderId, 100m);
-        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, firstBidderId, 100m));
-        await RequestBidAsync(seeded.PublicAuctionId, secondBidderId, 150m);
+        var firstRequestId = await RequestBidAsync(seeded.PublicAuctionId, firstBidderId, 100m);
+        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, firstBidderId, 100m, firstRequestId));
+        var secondRequestId = await RequestBidAsync(seeded.PublicAuctionId, secondBidderId, 150m);
 
-        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, secondBidderId, 150m));
+        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, secondBidderId, 150m, secondRequestId));
 
         var auction = await fixture.GetAuctionAsync(seeded.PublicAuctionId);
         Assert.Equal(secondBidderId, auction.CurrentWinningUserId);
@@ -89,14 +102,14 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
     {
         var seeded = await fixture.SeedAuctionAsync(activate: true);
         var bidderId = Guid.NewGuid();
-        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+        var requestId = await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
         await using (var context = fixture.CreateContext())
         {
             var auction = await context.Auctions.SingleAsync(a => a.PublicAuctionId == seeded.PublicAuctionId);
             auction.CloseAuction();
             await context.SaveChangesAsync();
         }
-        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m);
+        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m, requestId);
 
         await HandleAsync(notification);
 
@@ -105,13 +118,54 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
         Assert.Null(auctionAfter.CurrentWinningUserId);
         Assert.Empty(await GetBidPlacedEventsAsync(seeded.PublicAuctionId));
 
-        await using var verifyContext = fixture.CreateContext();
-        var unlockRow = await verifyContext.OutboxMessages.SingleAsync(m =>
-            m.Type == nameof(FundsUnlockRequestedEvent) && m.Content.Contains(seeded.PublicAuctionId.ToString()));
-        var unlock = JsonSerializer.Deserialize<FundsUnlockRequestedEvent>(unlockRow.Content);
-        Assert.NotNull(unlock);
+        var unlock = Assert.Single(await GetUnlockEventsAsync(seeded.PublicAuctionId));
         Assert.Equal(bidderId, unlock.BidderUserId);
+
+        await using var verifyContext = fixture.CreateContext();
         Assert.True(await verifyContext.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
+    }
+
+    [Fact]
+    public async Task Handle_WhenRequestIdDoesNotMatchPending_ShouldRequestUnlockAndKeepPending()
+    {
+        var seeded = await fixture.SeedAuctionAsync(activate: true);
+        var pendingBidderId = Guid.NewGuid();
+        var staleBidderId = Guid.NewGuid();
+        var pendingRequestId = await RequestBidAsync(seeded.PublicAuctionId, pendingBidderId, 100m);
+        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, staleBidderId, 80m, Guid.NewGuid());
+
+        await HandleAsync(notification);
+
+        var auction = await fixture.GetAuctionAsync(seeded.PublicAuctionId);
+        Assert.Equal(pendingBidderId, auction.PendingBidderId);
+        Assert.Equal(100m, auction.PendingBidAmount);
+        Assert.Equal(pendingRequestId, auction.PendingBidRequestId);
+        Assert.Null(auction.CurrentWinningUserId);
+        Assert.Empty(await GetBidPlacedEventsAsync(seeded.PublicAuctionId));
+
+        var unlock = Assert.Single(await GetUnlockEventsAsync(seeded.PublicAuctionId));
+        Assert.Equal(staleBidderId, unlock.BidderUserId);
+
+        await using var context = fixture.CreateContext();
+        Assert.True(await context.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
+    }
+
+    [Fact]
+    public async Task Handle_WhenNoBidIsPending_ShouldRequestUnlockInsteadOfThrowing()
+    {
+        var seeded = await fixture.SeedAuctionAsync(activate: true);
+        var bidderId = Guid.NewGuid();
+        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m);
+
+        await HandleAsync(notification);
+
+        var auction = await fixture.GetAuctionAsync(seeded.PublicAuctionId);
+        Assert.Null(auction.PendingBidderId);
+        Assert.Null(auction.CurrentWinningUserId);
+        Assert.Empty(await GetBidPlacedEventsAsync(seeded.PublicAuctionId));
+
+        var unlock = Assert.Single(await GetUnlockEventsAsync(seeded.PublicAuctionId));
+        Assert.Equal(bidderId, unlock.BidderUserId);
     }
 
     [Fact]
@@ -119,8 +173,8 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
     {
         var seeded = await fixture.SeedAuctionAsync(activate: true);
         var bidderId = Guid.NewGuid();
-        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
-        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m);
+        var requestId = await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+        var notification = new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m, requestId);
 
         await HandleAsync(notification);
         await HandleAsync(notification);
@@ -138,9 +192,9 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
     {
         var seeded = await fixture.SeedAuctionAsync(activate: true);
         var bidderId = Guid.NewGuid();
-        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+        var requestId = await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
 
-        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m));
+        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m, requestId));
 
         await using var context = fixture.CreateContext();
         var bid = await context.Bids.SingleAsync(b => b.PublicAuctionId == seeded.PublicAuctionId);
@@ -154,7 +208,7 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
     {
         var seeded = await fixture.SeedAuctionAsync(activate: true);
         var bidderId = Guid.NewGuid();
-        await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
+        var requestId = await RequestBidAsync(seeded.PublicAuctionId, bidderId, 100m);
         await using (var context = fixture.CreateContext())
         {
             var auction = await context.Auctions.SingleAsync(a => a.PublicAuctionId == seeded.PublicAuctionId);
@@ -162,7 +216,7 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
             await context.SaveChangesAsync();
         }
 
-        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m));
+        await HandleAsync(new FundsLockedEvent(Guid.NewGuid(), seeded.PublicAuctionId, bidderId, 100m, requestId));
 
         await using var verifyContext = fixture.CreateContext();
         Assert.Empty(await verifyContext.Bids.Where(b => b.PublicAuctionId == seeded.PublicAuctionId).ToListAsync());
