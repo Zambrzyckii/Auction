@@ -49,6 +49,7 @@ public class FundsLockRequestedEventHandlerTests(WalletsPostgresFixture fixture)
         Assert.Equal(outboxMessage.Id, locked.EventId);
         Assert.Equal(userId, locked.BidderUserId);
         Assert.Equal(100m, locked.Amount);
+        Assert.Equal(notification.EventId, locked.RequestId);
     }
 
     [Fact]
@@ -73,6 +74,7 @@ public class FundsLockRequestedEventHandlerTests(WalletsPostgresFixture fixture)
         Assert.NotNull(rejected);
         Assert.Equal(userId, rejected.BidderUserId);
         Assert.Equal("Not enough funds on account", rejected.Reason);
+        Assert.Equal(notification.EventId, rejected.RequestId);
     }
 
     [Fact]

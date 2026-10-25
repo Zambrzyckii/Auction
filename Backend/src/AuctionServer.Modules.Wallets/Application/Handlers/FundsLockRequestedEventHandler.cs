@@ -28,7 +28,7 @@ public sealed class FundsLockRequestedEventHandler(IWalletRepository repository)
                 Id = replyId,
                 Type = nameof(FundsLockedEvent),
                 Content = JsonSerializer.Serialize(new FundsLockedEvent(replyId, notification.PublicAuctionId,
-                    notification.BidderUserId, notification.Amount))
+                    notification.BidderUserId, notification.Amount, notification.EventId))
             };
         }
         catch (Exception e) when (e is WalletExceptions.InsufficientFundsException
@@ -39,7 +39,7 @@ public sealed class FundsLockRequestedEventHandler(IWalletRepository repository)
                 Id = replyId,
                 Type = nameof(FundsLockRejectedEvent),
                 Content = JsonSerializer.Serialize(new FundsLockRejectedEvent(
-                    replyId, notification.PublicAuctionId, notification.BidderUserId, e.Message))
+                    replyId, notification.PublicAuctionId, notification.BidderUserId, e.Message, notification.EventId))
             };
         }
 
