@@ -23,7 +23,9 @@ public sealed class Auction
     public DateTime CreatedOn { get; init; } = DateTime.UtcNow;
     public Guid? PendingBidderId { get; private set; }
     public decimal? PendingBidAmount { get; private set; }
-    
+    public Guid? PendingBidRequestId { get; private set; }
+    public DateTime? PendingBidRequestedOn { get; private set; }
+
     public static Auction Create(Guid sellerId, Guid itemId, decimal startingPrice, DateTime endsOn)
     {
         if (startingPrice <= 0) throw new AuctionExceptions.InvalidStartingPriceException();
@@ -61,7 +63,7 @@ public sealed class Auction
         if (Status != expected) throw new AuctionExceptions.InvalidAuctionStateTransitionException(Status, action);
     }
 
-    public void RequestBid(Guid bidderId, decimal amount)
+    public void RequestBid(Guid bidderId, decimal amount, Guid requestId)
     {
         if (Status is AuctionStatus.Pending) throw new AuctionExceptions.AuctionNotActiveException(Status);
         if (Status is not AuctionStatus.Active) throw new AuctionExceptions.AuctionClosedException();
@@ -73,6 +75,8 @@ public sealed class Auction
 
         PendingBidderId = bidderId;
         PendingBidAmount = amount;
+        PendingBidRequestId = requestId;
+        PendingBidRequestedOn = DateTime.UtcNow;
         if (EndsOn < DateTime.UtcNow + AntiSnipingWindow) EndsOn += AntiSnipingWindow;
         Version = Guid.NewGuid();
     }
@@ -86,6 +90,8 @@ public sealed class Auction
         CurrentPrice = PendingBidAmount.Value;
         PendingBidderId = null;
         PendingBidAmount = null;
+        PendingBidRequestId = null;
+        PendingBidRequestedOn = null;
         Version = Guid.NewGuid();
     }
 
@@ -94,6 +100,8 @@ public sealed class Auction
         if (PendingBidderId is null) throw new AuctionExceptions.NoPendingBidException();
         PendingBidderId = null;
         PendingBidAmount = null;
+        PendingBidRequestId = null;
+        PendingBidRequestedOn = null;
         Version = Guid.NewGuid();
     }
 }

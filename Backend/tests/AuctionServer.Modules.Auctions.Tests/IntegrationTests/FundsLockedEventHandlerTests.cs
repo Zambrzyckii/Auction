@@ -14,7 +14,7 @@ public class FundsLockedEventHandlerTests(AuctionsPostgresFixture fixture)
     {
         await using var context = fixture.CreateContext();
         var auction = await context.Auctions.SingleAsync(a => a.PublicAuctionId == publicAuctionId);
-        auction.RequestBid(bidderId, amount);
+        auction.RequestBid(bidderId, amount, Guid.NewGuid());
         await context.SaveChangesAsync();
     }
 

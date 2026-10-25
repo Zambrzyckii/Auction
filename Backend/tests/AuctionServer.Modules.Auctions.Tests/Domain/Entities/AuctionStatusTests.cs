@@ -71,7 +71,7 @@ public class AuctionStatusTests
     {
         var auction = CreatePending();
 
-        Assert.Throws<AuctionExceptions.AuctionNotActiveException>(() => auction.RequestBid(Guid.NewGuid(), 100m));
+        Assert.Throws<AuctionExceptions.AuctionNotActiveException>(() => auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid()));
     }
 
     [Fact]
@@ -80,6 +80,6 @@ public class AuctionStatusTests
         var auction = CreatePending();
         auction.Cancel("rejected");
 
-        Assert.Throws<AuctionExceptions.AuctionClosedException>(() => auction.RequestBid(Guid.NewGuid(), 100m));
+        Assert.Throws<AuctionExceptions.AuctionClosedException>(() => auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid()));
     }
 }

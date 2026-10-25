@@ -18,11 +18,14 @@ public class AuctionPendingBidTests
         var auction = CreateActiveAuction();
         var versionBefore = auction.Version;
         var bidderId = Guid.NewGuid();
+        var requestId = Guid.NewGuid();
 
-        auction.RequestBid(bidderId, 100m);
+        auction.RequestBid(bidderId, 100m, requestId);
 
         Assert.Equal(bidderId, auction.PendingBidderId);
         Assert.Equal(100m, auction.PendingBidAmount);
+        Assert.Equal(requestId, auction.PendingBidRequestId);
+        Assert.NotNull(auction.PendingBidRequestedOn);
         Assert.Null(auction.CurrentWinningUserId);
         Assert.Equal(1m, auction.CurrentPrice);
         Assert.NotEqual(versionBefore, auction.Version);
@@ -32,9 +35,9 @@ public class AuctionPendingBidTests
     public void RequestBid_WhenAnotherBidIsPending_ShouldThrowBidInProgressException()
     {
         var auction = CreateActiveAuction();
-        auction.RequestBid(Guid.NewGuid(), 100m);
+        auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid());
 
-        Assert.Throws<AuctionExceptions.BidInProgressException>(() => auction.RequestBid(Guid.NewGuid(), 200m));
+        Assert.Throws<AuctionExceptions.BidInProgressException>(() => auction.RequestBid(Guid.NewGuid(), 200m, Guid.NewGuid()));
         Assert.Equal(100m, auction.PendingBidAmount);
     }
 
@@ -43,7 +46,7 @@ public class AuctionPendingBidTests
     {
         var auction = CreateActiveAuction(startingPrice: 100m);
 
-        Assert.Throws<AuctionExceptions.InvalidBidException>(() => auction.RequestBid(Guid.NewGuid(), 100m));
+        Assert.Throws<AuctionExceptions.InvalidBidException>(() => auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid()));
     }
 
     [Fact]
@@ -53,7 +56,7 @@ public class AuctionPendingBidTests
         var auction = Auction.Create(sellerId, Guid.NewGuid(), 1m, DateTime.UtcNow.AddMinutes(10));
         auction.Activate("Seeded Item", "Common", 10m);
 
-        Assert.Throws<AuctionExceptions.CannotBidOwnItemException>(() => auction.RequestBid(sellerId, 100m));
+        Assert.Throws<AuctionExceptions.CannotBidOwnItemException>(() => auction.RequestBid(sellerId, 100m, Guid.NewGuid()));
     }
 
     [Fact]
@@ -61,10 +64,10 @@ public class AuctionPendingBidTests
     {
         var auction = CreateActiveAuction();
         var bidderId = Guid.NewGuid();
-        auction.RequestBid(bidderId, 100m);
+        auction.RequestBid(bidderId, 100m, Guid.NewGuid());
         auction.ConfirmPendingBid();
 
-        Assert.Throws<AuctionExceptions.AlreadyHighestBidderException>(() => auction.RequestBid(bidderId, 200m));
+        Assert.Throws<AuctionExceptions.AlreadyHighestBidderException>(() => auction.RequestBid(bidderId, 200m, Guid.NewGuid()));
     }
 
     [Fact]
@@ -72,7 +75,7 @@ public class AuctionPendingBidTests
     {
         var auction = Auction.Create(Guid.NewGuid(), Guid.NewGuid(), 1m, DateTime.UtcNow.AddMinutes(10));
 
-        Assert.Throws<AuctionExceptions.AuctionNotActiveException>(() => auction.RequestBid(Guid.NewGuid(), 100m));
+        Assert.Throws<AuctionExceptions.AuctionNotActiveException>(() => auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid()));
     }
 
     [Fact]
@@ -80,7 +83,7 @@ public class AuctionPendingBidTests
     {
         var auction = CreateActiveAuction();
         var bidderId = Guid.NewGuid();
-        auction.RequestBid(bidderId, 100m);
+        auction.RequestBid(bidderId, 100m, Guid.NewGuid());
 
         auction.ConfirmPendingBid();
 
@@ -88,6 +91,8 @@ public class AuctionPendingBidTests
         Assert.Equal(100m, auction.CurrentPrice);
         Assert.Null(auction.PendingBidderId);
         Assert.Null(auction.PendingBidAmount);
+        Assert.Null(auction.PendingBidRequestId);
+        Assert.Null(auction.PendingBidRequestedOn);
     }
 
     [Fact]
@@ -102,7 +107,7 @@ public class AuctionPendingBidTests
     public void ConfirmPendingBid_WhenAuctionIsClosed_ShouldThrowInvalidAuctionStateTransitionException()
     {
         var auction = CreateActiveAuction();
-        auction.RequestBid(Guid.NewGuid(), 100m);
+        auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid());
         auction.CloseAuction();
 
         Assert.Throws<AuctionExceptions.InvalidAuctionStateTransitionException>(() => auction.ConfirmPendingBid());
@@ -113,12 +118,14 @@ public class AuctionPendingBidTests
     public void RejectPendingBid_ShouldClearPendingAndKeepLeader()
     {
         var auction = CreateActiveAuction();
-        auction.RequestBid(Guid.NewGuid(), 100m);
+        auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid());
 
         auction.RejectPendingBid();
 
         Assert.Null(auction.PendingBidderId);
         Assert.Null(auction.PendingBidAmount);
+        Assert.Null(auction.PendingBidRequestId);
+        Assert.Null(auction.PendingBidRequestedOn);
         Assert.Null(auction.CurrentWinningUserId);
         Assert.Equal(1m, auction.CurrentPrice);
     }
@@ -135,7 +142,7 @@ public class AuctionPendingBidTests
     public void RejectPendingBid_WhenAuctionWasClosed_ShouldStillClearPending()
     {
         var auction = CreateActiveAuction();
-        auction.RequestBid(Guid.NewGuid(), 100m);
+        auction.RequestBid(Guid.NewGuid(), 100m, Guid.NewGuid());
         auction.CloseAuction();
 
         auction.RejectPendingBid();

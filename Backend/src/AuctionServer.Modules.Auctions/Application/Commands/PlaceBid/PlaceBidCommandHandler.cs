@@ -11,9 +11,10 @@ public sealed class PlaceBidCommandHandler(IAuctionRepository repository) : IReq
     public async Task Handle(PlaceBidCommand command, CancellationToken token)
     {
         var currentAuction = await repository.GetAuctionByIdAsync(command.PublicAuctionId, token);
-        currentAuction.RequestBid(command.BidderId, command.NewPrice);
 
         var eventId = Guid.NewGuid();
+        currentAuction.RequestBid(command.BidderId, command.NewPrice, eventId);
+
         var outboxMessage = new OutboxMessage
         {
             Id = eventId,
