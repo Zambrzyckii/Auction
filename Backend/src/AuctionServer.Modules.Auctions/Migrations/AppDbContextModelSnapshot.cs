@@ -63,6 +63,12 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.Property<decimal?>("PendingBidAmount")
                         .HasColumnType("numeric");
 
+                    b.Property<Guid?>("PendingBidRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PendingBidRequestedOn")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("PendingBidderId")
                         .HasColumnType("uuid");
 
