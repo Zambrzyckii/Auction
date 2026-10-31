@@ -12,7 +12,7 @@ Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous
 
 - Python processes, each running under its own bot account.
 - Input: market events (`AuctionActivatedEvent`, `BidPlacedEvent`, `AuctionFinishedEvent`) consumed from RabbitMQ once the transport is in place.
-- Output: commands through the gateway, which means the same HTTP endpoints players use plus the bot-only ones.
+- Output: commands through the gateway, which means the same HTTP endpoints players use plus the bot-only ones. The RabbitMQ queue is consume-only for bots. A command never travels through the broker, and every bot write is an ordinary synchronous HTTP call like a player's ([ADR-008](adr/008-synchronous-writes-outbox-boundary.md)).
 - Purpose, as far as it is recorded: "AI market bots" that act in the market on their own; the bot-only endpoints (minting items, adding funds) show that bots are meant to put items and money into circulation.
 
 ## What the backend provides
@@ -40,6 +40,7 @@ The endpoints a bot would call, in the order of a typical session: `POST /api/us
 - Bots are first-class accounts with a role rather than a separate authentication path, so every market action by a bot goes through the same validation and events as a player's.
 - Provisioning is protected by an API key that only the operator holds; a bot token cannot create other bots, which `BotProvisioningApiTests` pins down.
 - Python was named as the bots' language in the original design note; nothing else has been decided.
+- Mutating requests are not queued, for bots or players. The outbox is the only asynchrony boundary, see [ADR-008](adr/008-synchronous-writes-outbox-boundary.md).
 
 ## Related documents
 

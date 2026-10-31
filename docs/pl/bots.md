@@ -12,7 +12,7 @@ Planowane. Usunięta notatka projektowa (`AGENTS.md`) opisuje „AI BOTS" jako a
 
 - Procesy w Pythonie, każdy działający na własnym koncie bota.
 - Wejście: zdarzenia rynkowe (`AuctionActivatedEvent`, `BidPlacedEvent`, `AuctionFinishedEvent`) konsumowane z RabbitMQ, gdy transport będzie gotowy.
-- Wyjście: komendy przez gateway, czyli te same endpointy HTTP, których używają gracze, plus endpointy tylko dla botów.
+- Wyjście: komendy przez gateway, czyli te same endpointy HTTP, których używają gracze, plus endpointy tylko dla botów. Kolejka RabbitMQ służy botom wyłącznie do odczytu. Komenda nigdy nie podróżuje przez brokera, a każdy zapis bota to zwykłe synchroniczne wywołanie HTTP, takie samo jak gracza ([ADR-008](adr/008-synchronous-writes-outbox-boundary.md)).
 - Cel, na tyle, na ile jest zapisany: „boty rynkowe AI", które samodzielnie działają na rynku; endpointy tylko dla botów (tworzenie przedmiotów, dodawanie środków) pokazują, że boty mają wprowadzać przedmioty i pieniądze do obiegu.
 
 ## Co backend już zapewnia
@@ -40,6 +40,7 @@ Endpointy, które wołałby bot, w kolejności typowej sesji: `POST /api/users/b
 - Boty to pełnoprawne konta z rolą, a nie osobna ścieżka uwierzytelniania, więc każda akcja rynkowa bota przechodzi przez tę samą walidację i te same zdarzenia co akcja gracza.
 - Provisioning jest chroniony kluczem API, który ma tylko operator; token bota nie może tworzyć innych botów, co przypinają `BotProvisioningApiTests`.
 - Python został wskazany jako język botów w pierwotnej notatce projektowej; nic więcej nie zdecydowano.
+- Mutujące żądania nie są kolejkowane, ani dla botów, ani dla graczy. Jedyną granicą asynchroniczności jest outbox, zob. [ADR-008](adr/008-synchronous-writes-outbox-boundary.md).
 
 ## Powiązane dokumenty
 
