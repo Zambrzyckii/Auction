@@ -83,9 +83,10 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-23 | TLS on the gateway deferred, with HTTPS only and an own certificate as the target | owner | the certificate must not become a single point of failure, so it will be renewed automatically or served by a redundant pair, and until then the stack must not face the internet |
 | 2026-10-23 | PgBouncer in transaction mode, with the migrations going through the pooler on the one connection string (no `MigrationConnection`) and the owner's pool sizes `default_pool_size` 25, `reserve_pool_size` 10, `max_db_connections` 40, `max_client_conn` 500 | owner | the Npgsql EF 10 migration lock is a table lock inside the migration transaction, so a separate direct connection would guard nothing, the sizes cap one api instance at 35 of postgres's 100 slots, and the api keeps Npgsql pooling with `No Reset On Close=true`, see ADR-007 |
 | 2026-10-24 | A taken email answers 409 instead of 400, on registration and on bot provisioning | owner | the same request succeeds or conflicts depending on existing state, which is 409 semantics matching the Pawnshop and Warehouses conflicts, while login keeps a neutral 400 that does not reveal whether an email exists |
+| 2026-10-31 | Mutating HTTP requests are not queued, the transactional outbox stays the only asynchrony boundary, and an endpoint answering 202 and completing through events is an explicit per-endpoint exception (today only the casino cash-out) | owner (with agent) | bidding and the casino games answer with the domain result in the same response, the SPA has no push channel to deliver a deferred one, and write-spike protection belongs to PgBouncer, the gateway limits and the phase-7 per-user limiter, see ADR-008 |
 
 ## Related documents
 
-- [adr/](adr) - the seven architecture decision records.
+- [adr/](adr) - the eight architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.
