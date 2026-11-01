@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json.Serialization;
+using AuctionServer.Api.Infrastructure.Caching;
 using AuctionServer.Modules.Auctions;
 using AuctionServer.Modules.Auctions.Application.Options;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
@@ -47,6 +48,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Missing configuration value 'ConnectionStrings:DefaultConnection'");
@@ -58,6 +60,7 @@ var pawnshopOptions = builder.Configuration.GetSection("Pawnshop").Get<PawnshopO
 var casinoOptions = builder.Configuration.GetSection("Casino").Get<CasinoOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Casino'");
 var profilesOptions = builder.Configuration.GetSection("Profiles").Get<ProfilesOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Profiles'");
 var auctionReadCacheOptions = builder.Configuration.GetSection("Auctions:ReadCache").Get<AuctionReadCacheOptions>() ?? new AuctionReadCacheOptions();
+var cacheOptions = CacheOptions.Load(builder.Configuration);
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -143,7 +146,22 @@ builder.Services.AddMediatR(cfg =>
     cfg.AddOpenBehavior(typeof(ValidationBehaviour<,>));
 });
 
-builder.Services.AddAuctionModule(connectionString, auctionReadCacheOptions);
+if (cacheOptions.Enabled)
+{
+    builder.Services.AddHybridCache();
+    if (cacheOptions.Redis is not null)
+        builder.Services.AddStackExchangeRedisCache(redis =>
+        {
+            var redisOptions = ConfigurationOptions.Parse(cacheOptions.Redis.ConnectionString);
+            redisOptions.AbortOnConnectFail = false;
+            redisOptions.ConnectTimeout = 500;
+            redisOptions.SyncTimeout = 300;
+            redis.ConfigurationOptions = redisOptions;
+            redis.InstanceName = "auctionserver:";
+        });
+}
+
+builder.Services.AddAuctionModule(connectionString, auctionReadCacheOptions, cacheOptions.Enabled);
 builder.Services.AddWalletsModule(connectionString, startingFunds);
 builder.Services.AddIdentityModule(connectionString);
 builder.Services.AddInventoryModule(connectionString, starterItems);

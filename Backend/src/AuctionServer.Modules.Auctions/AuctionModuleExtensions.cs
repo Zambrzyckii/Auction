@@ -16,7 +16,7 @@ namespace AuctionServer.Modules.Auctions;
 public static class AuctionModuleExtensions
 {
     public static IServiceCollection AddAuctionModule(this IServiceCollection services, string dbConnectionString,
-        AuctionReadCacheOptions readCacheOptions)
+        AuctionReadCacheOptions readCacheOptions, bool readCacheEnabled)
     {
         ValidateReadCacheOptions(readCacheOptions);
 
@@ -27,7 +27,10 @@ public static class AuctionModuleExtensions
 
         services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(dbConnectionString));
         services.AddSingleton(readCacheOptions);
-        services.AddSingleton<IAuctionReadCache, PassThroughAuctionReadCache>();
+        if (readCacheEnabled)
+            services.AddSingleton<IAuctionReadCache, HybridAuctionReadCache>();
+        else
+            services.AddSingleton<IAuctionReadCache, PassThroughAuctionReadCache>();
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
         services.AddScoped<IAuctionRepository, AuctionRepository>();
         services.AddHostedService<OutboxProcessor>();

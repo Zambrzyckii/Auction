@@ -8,7 +8,7 @@ namespace AuctionServer.Modules.Auctions.Tests.Application;
 public class AuctionModuleExtensionsTests
 {
     private static void Add(AuctionReadCacheOptions options) =>
-        new ServiceCollection().AddAuctionModule("Host=localhost", options);
+        new ServiceCollection().AddAuctionModule("Host=localhost", options, false);
 
     [Fact]
     public void AddAuctionModule_WithDefaultReadCacheOptions_ShouldNotThrow() => Add(new AuctionReadCacheOptions());
@@ -64,12 +64,24 @@ public class AuctionModuleExtensionsTests
     }
 
     [Fact]
-    public void AddAuctionModule_ByDefault_ShouldRegisterPassThroughReadCache()
+    public void AddAuctionModule_WhenReadCacheDisabled_ShouldRegisterPassThroughReadCache()
     {
         var services = new ServiceCollection();
-        services.AddAuctionModule("Host=localhost", new AuctionReadCacheOptions());
+        services.AddAuctionModule("Host=localhost", new AuctionReadCacheOptions(), false);
         using var provider = services.BuildServiceProvider();
 
         Assert.IsType<PassThroughAuctionReadCache>(provider.GetRequiredService<IAuctionReadCache>());
+    }
+
+    [Fact]
+    public void AddAuctionModule_WhenReadCacheEnabled_ShouldRegisterHybridReadCache()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddHybridCache();
+        services.AddAuctionModule("Host=localhost", new AuctionReadCacheOptions(), true);
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<HybridAuctionReadCache>(provider.GetRequiredService<IAuctionReadCache>());
     }
 }

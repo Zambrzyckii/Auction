@@ -56,6 +56,29 @@ services:
       timeout: 3s
       retries: 15
 
+  redis:
+    image: redis:7.2-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory
+      - 64mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    cpus: 1
+    mem_limit: 128m
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   api:
     build: ./Backend
     restart: unless-stopped
@@ -67,6 +90,8 @@ services:
       Bots__ApiKey: "local-dev-bot-api-key"
       Database__MigrateOnStartup: "true"
       Profiles__Storage__ServiceUrl: "http://seaweedfs:8333"
+      Cache__Enabled: "true"
+      Cache__Redis__ConnectionString: "redis:6379"
       Observability__Enabled: "true"
       Observability__OtlpEndpoint: "http://otel-collector:4317"
       Gateway__Enabled: "true"
