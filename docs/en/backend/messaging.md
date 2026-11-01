@@ -101,8 +101,8 @@ A consuming module keeps a `ProcessedMessages` table with a single meaningful co
 | `WarehouseStockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `WarehouseStockedEvent` |
 | `WarehouseWonEventHandler` | Inventory | `AddItemsWithInboxAsync` | none; mints the manifest |
 | `WarehouseStockedEventHandler` | Warehouses | `SaveStockWithInboxAsync` | none |
-| `WarehouseEntryLockedEventHandler` | Warehouses | `SaveWarWithInboxAsync`, or `SaveWarWithInboxAndOutboxAsync` on the refund path | `FundsUnlockRequestedEvent` for an orphaned lock |
-| `WarehouseEntryLockRejectedEventHandler` | Warehouses | `SaveWarWithInboxAsync` | none; a missing participant is a valid outcome |
+| `WarehouseEntryLockedEventHandler` | Warehouses | `SaveWarWithInboxAsync`, or `SaveWarWithInboxAndOutboxAsync` on the refund path | `FundsUnlockRequestedEvent` for an orphaned lock or a mismatched `RequestId` |
+| `WarehouseEntryLockRejectedEventHandler` | Warehouses | `SaveWarWithInboxAsync` | none; a missing participant or a mismatched `RequestId` is a valid outcome |
 | `LoanRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `LoanApprovedEvent` or `LoanRejectedEvent` |
 | `LoanRepaymentRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `LoanRepaymentCollectedEvent`, always, even for a zero collection |
 | `LoanApprovedEventHandler` | Banking | `SaveLoanWithInboxAsync` | none |
@@ -151,8 +151,8 @@ Replacing the in-process bus with a broker means one new `IIntegrationEventPubli
 | `WarehouseStockRequestedEvent` | `PublicWarehouseId`, `Rarities` | Warehouses `WarehouseKeeper` | Inventory `WarehouseStockRequestedEventHandler` | yes |
 | `WarehouseStockedEvent` | `PublicWarehouseId`, `Stock` (list of `WarehouseStockItem`) | Inventory `WarehouseStockRequestedEventHandler` | Warehouses `WarehouseStockedEventHandler` | yes |
 | `WarehouseEntryLockRequestedEvent` | `PublicWarehouseId`, `UserId`, `Amount` | Warehouses `JoinWarehouseWarCommandHandler` | Wallets `WarehouseEntryLockRequestedEventHandler` | yes |
-| `WarehouseEntryLockedEvent` | `PublicWarehouseId`, `UserId` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockedEventHandler` | yes |
-| `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason` | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | yes |
+| `WarehouseEntryLockedEvent` | `PublicWarehouseId`, `UserId`, `RequestId` (the request's `EventId`, defaulted) | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockedEventHandler` | yes |
+| `WarehouseEntryLockRejectedEvent` | `PublicWarehouseId`, `UserId`, `Reason`, `RequestId` (the request's `EventId`, defaulted) | Wallets `WarehouseEntryLockRequestedEventHandler` | Warehouses `WarehouseEntryLockRejectedEventHandler` | yes |
 | `WarehouseWonEvent` | `PublicWarehouseId`, `WinnerUserId`, `FinalPrice`, `Stock` | Warehouses `WarehouseKeeper` | Wallets and Inventory `WarehouseWonEventHandler` | yes |
 | `LoanRequestedEvent` | `PublicLoanId`, `UserId`, `Principal`, `RequiredTurnover` | Banking `CreateLoanCommandHandler` | Wallets `LoanRequestedEventHandler` | yes |
 | `LoanApprovedEvent` | `PublicLoanId`, `UserId` | Wallets `LoanRequestedEventHandler` | Banking `LoanApprovedEventHandler` | yes |

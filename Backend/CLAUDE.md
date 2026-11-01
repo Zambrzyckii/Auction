@@ -99,8 +99,9 @@ entity maps to its own `IdentityOutboxMessages` table — table names must be gl
 share one schema. Inventory follows the same layout (snapshot `InventoryDbContextModelSnapshot.cs`):
 `Initial_Inventory` creates `InventoryItems` and `InventoryOutboxMessages`, `Add_Item_LockedForAuctionId` and
 `Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. Warehouses uses the Wallets layout as well:
-`Initial_Warehouses` (wars, stock items, outbox, inbox) and `Add_Warehouses_Lobby` (participants table plus
-`CancellationReason`) under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
+`Initial_Warehouses` (wars, stock items, outbox, inbox), `Add_Warehouses_Lobby` (participants table plus
+`CancellationReason`) and `Add_Warehouse_Participant_Request` (`EntryRequestId` on participants, backfilled with
+`Guid.Empty`) under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
 `Initial_Pawnshop` (shops, outbox, inbox), `Add_Pawnshop_Bot` (bot snapshot columns), `Add_Pawnshop_Stock` (pending
 stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Precision` (`numeric(5,4)` for
 `PendingStockPayoutRate`). Casino follows the same layout with `Initial_Casino` (chip accounts, purchases, outbox,
@@ -291,7 +292,9 @@ Active event flows:
 - **Warehouse sagas** (three, all driven by the Warehouses module): stock quoting — `WarehouseStockRequestedEvent`
   → Inventory prices a manifest without saving any item (`WarehouseStockRequestedEventHandler`) → `WarehouseStockedEvent`;
   entry lock — `WarehouseEntryLockRequestedEvent` → Wallets `LockFunds` → `WarehouseEntryLockedEvent` /
-  `WarehouseEntryLockRejectedEvent` (dedicated events on purpose: a `FundsLockedEvent` reply would also hit the
+  `WarehouseEntryLockRejectedEvent`, both echoing the request's `EventId` as a defaulted `RequestId` that the
+  handlers match against the participant's `EntryRequestId`: a mismatched confirmation is refunded, a mismatched
+  rejection only writes its inbox row (dedicated events on purpose: a `FundsLockedEvent` reply would also hit the
   Auctions handler in process and dead-letter); settlement — `WarehouseWonEvent` → Wallets `Wallet.SpendLock` burns
   the final price (no seller to credit) and Inventory mints the manifest through `Item.CreateWithPrice`. All
   warehouse refunds reuse `FundsUnlockRequestedEvent`; its missing-lock tolerance makes redundant refunds safe.
