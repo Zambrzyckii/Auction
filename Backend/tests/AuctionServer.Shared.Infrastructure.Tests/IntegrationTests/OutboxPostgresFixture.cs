@@ -52,6 +52,7 @@ public sealed class OutboxPostgresFixture : IAsyncLifetime
     {
         await using var context = CreateContext();
         await context.Database.ExecuteSqlRawAsync("""DELETE FROM "TestOutboxMessages" """);
+        await context.Database.ExecuteSqlRawAsync("""DELETE FROM "TestProcessedMessages" """);
         await context.Database.ExecuteSqlRawAsync("""DELETE FROM "DeliveryMessages" """);
     }
 }
