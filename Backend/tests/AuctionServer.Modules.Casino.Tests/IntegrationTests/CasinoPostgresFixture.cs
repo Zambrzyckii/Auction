@@ -2,6 +2,7 @@ using AuctionServer.Modules.Casino.Domain.Entities;
 using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Infrastructure.Persistence;
 using AuctionServer.Modules.Casino.Tests.Domain.Cards;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -15,7 +16,7 @@ public sealed class CasinoIntegrationCollection : ICollectionFixture<CasinoPostg
 
 public sealed class CasinoPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("casino_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

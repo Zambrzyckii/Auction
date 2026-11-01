@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Identity.Domain.Entities;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -13,7 +14,7 @@ public sealed class IdentityIntegrationCollection : ICollectionFixture<IdentityP
 
 public sealed class IdentityPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("identity_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

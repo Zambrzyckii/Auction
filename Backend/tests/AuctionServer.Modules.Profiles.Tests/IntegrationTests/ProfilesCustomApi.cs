@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Profiles.Application.Interfaces;
 using AuctionServer.Modules.Profiles.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -23,7 +24,7 @@ public class ProfilesCustomApi : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string TestJwtKey = "profiles-integration-tests-signing-key-1234567890";
 
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("profiles_host_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

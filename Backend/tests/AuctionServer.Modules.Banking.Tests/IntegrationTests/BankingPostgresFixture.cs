@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Banking.Domain.Entities;
 using AuctionServer.Modules.Banking.Domain.Enums;
 using AuctionServer.Modules.Banking.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -14,7 +15,7 @@ public sealed class BankingIntegrationCollection : ICollectionFixture<BankingPos
 
 public sealed class BankingPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("banking_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

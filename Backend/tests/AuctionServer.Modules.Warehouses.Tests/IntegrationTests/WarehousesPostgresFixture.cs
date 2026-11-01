@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Warehouses.Domain.Entities;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -13,7 +14,7 @@ public sealed class WarehousesIntegrationCollection : ICollectionFixture<Warehou
 
 public sealed class WarehousesPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("warehouses_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

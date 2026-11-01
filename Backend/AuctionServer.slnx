@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/AuctionServer.TestSupport/AuctionServer.TestSupport.csproj" />
+  </Folder>
   <Project Path="src/AuctionServer.Api/AuctionServer.Api.csproj" />
   <Project Path="tests/AuctionServer.Api.Tests/AuctionServer.Api.Tests.csproj" />
   <Project Path="src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj" />

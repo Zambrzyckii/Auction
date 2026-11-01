@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Pawnshop.Domain.Entities;
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -14,7 +15,7 @@ public sealed class PawnshopIntegrationCollection : ICollectionFixture<PawnshopP
 
 public sealed class PawnshopPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("pawnshop_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

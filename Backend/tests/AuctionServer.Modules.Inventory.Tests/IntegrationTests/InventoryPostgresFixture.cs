@@ -1,6 +1,7 @@
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -14,7 +15,7 @@ public sealed class InventoryIntegrationCollection : ICollectionFixture<Inventor
 
 public sealed class InventoryPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("inventory_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

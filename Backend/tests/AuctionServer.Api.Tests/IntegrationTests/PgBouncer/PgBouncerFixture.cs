@@ -1,3 +1,4 @@
+using AuctionServer.TestSupport;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
@@ -22,7 +23,7 @@ public sealed class PgBouncerFixture : IAsyncLifetime
     public PgBouncerFixture()
     {
         _network = new NetworkBuilder().Build();
-        _postgres = new PostgreSqlBuilder("postgres:16-alpine")
+        _postgres = new PostgreSqlBuilder(TestDatabase.Image)
             .WithNetwork(_network)
             .WithNetworkAliases("postgres")
             .WithDatabase(DatabaseName)

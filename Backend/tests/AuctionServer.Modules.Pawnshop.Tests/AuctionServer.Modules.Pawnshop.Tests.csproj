@@ -22,6 +22,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\AuctionServer.Modules.Pawnshop\AuctionServer.Modules.Pawnshop.csproj" />
+      <ProjectReference Include="..\AuctionServer.TestSupport\AuctionServer.TestSupport.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Auctions.Domain.Entities;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -13,7 +14,7 @@ public sealed class AuctionsIntegrationCollection : ICollectionFixture<AuctionsP
 
 public sealed class AuctionsPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("auctions_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

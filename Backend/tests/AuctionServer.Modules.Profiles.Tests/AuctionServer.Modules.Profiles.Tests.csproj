@@ -24,6 +24,7 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\AuctionServer.Api\AuctionServer.Api.csproj" />
       <ProjectReference Include="..\..\src\AuctionServer.Modules.Profiles\AuctionServer.Modules.Profiles.csproj" />
+      <ProjectReference Include="..\AuctionServer.TestSupport\AuctionServer.TestSupport.csproj" />
     </ItemGroup>
 
 </Project>

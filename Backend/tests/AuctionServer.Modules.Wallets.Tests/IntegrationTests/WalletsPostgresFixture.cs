@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -13,7 +14,7 @@ public sealed class WalletsIntegrationCollection : ICollectionFixture<WalletsPos
 
 public sealed class WalletsPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("wallets_integration_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())

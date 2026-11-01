@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
+using AuctionServer.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,7 @@ public class CustomApi : WebApplicationFactory<Program>, IAsyncLifetime
     public const string TestJwtKey = "integration-tests-signing-key-1234567890";
     public const string TestApiKey = "integration-tests-bot-api-key";
 
-    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:latest")
+    private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder(TestDatabase.Image)
         .WithDatabase("identity_api_tests")
         .WithUsername("postgres")
         .WithPassword(Guid.NewGuid().ToString())
