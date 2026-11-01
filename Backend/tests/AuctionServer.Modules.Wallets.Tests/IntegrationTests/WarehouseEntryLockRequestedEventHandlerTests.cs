@@ -40,6 +40,7 @@ public class WarehouseEntryLockRequestedEventHandlerTests(WalletsPostgresFixture
         Assert.NotNull(locked);
         Assert.Equal(outboxMessage.Id, locked.EventId);
         Assert.Equal(userId, locked.UserId);
+        Assert.Equal(notification.EventId, locked.RequestId);
         Assert.True(await context.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
     }
 
@@ -63,6 +64,7 @@ public class WarehouseEntryLockRequestedEventHandlerTests(WalletsPostgresFixture
         Assert.NotNull(rejected);
         Assert.Equal(userId, rejected.UserId);
         Assert.Equal("Not enough funds on account", rejected.Reason);
+        Assert.Equal(notification.EventId, rejected.RequestId);
     }
 
     [Fact]

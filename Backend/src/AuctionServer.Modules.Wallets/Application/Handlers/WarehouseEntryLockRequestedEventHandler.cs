@@ -27,7 +27,7 @@ public sealed class WarehouseEntryLockRequestedEventHandler(IWalletRepository re
                 Id = replyId,
                 Type = nameof(WarehouseEntryLockedEvent),
                 Content = JsonSerializer.Serialize(new WarehouseEntryLockedEvent(
-                    replyId, notification.PublicWarehouseId, notification.UserId))
+                    replyId, notification.PublicWarehouseId, notification.UserId, notification.EventId))
             };
         }
         catch (Exception e) when (e is WalletExceptions.InsufficientFundsException
@@ -38,7 +38,7 @@ public sealed class WarehouseEntryLockRequestedEventHandler(IWalletRepository re
                 Id = replyId,
                 Type = nameof(WarehouseEntryLockRejectedEvent),
                 Content = JsonSerializer.Serialize(new WarehouseEntryLockRejectedEvent(
-                    replyId, notification.PublicWarehouseId, notification.UserId, e.Message))
+                    replyId, notification.PublicWarehouseId, notification.UserId, e.Message, notification.EventId))
             };
         }
 
