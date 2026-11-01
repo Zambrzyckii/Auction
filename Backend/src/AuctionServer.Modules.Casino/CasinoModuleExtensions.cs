@@ -4,6 +4,7 @@ using AuctionServer.Modules.Casino.Domain.Cards;
 using AuctionServer.Modules.Casino.Infrastructure.Background;
 using AuctionServer.Modules.Casino.Infrastructure.Persistence;
 using AuctionServer.Modules.Casino.Infrastructure.Random;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,7 +20,7 @@ public static class CasinoModuleExtensions
         ValidateOptions(options);
 
         services.AddDbContext<CasinoDbContext>(o => o.UseNpgsql(connectionString));
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<CasinoDbContext>("Casino");
         services.AddHostedService<CasinoKeeper>();
         services.AddSingleton(options);
         services.AddSingleton<ICasinoRandom, CasinoRandom>();

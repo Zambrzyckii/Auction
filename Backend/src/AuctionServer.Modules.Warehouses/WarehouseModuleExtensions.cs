@@ -2,6 +2,7 @@ using AuctionServer.Modules.Warehouses.Application.Interfaces;
 using AuctionServer.Modules.Warehouses.Application.Options;
 using AuctionServer.Modules.Warehouses.Infrastructure.Background;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +18,7 @@ public static class WarehouseModuleExtensions
         ValidateOptions(options);
 
         services.AddDbContext<WarehouseDbContext>(o => o.UseNpgsql(connectionString));
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<WarehouseDbContext>("Warehouses");
         services.AddHostedService<WarehouseKeeper>();
         services.AddSingleton(options);
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();

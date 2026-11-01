@@ -2,6 +2,7 @@ using AuctionServer.Modules.Pawnshop.Application.Interfaces;
 using AuctionServer.Modules.Pawnshop.Application.Options;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Background;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,7 +21,7 @@ public static class PawnshopModuleExtensions
         ValidateOptions(options);
 
         services.AddDbContext<PawnshopDbContext>(o => o.UseNpgsql(connectionString));
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<PawnshopDbContext>("Pawnshop");
         services.AddHostedService<PawnshopKeeper>();
         services.AddSingleton(options);
         services.AddScoped<IPawnshopRepository, PawnshopRepository>();

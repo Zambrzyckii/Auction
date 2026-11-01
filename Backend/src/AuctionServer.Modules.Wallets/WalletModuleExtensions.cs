@@ -1,7 +1,7 @@
 using AuctionServer.Modules.Wallets.Application.Options;
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
-using AuctionServer.Modules.Wallets.Infrastructure.Background;
 using AuctionServer.Modules.Wallets.Infrastructure.Persistence;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +16,7 @@ public static class WalletModuleExtensions
                 "Starting funds must be greater than zero");
 
         services.AddDbContext<WalletDbContext>(options => options.UseNpgsql(connectionString));
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<WalletDbContext>("Wallets");
         services.AddSingleton(new WalletsOptions(startingFunds));
         services.AddScoped<IWalletRepository, WalletRepository>();
         return services;

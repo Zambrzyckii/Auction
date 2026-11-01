@@ -2,6 +2,7 @@ using AuctionServer.Modules.Banking.Application.Interfaces;
 using AuctionServer.Modules.Banking.Application.Options;
 using AuctionServer.Modules.Banking.Infrastructure.Background;
 using AuctionServer.Modules.Banking.Infrastructure.Persistence;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,7 +21,7 @@ public static class BankingModuleExtensions
         ValidateOptions(options);
 
         services.AddDbContext<BankingDbContext>(o => o.UseNpgsql(connectionString));
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<BankingDbContext>("Banking");
         services.AddHostedService<BankKeeper>();
         services.AddSingleton(options);
         services.AddScoped<IBankingRepository, BankingRepository>();

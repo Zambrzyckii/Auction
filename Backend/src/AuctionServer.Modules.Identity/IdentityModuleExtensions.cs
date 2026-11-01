@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Identity.Application.Interfaces;
-using AuctionServer.Modules.Identity.Infrastructure.Background;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,7 +14,7 @@ public static class IdentityModuleExtensions
 
         services.AddScoped<IAuthRepository, AuthRepository>();
 
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<IdentityDbContext>("Identity");
         
         return services;
     }

@@ -36,7 +36,7 @@ public static class AuctionModuleExtensions
             services.AddSingleton<IAuctionReadCache, PassThroughAuctionReadCache>();
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
         services.AddScoped<IAuctionRepository, AuctionRepository>();
-        services.AddHostedService<OutboxProcessor>();
+        services.AddOutboxProcessor<AuctionDbContext>("Auctions");
         services.AddHostedService<AuctionCloser>();
         return services;
     }
