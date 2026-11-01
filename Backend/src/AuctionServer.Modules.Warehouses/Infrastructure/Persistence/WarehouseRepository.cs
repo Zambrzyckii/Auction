@@ -2,10 +2,9 @@ using AuctionServer.Modules.Warehouses.Application.Interfaces;
 using AuctionServer.Modules.Warehouses.Domain.Entities;
 using AuctionServer.Modules.Warehouses.Domain.Enums;
 using AuctionServer.Modules.Warehouses.Domain.Exceptions;
-using AuctionServer.Modules.Warehouses.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
 
@@ -18,30 +17,13 @@ public sealed class WarehouseRepository(WarehouseDbContext context) : IWarehouse
         return war;
     }
 
-    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
-    {
-        return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
-    }
+    public void AddStock(List<StockItem> stockItems) => context.StockItems.AddRange(stockItems);
 
-    public async Task SaveStockWithInboxAsync(List<StockItem> stockItems, ProcessedMessage inboxMessage, CancellationToken token)
-    {
-        await context.StockItems.AddRangeAsync(stockItems, token);
-        context.ProcessedMessages.Add(inboxMessage);
-        await SaveTranslatingUniqueViolationAsync(token);
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
-    public async Task SaveWarWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(inboxMessage);
-        await SaveTranslatingUniqueViolationAsync(token);
-    }
-
-    public async Task SaveWarWithInboxAndOutboxAsync(ProcessedMessage inboxMessage, OutboxMessage outboxMessage, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(inboxMessage);
-        context.OutboxMessages.Add(outboxMessage);
-        await SaveTranslatingUniqueViolationAsync(token);
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
     public async Task SaveWarWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token)
     {
@@ -85,17 +67,5 @@ public sealed class WarehouseRepository(WarehouseDbContext context) : IWarehouse
         return await context.StockItems.AsNoTracking()
             .Where(s => s.PublicWarehouseId == publicWarehouseId)
             .ToListAsync(token);
-    }
-
-    private async Task SaveTranslatingUniqueViolationAsync(CancellationToken token)
-    {
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new WarehouseExceptions.EventAlreadyProcessedException();
-        }
     }
 }

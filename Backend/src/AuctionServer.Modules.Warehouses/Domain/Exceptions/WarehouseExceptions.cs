@@ -15,7 +15,6 @@ public static class WarehouseExceptions
 
     public class InvalidEstimateException() : AppException("Estimates must be positive and min cannot exceed max", 400);
 
-    public class EventAlreadyProcessedException() : AppException("Event was already processed", 409);
 
     public class WarNotOpenException(WarehouseWarStatus status)
         : AppException($"Warehouse war is not open, current status: {status}", 409);

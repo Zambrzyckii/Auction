@@ -69,7 +69,7 @@ namespace AuctionServer.Modules.Inventory.Infrastructure.Persistence.Migrations
                     b.ToTable("InventoryItems", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Inventory.Infrastructure.Inbox.ProcessedMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()

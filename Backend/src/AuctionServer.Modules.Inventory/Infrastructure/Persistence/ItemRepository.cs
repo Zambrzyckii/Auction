@@ -2,7 +2,7 @@ using AuctionServer.Modules.Inventory.Application.Interfaces;
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
-using AuctionServer.Modules.Inventory.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -66,28 +66,11 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         } 
     }
 
-    public async Task AddItemsWithInboxAsync(List<Item> items, ProcessedMessage inboxMessage, CancellationToken token)
-    {
-        await context.Items.AddRangeAsync(items, token);
-        context.ProcessedMessages.Add(inboxMessage);
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new InventoryException.EventAlreadyProcessedException();
-        }
-    }
+    public void AddItems(List<Item> items) => context.Items.AddRange(items);
 
     public async Task SaveAsync(CancellationToken token)
     {
         await context.SaveChangesAsync(token);
-    }
-
-    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
-    {
-        return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
     }
 
     public async Task SaveChangesWithOutboxAsync(OutboxMessage message, CancellationToken token)
@@ -96,33 +79,11 @@ public sealed class ItemRepository(InventoryDbContext context) : IItemRepository
         await context.SaveChangesAsync(token);
     }
 
-    public async Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(message);
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new InventoryException.EventAlreadyProcessedException();
-        }
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
-    public async Task SaveChangesWithInboxAndOutboxAsync(ProcessedMessage inboxMessage, OutboxMessage outboxMessage,
-        CancellationToken token)
-    {
-        context.ProcessedMessages.Add(inboxMessage);
-        context.OutboxMessages.Add(outboxMessage);
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new InventoryException.EventAlreadyProcessedException();
-        }
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
     public async Task<Item> GetItemLockedForAuctionAsync(Guid publicAuctionId, CancellationToken token)
     {

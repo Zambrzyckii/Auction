@@ -121,7 +121,7 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
                     b.ToTable("WarehousesWars", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Warehouses.Infrastructure.Inbox.ProcessedMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()

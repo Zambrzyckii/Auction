@@ -1,5 +1,4 @@
 using AuctionServer.Modules.Warehouses.Domain.Entities;
-using AuctionServer.Modules.Warehouses.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Warehouses.Application.Interfaces;
@@ -7,10 +6,9 @@ namespace AuctionServer.Modules.Warehouses.Application.Interfaces;
 public interface IWarehouseRepository
 {
     Task<WarehouseWar> GetWarByPublicIdAsync(Guid publicWarehouseId, CancellationToken token);
-    Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
-    Task SaveStockWithInboxAsync(List<StockItem> stockItems, ProcessedMessage inboxMessage, CancellationToken token);
-    Task SaveWarWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token);
-    Task SaveWarWithInboxAndOutboxAsync(ProcessedMessage inboxMessage, OutboxMessage outboxMessage, CancellationToken token);
+    void AddStock(List<StockItem> stockItems);
+    Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token);
+    Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token);
     Task SaveWarWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
     Task SaveWarAsync(CancellationToken token);
     Task<List<WarehouseWar>> GetActiveWarsReadOnlyAsync(int limit, CancellationToken token);
