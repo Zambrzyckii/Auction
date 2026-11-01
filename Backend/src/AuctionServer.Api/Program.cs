@@ -42,6 +42,7 @@ using AuctionServer.Modules.Warehouses;
 using AuctionServer.Modules.Warehouses.Application.Options;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
 using AuctionServer.Modules.Warehouses.Presentation;
+using AuctionServer.Shared.Infrastructure.Delivery;
 using AuctionServer.Shared.Integration.Messaging;
 using AuctionServer.Shared.Integration.Validators;
 using FluentValidation;
@@ -170,6 +171,8 @@ builder.Services.AddBankingModule(connectionString, bankingOptions);
 builder.Services.AddPawnshopModule(connectionString, pawnshopOptions);
 builder.Services.AddCasinoModule(connectionString, casinoOptions);
 builder.Services.AddProfilesModule(connectionString, profilesOptions);
+builder.Services.AddDbContext<DeliveryDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddSingleton(IntegrationEventRecipients.Build());
 builder.Services.AddSingleton<MessagingMetrics>();
 builder.Services.AddScoped<InProcessEventPublisher>();
 builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
@@ -202,6 +205,7 @@ if (builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await scope.ServiceProvider.GetRequiredService<PawnshopDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<CasinoDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<ProfilesDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.GetRequiredService<DeliveryDbContext>().Database.MigrateAsync();
 }
 
 app.UseForwardedHeaders();
