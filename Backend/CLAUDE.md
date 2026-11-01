@@ -26,7 +26,7 @@ docker compose up -d                              # from the repo ROOT: nginx ga
 
 ### Tests
 
-Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox (the entity offline, the `OutboxCourier` claim and cleanup on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
+Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox and delivery (the entity offline; the couriers, the dispatcher and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
 
 - All nine mix offline unit tests (domain, validators) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
@@ -254,11 +254,16 @@ SKIP LOCKED ... RETURNING *` statement, safe behind PgBouncer), hands them — r
 7 days ago. The processors know nothing about the transport.
 The host registers `InProcessEventPublisher`, the only transport implementation
 (`AuctionServer.Api/Infrastructure/Messaging/`), behind the `InstrumentedEventPublisher` decorator that measures
-each publish; the transport resolves the CLR type through the `IntegrationEventTypes` registry and publishes via MediatR `IPublisher`;
-consumers are `INotificationHandler<>` implementations in other modules' Application layers.
+each hand-off; since the delivery split (ADR-011) the transport passes the message to `DeliveryDispatcher.AcceptAsync`
+(`Shared.Infrastructure/Delivery/`), which writes one `DeliveryMessages` row per recipient taken, order included, from
+the host's explicit `IntegrationEventRecipients` map, and the outbox row is marked processed at that hand-off. The
+single `DeliveryProcessor` (3 s cycle, leased claims like the outbox courier) resolves the CLR type through the
+`IntegrationEventTypes` registry and invokes that one recipient's `INotificationHandler<>` implementation in the
+module's Application layer; retries and dead letters live per recipient on the delivery row.
 
-**Adding an integration event means registering it in `IntegrationEventTypes`** — an unregistered type throws
-`NotSupportedException` at publish time, so the outbox row retries and dead-letters instead of being delivered.
+**Adding an integration event means registering it in `IntegrationEventTypes` and in the host's
+`IntegrationEventRecipients` map** — a type missing from either throws `NotSupportedException`, so the row retries
+and dead-letters instead of being delivered.
 The outbox row `Id` and the event's `EventId` are the same Guid by convention (`AuctionCloser.cs`,
 `PlaceBidCommandHandler.cs`, `CreateAuctionCommandHandler.cs`, `RegisterCommandHandler.cs`); the reply handlers reuse
 it for the reply they emit (`ItemLockRequestedEventHandler.cs`, `ItemLockedEventHandler.cs`, Wallets'
@@ -302,9 +307,10 @@ Active event flows:
 - `AuctionFinishedEvent` (emitted by the `AuctionCloser` background service, which closes expired auctions in the
   same transaction) has **two consumers**: Wallets consumes the winner's `FundsLock` for the auction (`ConsumeLock`) and credits the seller with that amount, and in the same `SaveChangesAsync`,
   writes `AuctionSettledEvent` to `WalletsOutboxMessages`; Inventory's `AuctionFinishedEventHandler` unlocks the
-  item (`Item.UnlockItem`) only when there is no winner. MediatR runs them in registration order (Wallets before
-  Inventory, `Program.cs:88,102`); an exception in Inventory retries the whole publish and Wallets' inbox makes its
-  part a no-op. `WarehouseWonEvent` leans on the same order: money is spent before items are minted.
+  item (`Item.UnlockItem`) only when there is no winner. The delivery map lists Wallets before Inventory, and each
+  consumer retries on its own delivery row, so an exception in Inventory no longer touches Wallets' delivery.
+  `WarehouseWonEvent` no longer leans on order at all: Wallets charges and replies with `WarehouseSettledEvent`,
+  and Inventory mints from that event, so money is spent before items are minted by construction.
 - `AuctionSettledEvent` → Inventory's `AuctionSettledEventHandler` finds the item by `LockedForAuctionId`
   (`GetItemLockedForAuctionAsync`, 404 when nothing is locked for that auction) and `Item.TransferTo(winner)`.
   The item moves only after the money did.
@@ -317,7 +323,8 @@ Active event flows:
   handlers match against the participant's `EntryRequestId`: a mismatched confirmation is refunded, a mismatched
   rejection only writes its inbox row (dedicated events on purpose: a `FundsLockedEvent` reply would also hit the
   Auctions handler in process and dead-letter); settlement — `WarehouseWonEvent` → Wallets `Wallet.SpendLock` burns
-  the final price (no seller to credit) and Inventory mints the manifest through `Item.CreateWithPrice`. All
+  the final price (no seller to credit) and replies `WarehouseSettledEvent`, from which Inventory mints the
+  manifest through `Item.CreateWithPrice`. All
   warehouse refunds reuse `FundsUnlockRequestedEvent`; its missing-lock tolerance makes redundant refunds safe.
   Timers (lobby countdown, raise windows, pool refill) live in `WarehouseKeeper` (1 s loop). Details with the full
   event table: `docs/en/backend/warehouses.md`.
@@ -372,7 +379,7 @@ the backstop for the race where two deliveries pass the check concurrently. All 
 Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `FundsLockedEventHandler`, `FundsLockRejectedEventHandler`; Inventory: `ItemLockRequestedEventHandler`,
 `AuctionFinishedEventHandler`, `AuctionSettledEventHandler`, `AuctionCancelledEventHandler`,
-`WarehouseStockRequestedEventHandler`, `WarehouseWonEventHandler`, `PawnshopStockRequestedEventHandler`,
+`WarehouseStockRequestedEventHandler`, `WarehouseSettledEventHandler`, `PawnshopStockRequestedEventHandler`,
 `PawnshopItemWithdrawnEventHandler`; Warehouses: `WarehouseStockedEventHandler`,
 `WarehouseEntryLockedEventHandler`, `WarehouseEntryLockRejectedEventHandler`; Banking: `LoanApprovedEventHandler`,
 `LoanRejectedEventHandler`, `LoanRepaymentCollectedEventHandler`; Pawnshop: `PawnshopPaymentCompletedEventHandler`,
@@ -381,10 +388,10 @@ Auctions: `ItemLockedEventHandler`, `ItemLockRejectedEventHandler`,
 `UserRegisteredEventHandler`, `PlayerLevelledUpEventHandler`); Wallets' `UserRegisteredEventHandler` relies on the wallet
 unique index instead. Handlers deliberately do **not** catch illegal state transitions —
 `InvalidAuctionStateTransitionException` (409), `ItemNotLockedException`, the 404 from `GetItemLockedForAuctionAsync`
-— so no inbox row is written, the outbox row retries and finally dead-letters with the reason in `Errors`. A visible
+— so no inbox row is written, the delivery row retries and finally dead-letters with the reason in `Errors`. A visible
 failure beats a silent skip.
 
-Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
+Outbox and delivery messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
 exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the claim query. The
 outbox entity and processor live once in `AuctionServer.Shared.Infrastructure`: each publishing module maps its
 own table (`OutboxMessageConfiguration` → `OutboxMessageModel.Configure(builder, tableName)`, plus the partial
@@ -516,7 +523,7 @@ Where the documentation, the README roadmap and the code disagree, the code wins
 **Implemented** (register → wallet via outbox → login/JWT → funds → create auction as `Pending` → item locked
 in Inventory → auction activated with item snapshot → pessimistic bid confirmed by a funds lock (anti-sniping) → background auto-close →
 exactly-once settlement via inbox → `AuctionSettledEvent` → item transferred to the winner, or unlocked when
-nobody bid): all nine modules are fully wired — authentication, eight outbox processors (Profiles runs none), `AuctionCloser`,
+nobody bid): all nine modules are fully wired — authentication, eight outbox processors (Profiles runs none), the delivery processor, `AuctionCloser`,
 `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper`, `CasinoKeeper`, validation pipeline and the global exception handler are all live in `Program.cs`. The whole chain — both sagas
 included — was verified manually end-to-end on 2026-10-14 against the compose stack: insufficient-funds rejection,
 409 on a second in-flight bid, confirm, release of the previous leader's lock, close, settlement by consuming the
@@ -622,8 +629,8 @@ Still aspirational — verify before building on them:
   they close; Wallets still settles them correctly. Clean the dev database rather than special-casing them.
 - **RabbitMQ, Angular frontend and AI bots do not exist** in this repository — no packages, no code.
   The transport seam is in place (`IIntegrationEventPublisher`), but `InProcessEventPublisher` is its only
-  implementation; a broker means adding an AMQP publisher + a host-side consumer that feeds `IPublisher`, not
-  touching the modules.
+  implementation; a broker means adding an AMQP publisher + a host-side consumer that feeds the same
+  `DeliveryDispatcher.AcceptAsync`, not touching the modules.
 
 Known debt worth keeping in mind: `AuctionActivatedEvent` is published but nobody consumes it;
 `SellItemToShopCommandHandler.cs` breaks the "outbox `Id` == `EventId`" convention with two separate Guids.

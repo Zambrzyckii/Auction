@@ -90,7 +90,7 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 
 ## API
 
-Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który nginx odpowiada bez api. Cała reszta na porcie 8080 to API backendu, a broker poniesie trzydzieści siedem zdarzeń integracyjnych wymienionych w [backend/messaging.md](backend/messaging.md#katalog-zdarzen).
+Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który nginx odpowiada bez api. Cała reszta na porcie 8080 to API backendu, a broker poniesie trzydzieści osiem zdarzeń integracyjnych wymienionych w [backend/messaging.md](backend/messaging.md#katalog-zdarzen).
 
 ## Decyzje
 

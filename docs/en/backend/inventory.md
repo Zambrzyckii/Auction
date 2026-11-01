@@ -11,7 +11,7 @@
 | Endpoints | [`Presentation/InventoryEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Presentation/InventoryEndpoints.cs), request records `CraftItemRequest`, `GrantItemRequest` |
 | Commands | `Application/Command/CraftItem/`, `Application/Command/GrantItem/`, `Application/Command/SellItemToShop/` (command, handler, validator each) |
 | Queries | `Application/Queries/GetUserItemsQuery/` (query, handler, `UserItemsDto`) |
-| Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
+| Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseSettledEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
 | Domain | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
 | Infrastructure | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Inbox/` |
 
@@ -98,7 +98,7 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 | consumed | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
 | consumed | `UserRegisteredEvent` | `UserRegisteredEventHandler`: one `Item.Create` per `Inventory:StarterItems` entry, saved atomically with the inbox row |
 | consumed | `WarehouseStockRequestedEvent` | `WarehouseStockRequestedEventHandler`: quotes one transient `Item.Create` per requested rarity (nothing is saved; the call only borrows the hidden price roll) and replies with `WarehouseStockedEvent` carrying the priced manifest |
-| consumed | `WarehouseWonEvent` | `WarehouseWonEventHandler`: one `Item.CreateWithPrice` per manifest entry for the winner, at the prices rolled during quoting, saved with `AddItemsWithInboxAsync` |
+| consumed | `WarehouseSettledEvent` | `WarehouseSettledEventHandler`: one `Item.CreateWithPrice` per manifest entry for the winner, at the prices rolled during quoting, saved with `AddItemsWithInboxAsync` |
 | consumed | `PawnshopStockRequestedEvent` | `PawnshopStockRequestedEventHandler` uses the same quoting trick as the warehouse handler. It rolls one transient `Item.Create` per requested rarity named `Pawned {rarity} Good` (nothing is saved) and replies with a `PawnshopStockedEvent` whose `RequestId` is the request's `EventId`, because one pawnshop asks many times |
 | consumed | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mints one `Available` item for the owner through `Item.CreateWithPrice` at the stock price, saved with `AddItemsWithInboxAsync` |
 | published | `ItemLockedEvent`, `ItemLockRejectedEvent` | replies written in the same `SaveChangesAsync` as the lock and the inbox row |
@@ -106,7 +106,7 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 | published | `PawnshopStockedEvent` | the pawnshop quote reply, written in the same `SaveChangesAsync` as the inbox row |
 | published | `ItemSoldToShopEvent` | `SellItemToShopCommandHandler`; the outbox row `Id` and the event `EventId` are two different Guids |
 
-Every consumer uses the inbox table `InventoryProcessedMessages`; in the auction consumers an unknown item or auction is a 404 that propagates to the producer's outbox and is retried.
+Every consumer uses the inbox table `InventoryProcessedMessages`; in the auction consumers an unknown item or auction is a 404 that propagates to the recipient's delivery row and is retried.
 
 ## Decisions
 

@@ -90,7 +90,7 @@ The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infras
 
 ## API
 
-The infrastructure layer has one endpoint of its own, `/gateway-health`, which nginx answers without the api. Everything else on port 8080 is the backend API, and the broker will carry the thirty-seven integration events listed in [backend/messaging.md](backend/messaging.md#event-catalog).
+The infrastructure layer has one endpoint of its own, `/gateway-health`, which nginx answers without the api. Everything else on port 8080 is the backend API, and the broker will carry the thirty-eight integration events listed in [backend/messaging.md](backend/messaging.md#event-catalog).
 
 ## Decisions
 

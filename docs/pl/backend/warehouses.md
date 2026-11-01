@@ -108,7 +108,7 @@ Wszystkie pięć tras wymaga JWT.
 | konsumowane | `WarehouseEntryLockedEvent` | `WarehouseEntryLockedEventHandler` potwierdza uczestnika tylko wtedy, gdy `RequestId` odpowiedzi zgadza się z zapisanym `EntryRequestId` (i działa logika odliczania); gdy wojna nie jest już `Open`, gracz zdążył wyjść albo id się nie zgadza, emituje zamiast tego `FundsUnlockRequestedEvent`, więc osierocona lub przeterminowana blokada zawsze wraca |
 | konsumowane | `WarehouseEntryLockRejectedEvent` | `WarehouseEntryLockRejectedEventHandler` zwalnia zarezerwowane miejsce tylko przy zgodnym `RequestId`; brak uczestnika lub przeterminowana odmowa są poprawnym wynikiem |
 | publikowane | `FundsUnlockRequestedEvent` | ścieżka zwrotów, reużyta z sagi aukcji (jej konsument w Wallets toleruje brak blokady): przy wyjściu, przy osieroconych blokadach, dla każdego aktywnego uczestnika anulowanej wojny i dla przegranych rozliczonej |
-| publikowane | `WarehouseWonEvent` | pisane przez keepera przy rozliczeniu wojny, niesie zwycięzcę, cenę końcową i pełny manifest; konsumowane przez Wallets (`SpendLock`: cena końcowa opuszcza obieg, reszta wpisowego wraca) i przez Inventory (mintuje manifest przez `Item.CreateWithPrice` w wycenionych cenach); MediatR odpala Wallets pierwsze, więc pieniądze zawsze ruszają się przed przedmiotami |
+| publikowane | `WarehouseWonEvent` | pisane przez keepera przy rozliczeniu wojny, niesie zwycięzcę, cenę końcową i pełny manifest; konsumowane przez Wallets (`SpendLock`: cena końcowa opuszcza obieg, reszta wpisowego wraca), które odpowiada `WarehouseSettledEvent` w transakcji obciążającej; Inventory mintuje manifest z tego zdarzenia przez `Item.CreateWithPrice` w wycenionych cenach, więc pieniądze zawsze ruszają się przed przedmiotami |
 
 ## Keeper
 

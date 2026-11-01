@@ -1,8 +1,8 @@
 stateDiagram-v2
     [*] --> Pending: row inserted together with the state change
     Pending --> Leased: claimed, LeasedUntil = now + 30 s
-    Leased --> Processed: PublishAsync succeeded, MarkAsProcessed
-    Leased --> Backoff: handler threw, FailedAttempt (wait 20 / 40 / 80 / 160 s)
+    Leased --> Processed: hand-off accepted (outbox) or handler completed (delivery), MarkAsProcessed
+    Leased --> Backoff: attempt failed, FailedAttempt (wait 20 / 40 / 80 / 160 s)
     Leased --> Pending: lease expired, instance died mid-publish
     Backoff --> Pending: NextAttemptOn reached
     Leased --> Dead: fifth failure, AttemptCount becomes 6, MarkMessageAsDead

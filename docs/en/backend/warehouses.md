@@ -108,7 +108,7 @@ All five routes require a JWT.
 | consumed | `WarehouseEntryLockedEvent` | `WarehouseEntryLockedEventHandler` confirms the participant only when the reply's `RequestId` matches the stored `EntryRequestId` (and the countdown logic runs); when the war is no longer `Open`, the player already left or the id does not match, it emits `FundsUnlockRequestedEvent` instead, so an orphaned or stale lock always flows back |
 | consumed | `WarehouseEntryLockRejectedEvent` | `WarehouseEntryLockRejectedEventHandler` frees the reserved seat only on a matching `RequestId`; a missing participant or a stale rejection is a valid outcome |
 | published | `FundsUnlockRequestedEvent` | the refund path, reused from the auctions saga (its Wallets consumer tolerates a missing lock): on leave, on orphaned locks, for every active participant of a cancelled war and for the losers of a settled one |
-| published | `WarehouseWonEvent` | written by the keeper when a war settles, carrying the winner, the final price and the full manifest; consumed by Wallets (`SpendLock`: the final price leaves the economy, the rest of the fee returns) and by Inventory (mints the manifest via `Item.CreateWithPrice` at quoted prices); MediatR runs Wallets first, so money always moves before items |
+| published | `WarehouseWonEvent` | written by the keeper when a war settles, carrying the winner, the final price and the full manifest; consumed by Wallets (`SpendLock`: the final price leaves the economy, the rest of the fee returns), which replies with `WarehouseSettledEvent` in the charging transaction; Inventory mints the manifest from that event via `Item.CreateWithPrice` at quoted prices, so money always moves before items |
 
 ## The keeper
 

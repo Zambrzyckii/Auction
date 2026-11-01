@@ -11,7 +11,7 @@
 | Endpointy | [`Presentation/InventoryEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Presentation/InventoryEndpoints.cs), rekordy żądań `CraftItemRequest`, `GrantItemRequest` |
 | Komendy | `Application/Command/CraftItem/`, `Application/Command/GrantItem/`, `Application/Command/SellItemToShop/` (komenda, handler, walidator w każdym) |
 | Zapytania | `Application/Queries/GetUserItemsQuery/` (zapytanie, handler, `UserItemsDto`) |
-| Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
+| Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseSettledEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
 | Domena | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
 | Infrastruktura | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Inbox/` |
 
@@ -98,7 +98,7 @@ Walidacja działa przed handlerami: `CraftItemCommandValidator` wymaga dokładni
 | konsumowane | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
 | konsumowane | `UserRegisteredEvent` | `UserRegisteredEventHandler`: jedno `Item.Create` na wpis `Inventory:StarterItems`, zapis atomowy z wierszem inboxa |
 | konsumowane | `WarehouseStockRequestedEvent` | `WarehouseStockRequestedEventHandler`: wycenia jedno przejściowe `Item.Create` na żądaną rzadkość (nic nie jest zapisywane; wywołanie tylko pożycza ukryty roll cen) i odpowiada `WarehouseStockedEvent` z wycenionym manifestem |
-| konsumowane | `WarehouseWonEvent` | `WarehouseWonEventHandler`: jedno `Item.CreateWithPrice` na wpis manifestu dla zwycięzcy, w cenach wylosowanych przy wycenie, zapis przez `AddItemsWithInboxAsync` |
+| konsumowane | `WarehouseSettledEvent` | `WarehouseSettledEventHandler`: jedno `Item.CreateWithPrice` na wpis manifestu dla zwycięzcy, w cenach wylosowanych przy wycenie, zapis przez `AddItemsWithInboxAsync` |
 | konsumowane | `PawnshopStockRequestedEvent` | `PawnshopStockRequestedEventHandler` używa tego samego triku wyceny co handler magazynowy. Losuje jedno przejściowe `Item.Create` na żądaną rzadkość o nazwie `Pawned {rarity} Good` (nic nie jest zapisywane) i odpowiada `PawnshopStockedEvent`, którego `RequestId` to `EventId` żądania, bo jeden lombard pyta wiele razy |
 | konsumowane | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mintuje jeden przedmiot `Available` dla właściciela przez `Item.CreateWithPrice` w cenie z magazynu lombardu, zapis przez `AddItemsWithInboxAsync` |
 | publikowane | `ItemLockedEvent`, `ItemLockRejectedEvent` | odpowiedzi zapisywane w tym samym `SaveChangesAsync` co blokada i wiersz inboxa |
@@ -106,7 +106,7 @@ Walidacja działa przed handlerami: `CraftItemCommandValidator` wymaga dokładni
 | publikowane | `PawnshopStockedEvent` | odpowiedź wyceny lombardu, zapisywana w tym samym `SaveChangesAsync` co wiersz inboxa |
 | publikowane | `ItemSoldToShopEvent` | `SellItemToShopCommandHandler`; `Id` wiersza outboxa i `EventId` zdarzenia to dwa różne Guidy |
 
-Każdy konsument używa tabeli inboxa `InventoryProcessedMessages`; w konsumentach aukcyjnych nieznany przedmiot lub aukcja to 404, który propaguje do outboxa producenta i jest ponawiany.
+Każdy konsument używa tabeli inboxa `InventoryProcessedMessages`; w konsumentach aukcyjnych nieznany przedmiot lub aukcja to 404, który propaguje do wiersza doręczenia adresata i jest ponawiany.
 
 ## Decyzje
 

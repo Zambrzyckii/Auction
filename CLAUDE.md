@@ -54,7 +54,7 @@ convention, not by the compiler — nothing stops you from breaking them, so the
 - **No cross-module database joins and no cross-module project references.** Modules communicate only through
   integration events. `AuctionServer.Shared.Integration` holds the contracts and is the only legal
   contact surface between modules; `AuctionServer.Shared.Infrastructure` is shared implementation
-  (the outbox), and modules never communicate through it.
+  (the outbox and the delivery pipeline), and modules never communicate through it.
 - Every module owns its own `DbContext` and its own migrations. They happen to share one physical database and
   one `__EFMigrationsHistory` table, so isolation is discipline, not a schema boundary.
 - `Domain` and `Application` layers must stay free of ASP.NET Core types.
