@@ -7,6 +7,7 @@ using AuctionServer.Modules.Auctions.Infrastructure.Background;
 using AuctionServer.Modules.Auctions.Infrastructure.Caching;
 using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,7 @@ public static class AuctionModuleExtensions
         services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(dbConnectionString));
         services.AddSingleton(readCacheOptions);
         services.AddSingleton<IAuctionReadCache, PassThroughAuctionReadCache>();
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));
         services.AddScoped<IAuctionRepository, AuctionRepository>();
         services.AddHostedService<OutboxProcessor>();
         services.AddHostedService<AuctionCloser>();
