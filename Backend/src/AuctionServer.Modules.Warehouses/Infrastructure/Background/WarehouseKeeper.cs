@@ -2,7 +2,7 @@ using System.Text.Json;
 using AuctionServer.Modules.Warehouses.Application.Options;
 using AuctionServer.Modules.Warehouses.Domain.Entities;
 using AuctionServer.Modules.Warehouses.Domain.Enums;
-using AuctionServer.Modules.Warehouses.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Warehouses.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Funds;
 using AuctionServer.Shared.Integration.Events.Warehouses;

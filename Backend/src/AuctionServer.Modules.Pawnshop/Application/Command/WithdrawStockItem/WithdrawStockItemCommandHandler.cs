@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AuctionServer.Modules.Pawnshop.Application.Interfaces;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
-using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Pawnshop;
 using MediatR;
 

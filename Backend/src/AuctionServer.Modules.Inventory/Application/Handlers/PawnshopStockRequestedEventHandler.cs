@@ -4,7 +4,7 @@ using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Domain.Enums;
 using AuctionServer.Modules.Inventory.Domain.Exceptions;
 using AuctionServer.Modules.Inventory.Infrastructure.Inbox;
-using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Pawnshop;
 using MediatR;
 

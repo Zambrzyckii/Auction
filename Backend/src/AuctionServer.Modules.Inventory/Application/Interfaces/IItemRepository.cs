@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Inventory.Domain.Entities;
 using AuctionServer.Modules.Inventory.Infrastructure.Inbox;
-using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Inventory.Application.Interfaces;
 

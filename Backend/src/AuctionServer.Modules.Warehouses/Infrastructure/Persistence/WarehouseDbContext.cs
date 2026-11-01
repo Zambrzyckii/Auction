@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Warehouses.Domain.Entities;
 using AuctionServer.Modules.Warehouses.Infrastructure.Inbox;
-using AuctionServer.Modules.Warehouses.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence;

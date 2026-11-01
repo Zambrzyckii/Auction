@@ -4,7 +4,7 @@ using AuctionServer.Modules.Pawnshop.Application.Options;
 using AuctionServer.Modules.Pawnshop.Domain.Entities;
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
-using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Pawnshop;
 using Microsoft.EntityFrameworkCore;

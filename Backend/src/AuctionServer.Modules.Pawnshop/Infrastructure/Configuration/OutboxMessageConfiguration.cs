@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

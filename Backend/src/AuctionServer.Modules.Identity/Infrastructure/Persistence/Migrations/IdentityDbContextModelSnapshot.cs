@@ -75,7 +75,7 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Identity.Infrastructure.Outbox.OutboxMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

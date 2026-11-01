@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Warehouses.Application.Interfaces;
-using AuctionServer.Modules.Warehouses.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Funds;
 using MediatR;
 

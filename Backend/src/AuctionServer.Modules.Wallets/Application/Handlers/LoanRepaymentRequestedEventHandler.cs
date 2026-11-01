@@ -2,7 +2,7 @@ using System.Text.Json;
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
-using AuctionServer.Modules.Wallets.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Banking;
 using MediatR;
 

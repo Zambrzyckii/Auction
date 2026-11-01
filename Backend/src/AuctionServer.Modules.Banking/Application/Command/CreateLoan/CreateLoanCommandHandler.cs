@@ -3,7 +3,7 @@ using AuctionServer.Modules.Banking.Application.Interfaces;
 using AuctionServer.Modules.Banking.Application.Options;
 using AuctionServer.Modules.Banking.Domain.Entities;
 using AuctionServer.Modules.Banking.Domain.Exceptions;
-using AuctionServer.Modules.Banking.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Banking;
 using MediatR;
 

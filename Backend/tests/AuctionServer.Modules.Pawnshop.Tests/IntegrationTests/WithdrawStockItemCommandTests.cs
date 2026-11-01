@@ -2,7 +2,7 @@ using System.Text.Json;
 using AuctionServer.Modules.Pawnshop.Application.Command.WithdrawStockItem;
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
-using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Pawnshop;
 using Microsoft.EntityFrameworkCore;

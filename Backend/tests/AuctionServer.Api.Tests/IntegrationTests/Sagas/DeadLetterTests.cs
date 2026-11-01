@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
-using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Items;
 using Microsoft.EntityFrameworkCore;

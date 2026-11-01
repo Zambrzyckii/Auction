@@ -127,7 +127,7 @@ namespace AuctionServer.Modules.Banking.Infrastructure.Persistence.Migrations
                     b.ToTable("BankingProcessedMessages", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Banking.Infrastructure.Outbox.OutboxMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

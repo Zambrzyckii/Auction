@@ -83,7 +83,7 @@ namespace AuctionServer.Modules.Inventory.Infrastructure.Persistence.Migrations
                     b.ToTable("InventoryProcessedMessages", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Inventory.Infrastructure.Outbox.OutboxMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

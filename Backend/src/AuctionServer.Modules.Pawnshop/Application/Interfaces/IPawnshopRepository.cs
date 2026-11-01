@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Pawnshop.Domain.Entities;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Inbox;
-using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Pawnshop.Application.Interfaces;
 

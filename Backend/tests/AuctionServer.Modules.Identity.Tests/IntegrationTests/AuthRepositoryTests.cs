@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Identity.Domain.Entities;
 using AuctionServer.Modules.Identity.Domain.Exceptions;
-using AuctionServer.Modules.Identity.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 

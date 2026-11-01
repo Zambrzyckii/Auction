@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AuctionServer.Modules.Casino.Application.Interfaces;
 using AuctionServer.Modules.Casino.Domain.Entities;
-using AuctionServer.Modules.Casino.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Casino;
 using MediatR;
 

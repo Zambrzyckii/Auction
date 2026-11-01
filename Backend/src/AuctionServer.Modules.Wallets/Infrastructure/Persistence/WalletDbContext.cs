@@ -1,7 +1,7 @@
 using System.Text.Json;
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
-using AuctionServer.Modules.Wallets.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Players;
 using Microsoft.EntityFrameworkCore;
 

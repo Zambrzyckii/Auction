@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Casino.Domain.Entities;
 using AuctionServer.Modules.Casino.Infrastructure.Inbox;
-using AuctionServer.Modules.Casino.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Casino.Infrastructure.Persistence;

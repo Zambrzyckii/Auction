@@ -2,7 +2,7 @@ using System.Text.Json;
 using AuctionServer.Modules.Identity.Application.Interfaces;
 using AuctionServer.Modules.Identity.Domain.Entities;
 using AuctionServer.Modules.Identity.Domain.Exceptions;
-using AuctionServer.Modules.Identity.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Users;
 using MediatR;
 

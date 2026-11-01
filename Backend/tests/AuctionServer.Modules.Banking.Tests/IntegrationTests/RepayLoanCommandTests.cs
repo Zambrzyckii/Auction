@@ -3,7 +3,7 @@ using AuctionServer.Modules.Banking.Application.Command.RepayLoan;
 using AuctionServer.Modules.Banking.Domain.Entities;
 using AuctionServer.Modules.Banking.Domain.Enums;
 using AuctionServer.Modules.Banking.Domain.Exceptions;
-using AuctionServer.Modules.Banking.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Banking.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Banking;
 using Microsoft.EntityFrameworkCore;

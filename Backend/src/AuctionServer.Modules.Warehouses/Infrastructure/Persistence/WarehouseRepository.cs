@@ -3,7 +3,7 @@ using AuctionServer.Modules.Warehouses.Domain.Entities;
 using AuctionServer.Modules.Warehouses.Domain.Enums;
 using AuctionServer.Modules.Warehouses.Domain.Exceptions;
 using AuctionServer.Modules.Warehouses.Infrastructure.Inbox;
-using AuctionServer.Modules.Warehouses.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 

@@ -1,6 +1,6 @@
 using AuctionServer.Modules.Banking.Domain.Entities;
 using AuctionServer.Modules.Banking.Infrastructure.Inbox;
-using AuctionServer.Modules.Banking.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Banking.Application.Interfaces;
 

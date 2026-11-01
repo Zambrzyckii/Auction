@@ -4,7 +4,7 @@ using AuctionServer.Modules.Warehouses.Application.Options;
 using AuctionServer.Modules.Warehouses.Domain.Enums;
 using AuctionServer.Modules.Warehouses.Domain.Exceptions;
 using AuctionServer.Modules.Warehouses.Infrastructure.Inbox;
-using AuctionServer.Modules.Warehouses.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Funds;
 using AuctionServer.Shared.Integration.Events.Warehouses;
 using MediatR;

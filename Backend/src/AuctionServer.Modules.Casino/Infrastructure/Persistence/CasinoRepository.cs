@@ -3,7 +3,7 @@ using AuctionServer.Modules.Casino.Domain.Entities;
 using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Domain.Exceptions;
 using AuctionServer.Modules.Casino.Infrastructure.Inbox;
-using AuctionServer.Modules.Casino.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 

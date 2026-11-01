@@ -3,7 +3,7 @@ using AuctionServer.Modules.Pawnshop.Domain.Entities;
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
 using AuctionServer.Modules.Pawnshop.Infrastructure.Inbox;
-using AuctionServer.Modules.Pawnshop.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 

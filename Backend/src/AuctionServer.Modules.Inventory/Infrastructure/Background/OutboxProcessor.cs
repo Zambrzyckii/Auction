@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Inventory.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Messaging;
 using AuctionServer.Shared.Integration.Observability;
