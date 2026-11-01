@@ -76,7 +76,7 @@ public class WarehouseWarTests
         var userId = Guid.NewGuid();
         var versionBeforeJoin = war.Version;
 
-        war.Join(userId, maxPlayers: 5);
+        war.Join(userId, maxPlayers: 5, Guid.NewGuid());
 
         var participant = Assert.Single(war.Participants);
         Assert.Equal(userId, participant.UserId);
@@ -89,7 +89,19 @@ public class WarehouseWarTests
     {
         var war = WarehouseWar.Create("Small", 500m);
 
-        Assert.Throws<WarehouseExceptions.WarNotOpenException>(() => war.Join(Guid.NewGuid(), maxPlayers: 5));
+        Assert.Throws<WarehouseExceptions.WarNotOpenException>(() => war.Join(Guid.NewGuid(), maxPlayers: 5, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void Join_ShouldStoreEntryRequestId()
+    {
+        var war = CreateOpenWar();
+        var requestId = Guid.NewGuid();
+
+        war.Join(Guid.NewGuid(), maxPlayers: 5, requestId);
+
+        var participant = Assert.Single(war.Participants);
+        Assert.Equal(requestId, participant.EntryRequestId);
     }
 
     [Fact]
@@ -97,19 +109,19 @@ public class WarehouseWarTests
     {
         var war = CreateOpenWar();
         var userId = Guid.NewGuid();
-        war.Join(userId, maxPlayers: 5);
+        war.Join(userId, maxPlayers: 5, Guid.NewGuid());
 
-        Assert.Throws<WarehouseExceptions.AlreadyParticipantException>(() => war.Join(userId, maxPlayers: 5));
+        Assert.Throws<WarehouseExceptions.AlreadyParticipantException>(() => war.Join(userId, maxPlayers: 5, Guid.NewGuid()));
     }
 
     [Fact]
     public void Join_WhenLobbyIsFull_ShouldThrowException()
     {
         var war = CreateOpenWar();
-        war.Join(Guid.NewGuid(), maxPlayers: 2);
-        war.Join(Guid.NewGuid(), maxPlayers: 2);
+        war.Join(Guid.NewGuid(), maxPlayers: 2, Guid.NewGuid());
+        war.Join(Guid.NewGuid(), maxPlayers: 2, Guid.NewGuid());
 
-        Assert.Throws<WarehouseExceptions.WarehouseFullException>(() => war.Join(Guid.NewGuid(), maxPlayers: 2));
+        Assert.Throws<WarehouseExceptions.WarehouseFullException>(() => war.Join(Guid.NewGuid(), maxPlayers: 2, Guid.NewGuid()));
     }
 
     [Fact]
@@ -117,7 +129,7 @@ public class WarehouseWarTests
     {
         var war = CreateOpenWar();
         var userId = Guid.NewGuid();
-        war.Join(userId, maxPlayers: 5);
+        war.Join(userId, maxPlayers: 5, Guid.NewGuid());
 
         war.Leave(userId);
 
@@ -137,7 +149,7 @@ public class WarehouseWarTests
     private static Guid JoinAndConfirm(WarehouseWar war, int minPlayers, int maxPlayers)
     {
         var userId = Guid.NewGuid();
-        war.Join(userId, maxPlayers);
+        war.Join(userId, maxPlayers, Guid.NewGuid());
         war.ConfirmParticipant(userId, minPlayers, maxPlayers, Countdown);
         return userId;
     }
@@ -214,11 +226,11 @@ public class WarehouseWarTests
     {
         var war = CreateOpenWar();
         var userId = Guid.NewGuid();
-        war.Join(userId, maxPlayers: 1);
+        war.Join(userId, maxPlayers: 1, Guid.NewGuid());
 
         war.RemoveParticipant(userId);
 
-        war.Join(Guid.NewGuid(), maxPlayers: 1);
+        war.Join(Guid.NewGuid(), maxPlayers: 1, Guid.NewGuid());
         Assert.Single(war.Participants);
     }
 
@@ -314,7 +326,7 @@ public class WarehouseWarTests
         players = [Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()];
         foreach (var player in players)
         {
-            war.Join(player, maxPlayers: 5);
+            war.Join(player, maxPlayers: 5, Guid.NewGuid());
             war.ConfirmParticipant(player, minPlayers: 3, maxPlayers: 5, Countdown);
         }
         war.StartBidding(minPlayers: 3, firstWindow ?? RaiseWindow);
@@ -354,7 +366,7 @@ public class WarehouseWarTests
     {
         var war = CreateOpenWar();
         var userId = Guid.NewGuid();
-        war.Join(userId, maxPlayers: 5);
+        war.Join(userId, maxPlayers: 5, Guid.NewGuid());
 
         Assert.Throws<WarehouseExceptions.WarNotBiddingException>(
             () => war.Raise(userId, 50m, Increments, RaiseWindow));
@@ -393,7 +405,7 @@ public class WarehouseWarTests
     {
         var war = CreateOpenWar();
         var pending = Guid.NewGuid();
-        war.Join(pending, maxPlayers: 5);
+        war.Join(pending, maxPlayers: 5, Guid.NewGuid());
         for (var i = 0; i < 3; i++) JoinAndConfirm(war, minPlayers: 3, maxPlayers: 5);
         war.StartBidding(minPlayers: 3, RaiseWindow);
 

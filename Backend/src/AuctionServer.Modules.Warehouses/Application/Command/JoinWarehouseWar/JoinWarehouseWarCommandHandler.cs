@@ -13,9 +13,9 @@ public class JoinWarehouseWarCommandHandler(IWarehouseRepository repository, War
     public async Task Handle(JoinWarehouseWarCommand request, CancellationToken token)
     {
         var war = await repository.GetWarByPublicIdAsync(request.PublicWarehouseId, token);
-        war.Join(request.UserId, options.MaxPlayers);
-
         var eventId = Guid.NewGuid();
+        war.Join(request.UserId, options.MaxPlayers, eventId);
+
         var outboxMessage = new OutboxMessage
         {
             Id = eventId,

@@ -44,7 +44,7 @@ public sealed class WarehouseWar
         Version = Guid.NewGuid();
     }
 
-    public void Join(Guid userId, int maxPlayers)
+    public void Join(Guid userId, int maxPlayers, Guid requestId)
     {
         if (Status != WarehouseWarStatus.Open) throw new WarehouseExceptions.WarNotOpenException(Status);
         if (BiddingStartsOn is not null && BiddingStartsOn <= DateTime.UtcNow)
@@ -52,7 +52,7 @@ public sealed class WarehouseWar
         if (_participants.Any(p => p.UserId == userId)) throw new WarehouseExceptions.AlreadyParticipantException();
         if (_participants.Count >= maxPlayers) throw new WarehouseExceptions.WarehouseFullException();
 
-        _participants.Add(new WarehouseParticipant { UserId = userId });
+        _participants.Add(new WarehouseParticipant { UserId = userId, EntryRequestId = requestId });
         Version = Guid.NewGuid();
     }
 

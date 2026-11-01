@@ -6,6 +6,7 @@ public sealed class WarehouseParticipant
 {
     public int Id { get; init; }
     public Guid UserId { get; init; }
+    public Guid EntryRequestId { get; init; }
     public ParticipantState State { get; private set; } = ParticipantState.PendingLock;
 
     internal void Activate() => State = ParticipantState.Active;
