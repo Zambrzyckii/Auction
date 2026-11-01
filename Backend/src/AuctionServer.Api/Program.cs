@@ -173,6 +173,8 @@ builder.Services.AddCasinoModule(connectionString, casinoOptions);
 builder.Services.AddProfilesModule(connectionString, profilesOptions);
 builder.Services.AddDbContext<DeliveryDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddSingleton(IntegrationEventRecipients.Build());
+builder.Services.AddScoped<IIntegrationEventDispatcher, DeliveryDispatcher>();
+builder.Services.AddDeliveryProcessor();
 builder.Services.AddSingleton<MessagingMetrics>();
 builder.Services.AddScoped<InProcessEventPublisher>();
 builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
