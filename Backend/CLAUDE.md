@@ -21,7 +21,7 @@ Projects live under `src/` (application code) and `tests/` (test projects).
 dotnet build AuctionServer.slnx
 dotnet run --project src/AuctionServer.Api        # http://localhost:5244 (https profile: 7009)
 dotnet test AuctionServer.slnx                    # NOTE: starts Docker containers, see below
-docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436), migrates at startup
+docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436) + redis for the read cache, migrates at startup
 ```
 
 ### Tests
@@ -167,6 +167,12 @@ from them only. The root `compose.yaml` enables it for the `edge` network `172.1
 (`compose.debug.yaml` publishes it on `127.0.0.1:8081`). Health is split by tags in `MapHealthEndpoints`
 (`Program.cs:194`), where `/health/live` runs no checks, `/health/ready` runs the checks tagged `ready` (the database
 check registered at `Program.cs:163`) and `/health` runs all of them.
+The optional `Cache` section is off when absent. `CacheOptions.Load` fails fast when `Enabled` is true and a present
+`Cache:Redis` section carries an empty `ConnectionString`; enabled, the host calls `AddHybridCache()` (L1) and, with
+Redis configured, `AddStackExchangeRedisCache` (`AbortOnConnectFail=false`, 500/300 ms timeouts, instance name
+`auctionserver:`). `Auctions:ReadCache` (three TTLs, default 2 s each) binds without fail-fast — the on/off switch
+lives in `Cache` — but `AddAuctionModule` rejects TTLs outside 1-60 s. The root `compose.yaml` sets both keys and
+runs `redis:7.2-alpine` without an api dependency, because a missing Redis only degrades read latency (fail-open).
 
 `.env` / `.env.example` (`DB_USER`, `DB_PASSWORD`) have no consumer in the repository — Compose reads a `.env`
 only from the project root (the repo root, not `Backend/`), the root `compose.yaml` deliberately uses none
@@ -206,9 +212,9 @@ AuctionServer.Shared.Integration   the only shared project: integration events +
 Each module exposes two static extension classes; the host calls both and nothing else:
 
 - `<Module>ModuleExtensions.Add<Module>Module(services, connectionString)` — registers the `DbContext` and
-  repositories (`AuctionModuleExtensions.cs:12`, `WalletModuleExtensions.cs:10`). Wallets additionally takes the
-  starting funds, Inventory the starter-item list and Warehouses its whole options section; each lands in a
-  singleton options record (`WalletsOptions`, `InventoryOptions`, `WarehousesOptions`).
+  repositories (`AuctionModuleExtensions.cs:12`, `WalletModuleExtensions.cs:10`). Auctions additionally takes the
+  read-cache options and the cache switch, Wallets the starting funds, Inventory the starter-item list and Warehouses
+  its whole options section; each lands in a singleton options record.
 - `<Module>Endpoints.Map<Module>Endpoints(app)` — minimal-API `MapGroup("/api/<module>")` with handlers that only
   build a MediatR message and `sender.Send(...)`, no logic in the endpoint
   (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`).
@@ -369,15 +375,26 @@ readability — moving an event never touches stored rows.
 
 Queries bypass EF Core: `ISqlConnectionFactory` (a singleton wrapping the connection string,
 `Infrastructure/Persistence/SqlConnectionFactory.cs:7`) hands out an `NpgsqlConnection`, and the handlers run raw
-SQL through Dapper into flat DTOs. Two queries: `GetActiveAuctions` (`WHERE "Status" = @Active ORDER BY "EndsOn"
-LIMIT @Limit`, `GetActiveAuctionsQueryHandler.cs:11`) and `GetAuctionById` (`QuerySingleOrDefaultAsync`, `null` →
+SQL through Dapper into flat DTOs. Three queries: `GetActiveAuctions` (`WHERE "Status" = @Active ORDER BY "EndsOn"
+LIMIT @Limit`, `GetActiveAuctionsQueryHandler.cs:11`), `GetAuctionById` (`QuerySingleOrDefaultAsync`, `null` →
 `AuctionNotFoundException` 404, any status — the seller sees `Pending` / `Cancelled` + `CancellationReason`,
-`GetAuctionByIdQueryHandler.cs:11`). Each query owns its DTO in its own folder (`ActiveAuctionQueryDto`,
+`GetAuctionByIdQueryHandler.cs:11`) and `GetAuctionBids` (the confirmed bid history of one auction, newest first). Each query owns its DTO in its own folder (`ActiveAuctionQueryDto`,
 `AuctionByIdQueryDto`) — identical ten fields today, kept separate on purpose so they can diverge. Dapper matches the
 record constructor **by column name**, so a DTO parameter must be spelled exactly like the column; `Status` is an
 `integer` column that Dapper maps to `AuctionStatus` and the host serializes as a string (`Program.cs:166-167`).
 Writes go through `IAuctionRepository` + EF Core. Wallets does not do this — it reads through EF with `AsNoTracking()`
 (`Infrastructure/Persistence/WalletRepository.cs:24`).
+
+Since phase four (2026-11-01) the three queries run behind the module's TTL read cache. Each query record implements
+`ICachedQuery` (`Application/Caching/`) with its key (`auctions:list:v1:{limit}`, `auctions:detail:v1:{id}`,
+`auctions:bids:v1:{id}`) and TTL pick, the open-generic `CachingBehavior` intercepts them in the MediatR pipeline, and
+`HybridAuctionReadCache` (`Infrastructure/Caching/`) wraps `HybridCache` fail-open: a cache failure logs, counts on the
+`AuctionServer.Auctions.Cache` meter and falls back to the database, while a factory exception propagates uncached, so
+a 404 is never stored. `AddAuctionModule(connectionString, readCacheOptions, readCacheEnabled)` picks the seam
+implementation: `PassThroughAuctionReadCache` when the host's `Cache:Enabled` is false (the default, so `dotnet run`
+and the test fixtures see no cache), the hybrid wrapper when true. TTLs come from `Auctions:ReadCache` (default 2 s
+each, validated 1-60 s). No command path touches `IAuctionReadCache`, and writes never invalidate entries; freshness
+is the TTL alone, priced into the k6 `visibility_lag` threshold (8 s since 2026-11-01).
 
 Caveat when touching that SQL: EF creates PascalCase, quoted identifiers (`"Auctions"`, `"Status"`), and the
 query quotes them accordingly. Keep every identifier double-quoted in raw SQL — an unquoted name is folded to

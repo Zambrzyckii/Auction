@@ -14,11 +14,26 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
   docker compose run --rm k6 run browse.js --summary-export=results/browse.json
   ```
 
-- `browse.js` wysyła anonimowe odczyty (70% lista, 20% szczegół, 10% historia bidów) ze stałym tempem napływu, domyślnie 50/s przez 60 s. To trzy zapytania, które w fazie czwartej obsłuży cache.
+- `browse.js` wysyła anonimowe odczyty (70% lista, 20% szczegół, 10% historia bidów) ze stałym tempem napływu, domyślnie 50/s przez 60 s. To trzy zapytania, które od fazy czwartej obsługuje cache.
 - `bid-storm.js` każe 10 samofinansującym się botom tłuc w jedną aukcję. Projektową odpowiedzią na sztorm jest 409 (jeden oczekujący bid na aukcję), więc 409 są klasyfikowane jako oczekiwane; 400 (ponowny bid potwierdzonego lidera, kwota wyprzedzona w locie) zostają w odsetku błędów pod poluzowanym progiem.
 - `mixed.js` to 85% odczytów i 15% bidów, a jego trend `visibility_lag` mierzy czas od przyjętego `POST /bid` do pojawienia się bida w `GET /bids`, pipeline outboxa tak, jak doświadcza go gracz.
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
-- Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 6 s. Pęknięty próg failuje przebieg kodem wyjścia 99.
+- Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s, odkąd faza czwarta wliczyła 2 s TTL bidów (< 6 s przed 2026-11-01). Pęknięty próg failuje przebieg kodem wyjścia 99.
+
+## Cache Redis — 2026-11-01, commit `e688772`
+
+Faza czwarta stawia cache odczytów z TTL (HybridCache, procesowe L1 plus Redis L2, 2 s na rodzaj zapytania) za szwem `IAuctionReadCache` modułu Auctions, wypełniany przy odczycie przez behavior MediatR dla trzech anonimowych zapytań. Oba wiersze pary używają tego samego obrazu api na zamrożonych limitach; "off" biegnie z `Cache:Enabled=false`, "on" z domyślnymi wartościami Compose (L1 plus L2, `redis:7.2-alpine` ograniczony do 64 MB). "pg CPU" to średnia z próbek `docker stats` kontenera postgresa zbieranych co sekundę podczas przebiegu.
+
+| Scenariusz | Obciążenie | req/s | p50 | p95 | p99 | max | Błędy | pg CPU |
+|---|---|---|---|---|---|---|---|---|
+| browse, cache off | 50 iter/s, 60 s | 46,2 | 0,37 ms | 0,95 ms | 1,33 ms | 139 ms | 0% | 2,6% |
+| browse, cache on | 50 iter/s, 60 s | 43,6 | 0,37 ms | 0,94 ms | 1,24 ms | 142 ms | 0% | 2,4% |
+| mixed, cache off | 30 iter/s, 60 s | 25,2 | 0,36 ms | 1,64 ms | 45,5 ms | 553 ms | 0% | 2,2% |
+| mixed, cache on | 30 iter/s, 60 s | 25,2 | 0,39 ms | 1,55 ms | 8,17 ms | 150 ms | 0% | 2,4% |
+
+- Opóźnienia nie drgnęły i to jest uczciwy nagłówek: przy tych obciążeniach postgres siedzi poniżej 3% CPU, więc nie było bólu bazy, który cache mógłby uśmierzyć, a submilisekundowe mediany pozostają submilisekundowe. Zmieniła się praca za nimi: meter `AuctionServer.Auctions.Cache` naliczył 9662 trafienia wobec 774 chybień w przebiegach z włączonym cache (hit ratio 92,6%), czyli mniej więcej trzynaście z czternastu odczytów nigdy nie dotarło do postgresa. Zyskiem przy jednej instancji jest zapas pojemności, nie szybkość.
+- L2 przy jednej instancji jest niemal bezczynne: sam Redis odpowiedział 12 trafieniami keyspace wobec 762 chybień, bo L1 i L2 wygasają razem (`Expiration == LocalCacheExpiration`), więc czego właśnie nie miało L1, tego nie miało już i L2. Redis zacznie zarabiać na siebie przy drugiej instancji api albo przy restarcie api; dziś to okablowanie sprawdzone na zapas, dokładnie jak zakładał plan fazy.
+- `visibility_lag` (mixed) p95 przesunął się z 6,02 s (to samo pęknięcie starego progu 6 s, które odnotował wpis PgBouncera) na 7,29 s, mediana z 3,76 s na 6,01 s: przyjęty bid odczekuje teraz dodatkowo 2 s TTL bidów, zanim pokaże go `GET /bids`, ponad dwa polle outboxa. Wzrost mieści się w TTL, zgodnie z projektem i opisem w [backend/auctions.md](backend/auctions.md). Właściciel podniósł próg do 8 s (6 s pipeline'u outboxa plus 2 s TTL) zamiast skracać TTL albo wyłączać bidy z cache; wcześniejszy dryf samego lagu outboxa pozostaje sprawą otwartą na fazę brokera.
 
 ## PgBouncer — 2026-10-24, commit `f0f5aaa`
 

@@ -14,11 +14,26 @@ Every change that claims a performance or reliability effect is measured with k6
   docker compose run --rm k6 run browse.js --summary-export=results/browse.json
   ```
 
-- `browse.js` sends anonymous reads (70% list, 20% detail, 10% bid history) at a constant arrival rate, 50/s for 60 s by default. These are the three queries the phase-four cache will serve.
+- `browse.js` sends anonymous reads (70% list, 20% detail, 10% bid history) at a constant arrival rate, 50/s for 60 s by default. These are the three queries the phase-four cache serves.
 - `bid-storm.js` lets 10 self-funded bots hammer one auction. The design answer to a storm is a 409 (one pending bid per auction), so 409s are classified as expected; the 400s (a confirmed leader re-bidding, an amount overtaken in flight) stay in the failure rate under a loosened threshold.
 - `mixed.js` is 85% reads and 15% bids, and its `visibility_lag` trend measures the time from an accepted `POST /bid` to the bid appearing in `GET /bids`, the outbox pipeline as a player experiences it.
 - `gateway-limits.js` runs four 20-second windows against the gateway (anonymous below and above its limit, with a token above its limit, login above its limit), and its thresholds assert that each window gets the 200s and 429s it should.
-- Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 6 s. A threshold breach fails the run with exit code 99.
+- Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s since phase four priced in the 2 s bids TTL (< 6 s before 2026-11-01). A threshold breach fails the run with exit code 99.
+
+## Redis cache — 2026-11-01, commit `e688772`
+
+Phase four puts a TTL read cache (HybridCache, in-process L1 plus Redis L2, 2 s per query kind) behind the Auctions module's `IAuctionReadCache` seam, filled on read by a MediatR behavior for the three anonymous queries. Both rows of a pair use the same api image at the frozen limits; "off" runs with `Cache:Enabled=false`, "on" with the Compose defaults (L1 plus L2, `redis:7.2-alpine` capped at 64 MB). "pg CPU" is the average of per-second `docker stats` samples on the postgres container during the run.
+
+| Scenario | Load | req/s | p50 | p95 | p99 | max | Failures | pg CPU |
+|---|---|---|---|---|---|---|---|---|
+| browse, cache off | 50 iters/s, 60 s | 46.2 | 0.37 ms | 0.95 ms | 1.33 ms | 139 ms | 0% | 2.6% |
+| browse, cache on | 50 iters/s, 60 s | 43.6 | 0.37 ms | 0.94 ms | 1.24 ms | 142 ms | 0% | 2.4% |
+| mixed, cache off | 30 iters/s, 60 s | 25.2 | 0.36 ms | 1.64 ms | 45.5 ms | 553 ms | 0% | 2.2% |
+| mixed, cache on | 30 iters/s, 60 s | 25.2 | 0.39 ms | 1.55 ms | 8.17 ms | 150 ms | 0% | 2.4% |
+
+- Latency did not move, and that is the honest headline: at these loads postgres sits under 3% CPU, so there was no database pain for the cache to relieve and the sub-millisecond medians stay sub-millisecond. What changed is the work behind them: the `AuctionServer.Auctions.Cache` meter counted 9662 hits against 774 misses across the cache-on runs (92.6% hit ratio), so roughly thirteen out of fourteen reads never reached postgres. The benefit at one instance is capacity headroom, not speed.
+- L2 is almost idle at one instance: Redis itself answered 12 keyspace hits against 762 misses, because L1 and L2 expire together (`Expiration == LocalCacheExpiration`), so whatever L1 just lost, L2 had lost too. Redis starts earning its keep with a second api instance or across an api restart; today it is wiring proven ahead of need, exactly as the phase plan assumed.
+- `visibility_lag` (mixed) p95 moved from 6.02 s (the same breach of the old 6 s threshold that the PgBouncer entry recorded) to 7.29 s, med from 3.76 s to 6.01 s: an accepted bid now also waits out the 2 s bids TTL before `GET /bids` shows it, on top of the two outbox polls. The increase stays within the TTL, as designed and documented in [backend/auctions.md](backend/auctions.md). The owner raised the threshold to 8 s (the 6 s outbox pipeline plus the 2 s TTL) rather than shorten the TTL or exclude bids from the cache; the pre-existing drift of the outbox lag itself stays an open item for the broker phase.
 
 ## PgBouncer — 2026-10-24, commit `f0f5aaa`
 

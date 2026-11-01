@@ -2,11 +2,11 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/infrastructure.md](../en/infrastructure.md)
 
-Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/` i konfigurację PgBouncera w `Infrastructure/pgbouncer/`. Cache, broker i usługa sekretów pozostają planowane. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), a 2026-10-24 faza trzecia (PgBouncer). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
+Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/` i konfigurację PgBouncera w `Infrastructure/pgbouncer/`. Broker i usługa sekretów pozostają planowane. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), 2026-10-24 faza trzecia (PgBouncer), a 2026-11-01 faza czwarta (cache odczytów na Redisie). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
 
 ## Status
 
-Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. Broker dochodzi w kolejnej fazie.
+Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. 2026-11-01 doszedł Redis jako dziesiąta usługa (`redis:7.2-alpine`, 1 CPU i 128 MB, `--maxmemory 64mb` z `allkeys-lru`, bez persystencji i bez wolumenu) w sieci `data`; api celowo nie ma na niego `depends_on`, bo brak Redisa degraduje tylko opóźnienie odczytów. Broker dochodzi w kolejnej fazie.
 
 ## Co istnieje dziś
 
@@ -61,7 +61,7 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 
 - **API gateway nginx** (faza 2): wszedł 2026-10-23, zob. [Gateway](#gateway). Nadal brakuje TLS.
 - **PgBouncer** (faza 3): wszedł 2026-10-24, zob. [Pooling połączeń](#pooling-połączeń). Migracje też idą przez poolera.
-- **Redis** (faza 4): rozproszony poziom cache gorących odczytów aukcji za szwem modułu, samo TTL.
+- **Redis** (faza 4, weszła 2026-11-01): rozproszony poziom cache gorących odczytów aukcji za szwem modułu, samo TTL; szczegóły w [backend/auctions.md](backend/auctions.md) i [ADR-009](adr/009-hybrid-read-cache-in-auctions.md).
 - **RabbitMQ** (faza 5): transport zdarzeń integracyjnych za `IIntegrationEventPublisher`, z poziomami retry, martwą kolejką i sekwencyjnym konsumentem po stronie hosta; zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
 - **OpenBao** (faza 6): usługa sekretów czytana na starcie przez własny provider konfiguracji.
 - **Hardening** (faza 7): budowa obrazu w CI, backupy, limiter .NET per użytkownik i notatki migracyjne k8s/OIDC.

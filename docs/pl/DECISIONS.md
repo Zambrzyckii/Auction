@@ -84,9 +84,10 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-10-23 | PgBouncer w trybie transaction, z migracjami idącymi przez poolera na jednym connection stringu (bez `MigrationConnection`) i rozmiarami pul właściciela `default_pool_size` 25, `reserve_pool_size` 10, `max_db_connections` 40, `max_client_conn` 500 | właściciel | blokada migracji w Npgsql EF 10 to blokada tabeli wewnątrz transakcji migracji, więc osobne bezpośrednie połączenie niczego by nie chroniło, rozmiary ograniczają jedną instancję api do 35 ze 100 miejsc postgresa, a api zostaje przy puli Npgsql z `No Reset On Close=true`, zob. ADR-007 |
 | 2026-10-24 | Zajęty email odpowiada 409 zamiast 400, przy rejestracji i przy provisioningu botów | właściciel | to samo żądanie kończy się sukcesem albo konfliktem zależnie od istniejącego stanu, czyli semantyka 409 zgodna z konfliktami Pawnshop i Warehouses, a logowanie zostaje przy neutralnym 400, które nie zdradza, czy email istnieje |
 | 2026-10-31 | Mutujące żądania HTTP nie są kolejkowane, transakcyjny outbox pozostaje jedyną granicą asynchroniczności, a endpoint odpowiadający 202 i kończący przez zdarzenia to jawny wyjątek per endpoint (dziś tylko wypłata żetonów z kasyna) | właściciel (z agentem) | licytacja i gry kasyna odpowiadają wynikiem domeny w tej samej odpowiedzi, SPA nie ma kanału push do doręczenia odroczonego wyniku, a ochrona przed lawiną zapisów należy do PgBouncera, limitów gatewaya i ogranicznika per użytkownik z fazy 7, zob. ADR-008 |
+| 2026-11-01 | Trzy anonimowe odczyty Auctions są cache'owane wyłącznie przez TTL (2 s) za szwem należącym do modułu, z bidami włącznie, a próg k6 `visibility_lag` rośnie z 6 s do 8 s, żeby wycenić TTL bidów | właściciel | cache trzyma 92,6% tych odczytów z dala od postgresa, a oferta może wypłynąć do 2 s później ponad lagiem outboxa; właściciel wybrał podniesienie progu zamiast skracania TTL albo wyłączania bidów, zob. ADR-009 i performance.md |
 
 ## Powiązane dokumenty
 
-- [adr/](adr) - osiem rekordów decyzji architektonicznych.
+- [adr/](adr) - dziewięć rekordów decyzji architektonicznych.
 - [CHANGELOG.md](CHANGELOG.md) - kamienie milowe, do których należą te decyzje.
 - [CONVENTIONS.md](CONVENTIONS.md) - reguły, które z nich wynikają.

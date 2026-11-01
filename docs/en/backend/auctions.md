@@ -10,12 +10,13 @@
 |---|---|
 | Endpoints | [`Presentation/AuctionEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Presentation/AuctionEndpoints.cs), request records `CreateAuctionRequest`, `PlaceBidRequest` |
 | Commands | `Application/Commands/CreateAuction/` and `Application/Commands/PlaceBid/` (command, handler, validator each) |
-| Queries | `Application/Queries/GetActiveAuctions/` and `Application/Queries/GetAuctionById/` (query, Dapper handler, DTO each) |
+| Queries | `Application/Queries/GetActiveAuctions/`, `GetAuctionById/` and `GetAuctionBids/` (query, Dapper handler, DTO each); all three implement `ICachedQuery` |
+| Read cache | `Application/Caching/` (`IAuctionReadCache`, `ICachedQuery`, `CachingBehavior`), `Infrastructure/Caching/` (`HybridAuctionReadCache`, `PassThroughAuctionReadCache`, `AuctionCacheMetrics`) |
 | Event handlers | `Application/Handlers/ItemLockedEventHandler.cs`, `Application/Handlers/ItemLockRejectedEventHandler.cs` |
 | Domain | [`Domain/Entities/Auction.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Entities/Auction.cs), `Domain/Enums/AuctionStatus.cs`, [`Domain/Exceptions/AuctionExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Exceptions/AuctionExceptions.cs) |
 | Infrastructure | `Persistence/` (`AuctionDbContext`, `AuctionRepository`, `SqlConnectionFactory`), `Configurations/`, `Outbox/`, `Inbox/`, `Background/` (`AuctionCloser`, `OutboxProcessor`), `Infrastructure/Migrations/` plus the top-level `Migrations/` |
 
-[`AuctionModuleExtensions.AddAuctionModule`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionModuleExtensions.cs) registers `AuctionDbContext` with Npgsql, `ISqlConnectionFactory` as a singleton, `IAuctionRepository` as scoped and the two hosted services `OutboxProcessor` and `AuctionCloser`; `MapAuctionEndpoints` maps the route group.
+[`AuctionModuleExtensions.AddAuctionModule`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionModuleExtensions.cs) registers `AuctionDbContext` with Npgsql, `ISqlConnectionFactory` as a singleton, `IAuctionRepository` as scoped, the two hosted services `OutboxProcessor` and `AuctionCloser`, the open-generic `CachingBehavior` and the read-cache seam: `HybridAuctionReadCache` with its metrics when the host enables the cache, `PassThroughAuctionReadCache` otherwise; `MapAuctionEndpoints` maps the route group.
 
 ## Running
 
@@ -31,7 +32,7 @@ The migrations are split between two folders: [`Migrations/`](../../../Backend/s
 
 ## Configuration
 
-The module has no configuration keys of its own; it receives the connection string from `AddAuctionModule`. The rules that shape its behaviour are constants in code:
+The module receives the connection string, the read-cache TTLs and the cache switch from `AddAuctionModule`; everything else that shapes its behaviour is a constant in code:
 
 | Rule | Value | Where |
 |---|---|---|
@@ -43,6 +44,8 @@ The module has no configuration keys of its own; it receives the connection stri
 | `EndsOn` accepted by the entity | at least now + 1 minute | `Auction.Create` |
 | `StartingPrice` and bid `Amount` | greater than zero | validators and `Auction` |
 | `limit` of `GET /api/auctions` | 1 to 100 | `AuctionEndpoints` |
+| read-cache TTLs (`ListTtl`, `DetailTtl`, `BidsTtl`) | 2 s each by default, validated 1 to 60 s at startup | `Auctions:ReadCache` bound in the host, `ValidateReadCacheOptions` |
+| cache on, L1 only or L1 plus Redis L2 | off by default; Compose sets `Cache:Enabled=true` and `Cache:Redis:ConnectionString=redis:6379` | the host's `Cache` section (`CacheOptions.Load`), passed into `AddAuctionModule` |
 
 ## Data model
 
@@ -103,6 +106,10 @@ Both DTOs carry the same ten fields, `PublicAuctionId`, `SellerUserId`, `Current
 
 Reads bypass EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/SqlConnectionFactory.cs) creates an `NpgsqlConnection` from the module's connection string, and the two query handlers run raw SQL with Dapper: [`GetActiveAuctionsQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs) selects the ten DTO columns `FROM "Auctions" WHERE "Status" = @Active ORDER BY "EndsOn" LIMIT @Limit`, and [`GetAuctionByIdQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetAuctionById/GetAuctionByIdQueryHandler.cs) selects the same columns `WHERE "PublicAuctionId" = @PublicAuctionId` with `QuerySingleOrDefaultAsync`, throwing `AuctionNotFoundException` on null. Identifiers are quoted because EF Core created them in PascalCase; Dapper maps the columns onto the DTO constructor by name, and the integer `Status` becomes the `AuctionStatus` enum.
 
+Since phase four the three queries pass through a TTL cache before Dapper runs. Each query record implements [`ICachedQuery`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Caching/ICachedQuery.cs) with its key (`auctions:list:v1:{limit}`, `auctions:detail:v1:{id}`, `auctions:bids:v1:{id}`; `v1` is bumped when a DTO changes shape) and its TTL pick, the open-generic [`CachingBehavior`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Caching/CachingBehavior.cs) intercepts them in the MediatR pipeline after validation, and [`HybridAuctionReadCache`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Caching/HybridAuctionReadCache.cs) wraps `HybridCache` (in-process L1, Redis L2 when the host configures it, `Expiration == LocalCacheExpiration`, stampede protection built in). The wrapper is fail-open: a cache failure is logged, counted on the `AuctionServer.Auctions.Cache` meter (`auctions.cache.hits`, `.misses`, `.errors`) and answered from the database; a factory exception propagates uncached, so a 404 is never stored; a cancelled request rethrows without touching the database. With `Cache:Enabled=false` (the default outside Compose) the seam resolves to `PassThroughAuctionReadCache` and every read goes straight to Dapper.
+
+The consistency promise this buys: the three anonymous reads may be up to one TTL (2 s) behind the database, on top of the 3-9 s outbox lag that already delays a bid's visibility; writes never read the cache, the response of `POST /bid` stays authoritative, and a dead Redis degrades read latency, never correctness. No other read in the system is cached (Wallets balances and locks, Casino state, Inventory items, loans, the pawnshop, warehouses and profiles stay uncached by decision) and no command path touches `IAuctionReadCache`.
+
 ## Background services
 
 [`AuctionCloser`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/AuctionCloser.cs) is a `BackgroundService` that every 3 s loads up to 20 auctions with `Status = Active` and `EndsOn` in the past, calls `CloseAuction()` on each and adds an `AuctionFinishedEvent` outbox row whose `WinnerUserId` and `FinalPrice` are null when nobody bid; the whole batch is one `SaveChangesAsync`. A `DbUpdateConcurrencyException` (a bid saved between the load and the save) fails the cycle, which is logged as `Auction closing cycle failed` and repeated 3 s later with a fresh load. A third sweep rejects pending bids older than `PendingBidTimeout` (1 minute): the pending fields are cleared and a `FundsUnlockRequestedEvent` row releases the funds that may have been locked; a funds reply arriving later no longer matches the stored `PendingBidRequestId`, so it is answered with another unlock instead of confirming someone else's bid. The module's `OutboxProcessor` is the shared implementation described in [messaging.md](messaging.md).
@@ -126,6 +133,7 @@ Reads bypass EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionServe
 - `Version` is regenerated by every mutating method, so the closer and a late bidder cannot both win: one of them gets `DbUpdateConcurrencyException`, surfaced as 409 or as a repeated closer cycle.
 - A funds reply is matched to the pending bid by the request id (the `EventId` of `FundsLockRequestedEvent`, echoed back as `RequestId`), and the closer rejects pending bids older than one minute, so a dead or late funds-lock request can neither freeze the auction until `EndsOn` nor confirm a different bid.
 - A bid is accepted before Wallets confirms the funds; the consequences and the planned pessimistic bid are described in [../ARCHITECTURE.md](../ARCHITECTURE.md#known-limitations).
+- The read cache is TTL-only cache-aside behind the module-owned seam: nothing invalidates on write, freshness is bounded by the 2 s TTLs, and the k6 `visibility_lag` threshold was raised to 8 s to price the bids TTL in. The alternatives and the off-against-on measurement are recorded in [ADR-009](../adr/009-hybrid-read-cache-in-auctions.md) and [../performance.md](../performance.md).
 
 ## Related documents
 
@@ -133,4 +141,5 @@ Reads bypass EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionServe
 - [messaging.md](messaging.md) - outbox, inbox, retry policy.
 - [inventory.md](inventory.md) - the other side of the item-lock saga.
 - [wallets.md](wallets.md) - funds locking and settlement.
+- [../performance.md](../performance.md) - the cache measured off against on.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - the three auction flows as sequence diagrams.

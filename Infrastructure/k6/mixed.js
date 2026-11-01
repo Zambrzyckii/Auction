@@ -15,7 +15,7 @@ export const options = {
     thresholds: {
         http_req_failed: ['rate<0.01'],
         http_req_duration: ['p(95)<67'],
-        visibility_lag: ['p(95)<6000']
+        visibility_lag: ['p(95)<8000']
     },
     scenarios: {
         mixed: {
