@@ -1,7 +1,5 @@
 using System.Text.Json;
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
-using AuctionServer.Modules.Wallets.Domain.Exceptions;
-using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Auctions;
 using MediatR;
@@ -10,34 +8,26 @@ namespace AuctionServer.Modules.Wallets.Application.Handlers;
 
 public sealed class AuctionFinishedEventHandler(IWalletRepository repository) : INotificationHandler<AuctionFinishedEvent>
 {
-    public async Task Handle(AuctionFinishedEvent notification, CancellationToken cancellationToken)
+    public Task Handle(AuctionFinishedEvent notification, CancellationToken cancellationToken)
     {
-        if (notification.WinnerUserId is null || notification.FinalPrice is null) return;
-        if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
-        
-        var winnerWallet = await repository.GetUserWalletByIdAsync(notification.WinnerUserId.Value, cancellationToken);
-        var sellerWallet = await repository.GetUserWalletByIdAsync(notification.SellerUserId, cancellationToken);
-        
-        var amount = winnerWallet.ConsumeLock(notification.PublicAuctionId);
-        sellerWallet.AddFunds(amount);
+        if (notification.WinnerUserId is null || notification.FinalPrice is null) return Task.CompletedTask;
 
-        var processedMessage = new ProcessedMessage { EventId = notification.EventId };
-        var eventId = Guid.NewGuid();
-        var outboxMessage = new OutboxMessage
+        return repository.ApplyOnceAsync(notification.EventId, async () =>
         {
-            Id = eventId,
-            Type = nameof(AuctionSettledEvent),
-            Content = JsonSerializer.Serialize(new AuctionSettledEvent(
-                eventId, notification.PublicAuctionId, notification.SellerUserId, notification.WinnerUserId.Value, amount))
-        };
+            var winnerWallet = await repository.GetUserWalletByIdAsync(notification.WinnerUserId.Value, cancellationToken);
+            var sellerWallet = await repository.GetUserWalletByIdAsync(notification.SellerUserId, cancellationToken);
 
-        try
-        {
-            await repository.SaveUserFundsWithInboxAndOutboxAsync(processedMessage, outboxMessage, CancellationToken.None);
-        }
-        catch (WalletExceptions.EventAlreadyProcessedException)
-        {
-            
-        }
+            var amount = winnerWallet.ConsumeLock(notification.PublicAuctionId);
+            sellerWallet.AddFunds(amount);
+
+            var eventId = Guid.NewGuid();
+            return (OutboxMessage?)new OutboxMessage
+            {
+                Id = eventId,
+                Type = nameof(AuctionSettledEvent),
+                Content = JsonSerializer.Serialize(new AuctionSettledEvent(
+                    eventId, notification.PublicAuctionId, notification.SellerUserId, notification.WinnerUserId.Value, amount))
+            };
+        }, cancellationToken);
     }
 }

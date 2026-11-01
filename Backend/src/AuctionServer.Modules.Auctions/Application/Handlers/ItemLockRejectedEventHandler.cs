@@ -1,6 +1,4 @@
 using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
-using AuctionServer.Modules.Auctions.Domain.Exceptions;
-using AuctionServer.Modules.Auctions.Infrastructure.Inbox;
 using AuctionServer.Shared.Integration.Events.Items;
 using MediatR;
 
@@ -8,22 +6,12 @@ namespace AuctionServer.Modules.Auctions.Application.Handlers;
 
 public sealed class ItemLockRejectedEventHandler(IAuctionRepository repository) : INotificationHandler<ItemLockRejectedEvent>
 {
-    public async Task Handle(ItemLockRejectedEvent notification, CancellationToken cancellationToken)
+    public Task Handle(ItemLockRejectedEvent notification, CancellationToken cancellationToken)
     {
-        if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
-
-        var auction = await repository.GetAuctionByIdAsync(notification.PublicAuctionId, cancellationToken);
-        auction.Cancel(notification.Reason);
-
-        var processedMessage = new ProcessedMessage { EventId = notification.EventId };
-
-        try
+        return repository.ApplyOnceAsync(notification.EventId, async () =>
         {
-            await repository.SaveChangesWithInboxAsync(processedMessage, CancellationToken.None);
-        }
-        catch (AuctionExceptions.EventAlreadyProcessedException)
-        {
-
-        }
+            var auction = await repository.GetAuctionByIdAsync(notification.PublicAuctionId, cancellationToken);
+            auction.Cancel(notification.Reason);
+        }, cancellationToken);
     }
 }

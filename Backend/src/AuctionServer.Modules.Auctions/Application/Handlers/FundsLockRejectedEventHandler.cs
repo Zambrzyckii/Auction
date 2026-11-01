@@ -1,6 +1,4 @@
 using AuctionServer.Modules.Auctions.Application.Interfaces.Persistence;
-using AuctionServer.Modules.Auctions.Domain.Exceptions;
-using AuctionServer.Modules.Auctions.Infrastructure.Inbox;
 using AuctionServer.Shared.Integration.Events.Funds;
 using MediatR;
 
@@ -8,20 +6,12 @@ namespace AuctionServer.Modules.Auctions.Application.Handlers;
 
 public sealed class FundsLockRejectedEventHandler(IAuctionRepository repository) : INotificationHandler<FundsLockRejectedEvent>
 {
-    public async Task Handle(FundsLockRejectedEvent notification, CancellationToken cancellationToken)
+    public Task Handle(FundsLockRejectedEvent notification, CancellationToken cancellationToken)
     {
-        if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
-
-        var auction = await repository.GetAuctionByIdAsync(notification.PublicAuctionId, cancellationToken);
-        if (auction.PendingBidRequestId == notification.RequestId) auction.RejectPendingBid();
-
-        var processedMessage = new ProcessedMessage { EventId = notification.EventId };
-        try
+        return repository.ApplyOnceAsync(notification.EventId, async () =>
         {
-            await repository.SaveChangesWithInboxAsync(processedMessage, CancellationToken.None);
-        }
-        catch (AuctionExceptions.EventAlreadyProcessedException)
-        {
-        }
+            var auction = await repository.GetAuctionByIdAsync(notification.PublicAuctionId, cancellationToken);
+            if (auction.PendingBidRequestId == notification.RequestId) auction.RejectPendingBid();
+        }, cancellationToken);
     }
 }

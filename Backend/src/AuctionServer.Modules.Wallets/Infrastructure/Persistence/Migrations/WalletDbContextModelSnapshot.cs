@@ -90,7 +90,7 @@ namespace AuctionServer.Modules.Wallets.Infrastructure.Persistence.Migrations
                     b.ToTable("Wallets");
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Wallets.Infrastructure.Inbox.ProcessedMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()

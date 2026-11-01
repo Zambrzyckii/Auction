@@ -1,7 +1,7 @@
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Domain.Entities;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
-using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -59,36 +59,9 @@ public class WalletRepository(WalletDbContext context) : IWalletRepository
             .ToListAsync(token);
     }
 
-    public async Task SaveUserFundsWithInboxAsync(ProcessedMessage message, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(message);
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new WalletExceptions.EventAlreadyProcessedException();
-        }
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
-    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
-    {
-        return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
-    }
-
-    public async Task SaveUserFundsWithInboxAndOutboxAsync(ProcessedMessage message, OutboxMessage outboxMessage,
-        CancellationToken token)
-    {
-        context.ProcessedMessages.Add(message);
-        context.OutboxMessages.Add(outboxMessage);
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new WalletExceptions.EventAlreadyProcessedException();
-        }
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 }

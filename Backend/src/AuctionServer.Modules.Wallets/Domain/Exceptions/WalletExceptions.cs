@@ -13,7 +13,6 @@ public static class WalletExceptions
         : AppException($"User with this ID {publicUserId} doesnt exists", 404);
     public class WalletAlreadyExistException() : AppException("Wallet already exists", 409);
 
-    public class EventAlreadyProcessedException() : AppException("Event was already processed", 409);
     public class LockNotFoundException(Guid publicAuctionId)
         : AppException($"No active funds lock for auction {publicAuctionId}", 404);
     public class LockAlreadyExistsException() : AppException("Funds lock for this auction already exists", 409);
