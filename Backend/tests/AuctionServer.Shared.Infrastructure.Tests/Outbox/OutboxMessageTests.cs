@@ -20,6 +20,17 @@ public class OutboxMessageTests
     }
 
     [Fact]
+    public void FailedAttempt_ShouldScheduleNextAttemptInTheFuture()
+    {
+        var message = CreateMessage();
+
+        message.FailedAttempt("error");
+
+        Assert.NotNull(message.NextAttemptOn);
+        Assert.True(message.NextAttemptOn > DateTime.UtcNow);
+    }
+
+    [Fact]
     public void FailedAttempt_WhenCalledRepeatedly_ShouldGrowBackoffDelay()
     {
         var message = CreateMessage();
