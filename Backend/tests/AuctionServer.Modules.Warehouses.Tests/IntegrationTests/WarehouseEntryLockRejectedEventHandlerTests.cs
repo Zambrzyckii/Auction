@@ -15,13 +15,20 @@ public class WarehouseEntryLockRejectedEventHandlerTests(WarehousesPostgresFixtu
         await handler.Handle(notification, CancellationToken.None);
     }
 
+    private async Task<Guid> GetEntryRequestIdAsync(Guid warehouseId, Guid userId)
+    {
+        var war = await fixture.GetWarAsync(warehouseId);
+        return war.Participants.Single(p => p.UserId == userId).EntryRequestId;
+    }
+
     [Fact]
     public async Task Handle_ShouldRemovePendingParticipant()
     {
         var userId = Guid.NewGuid();
         var seeded = await fixture.SeedOpenWarAsync(userId);
+        var requestId = await GetEntryRequestIdAsync(seeded.PublicWarehouseId, userId);
         var notification = new WarehouseEntryLockRejectedEvent(
-            Guid.NewGuid(), seeded.PublicWarehouseId, userId, "Not enough funds on account");
+            Guid.NewGuid(), seeded.PublicWarehouseId, userId, "Not enough funds on account", requestId);
 
         await HandleAsync(notification);
 
@@ -46,12 +53,30 @@ public class WarehouseEntryLockRejectedEventHandlerTests(WarehousesPostgresFixtu
     }
 
     [Fact]
-    public async Task Handle_WhenEventIsDeliveredTwice_ShouldNotThrow()
+    public async Task Handle_WhenRequestIdDoesNotMatch_ShouldKeepParticipant()
     {
         var userId = Guid.NewGuid();
         var seeded = await fixture.SeedOpenWarAsync(userId);
         var notification = new WarehouseEntryLockRejectedEvent(
-            Guid.NewGuid(), seeded.PublicWarehouseId, userId, "Not enough funds on account");
+            Guid.NewGuid(), seeded.PublicWarehouseId, userId, "Not enough funds on account", Guid.NewGuid());
+
+        await HandleAsync(notification);
+
+        var war = await fixture.GetWarAsync(seeded.PublicWarehouseId);
+        Assert.Single(war.Participants);
+
+        await using var context = fixture.CreateContext();
+        Assert.True(await context.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
+    }
+
+    [Fact]
+    public async Task Handle_WhenEventIsDeliveredTwice_ShouldNotThrow()
+    {
+        var userId = Guid.NewGuid();
+        var seeded = await fixture.SeedOpenWarAsync(userId);
+        var requestId = await GetEntryRequestIdAsync(seeded.PublicWarehouseId, userId);
+        var notification = new WarehouseEntryLockRejectedEvent(
+            Guid.NewGuid(), seeded.PublicWarehouseId, userId, "Not enough funds on account", requestId);
 
         await HandleAsync(notification);
         await HandleAsync(notification);

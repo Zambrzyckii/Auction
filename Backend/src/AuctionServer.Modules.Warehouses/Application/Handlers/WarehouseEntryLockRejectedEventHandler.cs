@@ -14,7 +14,7 @@ public sealed class WarehouseEntryLockRejectedEventHandler(IWarehouseRepository 
         if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
 
         var war = await repository.GetWarByPublicIdAsync(notification.PublicWarehouseId, cancellationToken);
-        if (war.Participants.Any(p => p.UserId == notification.UserId))
+        if (war.Participants.Any(p => p.UserId == notification.UserId && p.EntryRequestId == notification.RequestId))
             war.RemoveParticipant(notification.UserId);
 
         var processedMessage = new ProcessedMessage { EventId = notification.EventId };
