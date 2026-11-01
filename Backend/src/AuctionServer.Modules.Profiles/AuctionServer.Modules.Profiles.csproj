@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AuctionServer.Shared.Integration\AuctionServer.Shared.Integration.csproj" />
+    <ProjectReference Include="..\AuctionServer.Shared.Infrastructure\AuctionServer.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

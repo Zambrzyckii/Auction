@@ -2,7 +2,7 @@ using AuctionServer.Modules.Profiles.Application.Interfaces;
 using AuctionServer.Modules.Profiles.Domain.Entities;
 using AuctionServer.Modules.Profiles.Domain.Enums;
 using AuctionServer.Modules.Profiles.Domain.Exceptions;
-using AuctionServer.Modules.Profiles.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -22,24 +22,13 @@ public sealed class ProfilesRepository(ProfilesDbContext context) : IProfilesRep
     public async Task<UserProfile?> FindProfileReadOnlyAsync(Guid userId, CancellationToken token) =>
         await context.UserProfiles.AsNoTracking().SingleOrDefaultAsync(p => p.UserId == userId, token);
 
-    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token) =>
-        await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
+    public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
-    public async Task AddProfileWithInboxAsync(UserProfile profile, ProcessedMessage message, CancellationToken token)
-    {
-        context.UserProfiles.Add(profile);
-        context.ProcessedMessages.Add(message);
-        await SaveTranslatingUniqueViolationAsync(token);
-    }
+    public void AddProfile(UserProfile profile) => context.UserProfiles.Add(profile);
 
     public async Task SaveChangesAsync(CancellationToken token) =>
         await context.SaveChangesAsync(token);
-
-    public async Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(message);
-        await SaveTranslatingUniqueViolationAsync(token);
-    }
 
     public async Task<Friendship?> FindFriendshipAsync(Guid userLowId, Guid userHighId, CancellationToken token) =>
         await context.Friendships.SingleOrDefaultAsync(
@@ -146,21 +135,6 @@ public sealed class ProfilesRepository(ProfilesDbContext context) : IProfilesRep
                                           })
         {
             throw new ProfilesExceptions.DuplicateWarehouseInviteException();
-        }
-    }
-
-    private async Task SaveTranslatingUniqueViolationAsync(CancellationToken token)
-    {
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException
-                                          {
-                                              SqlState: PostgresErrorCodes.UniqueViolation
-                                          })
-        {
-            throw new ProfilesExceptions.EventAlreadyProcessedException();
         }
     }
 }

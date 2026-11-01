@@ -2,7 +2,7 @@ using AuctionServer.Modules.Pawnshop.Application.Interfaces;
 using AuctionServer.Modules.Pawnshop.Domain.Entities;
 using AuctionServer.Modules.Pawnshop.Domain.Enums;
 using AuctionServer.Modules.Pawnshop.Domain.Exceptions;
-using AuctionServer.Modules.Pawnshop.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -37,11 +37,6 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
             .FirstOrDefaultAsync(token);
     }
 
-    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token)
-    {
-        return await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
-    }
-
     public async Task SaveNewShopWithOutboxAsync(Shop shop, OutboxMessage outboxMessage, CancellationToken token)
     {
         context.Shops.Add(shop);
@@ -63,21 +58,13 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
         await context.SaveChangesAsync(token);
     }
 
-    public async Task SaveStockWithInboxAsync(IReadOnlyList<StockItem> items, ProcessedMessage inboxMessage,
-        CancellationToken token)
-    {
-        context.StockItems.AddRange(items);
-        context.ProcessedMessages.Add(inboxMessage);
-        
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new PawnshopExceptions.EventAlreadyProcessedException();
-        }
-    }
+    public void AddStock(IReadOnlyList<StockItem> items) => context.StockItems.AddRange(items);
+
+    public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
+
+    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
     public async Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicPawnshopId, CancellationToken token)
     {
@@ -102,19 +89,5 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
         if (item is null) throw new PawnshopExceptions.StockItemNotFoundException();
         
         return item;
-    }
-
-    public async Task SaveShopWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(inboxMessage);
-        
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new PawnshopExceptions.EventAlreadyProcessedException();
-        }
     }
 }

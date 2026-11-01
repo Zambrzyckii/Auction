@@ -54,14 +54,18 @@ public class UserRegisteredEventHandlerTests(ProfilesPostgresFixture fixture)
     }
 
     [Fact]
-    public async Task Handle_WhenProfileAlreadyExists_ShouldSwallowAndKeepTheFirst()
+    public async Task Handle_WhenProfileAlreadyExists_ShouldPropagateTheConflictAndKeepTheFirst()
     {
         var userId = Guid.NewGuid();
         await HandleAsync(new UserRegisteredEvent(Guid.NewGuid(), userId, "first@player.test", "first"));
 
-        await HandleAsync(new UserRegisteredEvent(Guid.NewGuid(), userId, "second@player.test", "second"));
+        var second = new UserRegisteredEvent(Guid.NewGuid(), userId, "second@player.test", "second");
+        await Assert.ThrowsAsync<DbUpdateException>(() => HandleAsync(second));
 
         var profile = await fixture.GetProfileAsync(userId);
         Assert.Equal("first", profile.Username);
+
+        await using var context = fixture.CreateContext();
+        Assert.False(await context.ProcessedMessages.AnyAsync(m => m.EventId == second.EventId));
     }
 }

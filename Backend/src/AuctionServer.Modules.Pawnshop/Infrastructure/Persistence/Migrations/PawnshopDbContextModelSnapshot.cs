@@ -183,7 +183,7 @@ namespace AuctionServer.Modules.Pawnshop.Infrastructure.Persistence.Migrations
                     b.ToTable("PawnshopStockItems", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Pawnshop.Infrastructure.Inbox.ProcessedMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()

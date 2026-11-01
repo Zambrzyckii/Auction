@@ -40,7 +40,4 @@ public static class PawnshopExceptions
 
     public sealed class StockItemNotDueException()
         : AppException("Stock item is not due for sale yet", 409);
-
-    public sealed class EventAlreadyProcessedException()
-        : AppException("Event was already processed", 409);
 }

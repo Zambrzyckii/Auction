@@ -219,7 +219,7 @@ namespace AuctionServer.Modules.Casino.Infrastructure.Persistence.Migrations
                     b.ToTable("CasinoRouletteSpins", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Casino.Infrastructure.Inbox.ProcessedMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()

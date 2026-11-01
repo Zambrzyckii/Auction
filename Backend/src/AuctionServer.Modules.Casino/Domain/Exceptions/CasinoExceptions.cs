@@ -37,7 +37,4 @@ public static class CasinoExceptions
 
     public sealed class InvalidBlackjackActionException(string message)
         : AppException(message, 409);
-
-    public sealed class EventAlreadyProcessedException()
-        : AppException("Event was already processed", 409);
 }

@@ -2,7 +2,7 @@ using AuctionServer.Modules.Casino.Application.Interfaces;
 using AuctionServer.Modules.Casino.Domain.Entities;
 using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Domain.Exceptions;
-using AuctionServer.Modules.Casino.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -41,9 +41,6 @@ public sealed class CasinoRepository(CasinoDbContext context) : ICasinoRepositor
             .Where(p => p.UserId == userId)
             .OrderByDescending(p => p.RequestedOn)
             .FirstOrDefaultAsync(token);
-
-    public async Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token) =>
-        await context.ProcessedMessages.Where(m => m.EventId == eventId).AnyAsync(token);
 
     public async Task<List<RouletteSpin>> GetRecentSpinsReadOnlyAsync(Guid userId, int take, CancellationToken token) =>
         await context.RouletteSpins.AsNoTracking()
@@ -119,17 +116,9 @@ public sealed class CasinoRepository(CasinoDbContext context) : ICasinoRepositor
         await context.SaveChangesAsync(token);
     }
 
-    public async Task SaveChangesWithInboxAsync(ProcessedMessage inboxMessage, CancellationToken token)
-    {
-        context.ProcessedMessages.Add(inboxMessage);
+    public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 
-        try
-        {
-            await context.SaveChangesAsync(token);
-        }
-        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
-        {
-            throw new CasinoExceptions.EventAlreadyProcessedException();
-        }
-    }
+    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
+        context.ApplyOnceAsync(eventId, change, token);
 }

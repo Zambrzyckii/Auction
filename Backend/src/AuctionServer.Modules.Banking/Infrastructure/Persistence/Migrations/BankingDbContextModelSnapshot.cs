@@ -113,7 +113,7 @@ namespace AuctionServer.Modules.Banking.Infrastructure.Persistence.Migrations
                     b.ToTable("BankingLoans", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Banking.Infrastructure.Inbox.ProcessedMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Inbox.ProcessedMessage", b =>
                 {
                     b.Property<Guid>("EventId")
                         .ValueGeneratedOnAdd()

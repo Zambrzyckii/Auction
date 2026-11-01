@@ -1,5 +1,4 @@
 using AuctionServer.Modules.Profiles.Domain.Entities;
-using AuctionServer.Modules.Profiles.Infrastructure.Inbox;
 
 namespace AuctionServer.Modules.Profiles.Application.Interfaces;
 
@@ -7,9 +6,8 @@ public interface IProfilesRepository
 {
     Task<UserProfile> GetProfileAsync(Guid userId, CancellationToken token);
     Task<UserProfile?> FindProfileReadOnlyAsync(Guid userId, CancellationToken token);
-    Task<bool> WasEventProcessedAsync(Guid eventId, CancellationToken token);
-    Task AddProfileWithInboxAsync(UserProfile profile, ProcessedMessage message, CancellationToken token);
-    Task SaveChangesWithInboxAsync(ProcessedMessage message, CancellationToken token);
+    Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token);
+    void AddProfile(UserProfile profile);
     Task SaveChangesAsync(CancellationToken token);
     Task<Friendship?> FindFriendshipAsync(Guid userLowId, Guid userHighId, CancellationToken token);
     Task<Friendship> GetFriendshipAsync(Guid publicFriendshipId, CancellationToken token);

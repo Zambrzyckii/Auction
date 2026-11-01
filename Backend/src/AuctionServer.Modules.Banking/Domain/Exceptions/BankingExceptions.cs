@@ -28,7 +28,4 @@ public static class BankingExceptions
 
     public sealed class InvalidCollectionAmountException()
         : AppException("Collected amount must be between zero and the outstanding debt", 400);
-
-    public sealed class EventAlreadyProcessedException()
-        : AppException("Event was already processed", 409);
 }

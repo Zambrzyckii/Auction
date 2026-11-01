@@ -1,5 +1,5 @@
 using AuctionServer.Modules.Banking.Domain.Entities;
-using AuctionServer.Modules.Banking.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
 

@@ -1,5 +1,5 @@
 using AuctionServer.Modules.Profiles.Domain.Entities;
-using AuctionServer.Modules.Profiles.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Inbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuctionServer.Modules.Profiles.Infrastructure.Persistence;
