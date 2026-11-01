@@ -26,12 +26,13 @@ docker compose up -d                              # from the repo ROOT: nginx ga
 
 ### Tests
 
-Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well:
+Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
 
 - All nine mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
-  `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull
-  `postgres:latest`; each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
+  `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull the pinned
+  `postgres:16-alpine` (the `TestDatabase.Image` constant in `tests/AuctionServer.TestSupport`, the same version the
+  Compose stack runs); each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
   on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
@@ -42,6 +43,15 @@ Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`)
   `IAvatarStorage` for an in-memory fake via `ConfigureTestServices`, and its `S3AvatarStorageTests` start a real
   `chrislusf/seaweedfs:4.48` container through the generic `ContainerBuilder` (`ProfilesStorageFixture`), the first
   non-PostgreSQL Testcontainer in the suite.
+
+`tests/AuctionServer.TestSupport` is a shared library, not a test project: it holds `TestDatabase.Image` and
+`SagaStage<TEntryPoint>`, the fixture behind the saga tests. The stage starts one PostgreSQL container and boots the
+host through `WebApplicationFactory` with `UseSetting` (no process-wide environment variables) and
+`Database:MigrateOnStartup=true`, so all nine contexts migrate and the background services run against complete
+tables. `WaitForOutboxQuietAsync` polls the eight outbox tables until no pending rows remain; with
+`fastForwardRetries: true` it keeps pulling future `NextAttemptOn` values back to now, so the five retry attempts and
+the dead-lettering of a poisoned row take seconds instead of minutes. The stage never publishes anything itself — all
+delivery stays with the real `OutboxProcessor`s, because their bookkeeping is part of what the saga tests assert.
 
 Run one project / one test:
 
