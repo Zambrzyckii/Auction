@@ -371,10 +371,10 @@ module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProce
 `ProcessedMessageModel.Configure(builder, tableName)`). The handler hands the event id and a change delegate to its
 repository's `ApplyOnceAsync`, a one-line forward to the shared `InboxOperation` DbContext extension (ADR-012): it
 returns early on a replay, runs the delegate (which may return one reply `OutboxMessage`), saves everything in one
-`SaveChangesAsync(CancellationToken.None)` and swallows only the unique violation whose
-`PostgresException.ConstraintName` equals the inbox primary key taken from the EF model — the backstop for the race
-where two deliveries pass the check concurrently. Any other unique violation propagates and dead-letters instead of
-being mistaken for a replay. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
+`SaveChangesAsync(CancellationToken.None)` and, when that save fails, re-reads the inbox, swallowing the failure only
+when the `EventId` turns out recorded — the backstop for the race where two deliveries pass the check concurrently,
+whichever statement of the losing batch failed first. Any other failure propagates and retries, dead-lettering when
+it persists, instead of being mistaken for a replay. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
 `AuctionFinishedEventHandler`, `ItemSoldToShopEventHandler`, `FundsLockRequestedEventHandler`,
 `FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`,
 `LoanRequestedEventHandler`, `LoanRepaymentRequestedEventHandler`, `PawnshopPaymentRequestedEventHandler`,

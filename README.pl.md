@@ -6,7 +6,7 @@
 
 ## Status
 
-Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpointów, 38 zdarzeń integracyjnych, 875 metod testowych, pipeline'y CI dla GitLaba i GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6, gateway nginx przed API oraz PgBouncer przed PostgreSQL. Frontend Angular, boty AI i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
+Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpointów, 38 zdarzeń integracyjnych, 876 metod testowych, pipeline'y CI dla GitLaba i GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6, gateway nginx przed API oraz PgBouncer przed PostgreSQL. Frontend Angular, boty AI i RabbitMQ są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
 
 ## Szybki start
 
