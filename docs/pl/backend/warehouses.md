@@ -84,7 +84,7 @@ Moduł posiada też `WarehousesParticipants`, kolekcję owned agregatu `Warehous
 | `WarehouseNotFoundException` | 404 |
 | `ParticipantNotFoundException` | 404 |
 | `InvalidEntryFeeException`, `InvalidEstimateException`, `InvalidIncrementException`, `BudgetExceededException` | 400 |
-| `WarNotStockingException`, `WarNotOpenException`, `WarNotBiddingException`, `JoinCountdownFinishedException`, `RaiseWindowClosedException`, `ParticipantNotActiveException`, `AlreadyLeadingException`, `CountdownNotStartedException`, `NotEnoughPlayersException`, `InvalidWarStateTransitionException`, `EventAlreadyProcessedException` | 409 |
+| `WarNotStockingException`, `WarNotOpenException`, `WarNotBiddingException`, `JoinCountdownFinishedException`, `RaiseWindowClosedException`, `ParticipantNotActiveException`, `AlreadyLeadingException`, `CountdownNotStartedException`, `NotEnoughPlayersException`, `InvalidWarStateTransitionException` | 409 |
 
 ## API
 

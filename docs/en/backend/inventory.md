@@ -62,7 +62,7 @@ The diagram shows the four statuses of an item and the methods that move between
 | `LockedForAuctionId` | `uuid`, nullable, unique | the `PublicAuctionId` holding the lock; nulls do not collide, so only one item per auction |
 | `Version` | `uuid` | concurrency token |
 
-The module also owns `InventoryOutboxMessages` and `InventoryProcessedMessages`, described in [messaging.md](messaging.md). In [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs), `GetUserItemAsync` and `GetItemLockedForAuctionAsync` throw `UserOrItemDoesntExistException` (404) when nothing matches, `GetUserSelectedItemsAsync` throws the same when fewer items than ids are found, `AddItemAsync` maps a unique violation to `ItemAlreadyExistInInventoryException` (409), and `AddItemsWithInboxAsync` saves the starter items together with the inbox row in one transaction and maps a unique violation to `EventAlreadyProcessedException`; `AddItemsAsync` and `SaveAsync` exist on the interface but have no callers.
+The module also owns `InventoryOutboxMessages` and `InventoryProcessedMessages`, described in [messaging.md](messaging.md). In [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs), `GetUserItemAsync` and `GetItemLockedForAuctionAsync` throw `UserOrItemDoesntExistException` (404) when nothing matches, `GetUserSelectedItemsAsync` throws the same when fewer items than ids are found, `AddItemAsync` maps a unique violation to `ItemAlreadyExistInInventoryException` (409), and the stage-only `AddItems` adds minted items to the context so the shared apply-once operation saves them together with the inbox row; `AddItemsAsync` and `SaveAsync` exist on the interface but have no callers.
 
 ## API
 
@@ -86,7 +86,6 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 | `CannotCraftFromLegendaryException` | 400 | `Legendary items cannot be used as crafting ingredients` |
 | `UserOrItemDoesntExistException` | 404 | `User or item with provided id doesn't exist` |
 | `ItemAlreadyExistInInventoryException` | 409 | `You already own provided item` |
-| `EventAlreadyProcessedException` | 409 | `Event was already processed`; raised by the repository and caught by the event handlers |
 
 ## Events
 
@@ -98,9 +97,9 @@ Validation runs before the handlers: `CraftItemCommandValidator` requires exactl
 | consumed | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
 | consumed | `UserRegisteredEvent` | `UserRegisteredEventHandler`: one `Item.Create` per `Inventory:StarterItems` entry, saved atomically with the inbox row |
 | consumed | `WarehouseStockRequestedEvent` | `WarehouseStockRequestedEventHandler`: quotes one transient `Item.Create` per requested rarity (nothing is saved; the call only borrows the hidden price roll) and replies with `WarehouseStockedEvent` carrying the priced manifest |
-| consumed | `WarehouseSettledEvent` | `WarehouseSettledEventHandler`: one `Item.CreateWithPrice` per manifest entry for the winner, at the prices rolled during quoting, saved with `AddItemsWithInboxAsync` |
+| consumed | `WarehouseSettledEvent` | `WarehouseSettledEventHandler`: one `Item.CreateWithPrice` per manifest entry for the winner, at the prices rolled during quoting, staged with `AddItems` inside the apply-once transaction |
 | consumed | `PawnshopStockRequestedEvent` | `PawnshopStockRequestedEventHandler` uses the same quoting trick as the warehouse handler. It rolls one transient `Item.Create` per requested rarity named `Pawned {rarity} Good` (nothing is saved) and replies with a `PawnshopStockedEvent` whose `RequestId` is the request's `EventId`, because one pawnshop asks many times |
-| consumed | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mints one `Available` item for the owner through `Item.CreateWithPrice` at the stock price, saved with `AddItemsWithInboxAsync` |
+| consumed | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mints one `Available` item for the owner through `Item.CreateWithPrice` at the stock price, staged with `AddItems` inside the apply-once transaction |
 | published | `ItemLockedEvent`, `ItemLockRejectedEvent` | replies written in the same `SaveChangesAsync` as the lock and the inbox row |
 | published | `WarehouseStockedEvent` | the quote reply, written in the same `SaveChangesAsync` as the inbox row |
 | published | `PawnshopStockedEvent` | the pawnshop quote reply, written in the same `SaveChangesAsync` as the inbox row |

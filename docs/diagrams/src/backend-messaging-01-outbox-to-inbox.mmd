@@ -9,8 +9,8 @@ flowchart LR
     Pub --> Disp["DeliveryDispatcher.AcceptAsync<br/>recipients and order from IntegrationEventRecipients (strict map);<br/>one DeliveryMessages row per recipient, PK (MessageId, Recipient)"]:::shared
     Disp --> DProc["DeliveryProcessor (host, one sequential instance)<br/>every 3 s DeliveryCourier.ClaimAsync: lease 30 s, ORDER BY CreatedOn, Position, max 20;<br/>IntegrationEventTypes.Deserialize, 38 registered event types;<br/>invokes that one recipient's handler; hourly cleanup"]:::shared
 
-    subgraph Cn ["consuming module - one SaveChangesAsync"]
-        Chk["WasEventProcessedAsync(EventId)"]:::wallets --> Dom["domain change<br/>e.g. Wallet.SpendLockedFunds"]:::wallets --> Inb["inbox row<br/>ProcessedMessage, EventId is the primary key"]:::wallets --- Reply["reply outbox row (optional)<br/>e.g. AuctionSettledEvent"]:::wallets
+    subgraph Cn ["consuming module - ApplyOnceAsync, one SaveChangesAsync"]
+        Chk["inbox check<br/>EventId already recorded?"]:::wallets --> Dom["domain change<br/>e.g. Wallet.SpendLockedFunds"]:::wallets --> Inb["inbox row<br/>ProcessedMessage, EventId is the primary key"]:::wallets --- Reply["reply outbox row (optional)<br/>e.g. AuctionSettledEvent"]:::wallets
     end
 
     DProc --> Chk

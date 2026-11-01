@@ -19,10 +19,10 @@ Backend to cały kod repozytorium: rozwiązanie [`Backend/AuctionServer.slnx`](.
 | [`AuctionServer.Modules.Casino`](../../../Backend/src/AuctionServer.Modules.Casino/AuctionServer.Modules.Casino.csproj) | kasyno: żetony, ruletka europejska, blackjack | EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, `Shared.Infrastructure`, framework reference `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Modules.Profiles`](../../../Backend/src/AuctionServer.Modules.Profiles/AuctionServer.Modules.Profiles.csproj) | profile graczy: poziomy, awatary w SeaweedFS, konta społecznościowe, znajomi, zaproszenia magazynowe, przełącznik prywatności | AWSSDK.S3 4.0.104.6, EF Core 10.0.9, Npgsql 10.0.2, MediatR 14.2.0 | `Shared.Integration`, referencja frameworka `Microsoft.AspNetCore.App` |
 | [`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) | kontrakty zdarzeń, `AppException`, szew publishera, behavior walidacji, metryki outboxa | FluentValidation 12.1.1, MediatR 14.2.0 | brak |
-| [`AuctionServer.Shared.Infrastructure`](../../../Backend/src/AuctionServer.Shared.Infrastructure/AuctionServer.Shared.Infrastructure.csproj) | współdzielona implementacja outboxa i doręczania: encje `OutboxMessage` i `DeliveryMessage`, generyczny `OutboxProcessor<TContext>`, `OutboxCourier` i `DeliveryCourier` (branie z dzierżawą i sprzątanie), `DeliveryDispatcher` z `DeliveryDbContext` i jego migracjami oraz rejestracje `AddOutboxProcessor`/`AddDeliveryProcessor` | EF Core 10.0.9 z Relational, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2 | `Shared.Integration`, referencja frameworka `Microsoft.AspNetCore.App` |
+| [`AuctionServer.Shared.Infrastructure`](../../../Backend/src/AuctionServer.Shared.Infrastructure/AuctionServer.Shared.Infrastructure.csproj) | współdzielona implementacja outboxa, inboxa i doręczania: encje `OutboxMessage`, `ProcessedMessage` i `DeliveryMessage`, generyczny `OutboxProcessor<TContext>`, `OutboxCourier` i `DeliveryCourier` (branie z dzierżawą i sprzątanie), rozszerzenie `InboxOperation.ApplyOnceAsync`, `DeliveryDispatcher` z `DeliveryDbContext` i jego migracjami oraz rejestracje `AddOutboxProcessor`/`AddDeliveryProcessor` | EF Core 10.0.9 z Relational, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2 | `Shared.Integration`, referencja frameworka `Microsoft.AspNetCore.App` |
 | `AuctionServer.Modules.{Auctions,Banking,Casino,Identity,Inventory,Pawnshop,Profiles,Wallets,Warehouses}.Tests` | jeden projekt xUnit na moduł | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 (bezpośrednie nadpisanie podatnej zależności przechodniej, GHSA-q939-rpr3-3284); Identity, Wallets i Profiles dodają Microsoft.AspNetCore.Mvc.Testing 10.0.9 | testowany moduł i `AuctionServer.TestSupport`; testy Identity, Wallets i Profiles referencują też `AuctionServer.Api` |
 | `AuctionServer.Api.Tests` | testy hosta: opcje obserwowalności, sampler sierocych spanów, dekorator publishera, metryki outboxa, smoke hosta, opcje gatewaya i nagłówki forwarded, endpointy zdrowia, sam gateway nginx przeciw traefik/whoami przez Testcontainers oraz międzymodułowe testy sag na `SagaStage` | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Microsoft.AspNetCore.Mvc.Testing 10.0.9, Microsoft.Extensions.Diagnostics.Testing 10.11.0, Testcontainers 4.12.0 | `AuctionServer.Api`, `AuctionServer.TestSupport` |
-| `AuctionServer.Shared.Infrastructure.Tests` | testy współdzielonego outboxa i doręczania: encja offline, kurierzy, dyżurny i procesor doręczeń na Testcontainers (równoczesne brania biorą rozłączne wiersze, wydzierżawiony wiersz nie jest brany ponownie, sprzątanie kasuje wyłącznie przetworzone wiersze po retencji, adresaci biegną w kolejności z mapy, upadający adresat nie zatrzymuje ani pozostałych, ani własnego martwego listu, przyjęcie jest idempotentne) | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 | `AuctionServer.Shared.Infrastructure`, `AuctionServer.TestSupport` |
+| `AuctionServer.Shared.Infrastructure.Tests` | testy współdzielonego outboxa, inboxa i doręczania: encja offline, kurierzy, dyżurny, procesor doręczeń i operacja inboxa "zastosuj raz" na Testcontainers (równoczesne brania biorą rozłączne wiersze, wydzierżawiony wiersz nie jest brany ponownie, sprzątanie kasuje wyłącznie przetworzone wiersze po retencji, adresaci biegną w kolejności z mapy, upadający adresat nie zatrzymuje ani pozostałych, ani własnego martwego listu, przyjęcie jest idempotentne, inbox połyka wyłącznie własny duplikat, a obce naruszenie unikalności propaguje) | xunit 2.9.3, xunit.runner.visualstudio 3.1.4, Microsoft.NET.Test.Sdk 17.14.1, coverlet.collector 6.0.4, Npgsql.EntityFrameworkCore.PostgreSQL 10.0.2, Testcontainers.PostgreSql 4.12.0, SSH.NET 2026.0.0 | `AuctionServer.Shared.Infrastructure`, `AuctionServer.TestSupport` |
 | [`AuctionServer.TestSupport`](../../../Backend/tests/AuctionServer.TestSupport/AuctionServer.TestSupport.csproj) | wspólna biblioteka testowa: przypięta stała obrazu `postgres:16-alpine` (`TestDatabase`) i fixture całego hosta `SagaStage<TEntryPoint>` stojący za testami sag | Microsoft.AspNetCore.Mvc.Testing 10.0.9, Npgsql 10.0.2, SSH.NET 2026.0.0, Testcontainers.PostgreSql 4.12.0, xunit 2.9.3 | brak; referencuje ją wszystkie jedenaście projektów testowych |
 
 Każda paczka w stosie to wydanie 10.0.x; `BackgroundService` i abstrakcje hostingu pochodzą z framework reference `Microsoft.AspNetCore.App`, nie z paczki.
@@ -36,7 +36,7 @@ Backend/
 ├── src/
 │   ├── AuctionServer.Api/                  Program.cs, appsettings*.json, Infrastructure/{Authentication,Messaging,GlobalExceptionHandler.cs}
 │   ├── AuctionServer.Shared.Integration/   Events/, Exceptions/, Messaging/, Observability/, Validators/
-│   ├── AuctionServer.Shared.Infrastructure/ Outbox/ (encja, model, procesor, kurier, rejestracja) i Delivery/ (encja, kontekst, migracje, dyżurny, kurier, procesor)
+│   ├── AuctionServer.Shared.Infrastructure/ Outbox/ (encja, model, procesor, kurier, rejestracja), Inbox/ (encja, model, operacja "zastosuj raz") i Delivery/ (encja, kontekst, migracje, dyżurny, kurier, procesor)
 │   └── AuctionServer.Modules.<Name>/
 │       ├── <Name>ModuleExtensions.cs       Add<Name>Module(): DbContext, repozytorium, serwisy tła
 │       ├── Presentation/                   <Name>Endpoints.cs (grupa minimal API) i rekordy Request/
@@ -46,7 +46,7 @@ Backend/
 │                                           Inbox/ oraz, w pięciu modułach z keeperami, Background/ (AuctionCloser, keepery)
 └── tests/
     ├── AuctionServer.Modules.<Name>.Tests/ Application/, Domain/, Infrastructure/ (offline) i IntegrationTests/ (Testcontainers)
-    ├── AuctionServer.Shared.Infrastructure.Tests/ Outbox/ (encja, offline) i IntegrationTests/ (kurierzy, dyżurny i procesor doręczeń na Testcontainers)
+    ├── AuctionServer.Shared.Infrastructure.Tests/ Outbox/ (encja, offline) i IntegrationTests/ (kurierzy, dyżurny, procesor doręczeń i inbox "zastosuj raz" na Testcontainers)
     └── AuctionServer.TestSupport/          TestDatabase (przypięty obraz) i SagaStage (fixture sag na całym hoście)
 ```
 
@@ -156,7 +156,7 @@ Każdy modułowy projekt testowy ma część offline (`Application/`, `Domain/`,
 | `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
 | `AuctionServer.Modules.Wallets.Tests` | 153 | 65 | 88 |
 | `AuctionServer.Modules.Warehouses.Tests` | 67 | 44 | 23 |
-| `AuctionServer.Shared.Infrastructure.Tests` | 17 | 5 | 12 |
+| `AuctionServer.Shared.Infrastructure.Tests` | 20 | 5 | 15 |
 | `AuctionServer.Api.Tests` | 71 | 37 | 34 |
 
 ```bash

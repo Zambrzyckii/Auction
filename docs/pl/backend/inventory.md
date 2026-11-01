@@ -62,7 +62,7 @@ Diagram pokazuje cztery statusy przedmiotu i metody, które między nimi przecho
 | `LockedForAuctionId` | `uuid`, nullowalna, unikalna | `PublicAuctionId` trzymające blokadę; nulle nie kolidują, więc tylko jeden przedmiot na aukcję |
 | `Version` | `uuid` | token współbieżności |
 
-Moduł posiada też `InventoryOutboxMessages` i `InventoryProcessedMessages`, opisane w [messaging.md](messaging.md). W [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs) `GetUserItemAsync` i `GetItemLockedForAuctionAsync` rzucają `UserOrItemDoesntExistException` (404), gdy nic nie pasuje, `GetUserSelectedItemsAsync` rzuca to samo, gdy znaleziono mniej przedmiotów niż id, `AddItemAsync` mapuje naruszenie unikalności na `ItemAlreadyExistInInventoryException` (409), a `AddItemsWithInboxAsync` zapisuje przedmioty startowe razem z wierszem inboxa w jednej transakcji i mapuje naruszenie unikalności na `EventAlreadyProcessedException`; `AddItemsAsync` i `SaveAsync` istnieją w interfejsie, ale nie mają wywołań.
+Moduł posiada też `InventoryOutboxMessages` i `InventoryProcessedMessages`, opisane w [messaging.md](messaging.md). W [`ItemRepository`](../../../Backend/src/AuctionServer.Modules.Inventory/Infrastructure/Persistence/ItemRepository.cs) `GetUserItemAsync` i `GetItemLockedForAuctionAsync` rzucają `UserOrItemDoesntExistException` (404), gdy nic nie pasuje, `GetUserSelectedItemsAsync` rzuca to samo, gdy znaleziono mniej przedmiotów niż id, `AddItemAsync` mapuje naruszenie unikalności na `ItemAlreadyExistInInventoryException` (409), a tylko-odkładające `AddItems` dodaje wymintowane przedmioty do kontekstu, żeby wspólna operacja "zastosuj raz" zapisała je razem z wierszem inboxa; `AddItemsAsync` i `SaveAsync` istnieją w interfejsie, ale nie mają wywołań.
 
 ## API
 
@@ -86,7 +86,6 @@ Walidacja działa przed handlerami: `CraftItemCommandValidator` wymaga dokładni
 | `CannotCraftFromLegendaryException` | 400 | `Legendary items cannot be used as crafting ingredients` |
 | `UserOrItemDoesntExistException` | 404 | `User or item with provided id doesn't exist` |
 | `ItemAlreadyExistInInventoryException` | 409 | `You already own provided item` |
-| `EventAlreadyProcessedException` | 409 | `Event was already processed`; rzucany przez repozytorium i łapany przez handlery zdarzeń |
 
 ## Zdarzenia
 
@@ -98,9 +97,9 @@ Walidacja działa przed handlerami: `CraftItemCommandValidator` wymaga dokładni
 | konsumowane | `AuctionSettledEvent` | `AuctionSettledEventHandler`: `GetItemLockedForAuctionAsync` plus `TransferTo(WinnerUserId)` |
 | konsumowane | `UserRegisteredEvent` | `UserRegisteredEventHandler`: jedno `Item.Create` na wpis `Inventory:StarterItems`, zapis atomowy z wierszem inboxa |
 | konsumowane | `WarehouseStockRequestedEvent` | `WarehouseStockRequestedEventHandler`: wycenia jedno przejściowe `Item.Create` na żądaną rzadkość (nic nie jest zapisywane; wywołanie tylko pożycza ukryty roll cen) i odpowiada `WarehouseStockedEvent` z wycenionym manifestem |
-| konsumowane | `WarehouseSettledEvent` | `WarehouseSettledEventHandler`: jedno `Item.CreateWithPrice` na wpis manifestu dla zwycięzcy, w cenach wylosowanych przy wycenie, zapis przez `AddItemsWithInboxAsync` |
+| konsumowane | `WarehouseSettledEvent` | `WarehouseSettledEventHandler`: jedno `Item.CreateWithPrice` na wpis manifestu dla zwycięzcy, w cenach wylosowanych przy wycenie, odłożone przez `AddItems` w transakcji "zastosuj raz" |
 | konsumowane | `PawnshopStockRequestedEvent` | `PawnshopStockRequestedEventHandler` używa tego samego triku wyceny co handler magazynowy. Losuje jedno przejściowe `Item.Create` na żądaną rzadkość o nazwie `Pawned {rarity} Good` (nic nie jest zapisywane) i odpowiada `PawnshopStockedEvent`, którego `RequestId` to `EventId` żądania, bo jeden lombard pyta wiele razy |
-| konsumowane | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mintuje jeden przedmiot `Available` dla właściciela przez `Item.CreateWithPrice` w cenie z magazynu lombardu, zapis przez `AddItemsWithInboxAsync` |
+| konsumowane | `PawnshopItemWithdrawnEvent` | `PawnshopItemWithdrawnEventHandler` mintuje jeden przedmiot `Available` dla właściciela przez `Item.CreateWithPrice` w cenie z magazynu lombardu, odłożone przez `AddItems` w transakcji "zastosuj raz" |
 | publikowane | `ItemLockedEvent`, `ItemLockRejectedEvent` | odpowiedzi zapisywane w tym samym `SaveChangesAsync` co blokada i wiersz inboxa |
 | publikowane | `WarehouseStockedEvent` | odpowiedź wyceny, zapisywana w tym samym `SaveChangesAsync` co wiersz inboxa |
 | publikowane | `PawnshopStockedEvent` | odpowiedź wyceny lombardu, zapisywana w tym samym `SaveChangesAsync` co wiersz inboxa |

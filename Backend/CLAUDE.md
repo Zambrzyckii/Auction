@@ -26,7 +26,7 @@ docker compose up -d                              # from the repo ROOT: nginx ga
 
 ### Tests
 
-Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox and delivery (the entity offline; the couriers, the dispatcher and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
+Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox, inbox and delivery (the entity offline; the couriers, the dispatcher, the apply-once inbox operation and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
 
 - All nine mix offline unit tests (domain, validators) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
@@ -216,7 +216,7 @@ AuctionServer.Modules.Pawnshop     pawnshop: turnover-gated premises, one bot sl
 AuctionServer.Modules.Casino       casino: wallet money exchanged 1:1 for chips through a purchase saga, european roulette and blackjack played synchronously on the chip balance, cash-outs excluded from turnover, CQS with EF Core for both
 AuctionServer.Modules.Profiles     player profiles: username snapshot + turnover-driven level mirrored from Wallets events, avatars in SeaweedFS behind IAvatarStorage, social links, friends, warehouse invites; the first consume-only module (inbox, no outbox, no background services)
 AuctionServer.Shared.Integration   shared contracts: integration events + AppException, the only contact surface between modules
-AuctionServer.Shared.Infrastructure shared outbox implementation: OutboxMessage, OutboxProcessor<TContext>, OutboxCourier
+AuctionServer.Shared.Infrastructure shared messaging implementation: outbox (OutboxMessage, OutboxProcessor<TContext>, OutboxCourier), inbox (ProcessedMessage, InboxOperation.ApplyOnceAsync) and delivery (DeliveryDispatcher, DeliveryProcessor)
 ```
 
 ### Module wiring pattern
@@ -366,12 +366,15 @@ Active event flows:
 Delivery is at-least-once, so every cross-module consumer is idempotent via an **inbox** — one table per consuming
 module (`WalletsProcessedMessages`, `AuctionsProcessedMessages`, `InventoryProcessedMessages`,
 `WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`,
-`CasinoProcessedMessages`, `ProfilesProcessedMessages`), event id as PK,
-`ProcessedMessage` entity under `Infrastructure/Inbox/`. The handler checks the inbox first (`WasEventProcessedAsync`)
-and silently returns on a replay; entity changes and the inbox row are still saved in one `SaveChangesAsync`
-(`SaveChangesWithInboxAsync`, or `SaveChangesWithInboxAndOutboxAsync` when the handler also replies), so the PK
-unique violation — surfaced as the module's `EventAlreadyProcessedException` and swallowed by the handler — remains
-the backstop for the race where two deliveries pass the check concurrently. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
+`CasinoProcessedMessages`, `ProfilesProcessedMessages`), event id as PK. The `ProcessedMessage` entity lives once in
+`Shared.Infrastructure/Inbox/`; each module maps its own table (`ProcessedMessageConfiguration` →
+`ProcessedMessageModel.Configure(builder, tableName)`). The handler hands the event id and a change delegate to its
+repository's `ApplyOnceAsync`, a one-line forward to the shared `InboxOperation` DbContext extension (ADR-012): it
+returns early on a replay, runs the delegate (which may return one reply `OutboxMessage`), saves everything in one
+`SaveChangesAsync(CancellationToken.None)` and swallows only the unique violation whose
+`PostgresException.ConstraintName` equals the inbox primary key taken from the EF model — the backstop for the race
+where two deliveries pass the check concurrently. Any other unique violation propagates and dead-letters instead of
+being mistaken for a replay. All consumers follow this shape (Wallets: `BidPlacedEventHandler`,
 `AuctionFinishedEventHandler`, `ItemSoldToShopEventHandler`, `FundsLockRequestedEventHandler`,
 `FundsUnlockRequestedEventHandler`, `WarehouseEntryLockRequestedEventHandler`, `WarehouseWonEventHandler`,
 `LoanRequestedEventHandler`, `LoanRepaymentRequestedEventHandler`, `PawnshopPaymentRequestedEventHandler`,
@@ -441,7 +444,7 @@ lowercase by PostgreSQL and will not match the schema. Both queries are covered 
   `DbUpdateConcurrencyException`. `Auction.Version` and Inventory's `Item.Version` follow the same pattern —
   regenerate the token in every mutating method you add.
 - **CancellationToken**: passed through to reads, but deliberately dropped on critical financial saves —
-  `SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None)` in `BidPlacedEventHandler.cs`, so a dropped client connection
+  `InboxOperation.ApplyOnceAsync` saves with `CancellationToken.None` by construction, so a dropped client connection
   cannot abort a half-applied money transfer. Keep this asymmetry when adding financial writes.
 - Invariants live in the entity, not the handler: `Wallet.LockFunds` / `ReleaseLock` / `ConsumeLock` / `SpendLock` / `AddFunds`
   validate and throw (`Domain/Entities/Wallet.cs`), and `FundsLock` rows are mutated only through the `Wallet`

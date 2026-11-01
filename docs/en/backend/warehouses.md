@@ -84,7 +84,7 @@ The module also owns `WarehousesParticipants`, an EF owned collection of the `Wa
 | `WarehouseNotFoundException` | 404 |
 | `ParticipantNotFoundException` | 404 |
 | `InvalidEntryFeeException`, `InvalidEstimateException`, `InvalidIncrementException`, `BudgetExceededException` | 400 |
-| `WarNotStockingException`, `WarNotOpenException`, `WarNotBiddingException`, `JoinCountdownFinishedException`, `RaiseWindowClosedException`, `ParticipantNotActiveException`, `AlreadyLeadingException`, `CountdownNotStartedException`, `NotEnoughPlayersException`, `InvalidWarStateTransitionException`, `EventAlreadyProcessedException` | 409 |
+| `WarNotStockingException`, `WarNotOpenException`, `WarNotBiddingException`, `JoinCountdownFinishedException`, `RaiseWindowClosedException`, `ParticipantNotActiveException`, `AlreadyLeadingException`, `CountdownNotStartedException`, `NotEnoughPlayersException`, `InvalidWarStateTransitionException` | 409 |
 
 ## API
 

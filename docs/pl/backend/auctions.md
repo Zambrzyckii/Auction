@@ -100,7 +100,6 @@ Oba DTO niosą te same dziesięć pól, `PublicAuctionId`, `SellerUserId`, `Curr
 | `AuctionNotFoundException` | 404 | `Auction {id} not found` |
 | `AuctionAlreadyExistException` | 409 | `Auction already exist` (naruszenie unikalności przy wstawianiu, w praktyce indeks jednej otwartej aukcji na przedmiot) |
 | `InvalidAuctionStateTransitionException` | 409 | `Cannot {action} an auction in status {status}` |
-| `EventAlreadyProcessedException` | 409 | `Event was already processed`; rzucany przez repozytorium i łapany przez handlery zdarzeń |
 
 ## Ścieżka odczytu
 

@@ -15,7 +15,7 @@ sequenceDiagram
     A->>ADB: UPDATE Auctions + OutboxMessages(FundsLockRequestedEvent) in one SaveChangesAsync
     A-->>C: 200 - the bid is requested, not yet confirmed
     AOP->>W: Publish(FundsLockRequestedEvent) on the next poll
-    W->>WDB: WasEventProcessedAsync(EventId)
+    W->>WDB: ApplyOnceAsync: EventId already in the inbox?
     W->>W: Wallet.LockFunds(auctionId, amount): new Active row in the FundsLock ledger
     alt funds locked
         W->>WDB: UPDATE Wallets + WalletsFundsLocks + inbox + WalletsOutboxMessages(FundsLockedEvent)

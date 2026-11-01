@@ -14,7 +14,7 @@ sequenceDiagram
     AC->>ADB: Auction.CloseAuction + OutboxMessages(AuctionFinishedEvent) per auction, one SaveChangesAsync per batch
     AOP->>WH: Publish(AuctionFinishedEvent) - the Wallets handler runs first
     alt WinnerUserId present
-        WH->>WDB: WasEventProcessedAsync(EventId)
+        WH->>WDB: ApplyOnceAsync: EventId already in the inbox?
         WH->>WH: amount = winner.ConsumeLock(auctionId) from the FundsLock ledger, seller.AddFunds(amount)
         WH->>WDB: UPDATE Wallets x2 + WalletsFundsLocks + WalletsProcessedMessages + WalletsOutboxMessages(AuctionSettledEvent with the amount)
     else no winner

@@ -83,58 +83,59 @@ SELECT "MessageId", "Recipient", "Type", "AttemptCount", "Errors" FROM "Delivery
 
 ## Inbox
 
-Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolumną, `EventId` (klucz główny), plus `ProcessedOn`; encją jest [`ProcessedMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Inbox/ProcessedMessage.cs), a tabele to `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages`, `WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`, `CasinoProcessedMessages` i `ProfilesProcessedMessages`. Identity nie konsumuje zdarzeń i nie ma inboxa. Każdy handler konsumujący wykonuje te same kroki:
+Moduł konsumujący trzyma tabelę `ProcessedMessages` z jedną znaczącą kolumną, `EventId` (klucz główny), plus `ProcessedOn`. Encja żyje raz w [`Shared.Infrastructure/Inbox/ProcessedMessage.cs`](../../../Backend/src/AuctionServer.Shared.Infrastructure/Inbox/ProcessedMessage.cs); każdy moduł mapuje ją na własną tabelę przez `ProcessedMessageModel.Configure`, zachowując `AuctionsProcessedMessages`, `WalletsProcessedMessages`, `InventoryProcessedMessages`, `WarehousesProcessedMessages`, `BankingProcessedMessages`, `PawnshopProcessedMessages`, `CasinoProcessedMessages` i `ProfilesProcessedMessages`. Identity nie konsumuje zdarzeń i nie ma inboxa.
 
-1. Woła `WasEventProcessedAsync(EventId)` i kończy, gdy id jest już zapisane.
-2. Ładuje agregat i wykonuje zmianę domenową.
-3. Dodaje `ProcessedMessage` z id zdarzenia oraz, gdy moduł odpowiada, `OutboxMessage` z odpowiedzią.
-4. Zapisuje wszystko jednym wywołaniem repozytorium używającym `CancellationToken.None`, żeby anulowane żądanie nie przerwało zmiany pieniędzy lub stanu w połowie.
-5. Łapie `EventAlreadyProcessedException` (409) swojego modułu i kończy: repozytorium rzuca go przy naruszeniu klucza głównego `ProcessedMessages`, i tak wykrywany jest równoległy duplikat.
+Handler nie odprawia już rytuału czytania dokładnie raz samodzielnie. Przekazuje id zdarzenia i delegat zmiany do `ApplyOnceAsync` swojego repozytorium, jednolinijkowego przekazania do wspólnego rozszerzenia [`InboxOperation`](../../../Backend/src/AuctionServer.Shared.Infrastructure/Inbox/InboxOperation.cs) na `DbContext` modułu ([ADR-012](../adr/012-apply-once-inbox.md)). Operacja:
 
-| Handler | Moduł | Metoda zapisu | Odpowiedź |
-|---|---|---|---|
-| `UserRegisteredEventHandler` | Wallets | `AddWalletAsync` | brak; bez inboxa, duplikat rzuca `WalletAlreadyExistException`, który handler połyka |
-| `BidPlacedEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
-| `FundsLockRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `FundsLockedEvent` albo `FundsLockRejectedEvent` |
-| `FundsUnlockRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak; brak blokady jest poprawnym wynikiem |
-| `AuctionFinishedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `AuctionSettledEvent` |
-| `ItemSoldToShopEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
-| `WarehouseEntryLockRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `WarehouseEntryLockedEvent` albo `WarehouseEntryLockRejectedEvent` |
-| `WarehouseWonEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `WarehouseSettledEvent`, echo manifestu dla Inventory |
-| `ItemLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `AuctionActivatedEvent` |
-| `ItemLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | brak |
-| `FundsLockedEventHandler` | Auctions | `SaveChangesWithInboxAndOutboxAsync` | `BidPlacedEvent`, albo `FundsUnlockRequestedEvent`, gdy aukcja nie jest już `Active` lub `RequestId` odpowiedzi nie pasuje do oferty oczekującej |
-| `FundsLockRejectedEventHandler` | Auctions | `SaveChangesWithInboxAsync` | brak |
-| `UserRegisteredEventHandler` | Inventory | `AddItemsWithInboxAsync` | brak; pakiet startowy |
-| `ItemLockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `ItemLockedEvent` albo `ItemLockRejectedEvent` |
-| `AuctionFinishedEventHandler` | Inventory | `SaveChangesWithInboxAsync` | brak |
-| `AuctionSettledEventHandler` | Inventory | `SaveChangesWithInboxAsync` | brak |
-| `AuctionCancelledEventHandler` | Inventory | `SaveChangesWithInboxAsync` | brak; brak blokady jest poprawnym wynikiem |
-| `WarehouseStockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `WarehouseStockedEvent` |
-| `WarehouseSettledEventHandler` | Inventory | `AddItemsWithInboxAsync` | brak; mintuje manifest |
-| `WarehouseStockedEventHandler` | Warehouses | `SaveStockWithInboxAsync` | brak |
-| `WarehouseEntryLockedEventHandler` | Warehouses | `SaveWarWithInboxAsync`, a na ścieżce zwrotu `SaveWarWithInboxAndOutboxAsync` | `FundsUnlockRequestedEvent` dla osieroconej blokady lub niezgodnego `RequestId` |
-| `WarehouseEntryLockRejectedEventHandler` | Warehouses | `SaveWarWithInboxAsync` | brak; brak uczestnika lub niezgodny `RequestId` są poprawnym wynikiem |
-| `LoanRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `LoanApprovedEvent` albo `LoanRejectedEvent` |
-| `LoanRepaymentRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `LoanRepaymentCollectedEvent`, zawsze, nawet dla zerowego pobrania |
-| `LoanApprovedEventHandler` | Banking | `SaveLoanWithInboxAsync` | brak |
-| `LoanRejectedEventHandler` | Banking | `SaveLoanWithInboxAsync` | brak |
-| `LoanRepaymentCollectedEventHandler` | Banking | `SaveLoanWithInboxAsync` | brak |
-| `PawnshopPaymentRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `PawnshopPaymentCompletedEvent` albo `PawnshopPaymentRejectedEvent` |
-| `PawnshopPayoutEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
-| `PawnshopStockRequestedEventHandler` | Inventory | `SaveChangesWithInboxAndOutboxAsync` | `PawnshopStockedEvent` |
-| `PawnshopItemWithdrawnEventHandler` | Inventory | `AddItemsWithInboxAsync` | brak, mintuje wycofany przedmiot |
-| `PawnshopPaymentCompletedEventHandler` | Pawnshop | `SaveShopWithInboxAsync` | brak |
-| `PawnshopPaymentRejectedEventHandler` | Pawnshop | `SaveShopWithInboxAsync` | brak |
-| `PawnshopStockedEventHandler` | Pawnshop | `SaveStockWithInboxAsync` | brak |
-| `CasinoChipPurchaseRequestedEventHandler` | Wallets | `SaveUserFundsWithInboxAndOutboxAsync` | `CasinoChipPurchaseCompletedEvent` albo `CasinoChipPurchaseRejectedEvent` |
-| `CasinoCashOutEventHandler` | Wallets | `SaveUserFundsWithInboxAsync` | brak |
-| `CasinoChipPurchaseCompletedEventHandler` | Casino | `SaveChangesWithInboxAsync` | brak |
-| `CasinoChipPurchaseRejectedEventHandler` | Casino | `SaveChangesWithInboxAsync` | brak; na zakupie `Expired` odrzucenie to cichy no-op |
-| `UserRegisteredEventHandler` | Profiles | `AddProfileWithInboxAsync` | brak; profil ze snapshotem nazwy |
-| `PlayerLevelledUpEventHandler` | Profiles | `SaveChangesWithInboxAsync` | brak; nakłada absolutny poziom monotonicznie |
+1. Kończy wcześnie, gdy `EventId` jest już zapisany; ten odczyt używa tokenu wołającego.
+2. Uruchamia delegat, który ładuje agregaty, wykonuje zmiany domenowe i może zwrócić jeden `OutboxMessage` z odpowiedzią.
+3. Dodaje wiersz `ProcessedMessage` plus opcjonalną odpowiedź i zapisuje wszystko jednym `SaveChangesAsync(CancellationToken.None)`, żeby anulowane żądanie nie przerwało zmiany pieniędzy lub stanu w połowie.
+4. Połyka naruszenie unikalności tylko wtedy, gdy `PostgresException.ConstraintName` równa się kluczowi głównemu inboxa wziętemu z modelu EF: to równoległy duplikat, a przegrana transakcja wycofuje się w całości. Każdy inny błąd bazy propaguje, a wiersz doręczenia ponawia.
 
-`EventAlreadyProcessedException` jest łapany wszędzie. Handlery prośba-odpowiedź w Wallets łapią też reguły domenowe, za które odpowiadają, zamieniając je w odpowiedzi odmowne zamiast ponowień (`InsufficientFundsException` i `LockAlreadyExistsException` w blokadach środków i wpisowego), a `FundsUnlockRequestedEventHandler` połyka `LockNotFoundException`, bo brak blokady to poprawny wynik zwrotu. Cała reszta propaguje: brakujący agregat (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), nieodpowiadana reguła domenowa (`ItemNotLockedException`, `InvalidAuctionStateTransitionException`, `InvalidLoanStateTransitionException`, `InvalidShopStateTransitionException`, `InvalidPurchaseStateTransitionException`) i `DbUpdateConcurrencyException` docierają do `DeliveryProcessor`a, gdzie liczą się jako nieudana próba wiersza doręczenia tego jednego adresata. Zamysł to widoczna porażka: wiadomość, której nie da się zastosować, kończy jako martwa z zapisanym powodem, zamiast zostać pominięta.
+| Handler | Moduł | Odpowiedź |
+|---|---|---|
+| `UserRegisteredEventHandler` | Wallets | brak; bez inboxa, duplikat rzuca `WalletAlreadyExistException`, który handler połyka |
+| `BidPlacedEventHandler` | Wallets | brak |
+| `FundsLockRequestedEventHandler` | Wallets | `FundsLockedEvent` albo `FundsLockRejectedEvent` |
+| `FundsUnlockRequestedEventHandler` | Wallets | brak; brak blokady jest poprawnym wynikiem |
+| `AuctionFinishedEventHandler` | Wallets | `AuctionSettledEvent` |
+| `ItemSoldToShopEventHandler` | Wallets | brak |
+| `WarehouseEntryLockRequestedEventHandler` | Wallets | `WarehouseEntryLockedEvent` albo `WarehouseEntryLockRejectedEvent` |
+| `WarehouseWonEventHandler` | Wallets | `WarehouseSettledEvent`, echo manifestu dla Inventory |
+| `ItemLockedEventHandler` | Auctions | `AuctionActivatedEvent` |
+| `ItemLockRejectedEventHandler` | Auctions | brak |
+| `FundsLockedEventHandler` | Auctions | `BidPlacedEvent`, albo `FundsUnlockRequestedEvent`, gdy aukcja nie jest już `Active` lub `RequestId` odpowiedzi nie pasuje do oferty oczekującej |
+| `FundsLockRejectedEventHandler` | Auctions | brak |
+| `UserRegisteredEventHandler` | Inventory | brak; pakiet startowy |
+| `ItemLockRequestedEventHandler` | Inventory | `ItemLockedEvent` albo `ItemLockRejectedEvent` |
+| `AuctionFinishedEventHandler` | Inventory | brak |
+| `AuctionSettledEventHandler` | Inventory | brak |
+| `AuctionCancelledEventHandler` | Inventory | brak; brak blokady jest poprawnym wynikiem |
+| `WarehouseStockRequestedEventHandler` | Inventory | `WarehouseStockedEvent` |
+| `WarehouseSettledEventHandler` | Inventory | brak; mintuje manifest |
+| `WarehouseStockedEventHandler` | Warehouses | brak |
+| `WarehouseEntryLockedEventHandler` | Warehouses | `FundsUnlockRequestedEvent` dla osieroconej blokady lub niezgodnego `RequestId` |
+| `WarehouseEntryLockRejectedEventHandler` | Warehouses | brak; brak uczestnika lub niezgodny `RequestId` są poprawnym wynikiem |
+| `LoanRequestedEventHandler` | Wallets | `LoanApprovedEvent` albo `LoanRejectedEvent` |
+| `LoanRepaymentRequestedEventHandler` | Wallets | `LoanRepaymentCollectedEvent`, zawsze, nawet dla zerowego pobrania |
+| `LoanApprovedEventHandler` | Banking | brak |
+| `LoanRejectedEventHandler` | Banking | brak |
+| `LoanRepaymentCollectedEventHandler` | Banking | brak |
+| `PawnshopPaymentRequestedEventHandler` | Wallets | `PawnshopPaymentCompletedEvent` albo `PawnshopPaymentRejectedEvent` |
+| `PawnshopPayoutEventHandler` | Wallets | brak |
+| `PawnshopStockRequestedEventHandler` | Inventory | `PawnshopStockedEvent` |
+| `PawnshopItemWithdrawnEventHandler` | Inventory | brak, mintuje wycofany przedmiot |
+| `PawnshopPaymentCompletedEventHandler` | Pawnshop | brak |
+| `PawnshopPaymentRejectedEventHandler` | Pawnshop | brak |
+| `PawnshopStockedEventHandler` | Pawnshop | brak |
+| `CasinoChipPurchaseRequestedEventHandler` | Wallets | `CasinoChipPurchaseCompletedEvent` albo `CasinoChipPurchaseRejectedEvent` |
+| `CasinoCashOutEventHandler` | Wallets | brak |
+| `CasinoChipPurchaseCompletedEventHandler` | Casino | brak |
+| `CasinoChipPurchaseRejectedEventHandler` | Casino | brak; na zakupie `Expired` odrzucenie to cichy no-op |
+| `UserRegisteredEventHandler` | Profiles | brak; profil ze snapshotem nazwy |
+| `PlayerLevelledUpEventHandler` | Profiles | brak; nakłada absolutny poziom monotonicznie |
+
+Duplikat w inboxie to jedyny błąd bazy, który operacja połyka. Handlery prośba-odpowiedź w Wallets nadal łapią w swoich delegatach reguły domenowe, za które odpowiadają, zamieniając je w odpowiedzi odmowne zamiast ponowień (`InsufficientFundsException` i `LockAlreadyExistsException` w blokadach środków i wpisowego), a `FundsUnlockRequestedEventHandler` połyka `LockNotFoundException`, bo brak blokady to poprawny wynik zwrotu. Cała reszta propaguje: brakujący agregat (`AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException`), nieodpowiadana reguła domenowa (`ItemNotLockedException`, `InvalidAuctionStateTransitionException`, `InvalidLoanStateTransitionException`, `InvalidShopStateTransitionException`, `InvalidPurchaseStateTransitionException`), `DbUpdateConcurrencyException` i każde naruszenie unikalności innego indeksu docierają do `DeliveryProcessor`a, gdzie liczą się jako nieudana próba wiersza doręczenia tego jednego adresata. Przed ADR-012 repozytorium traktowało każde naruszenie unikalności przy zapisie inboxa jak przeczytany duplikat, więc prawdziwy konflikt, na przykład druga aktywna blokada środków dla tej samej aukcji, mógł zostać połknięty z listem oznaczonym jako doręczony; teraz trafia do martwych z zapisanym powodem. Zamysł to widoczna porażka: wiadomość, której nie da się zastosować, kończy jako martwa z zapisanym powodem, zamiast zostać pominięta.
 
 ## Szew publishera
 
@@ -187,7 +188,7 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 
 ## Decyzje
 
-- Encja outboxa i jej procesor żyją raz, w `AuctionServer.Shared.Infrastructure`, a każdy moduł publikujący mapuje własną tabelę i uruchamia własną instancję, podczas gdy inbox nadal jest kopiowany do każdego modułu konsumującego; `Shared.Integration` pozostaje assembly z samymi kontraktami, bez zależności od EF Core (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md) i [ADR-010](../adr/010-shared-outbox-infrastructure.md)). Profiles konsumuje bez publikowania i niesie wyłącznie kopię inboxa.
+- Encja outboxa i jej procesor żyją raz, w `AuctionServer.Shared.Infrastructure`, a każdy moduł publikujący mapuje własną tabelę i uruchamia własną instancję, a od 2026-11-01 żyją tam też encja inboxa i jej operacja "zastosuj raz", przy czym każdy moduł konsumujący zachowuje własną tabelę; `Shared.Integration` pozostaje assembly z samymi kontraktami, bez zależności od EF Core (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md), [ADR-010](../adr/010-shared-outbox-infrastructure.md) i [ADR-012](../adr/012-apply-once-inbox.md)). Profiles konsumuje bez publikowania i niesie wyłącznie tabelę inboxa.
 - Szyna jest in-process, a publisher to szew; od 2026-11-01 transport i doręczanie to osobne role, adresaci i ich kolejność mieszkają w jawnej mapie hosta, a ponowienia z martwymi listami żyją per adresat w magazynie doręczeń, więc podmiana na broker zachowuje zachowanie, nie tylko kompilację (zobacz [ADR-003](../adr/003-in-process-event-bus-before-rabbitmq.md) i [ADR-011](../adr/011-delivery-dispatcher.md)).
 - Handlery celowo wypuszczają nieoczekiwane wyjątki, więc wiadomość, której nie da się zastosować, staje się martwym wierszem z historią błędów, a nie cichym pominięciem.
 
@@ -196,4 +197,4 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 - [README.md](README.md) - przegląd backendu, uruchomienie, konfiguracja, testy.
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - trzy przepływy aukcji jako diagramy sekwencji.
 - [auctions.md](auctions.md), [wallets.md](wallets.md), [inventory.md](inventory.md), [identity.md](identity.md), [warehouses.md](warehouses.md), [banking.md](banking.md), [pawnshop.md](pawnshop.md), [casino.md](casino.md) - producenci i konsumenci per moduł.
-- [../adr/002-transactional-outbox-and-inbox.md](../adr/002-transactional-outbox-and-inbox.md), [../adr/003-in-process-event-bus-before-rabbitmq.md](../adr/003-in-process-event-bus-before-rabbitmq.md), [../adr/011-delivery-dispatcher.md](../adr/011-delivery-dispatcher.md) - ADR-y o komunikatach.
+- [../adr/002-transactional-outbox-and-inbox.md](../adr/002-transactional-outbox-and-inbox.md), [../adr/003-in-process-event-bus-before-rabbitmq.md](../adr/003-in-process-event-bus-before-rabbitmq.md), [../adr/011-delivery-dispatcher.md](../adr/011-delivery-dispatcher.md), [../adr/012-apply-once-inbox.md](../adr/012-apply-once-inbox.md) - ADR-y o komunikatach.

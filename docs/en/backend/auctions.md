@@ -100,7 +100,6 @@ Both DTOs carry the same ten fields, `PublicAuctionId`, `SellerUserId`, `Current
 | `AuctionNotFoundException` | 404 | `Auction {id} not found` |
 | `AuctionAlreadyExistException` | 409 | `Auction already exist` (unique violation on insert, in practice the open-auction-per-item index) |
 | `InvalidAuctionStateTransitionException` | 409 | `Cannot {action} an auction in status {status}` |
-| `EventAlreadyProcessedException` | 409 | `Event was already processed`; raised by the repository and caught by the event handlers |
 
 ## Read path
 
