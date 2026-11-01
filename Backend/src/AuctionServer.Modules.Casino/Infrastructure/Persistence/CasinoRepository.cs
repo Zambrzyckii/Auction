@@ -118,7 +118,4 @@ public sealed class CasinoRepository(CasinoDbContext context) : ICasinoRepositor
 
     public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
         context.ApplyOnceAsync(eventId, change, token);
-
-    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
-        context.ApplyOnceAsync(eventId, change, token);
 }

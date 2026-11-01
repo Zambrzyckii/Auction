@@ -63,9 +63,6 @@ public sealed class PawnshopRepository(PawnshopDbContext context) : IPawnshopRep
     public Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token) =>
         context.ApplyOnceAsync(eventId, change, token);
 
-    public Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token) =>
-        context.ApplyOnceAsync(eventId, change, token);
-
     public async Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicPawnshopId, CancellationToken token)
     {
         var inStock = await context.StockItems.AsNoTracking()

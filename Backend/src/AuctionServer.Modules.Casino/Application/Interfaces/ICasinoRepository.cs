@@ -11,7 +11,6 @@ public interface ICasinoRepository
     Task<ChipPurchase> GetPurchaseByPublicIdAsync(Guid publicPurchaseId, CancellationToken token);
     Task<ChipPurchase?> GetLatestPurchaseReadOnlyAsync(Guid userId, CancellationToken token);
     Task ApplyOnceAsync(Guid eventId, Func<Task> change, CancellationToken token);
-    Task ApplyOnceAsync(Guid eventId, Func<Task<OutboxMessage?>> change, CancellationToken token);
     Task<List<RouletteSpin>> GetRecentSpinsReadOnlyAsync(Guid userId, int take, CancellationToken token);
     Task<BlackjackHand> GetHandByPublicIdAsync(Guid publicHandId, CancellationToken token);
     Task<BlackjackHand?> GetActiveHandReadOnlyAsync(Guid userId, CancellationToken token);
