@@ -31,12 +31,19 @@ public class WarehouseEntryLockedEventHandlerTests(WarehousesPostgresFixture fix
             .CountAsync(m => m.Type == nameof(FundsUnlockRequestedEvent) && m.Content.Contains(warehouseId.ToString()));
     }
 
+    private async Task<Guid> GetEntryRequestIdAsync(Guid warehouseId, Guid userId)
+    {
+        var war = await fixture.GetWarAsync(warehouseId);
+        return war.Participants.Single(p => p.UserId == userId).EntryRequestId;
+    }
+
     [Fact]
     public async Task Handle_WhenWarIsOpen_ShouldActivateParticipant()
     {
         var userId = Guid.NewGuid();
         var seeded = await fixture.SeedOpenWarAsync(userId);
-        var notification = new WarehouseEntryLockedEvent(Guid.NewGuid(), seeded.PublicWarehouseId, userId);
+        var requestId = await GetEntryRequestIdAsync(seeded.PublicWarehouseId, userId);
+        var notification = new WarehouseEntryLockedEvent(Guid.NewGuid(), seeded.PublicWarehouseId, userId, requestId);
 
         await HandleAsync(notification);
 
@@ -73,6 +80,22 @@ public class WarehouseEntryLockedEventHandlerTests(WarehousesPostgresFixture fix
 
         await HandleAsync(notification);
 
+        Assert.Equal(1, await CountRefundsAsync(seeded.PublicWarehouseId));
+    }
+
+    [Fact]
+    public async Task Handle_WhenRequestIdDoesNotMatchParticipant_ShouldRefundAndKeepParticipantPending()
+    {
+        var userId = Guid.NewGuid();
+        var seeded = await fixture.SeedOpenWarAsync(userId);
+        var notification = new WarehouseEntryLockedEvent(
+            Guid.NewGuid(), seeded.PublicWarehouseId, userId, Guid.NewGuid());
+
+        await HandleAsync(notification);
+
+        var war = await fixture.GetWarAsync(seeded.PublicWarehouseId);
+        var participant = Assert.Single(war.Participants);
+        Assert.Equal(ParticipantState.PendingLock, participant.State);
         Assert.Equal(1, await CountRefundsAsync(seeded.PublicWarehouseId));
     }
 

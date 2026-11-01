@@ -23,7 +23,8 @@ public sealed class WarehouseEntryLockedEventHandler(IWarehouseRepository reposi
 
         try
         {
-            if (war.Status == WarehouseWarStatus.Open && war.Participants.Any(p => p.UserId == notification.UserId))
+            if (war.Status == WarehouseWarStatus.Open && war.Participants.Any(p =>
+                    p.UserId == notification.UserId && p.EntryRequestId == notification.RequestId))
             {
                 war.ConfirmParticipant(notification.UserId, options.MinPlayers, options.MaxPlayers, options.JoinCountdown);
                 await repository.SaveWarWithInboxAsync(processedMessage, CancellationToken.None);
