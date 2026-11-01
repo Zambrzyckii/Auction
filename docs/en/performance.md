@@ -20,6 +20,20 @@ Every change that claims a performance or reliability effect is measured with k6
 - `gateway-limits.js` runs four 20-second windows against the gateway (anonymous below and above its limit, with a token above its limit, login above its limit), and its thresholds assert that each window gets the 200s and 429s it should.
 - Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s since phase four priced in the 2 s bids TTL (< 6 s before 2026-11-01). A threshold breach fails the run with exit code 99.
 
+## Delivery split — 2026-11-01, commit `82d0e00`
+
+Stage six of the review cleanup split publishing into transport and delivery (ADR-011), which added a second 3 s polling hop (the outbox courier hands over, the `DeliveryProcessor` delivers) to every event. This entry measures that hop's cost on `visibility_lag` before phase five. Compose defaults at the frozen limits (cache on, L1 plus L2), two `mixed.js` runs per pipeline. The first pair accidentally ran against a stale api image built before the split and was kept as a same-day baseline of the single-hop pipeline. HTTP p95 stayed at 1.5-1.7 ms with 0% failures in all four runs, and all eight outboxes plus the delivery table ended with zero pending and zero dead rows.
+
+| Pipeline | Run | Accepted bids | med | p90 | p95 | p99 | max |
+|---|---|---|---|---|---|---|---|
+| single hop (pre-split image) | 1 | 32 | 6.02 s | 6.97 s | 7.02 s | 7.36 s | 7.52 s |
+| single hop (pre-split image) | 2 | 33 | 6.02 s | 7.02 s | 7.02 s | 7.02 s | 7.02 s |
+| outbox + delivery (`82d0e00`) | 1 | 30 | 6.51 s | 7.02 s | 7.30 s | 8.24 s | 8.53 s |
+| outbox + delivery (`82d0e00`) | 2 | 29 | 6.52 s | 7.52 s | 7.52 s | 7.52 s | 7.52 s |
+
+- The second hop costs about half a second at the median (6.02 s to 6.5 s) and 0.3-0.5 s at p95 (7.02 s to 7.3-7.5 s), far below the worst case of a full extra 3 s poll, because the delivery claim runs continuously under load.
+- Both split-pipeline runs pass the 8 s threshold with about 0.5 s of headroom, so phase five starts from a passing baseline. Single p99/max samples already graze 8.2-8.5 s, so the pipeline has no room for a third hop.
+- The same-day single-hop pair lands on the phase-four entry (med 6.01 s, p95 7.29 s), which bounds run-to-run noise at about 0.3 s on p95.
 ## Redis cache — 2026-11-01, commit `e688772`
 
 Phase four puts a TTL read cache (HybridCache, in-process L1 plus Redis L2, 2 s per query kind) behind the Auctions module's `IAuctionReadCache` seam, filled on read by a MediatR behavior for the three anonymous queries. Both rows of a pair use the same api image at the frozen limits; "off" runs with `Cache:Enabled=false`, "on" with the Compose defaults (L1 plus L2, `redis:7.2-alpine` capped at 64 MB). "pg CPU" is the average of per-second `docker stats` samples on the postgres container during the run.

@@ -20,6 +20,20 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
 - Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s, odkąd faza czwarta wliczyła 2 s TTL bidów (< 6 s przed 2026-11-01). Pęknięty próg failuje przebieg kodem wyjścia 99.
 
+## Podział doręczania — 2026-11-01, commit `82d0e00`
+
+Etap szósty sprzątania po przeglądzie podzielił publikację na transport i doręczanie (ADR-011), co dodało każdemu zdarzeniu drugi przeskok odpytywania co 3 s (kurier outboxa przekazuje, `DeliveryProcessor` doręcza). Ten wpis mierzy koszt tego przeskoku na `visibility_lag` przed fazą piątą. Domyślne wartości Compose na zamrożonych limitach (cache włączony, L1 plus L2), dwa przebiegi `mixed.js` na potok. Pierwsza para przypadkiem pobiegła na nieświeżym obrazie api zbudowanym przed podziałem i została zachowana jako baza jednoprzeskokowego potoku z tego samego dnia. HTTP p95 trzymało się 1,5-1,7 ms z 0% błędów we wszystkich czterech przebiegach, a osiem outboxów plus tabela doręczeń skończyły z zerem oczekujących i zerem martwych wierszy.
+
+| Potok | Przebieg | Przyjęte oferty | med | p90 | p95 | p99 | max |
+|---|---|---|---|---|---|---|---|
+| jeden przeskok (obraz sprzed podziału) | 1 | 32 | 6,02 s | 6,97 s | 7,02 s | 7,36 s | 7,52 s |
+| jeden przeskok (obraz sprzed podziału) | 2 | 33 | 6,02 s | 7,02 s | 7,02 s | 7,02 s | 7,02 s |
+| outbox + doręczanie (`82d0e00`) | 1 | 30 | 6,51 s | 7,02 s | 7,30 s | 8,24 s | 8,53 s |
+| outbox + doręczanie (`82d0e00`) | 2 | 29 | 6,52 s | 7,52 s | 7,52 s | 7,52 s | 7,52 s |
+
+- Drugi przeskok kosztuje około pół sekundy na medianie (6,02 s do 6,5 s) i 0,3-0,5 s na p95 (7,02 s do 7,3-7,5 s), dużo poniżej najgorszego przypadku pełnego dodatkowego odpytania co 3 s, bo branie doręczeń pod obciążeniem biegnie ciągle.
+- Oba przebiegi podzielonego potoku mieszczą się w progu 8 s z zapasem około 0,5 s, więc faza piąta startuje z przechodzącej bazy. Pojedyncze próbki p99/max ocierają się już o 8,2-8,5 s, więc potok nie ma miejsca na trzeci przeskok.
+- Para jednoprzeskokowa z tego samego dnia pokrywa się z wpisem fazy czwartej (med 6,01 s, p95 7,29 s), co ogranicza szum między przebiegami do około 0,3 s na p95.
 ## Cache Redis — 2026-11-01, commit `e688772`
 
 Faza czwarta stawia cache odczytów z TTL (HybridCache, procesowe L1 plus Redis L2, 2 s na rodzaj zapytania) za szwem `IAuctionReadCache` modułu Auctions, wypełniany przy odczycie przez behavior MediatR dla trzech anonimowych zapytań. Oba wiersze pary używają tego samego obrazu api na zamrożonych limitach; "off" biegnie z `Cache:Enabled=false`, "on" z domyślnymi wartościami Compose (L1 plus L2, `redis:7.2-alpine` ograniczony do 64 MB). "pg CPU" to średnia z próbek `docker stats` kontenera postgresa zbieranych co sekundę podczas przebiegu.
