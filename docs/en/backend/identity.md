@@ -11,9 +11,9 @@
 | Endpoints | [`Presentation/IdentityEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Presentation/IdentityEndpoints.cs), request records `RegisterRequest`, `LoginRequest`, `RegisterBotRequest` |
 | Commands | `Application/Commands/Register/`, `Application/Commands/Login/`, `Application/Commands/RegisterBot/` (command, handler and, for the two registrations, a validator) |
 | Domain | [`Domain/Entities/User.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/User.cs), [`Domain/Entities/Role.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), `Domain/Exceptions/IdentityException.cs` |
-| Infrastructure | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `OutboxMessageConfiguration`), `Outbox/`, `Background/OutboxProcessor.cs` |
+| Infrastructure | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `OutboxMessageConfiguration`) |
 
-[`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) registers `IdentityDbContext` with Npgsql, `IAuthRepository` as scoped and the `OutboxProcessor` hosted service; `MapIdentityEndpoints` maps the route group. The JWT bearer validation itself and the `ApiKey` scheme live in the host, see [README.md](README.md).
+[`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) registers `IdentityDbContext` with Npgsql, `IAuthRepository` as scoped and the shared `OutboxProcessor<IdentityDbContext>` hosted service through `AddOutboxProcessor`; `MapIdentityEndpoints` maps the route group. The JWT bearer validation itself and the `ApiKey` scheme live in the host, see [README.md](README.md).
 
 ## Running
 
@@ -49,7 +49,7 @@ Token lifetimes are constants in `LoginCommandHandler`: `PlayerTokenLifetime` is
 | `IsDeleted` | `boolean` | global query filter `!IsDeleted` in `IdentityConfiguration`; set only by `DeleteThisUser`, which is called only from tests |
 | `UserRoles` | `integer` | `Role.Admin = 0`, `Role.User = 1`, `Role.Bot = 2`; `User` by default, `Bot` after `ChangeRole` in bot registration, `Admin` never assigned |
 
-The module also owns `IdentityOutboxMessages`, described in [messaging.md](messaging.md); the Identity copy of `OutboxMessage` exposes public setters on `Errors` and `IsDead`, unlike the other three copies. `User.ChangeEmail`, `ChangePassword` and `UpdateCredentials` exist but have no callers.
+The module also owns `IdentityOutboxMessages`, described in [messaging.md](messaging.md); since 2026-11-01 the entity is the shared one, so the Identity-only public setters on `Errors` and `IsDead` are gone. `User.ChangeEmail`, `ChangePassword` and `UpdateCredentials` exist but have no callers.
 
 ## API
 

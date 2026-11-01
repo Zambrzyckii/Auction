@@ -13,9 +13,9 @@
 | Queries | `Application/Queries/GetUserItemsQuery/` (query, handler, `UserItemsDto`) |
 | Event handlers | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
 | Domain | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
-| Infrastructure | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
+| Infrastructure | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Inbox/` |
 
-[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) registers `InventoryDbContext` with Npgsql, `IItemRepository` as scoped, the `OutboxProcessor` hosted service and an `InventoryOptions` singleton carrying the starter items passed from `Program.cs` (an entry with an empty name is rejected at startup); `MapInventoryEndpoints` maps the group with `RequireAuthorization()` on the group itself.
+[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) registers `InventoryDbContext` with Npgsql, `IItemRepository` as scoped, the shared `OutboxProcessor<InventoryDbContext>` hosted service (through `AddOutboxProcessor`) and an `InventoryOptions` singleton carrying the starter items passed from `Program.cs` (an entry with an empty name is rejected at startup); `MapInventoryEndpoints` maps the group with `RequireAuthorization()` on the group itself.
 
 ## Running
 

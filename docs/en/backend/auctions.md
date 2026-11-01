@@ -14,9 +14,9 @@
 | Read cache | `Application/Caching/` (`IAuctionReadCache`, `ICachedQuery`, `CachingBehavior`), `Infrastructure/Caching/` (`HybridAuctionReadCache`, `PassThroughAuctionReadCache`, `AuctionCacheMetrics`) |
 | Event handlers | `Application/Handlers/ItemLockedEventHandler.cs`, `Application/Handlers/ItemLockRejectedEventHandler.cs` |
 | Domain | [`Domain/Entities/Auction.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Entities/Auction.cs), `Domain/Enums/AuctionStatus.cs`, [`Domain/Exceptions/AuctionExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Exceptions/AuctionExceptions.cs) |
-| Infrastructure | `Persistence/` (`AuctionDbContext`, `AuctionRepository`, `SqlConnectionFactory`), `Configurations/`, `Outbox/`, `Inbox/`, `Background/` (`AuctionCloser`, `OutboxProcessor`), `Infrastructure/Migrations/` plus the top-level `Migrations/` |
+| Infrastructure | `Persistence/` (`AuctionDbContext`, `AuctionRepository`, `SqlConnectionFactory`), `Configurations/`, `Inbox/`, `Background/` (`AuctionCloser`), `Infrastructure/Migrations/` plus the top-level `Migrations/` |
 
-[`AuctionModuleExtensions.AddAuctionModule`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionModuleExtensions.cs) registers `AuctionDbContext` with Npgsql, `ISqlConnectionFactory` as a singleton, `IAuctionRepository` as scoped, the two hosted services `OutboxProcessor` and `AuctionCloser`, the open-generic `CachingBehavior` and the read-cache seam: `HybridAuctionReadCache` with its metrics when the host enables the cache, `PassThroughAuctionReadCache` otherwise; `MapAuctionEndpoints` maps the route group.
+[`AuctionModuleExtensions.AddAuctionModule`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionModuleExtensions.cs) registers `AuctionDbContext` with Npgsql, `ISqlConnectionFactory` as a singleton, `IAuctionRepository` as scoped, the two hosted services `OutboxProcessor<AuctionDbContext>` (through `AddOutboxProcessor`) and `AuctionCloser`, the open-generic `CachingBehavior` and the read-cache seam: `HybridAuctionReadCache` with its metrics when the host enables the cache, `PassThroughAuctionReadCache` otherwise; `MapAuctionEndpoints` maps the route group.
 
 ## Running
 

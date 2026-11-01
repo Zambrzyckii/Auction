@@ -86,9 +86,10 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-10-31 | Mutating HTTP requests are not queued, the transactional outbox stays the only asynchrony boundary, and an endpoint answering 202 and completing through events is an explicit per-endpoint exception (today only the casino cash-out) | owner (with agent) | bidding and the casino games answer with the domain result in the same response, the SPA has no push channel to deliver a deferred one, and write-spike protection belongs to PgBouncer, the gateway limits and the phase-7 per-user limiter, see ADR-008 |
 | 2026-11-01 | The three anonymous Auctions reads are cached TTL-only (2 s) behind the module-owned seam, bids included, and the k6 `visibility_lag` threshold rises from 6 s to 8 s to price the bids TTL in | owner | the cache keeps 92.6% of those reads away from postgres while a bid may surface up to 2 s later on top of the outbox lag; the owner chose raising the threshold over shortening the TTL or excluding bids, see ADR-009 and performance.md |
 | 2026-11-01 | One shared test stage: `AuctionServer.TestSupport` pins the test database image to Compose's `postgres:16-alpine` and its `SagaStage` boots the whole host for the first cross-module saga tests | agent (proposal, accepted) | the sagas were covered only by manual probes on the Compose stack, twelve fixtures pulled `postgres:latest` so tests and the stack could run different database versions, and phase five needs tests that must pass unchanged after the transport swap |
+| 2026-11-01 | The outbox entity, processor and courier move to a second shared project (`Shared.Infrastructure`), the claim leases rows for 30 s through `FOR UPDATE SKIP LOCKED` and rows processed more than 7 days ago are deleted hourly | agent (proposal, accepted) | the eight hand-synced copies had already drifted, the poll took no claim so a second instance of a module would double-publish routinely, and the pending poll scanned ever-growing tables; `Shared.Integration` stays contracts-only, see ADR-010 |
 
 ## Related documents
 
-- [adr/](adr) - the nine architecture decision records.
+- [adr/](adr) - the ten architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.

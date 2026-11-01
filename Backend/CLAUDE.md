@@ -26,9 +26,9 @@ docker compose up -d                              # from the repo ROOT: nginx ga
 
 ### Tests
 
-Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
+Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox (the entity offline, the `OutboxCourier` claim and cleanup on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
 
-- All nine mix offline unit tests (domain, validators, outbox entity) with Testcontainers integration tests under
+- All nine mix offline unit tests (domain, validators) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
   `<Module>PostgresFixture` collection fixture. **Require a running Docker daemon** and pull the pinned
   `postgres:16-alpine` (the `TestDatabase.Image` constant in `tests/AuctionServer.TestSupport`, the same version the
@@ -36,7 +36,7 @@ Ten test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`)
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
   on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
-  runs in `integration-tests` next to the other nine projects. `Wallets.Tests`, `Identity.Tests` and `Profiles.Tests` additionally boot the whole
+  runs in `integration-tests` next to the other ten projects. `Wallets.Tests`, `Identity.Tests` and `Profiles.Tests` additionally boot the whole
   host through a `WebApplicationFactory<Program>` fixture (`CustomApi`, in Profiles `ProfilesCustomApi`) that sets `ConnectionStrings__DefaultConnection`,
   `Jwt__Key` (Identity also `Bots__ApiKey`) as process env vars and migrates only its own module — the other modules'
   outbox processors log errors against missing tables; that noise is expected. `Profiles.Tests` also swaps
@@ -105,7 +105,7 @@ unless you pass `--output-dir`. Wallets is consistent: everything under `Infrast
 (`Initial_Wallets`, `Add_Wallets_Inbox`, `Add_Wallets_Outbox`, `Add_Wallets_Funds_Locks`).
 
 Identity keeps its migrations under `Infrastructure/Persistence/Migrations/` (same layout as Wallets). Its outbox
-entity maps to its own `IdentityOutboxMessages` table — table names must be globally unique because all modules
+rows live in its own `IdentityOutboxMessages` table — table names must be globally unique because all modules
 share one schema. Inventory follows the same layout (snapshot `InventoryDbContextModelSnapshot.cs`):
 `Initial_Inventory` creates `InventoryItems` and `InventoryOutboxMessages`, `Add_Item_LockedForAuctionId` and
 `Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. Warehouses uses the Wallets layout as well:
@@ -215,7 +215,8 @@ AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wa
 AuctionServer.Modules.Pawnshop     pawnshop: turnover-gated premises, one bot slot on an upgrade-only ladder, goods spawned through Inventory quotes, auto-sold for a share of the price by PawnshopKeeper or withdrawn to Inventory at full price, CQS with EF Core for both
 AuctionServer.Modules.Casino       casino: wallet money exchanged 1:1 for chips through a purchase saga, european roulette and blackjack played synchronously on the chip balance, cash-outs excluded from turnover, CQS with EF Core for both
 AuctionServer.Modules.Profiles     player profiles: username snapshot + turnover-driven level mirrored from Wallets events, avatars in SeaweedFS behind IAvatarStorage, social links, friends, warehouse invites; the first consume-only module (inbox, no outbox, no background services)
-AuctionServer.Shared.Integration   the only shared project: integration events + AppException
+AuctionServer.Shared.Integration   shared contracts: integration events + AppException, the only contact surface between modules
+AuctionServer.Shared.Infrastructure shared outbox implementation: OutboxMessage, OutboxProcessor<TContext>, OutboxCourier
 ```
 
 ### Module wiring pattern
@@ -245,9 +246,12 @@ explicitly allows for development and testing; production use requires a key (co
 
 Modules never join across each other's tables. A publishing module writes the event into its own outbox table in
 the same `SaveChangesAsync` as the state change (e.g. `PlaceBidCommandHandler` → `OutboxMessages`,
-Identity's `RegisterCommandHandler` → `IdentityOutboxMessages`). Each publishing module runs its own
-`OutboxProcessor` (`BackgroundService`, 3 s poll) that hands pending rows — raw `Type` + JSON `Content` — to
-`IIntegrationEventPublisher` (`Shared.Integration/Messaging/`). The processors know nothing about the transport.
+Identity's `RegisterCommandHandler` → `IdentityOutboxMessages`). Each publishing module runs its own instance of
+the shared `OutboxProcessor<TContext>` (`Shared.Infrastructure`, registered through `AddOutboxProcessor<TContext>(moduleName)`,
+3 s cycle), which claims up to 20 due rows with a 30 s lease (`OutboxCourier.ClaimAsync`: one `UPDATE ... FOR UPDATE
+SKIP LOCKED ... RETURNING *` statement, safe behind PgBouncer), hands them — raw `Type` + JSON `Content` — to
+`IIntegrationEventPublisher` (`Shared.Integration/Messaging/`) and once an hour deletes rows processed more than
+7 days ago. The processors know nothing about the transport.
 The host registers `InProcessEventPublisher`, the only transport implementation
 (`AuctionServer.Api/Infrastructure/Messaging/`), behind the `InstrumentedEventPublisher` decorator that measures
 each publish; the transport resolves the CLR type through the `IntegrationEventTypes` registry and publishes via MediatR `IPublisher`;
@@ -381,10 +385,11 @@ unique index instead. Handlers deliberately do **not** catch illegal state trans
 failure beats a silent skip.
 
 Outbox messages that keep failing are **dead-lettered**: `AttemptCount`/`Errors`/`NextAttemptOn`/`IsDead` columns,
-exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the poll query. The
-outbox entity and processor exist as eight separate copies (Auctions, Identity, Inventory, Wallets, Warehouses,
-Banking, Pawnshop, Casino) — a change to one must be mirrored in the others. Profiles is the only module without
-the copy: it consumes without publishing, so it carries just the inbox, no outbox table and no `OutboxProcessor`.
+exponential backoff (`2^attempt * 5 s`), parked after 5 failed attempts and skipped by the claim query. The
+outbox entity and processor live once in `AuctionServer.Shared.Infrastructure`: each publishing module maps its
+own table (`OutboxMessageConfiguration` → `OutboxMessageModel.Configure(builder, tableName)`, plus the partial
+index `IX_{table}_Pending`) and runs its own instance. Profiles is the only module without an outbox: it consumes
+without publishing, so it carries just the inbox, no outbox table and no `OutboxProcessor`.
 
 Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject into `Auctions/`, `Banking/`, `Casino/`, `Funds/`,
 `Items/`, `Pawnshop/`, `Players/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox

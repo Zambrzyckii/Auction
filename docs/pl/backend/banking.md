@@ -13,9 +13,9 @@
 | Opcje | `Application/Options/BankingOptions.cs` (`BankingOptions`, `LoanOfferDefinition`) |
 | Handlery zdarzeń | `Application/Handlers/LoanApprovedEventHandler.cs`, `LoanRejectedEventHandler.cs`, `LoanRepaymentCollectedEventHandler.cs` |
 | Domena | [`Domain/Entities/Loan.cs`](../../../Backend/src/AuctionServer.Modules.Banking/Domain/Entities/Loan.cs), `Domain/Enums/LoanStatus.cs`, [`Domain/Exceptions/BankingExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Banking/Domain/Exceptions/BankingExceptions.cs) |
-| Infrastruktura | `Persistence/` (`BankingDbContext`, `BankingRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs`, [`Background/BankKeeper.cs`](../../../Backend/src/AuctionServer.Modules.Banking/Infrastructure/Background/BankKeeper.cs) |
+| Infrastruktura | `Persistence/` (`BankingDbContext`, `BankingRepository`, `Migrations/`), `Configuration/`, `Inbox/`, [`Background/BankKeeper.cs`](../../../Backend/src/AuctionServer.Modules.Banking/Infrastructure/Background/BankKeeper.cs) |
 
-[`BankingModuleExtensions.AddBankingModule`](../../../Backend/src/AuctionServer.Modules.Banking/BankingModuleExtensions.cs) przyjmuje connection string i instancję `BankingOptions` i waliduje ją na starcie: oferty niepuste z unikalnymi nazwami do 64 znaków, `Principal > 0`, `0 < InterestRate <= 1`, `Term >= 10 s`, `RequiredTurnover >= 0`, `PenaltyRate` w przedziale `[0, 1]`, `CollectionRetryInterval > 0` oraz zarówno `ApprovalTimeout`, jak i `CollectionPendingTimeout` co najmniej 10 minut (horyzont dead letter, zobacz Decyzje). Rejestruje `BankingDbContext`, hosted services `OutboxProcessor` i `BankKeeper`, singleton opcji oraz `IBankingRepository` jako scoped. Jak Wallets moduł czyta i pisze przez EF Core (bez Dappera): zapytania używają `AsNoTracking`, zapisy ładują śledzoną pożyczkę chronioną tokenem współbieżności `Version`.
+[`BankingModuleExtensions.AddBankingModule`](../../../Backend/src/AuctionServer.Modules.Banking/BankingModuleExtensions.cs) przyjmuje connection string i instancję `BankingOptions` i waliduje ją na starcie: oferty niepuste z unikalnymi nazwami do 64 znaków, `Principal > 0`, `0 < InterestRate <= 1`, `Term >= 10 s`, `RequiredTurnover >= 0`, `PenaltyRate` w przedziale `[0, 1]`, `CollectionRetryInterval > 0` oraz zarówno `ApprovalTimeout`, jak i `CollectionPendingTimeout` co najmniej 10 minut (horyzont dead letter, zobacz Decyzje). Rejestruje `BankingDbContext`, hosted services `OutboxProcessor<BankingDbContext>` (przez `AddOutboxProcessor`) i `BankKeeper`, singleton opcji oraz `IBankingRepository` jako scoped. Jak Wallets moduł czyta i pisze przez EF Core (bez Dappera): zapytania używają `AsNoTracking`, zapisy ładują śledzoną pożyczkę chronioną tokenem współbieżności `Version`.
 
 Strona Wallets obu sag żyje w `Modules.Wallets`: `Application/Handlers/LoanRequestedEventHandler.cs` (bramka obrotu plus uznanie przez `Wallet.DisburseLoan`) i `LoanRepaymentRequestedEventHandler.cs` (obciążenie best effort przez `Wallet.CollectUpTo`). Zobacz [wallets.md](wallets.md).
 
@@ -67,7 +67,7 @@ Cała sekcja `Banking` z `appsettings.json` binduje się do `BankingOptions`; br
 | `RejectionReason` | `text(256)?` | z Wallets albo od keepera |
 | `Version` | `uuid` | token współbieżności odnawiany każdą metodą mutującą |
 
-`Outstanding => TotalDue + Penalty - AmountRepaid` jest liczone w encji i niemapowane. `BankingOutboxMessages` i `BankingProcessedMessages` to kopie modułu tabel outboxa i inboxa.
+`Outstanding => TotalDue + Penalty - AmountRepaid` jest liczone w encji i niemapowane. `BankingOutboxMessages` i `BankingProcessedMessages` to tabele outboxa i inboxa modułu.
 
 ## API
 

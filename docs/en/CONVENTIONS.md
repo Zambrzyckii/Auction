@@ -24,7 +24,7 @@ These are the rules the repository follows today, taken from the code and the gi
 ## 3. Code conventions
 
 - One module is one `.csproj` with `Presentation/`, `Application/`, `Domain/` and `Infrastructure/`; the host wires it with `Add<Name>Module` and `Map<Name>Endpoints`.
-- Modules reference only `AuctionServer.Shared.Integration`; they never reference each other and never query another module's tables.
+- Modules reference `AuctionServer.Shared.Integration` for contracts and, when they publish, `AuctionServer.Shared.Infrastructure` for the outbox implementation; they never reference each other and never query another module's tables.
 - Integration events are `record` types with `Guid EventId` as the first parameter, registered by name in `IntegrationEventTypes`; the outbox row `Id` is the event's `EventId`.
 - Domain exceptions are nested classes in one static container per module (`AuctionExceptions`, `WalletExceptions`, `InventoryException`, `IdentityException`) deriving from `AppException(message, statusCode)`; endpoints contain no try/catch.
 - Validators live next to their command (`<Command>Validator : AbstractValidator<Command>`), use the lambda overloads for time-dependent rules and are executed by `ValidationBehaviour`.

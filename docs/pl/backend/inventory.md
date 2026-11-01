@@ -13,9 +13,9 @@
 | Zapytania | `Application/Queries/GetUserItemsQuery/` (zapytanie, handler, `UserItemsDto`) |
 | Handlery zdarzeń | `Application/Handlers/ItemLockRequestedEventHandler.cs`, `AuctionFinishedEventHandler.cs`, `AuctionCancelledEventHandler.cs`, `AuctionSettledEventHandler.cs`, `UserRegisteredEventHandler.cs`, `WarehouseStockRequestedEventHandler.cs`, `WarehouseWonEventHandler.cs`, `PawnshopStockRequestedEventHandler.cs`, `PawnshopItemWithdrawnEventHandler.cs` |
 | Domena | [`Domain/Entities/Item.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Entities/Item.cs), `Domain/Enums/ItemRarity.cs`, `Domain/Enums/ItemStatus.cs`, [`Domain/Exceptions/InventoryException.cs`](../../../Backend/src/AuctionServer.Modules.Inventory/Domain/Exceptions/InventoryException.cs) |
-| Infrastruktura | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Outbox/`, `Inbox/`, `Background/OutboxProcessor.cs` |
+| Infrastruktura | `Persistence/` (`InventoryDbContext`, `ItemRepository`, `Migrations/`), `Configuration/`, `Inbox/` |
 
-[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) rejestruje `InventoryDbContext` z Npgsql, `IItemRepository` jako scoped, hosted service `OutboxProcessor` i singleton `InventoryOptions` z przedmiotami startowymi przekazanymi z `Program.cs` (wpis z pustą nazwą jest odrzucany na starcie); `MapInventoryEndpoints` mapuje grupę z `RequireAuthorization()` na samej grupie.
+[`InventoryModuleExtension.AddInventoryModule`](../../../Backend/src/AuctionServer.Modules.Inventory/InventoryModuleExtension.cs) rejestruje `InventoryDbContext` z Npgsql, `IItemRepository` jako scoped, współdzielony hosted service `OutboxProcessor<InventoryDbContext>` (przez `AddOutboxProcessor`) i singleton `InventoryOptions` z przedmiotami startowymi przekazanymi z `Program.cs` (wpis z pustą nazwą jest odrzucany na starcie); `MapInventoryEndpoints` mapuje grupę z `RequireAuthorization()` na samej grupie.
 
 ## Uruchomienie
 

@@ -4,7 +4,7 @@ flowchart LR
         State["entity change<br/>e.g. Auction.CloseAuction"]:::auctions --- Out["outbox row<br/>Id = EventId, Type, Content (JSON)"]:::auctions
     end
 
-    Out --> Proc["OutboxProcessor (BackgroundService)<br/>every 3 s: ProcessedOn null, not IsDead,<br/>NextAttemptOn null or past, ORDER BY CreatedOn, max 20"]:::auctions
+    Out --> Proc["OutboxProcessor&lt;TContext&gt; (Shared.Infrastructure)<br/>every 3 s OutboxCourier.ClaimAsync: due, unleased rows,<br/>lease 30 s via FOR UPDATE SKIP LOCKED, ORDER BY CreatedOn, max 20;<br/>hourly cleanup of rows processed over 7 days ago"]:::shared
     Proc --> Pub["IIntegrationEventPublisher<br/>InProcessEventPublisher"]:::host
     Pub --> Reg["IntegrationEventTypes.Deserialize<br/>9 registered event types"]:::shared
     Reg --> Med["MediatR IPublisher.Publish<br/>handlers one after another, registration order"]:::host

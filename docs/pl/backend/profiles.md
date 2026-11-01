@@ -134,7 +134,7 @@ Moduł niczego nie publikuje. Konta społecznościowe, awatary, znajomi i zapros
 
 ## Decyzje
 
-- Moduł wyłącznie konsumujący. Profiles nie posiada faktu potrzebnego innemu modułowi, więc nie niesie outboxa, `OutboxProcessor`a ani keepera, pierwsze odejście od reguły ośmiu kopii; przyszły publikator doda standardową kopię outboxa z powrotem.
+- Moduł wyłącznie konsumujący. Profiles nie posiada faktu potrzebnego innemu modułowi, więc nie niesie outboxa, `OutboxProcessor`a ani keepera i jako jedyny moduł nie referencuje `Shared.Infrastructure`; przyszły publikator doda referencję i zarejestruje własną instancję procesora.
 - Poziomy żyją w Wallets, prezentacja w Profiles. Nagroda musi być atomowa z pieniędzmi, więc logika poziomów siedzi obok `LifetimeTurnover` za tym samym zapisem, a Profiles tylko odbija wynik.
 - SeaweedFS za szwem. `IAvatarStorage` trzyma typy AWS z dala od Domain i Application; dialekt S3 czyni storage wymienialnym (MinIO, prawdziwe S3) przez zmianę jednego adaptera i jednej sekcji opcji.
 - Object storage trzyma bajty, PostgreSQL trzyma fakty. Storage jest odpytywany wyłącznie po stabilnym kluczu `avatars/{userId:N}`; wszystko, po czym API filtruje albo wersjonuje (typ, hash, data), jest kolumną profilu, bo magazyn w stylu S3 nie umie filtrować po metadanych.

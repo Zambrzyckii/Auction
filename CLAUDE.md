@@ -52,8 +52,9 @@ convention, not by the compiler — nothing stops you from breaking them, so the
 
 - One module = one `.csproj`, internally split into `Presentation` / `Application` / `Domain` / `Infrastructure`.
 - **No cross-module database joins and no cross-module project references.** Modules communicate only through
-  integration events. `AuctionServer.Shared.Integration` is the single shared project and the only legal
-  contact surface between modules.
+  integration events. `AuctionServer.Shared.Integration` holds the contracts and is the only legal
+  contact surface between modules; `AuctionServer.Shared.Infrastructure` is shared implementation
+  (the outbox), and modules never communicate through it.
 - Every module owns its own `DbContext` and its own migrations. They happen to share one physical database and
   one `__EFMigrationsHistory` table, so isolation is discipline, not a schema boundary.
 - `Domain` and `Application` layers must stay free of ASP.NET Core types.

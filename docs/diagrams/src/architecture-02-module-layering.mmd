@@ -18,9 +18,12 @@ flowchart TB
     end
 
     Shared["AuctionServer.Shared.Integration<br/>Events/ (37 records), AppException, IIntegrationEventPublisher,<br/>IntegrationEventTypes, ValidationBehaviour"]:::shared
+    SharedInfra["AuctionServer.Shared.Infrastructure<br/>OutboxMessage, OutboxMessageModel,<br/>OutboxProcessor&lt;TContext&gt;, OutboxCourier"]:::shared
 
     Program --> Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino & Profiles
     Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino & Profiles --> Shared
+    Identity & Wallets & Auctions & Inventory & Warehouses & Banking & Pawnshop & Casino --> SharedInfra
+    SharedInfra --> Shared
     ApiInfra -.->|"implements IIntegrationEventPublisher"| Shared
 
     style Host fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B

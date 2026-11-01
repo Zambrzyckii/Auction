@@ -11,9 +11,9 @@
 | Endpointy | [`Presentation/IdentityEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Presentation/IdentityEndpoints.cs), rekordy żądań `RegisterRequest`, `LoginRequest`, `RegisterBotRequest` |
 | Komendy | `Application/Commands/Register/`, `Application/Commands/Login/`, `Application/Commands/RegisterBot/` (komenda, handler oraz, dla dwóch rejestracji, walidator) |
 | Domena | [`Domain/Entities/User.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/User.cs), [`Domain/Entities/Role.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), `Domain/Exceptions/IdentityException.cs` |
-| Infrastruktura | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `OutboxMessageConfiguration`), `Outbox/`, `Background/OutboxProcessor.cs` |
+| Infrastruktura | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `OutboxMessageConfiguration`) |
 
-[`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) rejestruje `IdentityDbContext` z Npgsql, `IAuthRepository` jako scoped i hosted service `OutboxProcessor`; `MapIdentityEndpoints` mapuje grupę tras. Sama walidacja bearera JWT i schemat `ApiKey` żyją w hoście, zobacz [README.md](README.md).
+[`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) rejestruje `IdentityDbContext` z Npgsql, `IAuthRepository` jako scoped i współdzielony hosted service `OutboxProcessor<IdentityDbContext>` przez `AddOutboxProcessor`; `MapIdentityEndpoints` mapuje grupę tras. Sama walidacja bearera JWT i schemat `ApiKey` żyją w hoście, zobacz [README.md](README.md).
 
 ## Uruchomienie
 
@@ -49,7 +49,7 @@ Czasy życia tokenów to stałe w `LoginCommandHandler`: `PlayerTokenLifetime` t
 | `IsDeleted` | `boolean` | globalny filtr zapytań `!IsDeleted` w `IdentityConfiguration`; ustawiany tylko przez `DeleteThisUser`, wołane wyłącznie z testów |
 | `UserRoles` | `integer` | `Role.Admin = 0`, `Role.User = 1`, `Role.Bot = 2`; domyślnie `User`, `Bot` po `ChangeRole` w rejestracji bota, `Admin` nigdy nie przypisywany |
 
-Moduł posiada też `IdentityOutboxMessages`, opisane w [messaging.md](messaging.md); kopia `OutboxMessage` w Identity ma publiczne settery `Errors` i `IsDead`, w odróżnieniu od pozostałych trzech kopii. `User.ChangeEmail`, `ChangePassword` i `UpdateCredentials` istnieją, ale nie mają wywołań.
+Moduł posiada też `IdentityOutboxMessages`, opisane w [messaging.md](messaging.md); od 2026-11-01 encja jest tą współdzieloną, więc publiczne settery `Errors` i `IsDead`, które miało tylko Identity, zniknęły. `User.ChangeEmail`, `ChangePassword` i `UpdateCredentials` istnieją, ale nie mają wywołań.
 
 ## API
 

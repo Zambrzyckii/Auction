@@ -1,11 +1,13 @@
 stateDiagram-v2
     [*] --> Pending: row inserted together with the state change
-    Pending --> Processed: PublishAsync succeeded, MarkAsProcessed
-    Pending --> Backoff: handler threw, FailedAttempt (wait 20 / 40 / 80 / 160 s)
+    Pending --> Leased: claimed, LeasedUntil = now + 30 s
+    Leased --> Processed: PublishAsync succeeded, MarkAsProcessed
+    Leased --> Backoff: handler threw, FailedAttempt (wait 20 / 40 / 80 / 160 s)
+    Leased --> Pending: lease expired, instance died mid-publish
     Backoff --> Pending: NextAttemptOn reached
-    Pending --> Dead: fifth failure, AttemptCount becomes 6, MarkMessageAsDead
-    Processed --> [*]
-    Dead --> [*]: excluded from the poll, no automatic replay
+    Leased --> Dead: fifth failure, AttemptCount becomes 6, MarkMessageAsDead
+    Processed --> [*]: deleted by the hourly cleanup after 7 days
+    Dead --> [*]: excluded from the claim, no automatic replay, never deleted
     note right of Pending
         ProcessedOn null, IsDead false
         AttemptCount starts at 1

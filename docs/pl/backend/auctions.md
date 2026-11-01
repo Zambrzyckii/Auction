@@ -14,9 +14,9 @@
 | Cache odczytów | `Application/Caching/` (`IAuctionReadCache`, `ICachedQuery`, `CachingBehavior`), `Infrastructure/Caching/` (`HybridAuctionReadCache`, `PassThroughAuctionReadCache`, `AuctionCacheMetrics`) |
 | Handlery zdarzeń | `Application/Handlers/ItemLockedEventHandler.cs`, `Application/Handlers/ItemLockRejectedEventHandler.cs` |
 | Domena | [`Domain/Entities/Auction.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Entities/Auction.cs), `Domain/Enums/AuctionStatus.cs`, [`Domain/Exceptions/AuctionExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Exceptions/AuctionExceptions.cs) |
-| Infrastruktura | `Persistence/` (`AuctionDbContext`, `AuctionRepository`, `SqlConnectionFactory`), `Configurations/`, `Outbox/`, `Inbox/`, `Background/` (`AuctionCloser`, `OutboxProcessor`), `Infrastructure/Migrations/` plus `Migrations/` na górze modułu |
+| Infrastruktura | `Persistence/` (`AuctionDbContext`, `AuctionRepository`, `SqlConnectionFactory`), `Configurations/`, `Inbox/`, `Background/` (`AuctionCloser`), `Infrastructure/Migrations/` plus `Migrations/` na górze modułu |
 
-[`AuctionModuleExtensions.AddAuctionModule`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionModuleExtensions.cs) rejestruje `AuctionDbContext` z Npgsql, `ISqlConnectionFactory` jako singleton, `IAuctionRepository` jako scoped, dwa hosted services `OutboxProcessor` i `AuctionCloser`, otwarty generyk `CachingBehavior` oraz szew cache odczytów: `HybridAuctionReadCache` z jego metrykami, gdy host włącza cache, w przeciwnym razie `PassThroughAuctionReadCache`; `MapAuctionEndpoints` mapuje grupę tras.
+[`AuctionModuleExtensions.AddAuctionModule`](../../../Backend/src/AuctionServer.Modules.Auctions/AuctionModuleExtensions.cs) rejestruje `AuctionDbContext` z Npgsql, `ISqlConnectionFactory` jako singleton, `IAuctionRepository` jako scoped, dwa hosted services `OutboxProcessor<AuctionDbContext>` (przez `AddOutboxProcessor`) i `AuctionCloser`, otwarty generyk `CachingBehavior` oraz szew cache odczytów: `HybridAuctionReadCache` z jego metrykami, gdy host włącza cache, w przeciwnym razie `PassThroughAuctionReadCache`; `MapAuctionEndpoints` mapuje grupę tras.
 
 ## Uruchomienie
 

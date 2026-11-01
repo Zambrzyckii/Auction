@@ -1,21 +1,24 @@
-# Komunikaty: Shared.Integration, outbox i inbox
+# Komunikaty: projekty współdzielone, outbox i inbox
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/messaging.md](../../en/backend/messaging.md)
 
-`AuctionServer.Shared.Integration` to jedyny projekt referencowany przez każdy moduł, a tabele outboxa i inboxa to jedyna droga, którą moduły wpływają na siebie nawzajem. Ten rozdział opisuje projekt współdzielony, wiersz outboxa i jego procesor, politykę ponowień i martwych wiadomości, wzorzec inboxa po stronie konsumenta, szew publishera, który zastąpiłby broker wiadomości, oraz katalog trzydziestu siedmiu zdarzeń integracyjnych.
+`AuctionServer.Shared.Integration` trzyma kontrakty referencowane przez każdy moduł, a tabele outboxa i inboxa to jedyna droga, którą moduły wpływają na siebie nawzajem. Od 2026-11-01 implementacja outboxa żyje raz, w drugim projekcie współdzielonym `AuctionServer.Shared.Infrastructure`, referencowanym przez osiem modułów publikujących. Ten rozdział opisuje oba projekty współdzielone, wiersz outboxa i jego procesor, politykę ponowień i martwych wiadomości, wzorzec inboxa po stronie konsumenta, szew publishera, który zastąpiłby broker wiadomości, oraz katalog trzydziestu siedmiu zdarzeń integracyjnych.
 
 ## Przegląd
 
-[`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) celuje w `net10.0`, zależy wyłącznie od `MediatR` i `FluentValidation` i zawiera cztery foldery:
+[`AuctionServer.Shared.Integration`](../../../Backend/src/AuctionServer.Shared.Integration/AuctionServer.Shared.Integration.csproj) celuje w `net10.0`, zależy wyłącznie od `MediatR` i `FluentValidation` i zawiera pięć folderów:
 
 | Folder | Zawartość |
 |---|---|
 | `Events/` | trzydzieści siedem typów `record` implementujących `INotification` z MediatR, plus rekordy ładunku `WarehouseStockItem` i `PawnshopStockItem`, pogrupowane tematycznie w `Auctions/`, `Banking/`, `Casino/`, `Funds/`, `Items/`, `Pawnshop/`, `Players/`, `Users/` i `Warehouses/`; każdy rekord zdarzenia zaczyna się od `Guid EventId` |
 | `Exceptions/` | `AppException(message, statusCode)`, abstrakcyjna baza każdego wyjątku domenowego, oraz `RequestValidationException` (400) |
 | `Messaging/` | `IIntegrationEventPublisher` (szew publishera) i `IntegrationEventTypes` (rejestr nazwa→typ używany do deserializacji wierszy outboxa) |
+| `Observability/` | `OutboxMetrics`, miernik `AuctionServer.Outbox` z licznikami przetworzonych, nieudanych i martwych oraz histogramem opóźnienia publikacji, zapisywanymi per nazwa modułu |
 | `Validators/` | `ValidationBehaviour<,>`, behavior pipeline'u MediatR uruchamiający walidatory FluentValidation przed handlerem |
 
 Moduły zależą od tego projektu dla kontraktów zdarzeń i bazy wyjątków; host dodatkowo implementuje `IIntegrationEventPublisher` w [`InProcessEventPublisher`](../../../Backend/src/AuctionServer.Api/Infrastructure/Messaging/InProcessEventPublisher.cs).
+
+[`AuctionServer.Shared.Infrastructure`](../../../Backend/src/AuctionServer.Shared.Infrastructure/AuctionServer.Shared.Infrastructure.csproj) to drugi projekt współdzielony: zależy od EF Core i `Shared.Integration` i trzyma implementację outboxa w `Outbox/` — encję `OutboxMessage`, `OutboxMessageModel.Configure(builder, tableName)` dla mapowania per moduł, generyczny `OutboxProcessor<TContext>`, zapytania brania i sprzątania w `OutboxCourier` oraz rozszerzenie rejestracji `AddOutboxProcessor<TContext>(moduleName)`. Osiem modułów publikujących referencuje go jako współdzieloną implementację; nie jest powierzchnią kontaktu, więc moduły nadal rozmawiają wyłącznie przez zdarzenia w `Shared.Integration`.
 
 ## Outbox
 
@@ -26,7 +29,7 @@ Diagram pokazuje jedno zdarzenie wędrujące z transakcji modułu produkującego
   <img alt="Diagram: z outboxa do inboxa" src="../../diagrams/backend-messaging-01-outbox-to-inbox.svg">
 </picture>
 
-Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Outbox/OutboxMessage.cs) i [`OutboxProcessor`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Background/OutboxProcessor.cs); osiem kopii różni się tylko używanym `DbContext`em oraz, w Identity, dwoma publicznymi setterami (`Errors`, `IsDead`) i klasą procesora bez `sealed`. Tabele to `OutboxMessages` (Auctions, bez wywołania `ToTable`), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` i `CasinoOutboxMessages`. Profiles niczego nie publikuje i jest jedynym modułem bez kopii outboxa i bez `OutboxProcessor`a; przyszły publikator w tym module dodałby standardową kopię z powrotem.
+Wszystkie osiem modułów publikujących współdzieli jedną encję [`OutboxMessage`](../../../Backend/src/AuctionServer.Shared.Infrastructure/Outbox/OutboxMessage.cs) i jeden generyczny [`OutboxProcessor<TContext>`](../../../Backend/src/AuctionServer.Shared.Infrastructure/Outbox/OutboxProcessor.cs) z `Shared.Infrastructure`; każdy moduł mapuje encję na własną tabelę przez `OutboxMessageModel.Configure(builder, tableName)` w swojej `OutboxMessageConfiguration` i uruchamia własną instancję procesora. Tabele to `OutboxMessages` (Auctions), `WalletsOutboxMessages`, `InventoryOutboxMessages`, `IdentityOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` i `CasinoOutboxMessages`. Profiles niczego nie publikuje, nie referencuje `Shared.Infrastructure` i nie uruchamia `OutboxProcessor`a; przyszły publikator w tym module dodałby referencję i zarejestrował własną instancję.
 
 | Kolumna | Typ | Znaczenie |
 |---|---|---|
@@ -39,10 +42,13 @@ Każdy moduł ma własną kopię [`OutboxMessage`](../../../Backend/src/AuctionS
 | `Errors` | `text[]` | jeden komunikat wyjątku na nieudaną próbę, nigdy nie przycinane |
 | `IsDead` | `boolean` | ustawiane przez `MarkMessageAsDead`; martwe wiersze są wyłączone z odpytywania |
 | `NextAttemptOn` | `timestamptz`, nullowalna | najwcześniejszy czas kolejnej próby, liczony przez `FailedAttempt` |
+| `LeasedUntil` | `timestamptz`, nullowalna | 30-sekundowa dzierżawa kuriera; wydzierżawiony wiersz jest pomijany przez każde inne branie aż do wygaśnięcia dzierżawy |
+
+Każda tabela ma też częściowy indeks `IX_{table}_Pending` na `CreatedOn`, filtrowany warunkiem `"ProcessedOn" IS NULL AND NOT "IsDead"`, więc zapytanie brania skanuje tylko niedoręczone wiersze niezależnie od tego, jak duża zrobi się tabela.
 
 Producent nigdy nie publikuje bezpośrednio: dodaje wiersz do `DbContext`u modułu i zapisuje go razem ze zmianą encji (`CreateAuctionAsync`, `SaveChangesWithOutboxAsync`, `AddUserWithOutboxAsync` oraz warianty inbox-i-outbox wymienione niżej), więc albo oba commitują się razem, albo żaden.
 
-`OutboxProcessor` to `BackgroundService` rejestrowany przez wywołanie `Add<Module>Module` każdego modułu publikującego (wszystkie poza Profiles). Jego pętla uruchamia `ProcessPendingMessagesAsync`, loguje `Outbox processing cycle failed` przy dowolnym wyjątku i czeka 3 s (`Task.Delay(3000)`) przed kolejnym cyklem. Jeden cykl otwiera scope DI, pobiera `DbContext` modułu, wybiera do 20 wierszy, w których `ProcessedOn` jest null, `IsDead` jest false, a `NextAttemptOn` jest null lub w przeszłości, uporządkowanych po `CreatedOn`, i obsługuje je po kolei: `PublishAsync(Id, Type, Content)` przez `IIntegrationEventPublisher` pobrany ze świeżego scope tworzonego dla tej jednej wiadomości, potem `MarkAsProcessed()`, a przy wyjątku `FailedAttempt(e.Message)`, `MarkMessageAsDead()`, gdy `AttemptCount` przekroczy 5, oraz wpis w logu `Failed to process outbox message {MessageId}`. `SaveChangesAsync` wykonuje się po każdej wiadomości, więc jeden zatruty wiersz nie blokuje wierszy za nim. Scope per wiadomość daje każdemu handlerowi odbiorcy świeży `DbContext`, więc encje pozostawione w śledzeniu przez jeden nieudany handler nie psują zapisów wiadomości za nim.
+`OutboxProcessor<TContext>` to `BackgroundService` rejestrowany przez wywołanie `Add<Module>Module` każdego modułu publikującego poprzez `AddOutboxProcessor<TContext>(moduleName)` (wszystkie poza Profiles). Jego pętla uruchamia `ProcessPendingMessagesAsync`, loguje `Outbox processing cycle failed` przy dowolnym wyjątku i czeka 3 s (`Task.Delay(3000)`) przed kolejnym cyklem. Jeden cykl otwiera scope DI, pobiera `DbContext` modułu i bierze do 20 wierszy przez `OutboxCourier.ClaimAsync`: jeden `UPDATE` ustawia `LeasedUntil = now() + 30 s` na identyfikatorach wybranych podzapytaniem filtrowanym po `ProcessedOn` null, `IsDead` false, `NextAttemptOn` null lub w przeszłości i `LeasedUntil` null lub w przeszłości, uporządkowanym po `CreatedOn`, z `LIMIT 20 FOR UPDATE SKIP LOCKED`, i zwraca wzięte wiersze. Jedno polecenie to jedna niejawna transakcja, więc branie pozostaje bezpieczne za poolingiem transakcyjnym PgBouncera (ADR-007), `SKIP LOCKED` nie pozwala dwóm równoczesnym instancjom wziąć tych samych wierszy, a branie instancji, która padła, po prostu wygasa wraz z dzierżawą. Wzięte wiersze są obsługiwane po kolei: `PublishAsync(Id, Type, Content)` przez `IIntegrationEventPublisher` pobrany ze świeżego scope tworzonego dla tej jednej wiadomości, potem `MarkAsProcessed()`, a przy wyjątku `FailedAttempt(e.Message)`, `MarkMessageAsDead()`, gdy `AttemptCount` przekroczy 5, oraz wpis w logu `Failed to process outbox message {MessageId}`. `SaveChangesAsync` wykonuje się po każdej wiadomości, więc jeden zatruty wiersz nie blokuje wierszy za nim. Scope per wiadomość daje każdemu handlerowi odbiorcy świeży `DbContext`, więc encje pozostawione w śledzeniu przez jeden nieudany handler nie psują zapisów wiadomości za nim. Raz na godzinę cykl uruchamia też `OutboxCourier.CleanupAsync`, które kasuje wiersze przetworzone ponad 7 dni temu; wiersze oczekujące i martwe nie są kasowane nigdy.
 
 ## Ponowienia i martwe wiadomości
 
@@ -174,7 +180,7 @@ Zastąpienie szyny in-process brokerem oznacza jedną nową implementację `IInt
 
 ## Decyzje
 
-- Outbox i inbox są skopiowane do każdego modułu zamiast leżeć w `Shared.Integration`, dzięki czemu projekt współdzielony pozostaje assembly z samymi kontraktami, bez zależności od EF Core; ceną jest osiem identycznych klas do utrzymania w synchronizacji (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md)). Profiles konsumuje bez publikowania i niesie wyłącznie kopię inboxa.
+- Encja outboxa i jej procesor żyją raz, w `AuctionServer.Shared.Infrastructure`, a każdy moduł publikujący mapuje własną tabelę i uruchamia własną instancję, podczas gdy inbox nadal jest kopiowany do każdego modułu konsumującego; `Shared.Integration` pozostaje assembly z samymi kontraktami, bez zależności od EF Core (zobacz [ADR-002](../adr/002-transactional-outbox-and-inbox.md) i [ADR-010](../adr/010-shared-outbox-infrastructure.md)). Profiles konsumuje bez publikowania i niesie wyłącznie kopię inboxa.
 - Szyna jest in-process, a publisher to szew, więc moduły od początku były pisane pod dostarczanie at-least-once i broker można wprowadzić bez ich dotykania (zobacz [ADR-003](../adr/003-in-process-event-bus-before-rabbitmq.md)).
 - Handlery celowo wypuszczają nieoczekiwane wyjątki, więc wiadomość, której nie da się zastosować, staje się martwym wierszem z historią błędów, a nie cichym pominięciem.
 

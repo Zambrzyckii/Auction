@@ -24,7 +24,7 @@ To reguły, których repozytorium przestrzega dziś, wzięte z kodu i historii g
 ## 3. Konwencje kodu
 
 - Jeden moduł to jeden `.csproj` z `Presentation/`, `Application/`, `Domain/` i `Infrastructure/`; host podpina go przez `Add<Name>Module` i `Map<Name>Endpoints`.
-- Moduły referencują wyłącznie `AuctionServer.Shared.Integration`; nigdy nie referencują się nawzajem i nigdy nie odpytują tabel innego modułu.
+- Moduły referencują `AuctionServer.Shared.Integration` dla kontraktów oraz, gdy publikują, `AuctionServer.Shared.Infrastructure` dla implementacji outboxa; nigdy nie referencują się nawzajem i nigdy nie odpytują tabel innego modułu.
 - Zdarzenia integracyjne to typy `record` z `Guid EventId` jako pierwszym parametrem, rejestrowane po nazwie w `IntegrationEventTypes`; `Id` wiersza outboxa to `EventId` zdarzenia.
 - Wyjątki domenowe to klasy zagnieżdżone w jednym statycznym kontenerze na moduł (`AuctionExceptions`, `WalletExceptions`, `InventoryException`, `IdentityException`) dziedziczącym po `AppException(message, statusCode)`; endpointy nie zawierają try/catch.
 - Walidatory leżą obok swojej komendy (`<Command>Validator : AbstractValidator<Command>`), używają przeciążeń z lambdą dla reguł zależnych od czasu i są wykonywane przez `ValidationBehaviour`.

@@ -134,7 +134,7 @@ The module publishes nothing. Social links, avatars, friends and invites are syn
 
 ## Decisions
 
-- Consume-only module. Profiles owns no fact another module needs, so it carries no outbox, no `OutboxProcessor` and no keeper, the first departure from the eight-copies rule; a future publisher would add the standard outbox copy back.
+- Consume-only module. Profiles owns no fact another module needs, so it carries no outbox, no `OutboxProcessor` and no keeper, and it is the only module without a reference to `Shared.Infrastructure`; a future publisher would add the reference and register its own processor instance.
 - Levels live in Wallets, display lives in Profiles. The award must be atomic with the money, so the level logic sits next to `LifetimeTurnover` behind the same save, and Profiles only mirrors the result.
 - SeaweedFS behind a seam. `IAvatarStorage` keeps AWS types out of Domain and Application; the S3 dialect makes the storage swappable (MinIO, real S3) by changing one adapter and one options section.
 - Object storage holds bytes, PostgreSQL holds facts. The storage is queried only by the stable key `avatars/{userId:N}`; everything the API filters or versions by (type, hash, date) is a profile column, because S3-style storage cannot filter by metadata.
