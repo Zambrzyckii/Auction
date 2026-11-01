@@ -7,7 +7,5 @@ namespace AuctionServer.Modules.Casino.Infrastructure.Configuration;
 internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
-    {
-        builder.ToTable("CasinoOutboxMessages");
-    }
+        => OutboxMessageModel.Configure(builder, "CasinoOutboxMessages");
 }

@@ -11,6 +11,7 @@ public sealed class OutboxMessage
     public List<string?> Errors { get; private set; } = new List<string?>();
     public bool IsDead { get; private set; }
     public DateTime? NextAttemptOn { get; private set; } = null;
+    public DateTime? LeasedUntil { get; private set; }
 
     public void MarkAsProcessed() => ProcessedOn = DateTime.UtcNow;
 

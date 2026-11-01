@@ -69,7 +69,7 @@ public class SagaStage<TEntryPoint> : IAsyncLifetime where TEntryPoint : class
         await connection.OpenAsync();
         foreach (var table in OutboxTables)
         {
-            var sql = $"""UPDATE "{table}" SET "NextAttemptOn" = now() WHERE "ProcessedOn" IS NULL AND NOT "IsDead" AND "NextAttemptOn" > now()""";
+            var sql = $"""UPDATE "{table}" SET "NextAttemptOn" = now(), "LeasedUntil" = NULL WHERE "ProcessedOn" IS NULL AND NOT "IsDead" AND ("NextAttemptOn" > now() OR "LeasedUntil" > now())""";
             await using var command = new NpgsqlCommand(sql, connection);
             await command.ExecuteNonQueryAsync();
         }

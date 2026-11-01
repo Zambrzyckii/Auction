@@ -158,6 +158,9 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsDead")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LeasedUntil")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("NextAttemptOn")
                         .HasColumnType("timestamp with time zone");
 
@@ -169,6 +172,10 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedOn")
+                        .HasDatabaseName("IX_WarehousesOutboxMessages_Pending")
+                        .HasFilter("\"ProcessedOn\" IS NULL AND NOT \"IsDead\"");
 
                     b.ToTable("WarehousesOutboxMessages", (string)null);
                 });

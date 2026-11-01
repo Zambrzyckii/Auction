@@ -38,11 +38,21 @@ public sealed class OutboxProcessor<TContext>(
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
 
-        var messages = await context.Set<OutboxMessage>()
-            .Where(m => m.ProcessedOn == null && !m.IsDead && (m.NextAttemptOn == null || m.NextAttemptOn <= DateTime.UtcNow))
-            .OrderBy(m => m.CreatedOn)
-            .Take(20)
-            .ToListAsync(stoppingToken);
+        var table = context.Model.FindEntityType(typeof(OutboxMessage))!.GetTableName();
+        var claim = $"""
+            UPDATE "{table}" SET "LeasedUntil" = now() + interval '30 seconds'
+            WHERE "Id" IN (
+                SELECT "Id" FROM "{table}"
+                WHERE "ProcessedOn" IS NULL AND NOT "IsDead"
+                  AND ("NextAttemptOn" IS NULL OR "NextAttemptOn" <= now())
+                  AND ("LeasedUntil" IS NULL OR "LeasedUntil" <= now())
+                ORDER BY "CreatedOn"
+                LIMIT 20
+                FOR UPDATE SKIP LOCKED)
+            RETURNING *
+            """;
+        var claimed = await context.Set<OutboxMessage>().FromSqlRaw(claim).ToListAsync(stoppingToken);
+        var messages = claimed.OrderBy(m => m.CreatedOn).ToList();
 
         foreach (var message in messages)
         {

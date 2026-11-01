@@ -7,7 +7,5 @@ namespace AuctionServer.Modules.Wallets.Infrastructure.Configuration;
 internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
-    {
-        builder.ToTable("WalletsOutboxMessages");
-    }
+        => OutboxMessageModel.Configure(builder, "WalletsOutboxMessages");
 }

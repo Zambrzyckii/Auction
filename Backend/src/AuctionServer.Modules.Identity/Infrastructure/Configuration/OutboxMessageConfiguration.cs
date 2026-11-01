@@ -7,7 +7,5 @@ namespace AuctionServer.Modules.Identity.Infrastructure.Configuration;
 internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
-    {
-        builder.ToTable("IdentityOutboxMessages");
-    }
+        => OutboxMessageModel.Configure(builder, "IdentityOutboxMessages");
 }

@@ -162,6 +162,9 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.Property<bool>("IsDead")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LeasedUntil")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime?>("NextAttemptOn")
                         .HasColumnType("timestamp with time zone");
 
@@ -174,7 +177,11 @@ namespace AuctionServer.Modules.Auctions.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OutboxMessages");
+                    b.HasIndex("CreatedOn")
+                        .HasDatabaseName("IX_OutboxMessages_Pending")
+                        .HasFilter("\"ProcessedOn\" IS NULL AND NOT \"IsDead\"");
+
+                    b.ToTable("OutboxMessages", (string)null);
                 });
 #pragma warning restore 612, 618
         }

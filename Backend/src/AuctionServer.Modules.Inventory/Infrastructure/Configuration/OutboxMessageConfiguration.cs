@@ -7,7 +7,5 @@ namespace AuctionServer.Modules.Inventory.Infrastructure.Configuration;
 internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
-    {
-        builder.ToTable("InventoryOutboxMessages");
-    }
+        => OutboxMessageModel.Configure(builder, "InventoryOutboxMessages");
 }

@@ -7,7 +7,5 @@ namespace AuctionServer.Modules.Banking.Infrastructure.Configuration;
 internal sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
-    {
-        builder.ToTable("BankingOutboxMessages");
-    }
+        => OutboxMessageModel.Configure(builder, "BankingOutboxMessages");
 }
