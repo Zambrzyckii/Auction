@@ -37,6 +37,9 @@ public class WarehouseWonEventHandlerTests(WalletsPostgresFixture fixture)
 
         await using var context = fixture.CreateContext();
         Assert.True(await context.ProcessedMessages.AnyAsync(m => m.EventId == notification.EventId));
+        var settled = await context.OutboxMessages.SingleAsync(m => m.Type == nameof(WarehouseSettledEvent));
+        Assert.Contains("Warehouse Common Find", settled.Content);
+        Assert.Contains(winnerId.ToString(), settled.Content);
     }
 
     [Fact]

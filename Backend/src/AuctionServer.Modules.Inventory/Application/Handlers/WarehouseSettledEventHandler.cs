@@ -8,9 +8,9 @@ using MediatR;
 
 namespace AuctionServer.Modules.Inventory.Application.Handlers;
 
-public sealed class WarehouseWonEventHandler(IItemRepository repository) : INotificationHandler<WarehouseWonEvent>
+public sealed class WarehouseSettledEventHandler(IItemRepository repository) : INotificationHandler<WarehouseSettledEvent>
 {
-    public async Task Handle(WarehouseWonEvent notification, CancellationToken cancellationToken)
+    public async Task Handle(WarehouseSettledEvent notification, CancellationToken cancellationToken)
     {
         if (await repository.WasEventProcessedAsync(notification.EventId, cancellationToken)) return;
 

@@ -36,6 +36,7 @@ public static class IntegrationEventTypes
         [nameof(WarehouseEntryLockedEvent)] = typeof(WarehouseEntryLockedEvent),
         [nameof(WarehouseEntryLockRejectedEvent)] = typeof(WarehouseEntryLockRejectedEvent),
         [nameof(WarehouseWonEvent)] = typeof(WarehouseWonEvent),
+        [nameof(WarehouseSettledEvent)] = typeof(WarehouseSettledEvent),
         [nameof(LoanRequestedEvent)] = typeof(LoanRequestedEvent),
         [nameof(LoanApprovedEvent)] = typeof(LoanApprovedEvent),
         [nameof(LoanRejectedEvent)] = typeof(LoanRejectedEvent),

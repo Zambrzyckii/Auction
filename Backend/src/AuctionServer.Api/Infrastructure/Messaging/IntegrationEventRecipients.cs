@@ -69,10 +69,9 @@ public static class IntegrationEventRecipients
             [nameof(WarehouseEntryLockRejectedEvent)] =
                 [DeliveryRecipient.Of<WarehouseEntryLockRejectedEvent, Warehouses.WarehouseEntryLockRejectedEventHandler>("Warehouses")],
             [nameof(WarehouseWonEvent)] =
-            [
-                DeliveryRecipient.Of<WarehouseWonEvent, Wallets.WarehouseWonEventHandler>("Wallets"),
-                DeliveryRecipient.Of<WarehouseWonEvent, Inventory.WarehouseWonEventHandler>("Inventory")
-            ],
+                [DeliveryRecipient.Of<WarehouseWonEvent, Wallets.WarehouseWonEventHandler>("Wallets")],
+            [nameof(WarehouseSettledEvent)] =
+                [DeliveryRecipient.Of<WarehouseSettledEvent, Inventory.WarehouseSettledEventHandler>("Inventory")],
             [nameof(LoanRequestedEvent)] =
                 [DeliveryRecipient.Of<LoanRequestedEvent, Wallets.LoanRequestedEventHandler>("Wallets")],
             [nameof(LoanApprovedEvent)] =

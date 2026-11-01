@@ -1,6 +1,8 @@
+using System.Text.Json;
 using AuctionServer.Modules.Wallets.Application.Interfaces.Persistence;
 using AuctionServer.Modules.Wallets.Domain.Exceptions;
 using AuctionServer.Modules.Wallets.Infrastructure.Inbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Shared.Integration.Events.Warehouses;
 using MediatR;
 
@@ -18,9 +20,18 @@ public sealed class WarehouseWonEventHandler(IWalletRepository repository) : INo
         winnerWallet.SpendLock(notification.PublicWarehouseId, notification.FinalPrice);
 
         var processedMessage = new ProcessedMessage { EventId = notification.EventId };
+        var eventId = Guid.NewGuid();
+        var outboxMessage = new OutboxMessage
+        {
+            Id = eventId,
+            Type = nameof(WarehouseSettledEvent),
+            Content = JsonSerializer.Serialize(new WarehouseSettledEvent(
+                eventId, notification.PublicWarehouseId, notification.WinnerUserId, notification.Stock))
+        };
+
         try
         {
-            await repository.SaveUserFundsWithInboxAsync(processedMessage, CancellationToken.None);
+            await repository.SaveUserFundsWithInboxAndOutboxAsync(processedMessage, outboxMessage, CancellationToken.None);
         }
         catch (WalletExceptions.EventAlreadyProcessedException)
         {

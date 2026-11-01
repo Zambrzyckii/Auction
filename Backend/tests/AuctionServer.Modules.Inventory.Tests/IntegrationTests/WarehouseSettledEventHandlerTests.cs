@@ -7,18 +7,18 @@ using Microsoft.EntityFrameworkCore;
 namespace AuctionServer.Modules.Inventory.Tests.IntegrationTests;
 
 [Collection(InventoryIntegrationCollection.Name)]
-public class WarehouseWonEventHandlerTests(InventoryPostgresFixture fixture)
+public class WarehouseSettledEventHandlerTests(InventoryPostgresFixture fixture)
 {
-    private static WarehouseWonEvent CreateEvent(Guid winnerId) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), winnerId, 350m, [
+    private static WarehouseSettledEvent CreateEvent(Guid winnerId) =>
+        new(Guid.NewGuid(), Guid.NewGuid(), winnerId, [
             new WarehouseStockItem("Warehouse Common Find", "Common", 50m),
             new WarehouseStockItem("Warehouse Rare Find", "Rare", 300m)
         ]);
 
-    private async Task HandleAsync(WarehouseWonEvent notification)
+    private async Task HandleAsync(WarehouseSettledEvent notification)
     {
         await using var context = fixture.CreateContext();
-        var handler = new WarehouseWonEventHandler(new ItemRepository(context));
+        var handler = new WarehouseSettledEventHandler(new ItemRepository(context));
         await handler.Handle(notification, CancellationToken.None);
     }
 
