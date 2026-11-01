@@ -183,6 +183,9 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
 
                             NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b1.Property<int>("Id"));
 
+                            b1.Property<Guid>("EntryRequestId")
+                                .HasColumnType("uuid");
+
                             b1.Property<int>("State")
                                 .HasColumnType("integer");
 
