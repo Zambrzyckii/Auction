@@ -3,6 +3,7 @@
     <Project Path="src/AuctionServer.Shared.Infrastructure/AuctionServer.Shared.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/AuctionServer.Shared.Infrastructure.Tests/AuctionServer.Shared.Infrastructure.Tests.csproj" />
     <Project Path="tests/AuctionServer.TestSupport/AuctionServer.TestSupport.csproj" />
   </Folder>
   <Project Path="src/AuctionServer.Api/AuctionServer.Api.csproj" />

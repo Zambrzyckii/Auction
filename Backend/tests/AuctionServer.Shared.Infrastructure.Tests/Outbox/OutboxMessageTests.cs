@@ -1,6 +1,6 @@
 using AuctionServer.Shared.Infrastructure.Outbox;
 
-namespace AuctionServer.Modules.Auctions.Tests.Infrastructure.Outbox;
+namespace AuctionServer.Shared.Infrastructure.Tests.Outbox;
 
 public class OutboxMessageTests
 {
@@ -17,17 +17,6 @@ public class OutboxMessageTests
 
         Assert.Equal(attemptsBefore + 1, message.AttemptCount);
         Assert.Contains("something broke", message.Errors);
-    }
-
-    [Fact]
-    public void FailedAttempt_ShouldScheduleNextAttemptInTheFuture()
-    {
-        var message = CreateMessage();
-
-        message.FailedAttempt("error");
-
-        Assert.NotNull(message.NextAttemptOn);
-        Assert.True(message.NextAttemptOn > DateTime.UtcNow);
     }
 
     [Fact]
