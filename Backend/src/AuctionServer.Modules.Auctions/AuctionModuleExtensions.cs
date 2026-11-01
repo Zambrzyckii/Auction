@@ -28,7 +28,10 @@ public static class AuctionModuleExtensions
         services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(dbConnectionString));
         services.AddSingleton(readCacheOptions);
         if (readCacheEnabled)
+        {
+            services.AddSingleton<AuctionCacheMetrics>();
             services.AddSingleton<IAuctionReadCache, HybridAuctionReadCache>();
+        }
         else
             services.AddSingleton<IAuctionReadCache, PassThroughAuctionReadCache>();
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(CachingBehavior<,>));

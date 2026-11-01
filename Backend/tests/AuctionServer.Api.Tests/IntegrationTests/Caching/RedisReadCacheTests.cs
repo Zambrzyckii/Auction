@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using AuctionServer.Modules.Auctions.Domain.Exceptions;
 using AuctionServer.Modules.Auctions.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -32,7 +33,17 @@ public class RedisReadCacheTests(RedisFixture fixture)
 
     private static HybridAuctionReadCache CreateCache(ServiceProvider provider) =>
         new(provider.GetRequiredService<HybridCache>(),
+            new AuctionCacheMetrics(new TestMeterFactory()),
             provider.GetRequiredService<ILogger<HybridAuctionReadCache>>());
+
+    private sealed class TestMeterFactory : IMeterFactory
+    {
+        public Meter Create(MeterOptions options) => new(options);
+
+        public void Dispose()
+        {
+        }
+    }
 
     private static string NewKey() => $"auctions:test:v1:{Guid.NewGuid()}";
 

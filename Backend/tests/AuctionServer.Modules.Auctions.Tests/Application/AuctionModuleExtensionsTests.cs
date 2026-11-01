@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using AuctionServer.Modules.Auctions.Application.Caching;
 using AuctionServer.Modules.Auctions.Application.Options;
 using AuctionServer.Modules.Auctions.Infrastructure.Caching;
@@ -79,9 +80,19 @@ public class AuctionModuleExtensionsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddHybridCache();
+        services.AddSingleton<IMeterFactory, TestMeterFactory>();
         services.AddAuctionModule("Host=localhost", new AuctionReadCacheOptions(), true);
         using var provider = services.BuildServiceProvider();
 
         Assert.IsType<HybridAuctionReadCache>(provider.GetRequiredService<IAuctionReadCache>());
+    }
+
+    private sealed class TestMeterFactory : IMeterFactory
+    {
+        public Meter Create(MeterOptions options) => new(options);
+
+        public void Dispose()
+        {
+        }
     }
 }

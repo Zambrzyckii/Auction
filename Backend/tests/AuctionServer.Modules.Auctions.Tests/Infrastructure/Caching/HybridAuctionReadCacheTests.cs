@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using AuctionServer.Modules.Auctions.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,13 +12,14 @@ public class HybridAuctionReadCacheTests : IDisposable
     private readonly ServiceProvider _provider;
     private readonly HybridAuctionReadCache _cache;
     private readonly CapturingLogger _logger = new();
+    private readonly AuctionCacheMetrics _metrics = new(new TestMeterFactory());
 
     public HybridAuctionReadCacheTests()
     {
         var services = new ServiceCollection();
         services.AddHybridCache();
         _provider = services.BuildServiceProvider();
-        _cache = new HybridAuctionReadCache(_provider.GetRequiredService<HybridCache>(), _logger);
+        _cache = new HybridAuctionReadCache(_provider.GetRequiredService<HybridCache>(), _metrics, _logger);
     }
 
     public void Dispose() => _provider.Dispose();
@@ -103,7 +105,7 @@ public class HybridAuctionReadCacheTests : IDisposable
     [Fact]
     public async Task GetOrCreateAsync_WhenCacheFails_ShouldFallBackToFactoryAndLog()
     {
-        var cache = new HybridAuctionReadCache(new ThrowingHybridCache(), _logger);
+        var cache = new HybridAuctionReadCache(new ThrowingHybridCache(), _metrics, _logger);
 
         var result = await cache.GetOrCreateAsync("auctions:detail:v1:down", _ => Task.FromResult(5), Ttl,
             CancellationToken.None);
@@ -115,7 +117,7 @@ public class HybridAuctionReadCacheTests : IDisposable
     [Fact]
     public async Task GetOrCreateAsync_WhenCancelled_ShouldThrowWithoutFallingBack()
     {
-        var cache = new HybridAuctionReadCache(new ThrowingHybridCache(), _logger);
+        var cache = new HybridAuctionReadCache(new ThrowingHybridCache(), _metrics, _logger);
         using var cts = new CancellationTokenSource();
         cts.Cancel();
         var calls = 0;
@@ -124,6 +126,72 @@ public class HybridAuctionReadCacheTests : IDisposable
             cache.GetOrCreateAsync("auctions:detail:v1:cancelled", _ => Task.FromResult(++calls), Ttl, cts.Token));
 
         Assert.Equal(0, calls);
+    }
+
+    [Fact]
+    public async Task GetOrCreateAsync_ShouldCountMissThenHit()
+    {
+        using var capture = new MetricCapture();
+
+        await _cache.GetOrCreateAsync("auctions:detail:v1:metrics", _ => Task.FromResult(1), Ttl,
+            CancellationToken.None);
+        await _cache.GetOrCreateAsync("auctions:detail:v1:metrics", _ => Task.FromResult(2), Ttl,
+            CancellationToken.None);
+
+        Assert.Equal(1, capture.Count("auctions.cache.misses"));
+        Assert.Equal(1, capture.Count("auctions.cache.hits"));
+        Assert.Equal(0, capture.Count("auctions.cache.errors"));
+    }
+
+    [Fact]
+    public async Task GetOrCreateAsync_WhenCacheFails_ShouldCountError()
+    {
+        using var capture = new MetricCapture();
+        var cache = new HybridAuctionReadCache(new ThrowingHybridCache(), _metrics, _logger);
+
+        await cache.GetOrCreateAsync("auctions:detail:v1:error-metric", _ => Task.FromResult(5), Ttl,
+            CancellationToken.None);
+
+        Assert.Equal(1, capture.Count("auctions.cache.errors"));
+        Assert.Equal(0, capture.Count("auctions.cache.hits"));
+    }
+
+    private sealed class TestMeterFactory : IMeterFactory
+    {
+        public Meter Create(MeterOptions options) => new(options);
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private sealed class MetricCapture : IDisposable
+    {
+        private readonly MeterListener _listener = new();
+        private readonly Dictionary<string, long> _counts = [];
+
+        public MetricCapture()
+        {
+            _listener.InstrumentPublished = (instrument, listener) =>
+            {
+                if (instrument.Meter.Name == AuctionCacheMetrics.MeterName)
+                    listener.EnableMeasurementEvents(instrument);
+            };
+            _listener.SetMeasurementEventCallback<long>((instrument, measurement, _, _) =>
+            {
+                lock (_counts)
+                    _counts[instrument.Name] = _counts.GetValueOrDefault(instrument.Name) + measurement;
+            });
+            _listener.Start();
+        }
+
+        public long Count(string name)
+        {
+            lock (_counts)
+                return _counts.GetValueOrDefault(name);
+        }
+
+        public void Dispose() => _listener.Dispose();
     }
 
     private sealed class ThrowingHybridCache : HybridCache
