@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
+using AuctionServer.Shared.Infrastructure.Delivery;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Inventory.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Items;
@@ -34,10 +35,16 @@ public class DeadLetterTests(SagaStageFixture stage)
         using var scope = stage.Factory.Services.CreateScope();
         var outbox = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
         var row = await outbox.OutboxMessages.AsNoTracking().SingleAsync(m => m.Id == eventId);
-        Assert.True(row.IsDead);
-        Assert.Null(row.ProcessedOn);
-        Assert.Equal(6, row.AttemptCount);
-        Assert.NotEmpty(row.Errors);
+        Assert.NotNull(row.ProcessedOn);
+        Assert.False(row.IsDead);
+
+        var deliveries = scope.ServiceProvider.GetRequiredService<DeliveryDbContext>();
+        var delivery = await deliveries.DeliveryMessages.AsNoTracking().SingleAsync(m => m.MessageId == eventId);
+        Assert.Equal("Auctions", delivery.Recipient);
+        Assert.True(delivery.IsDead);
+        Assert.Null(delivery.ProcessedOn);
+        Assert.Equal(6, delivery.AttemptCount);
+        Assert.NotEmpty(delivery.Errors);
 
         var auctions = scope.ServiceProvider.GetRequiredService<AuctionDbContext>();
         Assert.False(await auctions.ProcessedMessages.AsNoTracking().AnyAsync(m => m.EventId == eventId));

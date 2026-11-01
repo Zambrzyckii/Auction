@@ -23,7 +23,7 @@ public sealed class DeliveryProcessor(
         {
             try
             {
-                await DeliverPendingMessagesAsync(stoppingToken);
+                await RunPassAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -38,7 +38,7 @@ public sealed class DeliveryProcessor(
         }
     }
 
-    private async Task DeliverPendingMessagesAsync(CancellationToken stoppingToken)
+    public async Task RunPassAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<DeliveryDbContext>();

@@ -1,3 +1,4 @@
+using AuctionServer.Shared.Infrastructure.Delivery;
 using AuctionServer.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
@@ -23,9 +24,13 @@ public sealed class OutboxPostgresFixture : IAsyncLifetime
         await _dbContainer.StartAsync();
         await using var context = CreateContext();
         await context.Database.EnsureCreatedAsync();
+        await using var deliveryContext = CreateDeliveryContext();
+        await deliveryContext.Database.MigrateAsync();
     }
 
     public async Task DisposeAsync() => await _dbContainer.DisposeAsync();
+
+    public string ConnectionString => _dbContainer.GetConnectionString();
 
     public OutboxTestDbContext CreateContext()
     {
@@ -35,9 +40,18 @@ public sealed class OutboxPostgresFixture : IAsyncLifetime
         return new OutboxTestDbContext(options);
     }
 
+    public DeliveryDbContext CreateDeliveryContext()
+    {
+        var options = new DbContextOptionsBuilder<DeliveryDbContext>()
+            .UseNpgsql(_dbContainer.GetConnectionString())
+            .Options;
+        return new DeliveryDbContext(options);
+    }
+
     public async Task ResetAsync()
     {
         await using var context = CreateContext();
         await context.Database.ExecuteSqlRawAsync("""DELETE FROM "TestOutboxMessages" """);
+        await context.Database.ExecuteSqlRawAsync("""DELETE FROM "DeliveryMessages" """);
     }
 }
