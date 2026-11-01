@@ -1,6 +1,5 @@
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace AuctionServer.Shared.Infrastructure.Inbox;
 
@@ -19,7 +18,7 @@ public static class InboxOperation
     public static async Task ApplyOnceAsync(this DbContext context, Guid eventId,
         Func<Task<OutboxMessage?>> change, CancellationToken token)
     {
-        if (await context.Set<ProcessedMessage>().AnyAsync(m => m.EventId == eventId, token)) return;
+        if (await context.WasAppliedAsync(eventId, token)) return;
 
         var reply = await change();
         context.Set<ProcessedMessage>().Add(new ProcessedMessage { EventId = eventId });
@@ -29,17 +28,12 @@ public static class InboxOperation
         {
             await context.SaveChangesAsync(CancellationToken.None);
         }
-        catch (DbUpdateException e) when (IsInboxDuplicate(context, e))
+        catch (DbUpdateException)
         {
+            if (!await context.WasAppliedAsync(eventId, CancellationToken.None)) throw;
         }
     }
 
-    private static bool IsInboxDuplicate(DbContext context, DbUpdateException e)
-    {
-        if (e.InnerException is not PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } postgres)
-            return false;
-
-        var primaryKey = context.Model.FindEntityType(typeof(ProcessedMessage))?.FindPrimaryKey();
-        return primaryKey is not null && postgres.ConstraintName == primaryKey.GetName();
-    }
+    private static Task<bool> WasAppliedAsync(this DbContext context, Guid eventId, CancellationToken token)
+        => context.Set<ProcessedMessage>().AnyAsync(m => m.EventId == eventId, token);
 }

@@ -62,6 +62,29 @@ public sealed class InboxOperationTests(OutboxPostgresFixture fixture) : IAsyncL
     }
 
     [Fact]
+    public async Task ApplyOnceAsync_WhenRaceLoserFailsOnADomainIndexFirst_ShouldSwallowTheDuplicate()
+    {
+        var eventId = Guid.NewGuid();
+
+        await using var loser = fixture.CreateContext();
+        await loser.ApplyOnceAsync(eventId, async () =>
+        {
+            loser.DomainRecords.Add(new TestDomainRecord { Id = Guid.NewGuid(), Code = "Contested" });
+
+            await using var winner = fixture.CreateContext();
+            await winner.ApplyOnceAsync(eventId, () =>
+            {
+                winner.DomainRecords.Add(new TestDomainRecord { Id = Guid.NewGuid(), Code = "Contested" });
+                return Task.CompletedTask;
+            }, CancellationToken.None);
+        }, CancellationToken.None);
+
+        await using var context = fixture.CreateContext();
+        Assert.Equal(1, await context.ProcessedMessages.CountAsync(m => m.EventId == eventId));
+        Assert.Equal(1, await context.DomainRecords.CountAsync(r => r.Code == "Contested"));
+    }
+
+    [Fact]
     public async Task ApplyOnceAsync_WhenAnotherConstraintIsViolated_ShouldPropagateTheError()
     {
         var existingId = Guid.NewGuid();
