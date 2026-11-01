@@ -210,7 +210,9 @@ AuctionServer.Shared.Integration   the only shared project: integration events +
 
 ### Module wiring pattern
 
-Each module exposes two static extension classes; the host calls both and nothing else:
+Each module exposes two static extension classes; the host calls both, and beyond them it still knows each
+module's options types, MediatR assembly and `DbContext` (the per-module registrations below and the startup
+migration loop):
 
 - `<Module>ModuleExtensions.Add<Module>Module(services, connectionString)` — registers the `DbContext` and
   repositories (`AuctionModuleExtensions.cs:12`, `WalletModuleExtensions.cs:10`). Auctions additionally takes the
@@ -218,12 +220,16 @@ Each module exposes two static extension classes; the host calls both and nothin
   its whole options section; each lands in a singleton options record.
 - `<Module>Endpoints.Map<Module>Endpoints(app)` — minimal-API `MapGroup("/api/<module>")` with handlers that only
   build a MediatR message and `sender.Send(...)`, no logic in the endpoint
-  (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`).
+  (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`) — with one known exception, the
+  inline `limit` range guard in `AuctionEndpoints.cs:22` sitting outside the FluentValidation pipeline.
 
 MediatR and FluentValidation are registered per module assembly in `Program.cs:81-142` — each module gets its own
 `AddValidatorsFromAssembly(...)` plus an `AddMediatR(...)` block that also re-adds the shared
 `ValidationBehaviour<,>` open behavior (MediatR 14 deduplicates repeated `AddOpenBehavior` registrations, so this
-is safe). Adding a module means adding both lines — assembly scanning is not automatic.
+is safe). Adding a module means adding both lines — assembly scanning is not automatic. MediatR 14 is commercial
+(Lucky Penny): no `LicenseKey` is configured, so the host logs a license warning at startup, which the vendor
+explicitly allows for development and testing; production use requires a key (config `LicenseKey` or the
+`MEDIATR_LICENSE_KEY` env var).
 
 ### Cross-module communication
 
@@ -232,8 +238,9 @@ the same `SaveChangesAsync` as the state change (e.g. `PlaceBidCommandHandler` �
 Identity's `RegisterCommandHandler` → `IdentityOutboxMessages`). Each publishing module runs its own
 `OutboxProcessor` (`BackgroundService`, 3 s poll) that hands pending rows — raw `Type` + JSON `Content` — to
 `IIntegrationEventPublisher` (`Shared.Integration/Messaging/`). The processors know nothing about the transport.
-The host registers the only implementation, `InProcessEventPublisher` (`AuctionServer.Api/Infrastructure/Messaging/`),
-which resolves the CLR type through the `IntegrationEventTypes` registry and publishes via MediatR `IPublisher`;
+The host registers `InProcessEventPublisher`, the only transport implementation
+(`AuctionServer.Api/Infrastructure/Messaging/`), behind the `InstrumentedEventPublisher` decorator that measures
+each publish; the transport resolves the CLR type through the `IntegrationEventTypes` registry and publishes via MediatR `IPublisher`;
 consumers are `INotificationHandler<>` implementations in other modules' Application layers.
 
 **Adding an integration event means registering it in `IntegrationEventTypes`** — an unregistered type throws

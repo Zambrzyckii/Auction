@@ -13,7 +13,7 @@ AuctionServer is a gamified auction house: registered users receive a wallet wit
 | Term | Meaning |
 |---|---|
 | auction | a timed listing of one item by its owner; statuses `Pending`, `Active`, `Closed`, `Cancelled` |
-| bid | an offer above the current price by a user who is neither the seller nor the current leader; today a bid is accepted before the bidder's funds are checked |
+| bid | an offer above the current price by a user who is neither the seller nor the current leader; since 2026-10-14 a bid is held as pending and confirmed only after the bidder's funds are locked |
 | anti-sniping window | the last 30 s of an auction; a bid inside it extends `EndsOn` by 30 s |
 | available funds, locked funds | the two balances of a wallet; a leading bid moves money from available to locked, settlement spends the locked part |
 | official price | the item's price rolled from its rarity at creation; paid by the shop and shown on the auction |

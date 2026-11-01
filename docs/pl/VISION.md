@@ -13,7 +13,7 @@ AuctionServer to zgamifikowany dom aukcyjny: zarejestrowani użytkownicy dostaj�
 | Termin | Znaczenie |
 |---|---|
 | aukcja | czasowe ogłoszenie jednego przedmiotu przez jego właściciela; statusy `Pending`, `Active`, `Closed`, `Cancelled` |
-| oferta | propozycja powyżej bieżącej ceny od użytkownika, który nie jest ani sprzedawcą, ani bieżącym liderem; dziś oferta jest przyjmowana przed sprawdzeniem środków licytującego |
+| oferta | propozycja powyżej bieżącej ceny od użytkownika, który nie jest ani sprzedawcą, ani bieżącym liderem; od 2026-10-14 oferta czeka jako oczekująca i jest zatwierdzana dopiero po zablokowaniu środków licytującego |
 | okno anty-snajperskie | ostatnie 30 s aukcji; oferta w jego trakcie wydłuża `EndsOn` o 30 s |
 | środki dostępne, środki zablokowane | dwa salda portfela; prowadząca oferta przenosi pieniądze z dostępnych do zablokowanych, rozliczenie wydaje część zablokowaną |
 | cena oficjalna | cena przedmiotu losowana z jego rzadkości przy tworzeniu; płacona przez sklep i pokazywana na aukcji |

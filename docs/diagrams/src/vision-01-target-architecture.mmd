@@ -42,7 +42,6 @@ flowchart TB
     Gateway --> Api
 
     Api --> PgBouncer --> Postgres
-    Api -.->|"migrations only,<br/>bypass the pooler"| Postgres
     Backup -->|"pg_dump"| Postgres
     Api -->|"HybridCache L1+L2"| Redis
     Api -->|"IAvatarStorage"| Seaweed
@@ -61,16 +60,9 @@ flowchart TB
 
     style Spa stroke-dasharray:6 4
     style Bots stroke-dasharray:6 4
-    style K6 stroke-dasharray:6 4
-    style Gateway stroke-dasharray:6 4
-    style PgBouncer stroke-dasharray:6 4
     style Backup stroke-dasharray:6 4
-    style Redis stroke-dasharray:6 4
     style Rabbit stroke-dasharray:6 4
     style Vault stroke-dasharray:6 4
-    style Otel stroke-dasharray:6 4
-    style Backends stroke-dasharray:6 4
-    style Grafana stroke-dasharray:6 4
 
     classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
     classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B

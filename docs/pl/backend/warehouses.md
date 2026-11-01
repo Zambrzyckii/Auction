@@ -112,7 +112,7 @@ Wszystkie pięć tras wymaga JWT.
 
 ## Keeper
 
-[`WarehouseKeeper`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Background/WarehouseKeeper.cs) to `BackgroundService` z pętlą 1000 ms (okna podbić mają 5-10 s, więc kadencja 10 s znana z `AuctionClosera` byłaby za gruba). Każdy cykl wykonuje cztery zamiatania, każde zapisujące swoje zmiany i wiersze outboxa w jednym `SaveChangesAsync`: startuje licytacje, gdzie odliczanie minęło (albo anuluje lobby, które spadło poniżej minimum), rozlicza lub anuluje wojny z wygasłym oknem podbić, anuluje lobby i wojny `Stocking` starsze niż `LobbyTimeout` oraz uzupełnia pulę do `PoolSize` świeżo wylosowanymi tierami i rzadkościami.
+[`WarehouseKeeper`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Background/WarehouseKeeper.cs) to `BackgroundService` z pętlą 1000 ms (okna podbić mają 5-10 s, więc kadencja 3 s znana z `AuctionClosera` byłaby za gruba). Każdy cykl wykonuje cztery zamiatania, każde zapisujące swoje zmiany i wiersze outboxa w jednym `SaveChangesAsync`: startuje licytacje, gdzie odliczanie minęło (albo anuluje lobby, które spadło poniżej minimum), rozlicza lub anuluje wojny z wygasłym oknem podbić, anuluje lobby i wojny `Stocking` starsze niż `LobbyTimeout` oraz uzupełnia pulę do `PoolSize` świeżo wylosowanymi tierami i rzadkościami.
 
 ## Decyzje
 

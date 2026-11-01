@@ -112,7 +112,7 @@ All five routes require a JWT.
 
 ## The keeper
 
-[`WarehouseKeeper`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Background/WarehouseKeeper.cs) is a `BackgroundService` on a 1000 ms loop (the raise windows are 5-10 s, so the `AuctionCloser`'s 10 s cadence would be too coarse). Each cycle runs four sweeps, each saving its changes and outbox rows in one `SaveChangesAsync`: starts bidding where the countdown elapsed (or cancels a lobby that fell below the minimum), settles or cancels wars whose raise window expired, cancels lobbies and stocking wars older than `LobbyTimeout`, and refills the pool to `PoolSize` with freshly rolled tiers and rarities.
+[`WarehouseKeeper`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Background/WarehouseKeeper.cs) is a `BackgroundService` on a 1000 ms loop (the raise windows are 5-10 s, so the `AuctionCloser`'s 3 s cadence would be too coarse). Each cycle runs four sweeps, each saving its changes and outbox rows in one `SaveChangesAsync`: starts bidding where the countdown elapsed (or cancels a lobby that fell below the minimum), settles or cancels wars whose raise window expired, cancels lobbies and stocking wars older than `LobbyTimeout`, and refills the pool to `PoolSize` with freshly rolled tiers and rarities.
 
 ## Decisions
 
