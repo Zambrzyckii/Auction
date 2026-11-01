@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AuctionServer.Modules.Auctions.Domain.Enums;
-using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using AuctionServer.Shared.Integration.Events.Auctions;
 using AuctionServer.Shared.Integration.Events.Funds;

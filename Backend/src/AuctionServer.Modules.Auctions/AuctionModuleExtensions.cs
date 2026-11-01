@@ -5,7 +5,7 @@ using AuctionServer.Modules.Auctions.Application.Options;
 using AuctionServer.Modules.Auctions.Infrastructure;
 using AuctionServer.Modules.Auctions.Infrastructure.Background;
 using AuctionServer.Modules.Auctions.Infrastructure.Caching;
-using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 using AuctionServer.Modules.Auctions.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

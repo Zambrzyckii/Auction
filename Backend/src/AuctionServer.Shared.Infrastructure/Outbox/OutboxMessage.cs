@@ -1,4 +1,4 @@
-namespace AuctionServer.Modules.Auctions.Infrastructure.Outbox;
+namespace AuctionServer.Shared.Infrastructure.Outbox;
 
 public sealed class OutboxMessage
 {
@@ -11,7 +11,6 @@ public sealed class OutboxMessage
     public List<string?> Errors { get; private set; } = new List<string?>();
     public bool IsDead { get; private set; }
     public DateTime? NextAttemptOn { get; private set; } = null;
-
 
     public void MarkAsProcessed() => ProcessedOn = DateTime.UtcNow;
 

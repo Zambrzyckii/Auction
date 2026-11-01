@@ -139,7 +139,7 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.ToTable("AuctionsProcessedMessages", (string)null);
                 });
 
-            modelBuilder.Entity("AuctionServer.Modules.Auctions.Infrastructure.Outbox.OutboxMessage", b =>
+            modelBuilder.Entity("AuctionServer.Shared.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

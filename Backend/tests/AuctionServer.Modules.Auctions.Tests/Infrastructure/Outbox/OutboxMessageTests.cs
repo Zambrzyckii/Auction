@@ -1,4 +1,4 @@
-using AuctionServer.Modules.Auctions.Infrastructure.Outbox;
+using AuctionServer.Shared.Infrastructure.Outbox;
 
 namespace AuctionServer.Modules.Auctions.Tests.Infrastructure.Outbox;
 

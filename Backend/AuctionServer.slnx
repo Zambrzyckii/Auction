@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AuctionServer.Shared.Infrastructure/AuctionServer.Shared.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AuctionServer.TestSupport/AuctionServer.TestSupport.csproj" />
   </Folder>
