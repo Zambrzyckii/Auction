@@ -62,6 +62,7 @@ var casinoOptions = builder.Configuration.GetSection("Casino").Get<CasinoOptions
 var profilesOptions = builder.Configuration.GetSection("Profiles").Get<ProfilesOptions>() ?? throw new InvalidOperationException("Missing configuration section 'Profiles'");
 var auctionReadCacheOptions = builder.Configuration.GetSection("Auctions:ReadCache").Get<AuctionReadCacheOptions>() ?? new AuctionReadCacheOptions();
 var cacheOptions = CacheOptions.Load(builder.Configuration);
+var messagingOptions = MessagingOptions.Load(builder.Configuration);
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
