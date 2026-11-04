@@ -87,7 +87,7 @@ Since phase six no secret value lives in `compose.yaml`. `Infrastructure/secrets
 | configuration from the environment | every setting is read through `IConfiguration`, so `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` and the `Observability__*` keys can be injected as environment variables; since phase six the fail-fast `Vault` section can add OpenBao as the last configuration source, whose values win over the environment |
 | a reproducible database | the schema is fully described by the nine migration sets, applied with `dotnet ef database update` per context or at startup when `Database:MigrateOnStartup` is `true` (Compose sets it) |
 | object storage for avatars | the `seaweedfs` service in `compose.yaml`: pinned image, no published ports, reached behind the `IAvatarStorage` seam ([backend/profiles.md](backend/profiles.md)) |
-| a CI baseline | `.gitlab-ci.yml` and its GitHub Actions mirror `.github/workflows/ci.yml` build and test on every push, including the host test project `AuctionServer.Api.Tests`, whose gateway tests start nginx and traefik/whoami through Testcontainers, and check `nginx.conf` with `nginx -t` in a `gateway-config` job |
+| a CI baseline | the GitHub Actions workflow `.github/workflows/ci.yml` builds and tests on every push, including the host test project `AuctionServer.Api.Tests`, whose gateway tests start nginx and traefik/whoami through Testcontainers, checks `nginx.conf` with `nginx -t` in a `gateway-config` job, validates `compose.yaml` in `compose-config` and builds the application image to GHCR in `image` |
 
 ## What is missing
 

@@ -1,6 +1,6 @@
 # Diagram sources
 
-Every diagram in the documentation is authored in [Mermaid](https://mermaid.js.org/) under `src/` and committed as two pre-rendered SVGs next to this file: `<name>.svg` for light mode and `<name>.dark.svg` for dark mode. The pages embed them with a `<picture>` element, so GitHub and GitLab show the variant that matches the reader's colour scheme, at full size and without the interactive Mermaid viewer. Diagram labels are English only; the Polish and English pages embed the same files.
+Every diagram in the documentation is authored in [Mermaid](https://mermaid.js.org/) under `src/` and committed as two pre-rendered SVGs next to this file: `<name>.svg` for light mode and `<name>.dark.svg` for dark mode. The pages embed them with a `<picture>` element, so GitHub shows the variant that matches the reader's colour scheme, at full size and without the interactive Mermaid viewer. Diagram labels are English only; the Polish and English pages embed the same files.
 
 ## Re-rendering
 

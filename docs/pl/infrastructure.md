@@ -87,7 +87,7 @@ Od fazy szóstej żadna wartość sekretu nie żyje w `compose.yaml`. `Infrastru
 | konfiguracja ze środowiska | każde ustawienie czytane jest przez `IConfiguration`, więc `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` i klucze `Observability__*` można wstrzyknąć zmiennymi środowiskowymi; od fazy szóstej sekcja `Vault` z fail-fastem może dodać OpenBao jako ostatnie źródło konfiguracji, którego wartości wygrywają ze środowiskiem |
 | odtwarzalna baza | schemat w pełni opisuje dziewięć zestawów migracji, aplikowanych `dotnet ef database update` per kontekst albo na starcie, gdy `Database:MigrateOnStartup` jest `true` (Compose to ustawia) |
 | object storage na awatary | usługa `seaweedfs` w `compose.yaml`: przypięty obraz, bez publikowanych portów, osiągana za szwem `IAvatarStorage` ([backend/profiles.md](backend/profiles.md)) |
-| baza CI | `.gitlab-ci.yml` i jego lustro na GitHub Actions `.github/workflows/ci.yml` budują i testują każdy push, łącznie z projektem testowym hosta `AuctionServer.Api.Tests`, którego testy gatewaya uruchamiają nginx i traefik/whoami przez Testcontainers, oraz sprawdzają `nginx.conf` komendą `nginx -t` w jobie `gateway-config` |
+| baza CI | workflow GitHub Actions `.github/workflows/ci.yml` buduje i testuje każdy push, łącznie z projektem testowym hosta `AuctionServer.Api.Tests`, którego testy gatewaya uruchamiają nginx i traefik/whoami przez Testcontainers, sprawdza `nginx.conf` komendą `nginx -t` w jobie `gateway-config`, waliduje `compose.yaml` w `compose-config` i buduje obraz aplikacji do GHCR w jobie `image` |
 
 ## Czego brakuje
 

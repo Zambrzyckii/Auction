@@ -21,7 +21,7 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 | PostgreSQL, jedna baza, 38 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
 | Object storage SeaweedFS dla awatarów | istnieje (serwis Compose, bez publikowanych portów) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (gateway nginx, obraz API, PostgreSQL, SeaweedFS i stack telemetrii) | istnieje | [infrastructure.md](infrastructure.md) |
-| Pipeline'y GitLab CI i GitHub Actions | istnieją | [Build i CI](#build-i-ci) |
+| Pipeline CI na GitHub Actions | istnieje | [Build i CI](#build-i-ci) |
 | Frontend Angular | planowany | [frontend.md](frontend.md) |
 | API gateway nginx | istnieje (usługa Compose, jedyne publikowane wejście) | [infrastructure.md](infrastructure.md#gateway) |
 | RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
@@ -284,18 +284,18 @@ Każda tabela outboxa ma te same dziesięć kolumn (`Id`, `Type`, `Content`, `Cr
 
 ## Build i CI
 
-Diagram pokazuje pipeline GitLaba zdefiniowany w [`.gitlab-ci.yml`](../../.gitlab-ci.yml).
+Diagram pokazuje workflow GitHub Actions zdefiniowany w [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-07-ci-pipeline.dark.svg">
   <img alt="Diagram: build i CI" src="../diagrams/architecture-07-ci-pipeline.svg">
 </picture>
 
-- Każdy job .NET działa w obrazie `mcr.microsoft.com/dotnet/sdk:10.0` z serwisem `docker:dind`; `DOCKER_HOST=tcp://docker:2375` i `TESTCONTAINERS_HOST_OVERRIDE=docker` pozwalają Testcontainers uruchomić PostgreSQL wewnątrz runnera.
-- Stage `build` uruchamia `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` ma trzy joby: `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure i Api, a `gateway-config` uruchamia `nginx -t` na `Infrastructure/gateway/nginx.conf` w przypiętym obrazie `nginx:1.28.3-alpine` bez Dockera.
-- Nie ma stage'u deploy, artefaktów ani cache'owania; obraz aplikacji istnieje tylko do użytku lokalnego ([`Backend/Dockerfile`](../../Backend/Dockerfile), budowany przez [`compose.yaml`](../../compose.yaml) z korzenia), pipeline go nie buduje ani nie publikuje.
-- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) odwzorowuje te same cztery joby na GitHub Actions, wyzwalane pushami i pull requestami do `main`; joby testowe .NET zależą od `build` przez `needs`, a `gateway-config` działa samodzielnie, a `ubuntu-latest` ma preinstalowanego Dockera, więc serwis dind i override Testcontainers zostają tylko po stronie GitLaba.
+- Każdy job działa na `ubuntu-latest`, który ma preinstalowanego Dockera, więc Testcontainers uruchamia PostgreSQL bezpośrednio na runnerze. Joby .NET instalują SDK przez `actions/setup-dotnet` i odtwarzają paczki NuGet z cache kluczowanego hashami csproj.
+- `build` uruchamia `dotnet build Backend/AuctionServer.slnx`; `unit-tests`, `integration-tests` i `image` zależą od niego przez `needs`.
+- `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure i Api.
+- `gateway-config` uruchamia `nginx -t` na `Infrastructure/gateway/nginx.conf` w przypiętym obrazie `nginx:1.28.3-alpine`, a `compose-config` generuje pliki sekretów i waliduje `compose.yaml` z korzenia przez `docker compose config -q`; oba działają niezależnie od `build`.
+- `image` buduje [`Backend/Dockerfile`](../../Backend/Dockerfile) przez buildx na cache warstw `gha` i tylko przy pushu do `main` publikuje `ghcr.io/zambrzyckii/auction` z tagami `latest` i sha commita; pull request buduje obraz bez publikacji. Nie ma stage'u deploy.
 
 ## Stosowane wzorce projektowe
 

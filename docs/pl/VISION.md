@@ -62,7 +62,7 @@ Pierwotny cel pochodzi z notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15
 - Banking: stałe oferty pożyczek bramkowane skumulowanym obrotem portfela, asynchroniczne sagi udzielenia i pobrania z Wallets, jedna spłata w terminie zapadalności ściągana przez keepera, częściowe pobranie z jednorazową karą i automatycznymi ponowieniami, wcześniejsza ręczna spłata, inbox i outbox.
 - Pawnshop: lokal bramkowany skumulowanym obrotem portfela, skonfigurowana drabinka botów z jednym miejscem na bota, towar tworzony przez bota i wyceniany przez Inventory, okno wycofania, po którym następuje automatyczna sprzedaż za stały ułamek ceny, zdarzenia płatności i wypłat wymieniane z Wallets, inbox i outbox.
 - Casino: żetony wymieniane 1:1 z portfelem przez sagę zakupu i zdarzenia wypłat, ruletka europejska i blackjack grane synchronicznie na saldzie żetonów z przewagą kasyna gwarantowaną stałymi domeny, keeper wygaszający przeterminowane zakupy i pasujący porzucone rozdania, wypłaty wyłączone ze skumulowanego obrotu, inbox i outbox.
-- Przekrojowo: pipeline FluentValidation, globalny kontrakt błędów, optymistyczna współbieżność, GitLab CI z Testcontainers.
+- Przekrojowo: pipeline FluentValidation, globalny kontrakt błędów, optymistyczna współbieżność, GitHub Actions CI z Testcontainers.
 
 ## 6. Planowane dalej
 

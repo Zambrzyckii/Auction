@@ -1,24 +1,26 @@
 flowchart LR
 
-    Push["git push to gitlab.com<br/>job image mcr.microsoft.com/dotnet/sdk:10.0"]:::client
+    Push["git push to github.com<br/>runner ubuntu-latest"]:::client
 
-    subgraph S1 ["stage: build"]
-        Build["build<br/>dotnet build Backend/AuctionServer.slnx"]:::host
-    end
-
-    subgraph S2 ["stage: test"]
+    subgraph S1 ["workflow: CI"]
+        Build["build<br/>dotnet build Backend/AuctionServer.slnx<br/>NuGet cache keyed on csproj hashes"]:::host
         Unit["unit-tests (offline tests only)<br/>Auctions.Tests --filter FullyQualifiedName!~IntegrationTests"]:::host
-        Integ["integration-tests<br/>Auctions.Tests ~IntegrationTests,<br/>then the whole Wallets, Identity and Inventory test projects"]:::host
+        Integ["integration-tests<br/>Auctions.Tests ~IntegrationTests,<br/>then the other ten test projects"]:::host
+        Gateway["gateway-config<br/>nginx -t on the gateway configuration"]:::host
+        Compose["compose-config<br/>gen-secrets.sh, docker compose config -q"]:::host
+        Image["image<br/>buildx with cache type=gha,<br/>push only on main"]:::host
     end
 
-    Dind["service docker:dind<br/>DOCKER_HOST=tcp://docker:2375<br/>TESTCONTAINERS_HOST_OVERRIDE=docker"]:::shared
-    Pg[("Testcontainers postgres:latest<br/>one container per test fixture")]:::db
+    Pg[("Testcontainers postgres:16-alpine<br/>one container per test fixture")]:::db
+    Ghcr["ghcr.io/zambrzyckii/auction<br/>tags latest and the commit sha"]:::shared
 
     Push --> Build --> Unit
-    Build --> Integ --> Dind --> Pg
+    Build --> Integ --> Pg
+    Build --> Image --> Ghcr
+    Push --> Gateway
+    Push --> Compose
 
     style S1 fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
-    style S2 fill:#EEF2FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
 
     classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
     classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B

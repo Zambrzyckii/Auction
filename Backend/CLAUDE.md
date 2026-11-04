@@ -34,7 +34,7 @@ Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Test
   `postgres:16-alpine` (the `TestDatabase.Image` constant in `tests/AuctionServer.TestSupport`, the same version the
   Compose stack runs); each fixture applies the module's migrations with `MigrateAsync()` — for Auctions that is the
   first place the two-folder migration chain is applied from scratch. A bare `dotnet test`
-  on the solution silently spins these containers up. `.gitlab-ci.yml` keeps a Docker-free `unit-tests` job by
+  on the solution silently spins these containers up. The CI workflow (`.github/workflows/ci.yml`) keeps a Docker-free `unit-tests` job by
   running `Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`; the `~IntegrationTests` half
   runs in `integration-tests` next to the other ten projects. `Wallets.Tests`, `Identity.Tests` and `Profiles.Tests` additionally boot the whole
   host through a `WebApplicationFactory<Program>` fixture (`CustomApi`, in Profiles `ProfilesCustomApi`) that sets `ConnectionStrings__DefaultConnection`,

@@ -165,7 +165,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedN
 dotnet test tests/AuctionServer.Modules.Wallets.Tests                                                    # one module, offline + integration
 ```
 
-The GitLab pipeline runs the first filter for Auctions in `unit-tests` and the full Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure and Api projects plus the Auctions integration tests in `integration-tests`, and `nginx -t` on the gateway configuration in `gateway-config`; the GitHub Actions workflow ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) mirrors the same split; see [Build and CI](../ARCHITECTURE.md#build-and-ci). Only the saga tests in `Api.Tests` cross a module boundary; every other event-handler test invokes the handler directly with hand-built events.
+The CI workflow ([`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml)) runs the first filter for Auctions in `unit-tests` and the full Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure and Api projects plus the Auctions integration tests in `integration-tests`, and `nginx -t` on the gateway configuration in `gateway-config`; see [Build and CI](../ARCHITECTURE.md#build-and-ci). Only the saga tests in `Api.Tests` cross a module boundary; every other event-handler test invokes the handler directly with hand-built events.
 
 ## Chapters
 

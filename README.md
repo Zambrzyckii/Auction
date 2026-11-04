@@ -6,7 +6,7 @@
 
 ## Status
 
-The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 38 integration events, 910 test methods, CI pipelines for GitLab and GitHub Actions, an OpenTelemetry observability stack measured with k6, an nginx gateway in front of the API, PgBouncer in front of PostgreSQL, a Redis-backed TTL cache for the hot auction reads, RabbitMQ carrying the integration events plus a consume-only market feed for the bots, and OpenBao serving the application secrets. The Angular frontend and the AI bots are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 38 integration events, 910 test methods, a GitHub Actions CI pipeline, an OpenTelemetry observability stack measured with k6, an nginx gateway in front of the API, PgBouncer in front of PostgreSQL, a Redis-backed TTL cache for the hot auction reads, RabbitMQ carrying the integration events plus a consume-only market feed for the bots, and OpenBao serving the application secrets. The Angular frontend and the AI bots are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 

@@ -21,7 +21,7 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 | PostgreSQL, one database, 38 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
 | SeaweedFS object storage for avatars | exists (Compose service, no published ports) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (nginx gateway, API image, PostgreSQL, SeaweedFS and the telemetry stack) | exists | [infrastructure.md](infrastructure.md) |
-| GitLab CI and GitHub Actions pipelines | exist | [Build and CI](#build-and-ci) |
+| A GitHub Actions CI pipeline | exists | [Build and CI](#build-and-ci) |
 | Angular frontend | planned | [frontend.md](frontend.md) |
 | nginx API gateway | exists (Compose service, the only published entry point) | [infrastructure.md](infrastructure.md#gateway) |
 | RabbitMQ | planned | [infrastructure.md](infrastructure.md) |
@@ -284,18 +284,18 @@ Every outbox table has the same ten columns (`Id`, `Type`, `Content`, `CreatedOn
 
 ## Build and CI
 
-The diagram shows the GitLab pipeline defined in [`.gitlab-ci.yml`](../../.gitlab-ci.yml).
+The diagram shows the GitHub Actions workflow defined in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-07-ci-pipeline.dark.svg">
   <img alt="Build and CI diagram" src="../diagrams/architecture-07-ci-pipeline.svg">
 </picture>
 
-- Every .NET job runs in the `mcr.microsoft.com/dotnet/sdk:10.0` image with a `docker:dind` service; `DOCKER_HOST=tcp://docker:2375` and `TESTCONTAINERS_HOST_OVERRIDE=docker` let Testcontainers start PostgreSQL inside the runner.
-- Stage `build` runs `dotnet build Backend/AuctionServer.slnx`.
-- Stage `test` has three jobs: `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure and Api test projects, and `gateway-config` runs `nginx -t` on `Infrastructure/gateway/nginx.conf` in the pinned `nginx:1.28.3-alpine` image without Docker.
-- There is no deploy stage, no artifacts and no caching; the application image exists only for local use ([`Backend/Dockerfile`](../../Backend/Dockerfile), built by the root [`compose.yaml`](../../compose.yaml)), the pipeline does not build or push it.
-- [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) mirrors the same four jobs on GitHub Actions, triggered by pushes and pull requests to `main`; the .NET test jobs depend on `build` through `needs` while `gateway-config` runs on its own, and `ubuntu-latest` has Docker preinstalled, so the dind service and the Testcontainers override stay GitLab-only.
+- Every job runs on `ubuntu-latest`, which has Docker preinstalled, so Testcontainers starts PostgreSQL on the runner directly. The .NET jobs install the SDK through `actions/setup-dotnet` and restore NuGet packages from a cache keyed on the csproj hashes.
+- `build` runs `dotnet build Backend/AuctionServer.slnx`; `unit-tests`, `integration-tests` and `image` depend on it through `needs`.
+- `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure and Api test projects.
+- `gateway-config` runs `nginx -t` on `Infrastructure/gateway/nginx.conf` in the pinned `nginx:1.28.3-alpine` image, and `compose-config` generates the secret files and validates the root `compose.yaml` with `docker compose config -q`; both run independently of `build`.
+- `image` builds [`Backend/Dockerfile`](../../Backend/Dockerfile) with buildx on the `gha` layer cache and, only on a push to `main`, pushes `ghcr.io/zambrzyckii/auction` tagged `latest` and with the commit sha; a pull request builds the image without pushing. There is no deploy stage.
 
 ## Design patterns in use
 

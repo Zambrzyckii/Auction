@@ -62,7 +62,7 @@ The original target comes from the project's design note (`AGENTS.md`, deleted o
 - Banking: fixed loan offers gated by the lifetime wallet turnover, asynchronous grant and collection sagas with Wallets, a single repayment at maturity pulled by a keeper, partial collection with a one-time penalty and automatic retries, early manual repayment, inbox and outbox.
 - Pawnshop: premises gated by the lifetime wallet turnover, a configured bot ladder with one bot slot, goods spawned by the bot and priced by Inventory, a withdrawal window followed by an automatic sale for a fixed share of the price, payment and payout events exchanged with Wallets, inbox and outbox.
 - Casino: chips exchanged 1:1 with the wallet through a purchase saga and cash-out events, european roulette and blackjack played synchronously on the chip balance with the house edge guaranteed by domain constants, a keeper that expires stale purchases and auto-stands abandoned hands, cash-outs excluded from the lifetime turnover, inbox and outbox.
-- Cross-cutting: FluentValidation pipeline, global error contract, optimistic concurrency, GitLab CI with Testcontainers.
+- Cross-cutting: FluentValidation pipeline, global error contract, optimistic concurrency, GitHub Actions CI with Testcontainers.
 
 ## 6. Planned next
 
