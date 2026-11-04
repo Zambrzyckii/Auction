@@ -4,3 +4,7 @@ bin/
 obj/
 
 Infrastructure/k6/results/
+
+Infrastructure/secrets/*
+!Infrastructure/secrets/gen-secrets.sh
+!Infrastructure/secrets/*.example
