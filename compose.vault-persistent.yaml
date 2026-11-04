@@ -1,0 +1,12 @@
+services:
+  vault:
+    entrypoint:
+      - /bin/sh
+      - -c
+      - exec bao server -config=/openbao/config/vault.hcl
+    volumes:
+      - ./Infrastructure/vault/vault-persistent.hcl:/openbao/config/vault.hcl:ro
+      - vaultdata:/openbao/file
+
+volumes:
+  vaultdata:

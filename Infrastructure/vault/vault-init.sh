@@ -5,6 +5,7 @@ BAO_TOKEN="$(cat /run/secrets/vault_root_token)"
 export BAO_TOKEN
 
 bao auth enable approle 2>/dev/null || true
+bao secrets enable -path=secret -version=2 kv 2>/dev/null || true
 
 bao policy write auction-api - <<'EOF'
   path "secret/data/auction/api" {
