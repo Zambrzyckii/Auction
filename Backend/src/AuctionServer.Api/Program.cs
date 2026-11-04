@@ -24,6 +24,7 @@ using AuctionServer.Api.Infrastructure.Gateway;
 using AuctionServer.Api.Infrastructure.Health;
 using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Api.Infrastructure.Observability;
+using AuctionServer.Api.Infrastructure.RateLimiting;
 using AuctionServer.Api.Infrastructure.Secrets;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
@@ -65,6 +66,7 @@ var profilesOptions = builder.Configuration.GetSection("Profiles").Get<ProfilesO
 var auctionReadCacheOptions = builder.Configuration.GetSection("Auctions:ReadCache").Get<AuctionReadCacheOptions>() ?? new AuctionReadCacheOptions();
 var cacheOptions = CacheOptions.Load(builder.Configuration);
 var messagingOptions = MessagingOptions.Load(builder.Configuration);
+var rateLimitingOptions = RateLimitingOptions.Load(builder.Configuration);
 ValidatorOptions.Global.LanguageManager.Culture = new CultureInfo("en");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
     options.TokenValidationParameters = new TokenValidationParameters
@@ -207,6 +209,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.AddObservability();
 builder.AddGateway();
+builder.AddApiRateLimiting(rateLimitingOptions);
 
 var app = builder.Build();
 
@@ -230,6 +233,7 @@ app.UseExceptionHandler();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+if (rateLimitingOptions.Enabled) app.UseRateLimiter();
 
 app.MapOpenApi();
 app.MapHealthEndpoints();
