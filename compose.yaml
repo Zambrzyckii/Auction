@@ -79,6 +79,24 @@ services:
       timeout: 3s
       retries: 15
 
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    restart: unless-stopped
+    cpus: 1
+    mem_limit: 384m
+    environment:
+      RABBITMQ_DEFAULT_USER: auction
+      RABBITMQ_DEFAULT_PASS: auction
+    ports:
+      - "127.0.0.1:15672:15672"
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
   api:
     build: ./Backend
     restart: unless-stopped
@@ -96,6 +114,10 @@ services:
       Observability__OtlpEndpoint: "http://otel-collector:4317"
       Gateway__Enabled: "true"
       Gateway__TrustedNetworks__0: "172.16.80.0/24"
+      Messaging__Transport: "Rabbit"
+      Messaging__Rabbit__HostName: "rabbitmq"
+      Messaging__Rabbit__UserName: "auction"
+      Messaging__Rabbit__Password: "auction"
     networks:
       - edge
       - data
@@ -105,6 +127,8 @@ services:
       pgbouncer:
         condition: service_healthy
       seaweedfs:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test:
