@@ -39,6 +39,30 @@ Api czyta vault raz przy starcie, więc po każdym seedowaniu vaulta zrestartuj 
 
 Powrót do trybu dev to trzy kroki. Przegeneruj plik root tokena przez `rm Infrastructure/secrets/vault-root-token.secret && ./Infrastructure/secrets/gen-secrets.sh`, bo tryb dev odmawia root tokena w formacie tokenów serwisowych `s.` (złapane na żywo podczas ćwiczenia). Następnie `docker compose up -d --force-recreate vault vault-init` oraz `docker compose restart api`. Na końcu `docker volume rm proj_vaultdata` usuwa dane rafta.
 
+## Backupy bazy danych
+
+Serwis `pgbackup` (`prodrigestivill/postgres-backup-local:16-alpine`) uruchamia `pg_dump` prosto na PostgreSQL, z pominięciem PgBouncera, bo pooling transakcyjny psuje pojedynczą długą sesję, której potrzebuje zrzut. Harmonogram to `@daily` (północ), a każdy przebieg rotuje trzy koszyki w wolumenie `pgbackups`. `daily/` trzyma 7 kopii, `weekly/` 4, a `monthly/` 6, każdy koszyk czyszczony niezależnie, przy czym najnowszy zrzut jest zawsze podlinkowany jako `last/auctionserver-latest.sql.gz`.
+
+Backup na żądanie, na przykład przed ryzykowną migracją:
+
+```
+docker compose exec pgbackup /backup.sh
+```
+
+## Ćwiczenie restore
+
+Zweryfikowane od początku do końca 2026-11-04 (4 użytkowników i 40 tabel zgodnych między źródłem a odtworzoną kopią).
+
+1. Utwórz bazę tymczasową:
+   `docker compose exec postgres psql -U auction -d postgres -c 'CREATE DATABASE auctionserver_drill'`
+2. Odtwórz do niej najnowszy zrzut:
+   `docker compose exec pgbackup sh -c 'export PGPASSWORD=$(cat /run/secrets/postgres_password); zcat /backups/last/auctionserver-latest.sql.gz | psql -h postgres -U auction -d auctionserver_drill -q -v ON_ERROR_STOP=1'`
+3. Porównaj kilka liczników ze źródłem, na przykład `SELECT count(*) FROM "Users"` i sumę z `information_schema.tables`.
+4. Skasuj bazę tymczasową:
+   `docker compose exec postgres psql -U auction -d postgres -c 'DROP DATABASE auctionserver_drill'`
+
+Aby zamiast tego podmienić prawdziwą bazę, najpierw zatrzymaj api (`docker compose stop api`), skasuj i utwórz `auctionserver` tak samo, odtwórz do niej zrzut i wystartuj api ponownie. Zrzut zawiera czysty SQL, więc restore potrzebuje pustej bazy, nie bazy po migracjach.
+
 ## Rozwiązywanie problemów
 
 | Objaw | Znaczenie | Naprawa |

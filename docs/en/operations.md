@@ -39,6 +39,30 @@ The api reads the vault once at startup, so after anything reseeds the vault, re
 
 Returning to dev mode takes three steps. Regenerate the root token file with `rm Infrastructure/secrets/vault-root-token.secret && ./Infrastructure/secrets/gen-secrets.sh`, because dev mode refuses a root token in the `s.` service-token format (hit live during the drill). Then `docker compose up -d --force-recreate vault vault-init` and `docker compose restart api`. Finally `docker volume rm proj_vaultdata` discards the raft data.
 
+## Database backups
+
+The `pgbackup` service (`prodrigestivill/postgres-backup-local:16-alpine`) runs `pg_dump` against PostgreSQL directly, bypassing PgBouncer, because transaction pooling breaks the single long session a dump needs. The schedule is `@daily` (midnight) and every run rotates three buckets inside the `pgbackups` volume. `daily/` keeps 7 copies, `weekly/` 4 and `monthly/` 6, each bucket cleaned independently, with the newest dump always linked as `last/auctionserver-latest.sql.gz`.
+
+To take a backup on demand, for example before a risky migration:
+
+```
+docker compose exec pgbackup /backup.sh
+```
+
+## The restore drill
+
+Verified end to end on 2026-11-04 (4 users and 40 tables matched between the source and the restored copy).
+
+1. Create a scratch database:
+   `docker compose exec postgres psql -U auction -d postgres -c 'CREATE DATABASE auctionserver_drill'`
+2. Restore the latest dump into it:
+   `docker compose exec pgbackup sh -c 'export PGPASSWORD=$(cat /run/secrets/postgres_password); zcat /backups/last/auctionserver-latest.sql.gz | psql -h postgres -U auction -d auctionserver_drill -q -v ON_ERROR_STOP=1'`
+3. Compare a few counts against the source, for example `SELECT count(*) FROM "Users"` and the `information_schema.tables` total.
+4. Drop the scratch database:
+   `docker compose exec postgres psql -U auction -d postgres -c 'DROP DATABASE auctionserver_drill'`
+
+To replace the real database instead, stop the api first (`docker compose stop api`), drop and recreate `auctionserver` the same way, restore into it and start the api again. The dump contains plain SQL, so a restore needs an empty database, not a schema-migrated one.
+
 ## Troubleshooting
 
 | Symptom | Meaning | Fix |
