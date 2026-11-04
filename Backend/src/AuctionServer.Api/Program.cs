@@ -179,7 +179,9 @@ builder.Services.AddDeliveryProcessor();
 builder.Services.AddSingleton<MessagingMetrics>();
 if (messagingOptions.Transport == MessagingTransport.Rabbit)
 {
-    builder.Services.AddSingleton(_ => new RabbitEventPublisher(messagingOptions.Rabbit!));
+    builder.Services.AddSingleton(messagingOptions.Rabbit!);
+    builder.Services.AddSingleton<RabbitEventPublisher>();
+    builder.Services.AddHostedService<RabbitDeliveryConsumer>();
     builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
         provider.GetRequiredService<RabbitEventPublisher>(),
         provider.GetRequiredService<MessagingMetrics>()));
