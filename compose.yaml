@@ -4,8 +4,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: auction
-      POSTGRES_PASSWORD: auction
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       POSTGRES_DB: auctionserver
+    secrets:
+      - postgres_password
     cpus: 1
     mem_limit: 512m
     ports:
@@ -25,12 +27,9 @@ services:
     restart: unless-stopped
     cpus: 1
     mem_limit: 64m
-    environment:
-      DB_USER: auction
-      DB_PASSWORD: auction
-      AUTH_TYPE: scram-sha-256
     volumes:
       - ./Infrastructure/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./Infrastructure/secrets/pgbouncer-userlist.txt:/etc/pgbouncer/userlist.txt:ro
     networks:
       - data
     depends_on:
@@ -60,21 +59,22 @@ services:
     image: redis:7.2-alpine
     restart: unless-stopped
     command:
-      - redis-server
-      - --maxmemory
-      - 64mb
-      - --maxmemory-policy
-      - allkeys-lru
-      - --save
-      - ""
-      - --appendonly
-      - "no"
+      - /bin/sh
+      - -c
+      - >-
+        exec redis-server
+        --requirepass "$$(cat /run/secrets/redis_password)"
+        --maxmemory 64mb
+        --maxmemory-policy allkeys-lru
+        --save "" --appendonly no
+    secrets:
+      - redis_password
     cpus: 1
     mem_limit: 128m
     networks:
       - data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli ping | grep -q PONG"]
       interval: 2s
       timeout: 3s
       retries: 15
@@ -84,9 +84,8 @@ services:
     restart: unless-stopped
     cpus: 1
     mem_limit: 384m
-    environment:
-      RABBITMQ_DEFAULT_USER: auction
-      RABBITMQ_DEFAULT_PASS: auction
+    volumes:
+      - ./Infrastructure/secrets/rabbitmq-defaults.conf:/etc/rabbitmq/conf.d/20-auction.conf:ro
     ports:
       - "127.0.0.1:15672:15672"
     networks:
@@ -97,19 +96,58 @@ services:
       timeout: 3s
       retries: 15
 
+  vault:
+    image: openbao/openbao:2.7.2
+    restart: unless-stopped
+    cpus: 1
+    mem_limit: 256m
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        exec bao server -dev
+        -dev-root-token-id="$$(cat /run/secrets/vault_root_token)"
+        -dev-listen-address=0.0.0.0:8200
+    secrets:
+      - vault_root_token
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8200/v1/sys/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  vault-init:
+    image: openbao/openbao:2.7.2
+    user: "0"
+    restart: "no"
+    entrypoint: ["/bin/sh", "/vault-init.sh"]
+    volumes:
+      - ./Infrastructure/vault/vault-init.sh:/vault-init.sh:ro
+      - vaultcreds:/vault/credentials
+    secrets:
+      - vault_root_token
+      - postgres_password
+      - rabbitmq_password
+      - redis_password
+      - jwt_key
+      - bots_api_key
+    networks:
+      - data
+    depends_on:
+      vault:
+        condition: service_healthy
+
   api:
     build: ./Backend
     restart: unless-stopped
     cpus: 2
     mem_limit: 1g
     environment:
-      ConnectionStrings__DefaultConnection: "Host=pgbouncer;Port=6432;Database=auctionserver;Username=auction;Password=auction;No Reset On Close=true"
-      Jwt__Key: "local-dev-signing-key-at-least-32-chars-long"
-      Bots__ApiKey: "local-dev-bot-api-key"
       Database__MigrateOnStartup: "true"
       Profiles__Storage__ServiceUrl: "http://seaweedfs:8333"
       Cache__Enabled: "true"
-      Cache__Redis__ConnectionString: "redis:6379"
       Observability__Enabled: "true"
       Observability__OtlpEndpoint: "http://otel-collector:4317"
       Gateway__Enabled: "true"
@@ -117,7 +155,13 @@ services:
       Messaging__Transport: "Rabbit"
       Messaging__Rabbit__HostName: "rabbitmq"
       Messaging__Rabbit__UserName: "auction"
-      Messaging__Rabbit__Password: "auction"
+      Vault__Enabled: "true"
+      Vault__Address: "http://vault:8200"
+      Vault__RoleIdFile: "/vault/credentials/role-id"
+      Vault__SecretIdFile: "/vault/credentials/secret-id"
+      Vault__SecretPath: "auction/api"
+    volumes:
+      - vaultcreds:/vault/credentials:ro
     networks:
       - edge
       - data
@@ -130,6 +174,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -233,9 +279,24 @@ networks:
         - subnet: 172.16.80.0/24
   data:
 
+secrets:
+  postgres_password:
+    file: ./Infrastructure/secrets/postgres-password.secret
+  rabbitmq_password:
+    file: ./Infrastructure/secrets/rabbitmq-password.secret
+  redis_password:
+    file: ./Infrastructure/secrets/redis-password.secret
+  jwt_key:
+    file: ./Infrastructure/secrets/jwt-key.secret
+  bots_api_key:
+    file: ./Infrastructure/secrets/bots-api-key.secret
+  vault_root_token:
+    file: ./Infrastructure/secrets/vault-root-token.secret
+
 volumes:
   pgdata:
   seaweeddata:
   prometheusdata:
   tempodata:
   grafanadata:
+  vaultcreds:

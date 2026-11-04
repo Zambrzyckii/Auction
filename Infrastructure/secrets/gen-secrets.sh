@@ -14,5 +14,6 @@ generate bots-api-key.secret 16
 generate vault-root-token.secret 16
 
 printf '"auction" "%s"\n' "$(cat postgres-password.secret)" > pgbouncer-userlist.txt
+printf 'default_user = auction\ndefault_pass = %s\n' "$(cat rabbitmq-password.secret)" > rabbitmq-defaults.conf
 
 echo "secret files ready in $(pwd)"
