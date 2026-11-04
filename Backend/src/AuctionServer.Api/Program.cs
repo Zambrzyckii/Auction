@@ -177,10 +177,20 @@ builder.Services.AddSingleton(IntegrationEventRecipients.Build());
 builder.Services.AddScoped<IIntegrationEventDispatcher, DeliveryDispatcher>();
 builder.Services.AddDeliveryProcessor();
 builder.Services.AddSingleton<MessagingMetrics>();
-builder.Services.AddScoped<InProcessEventPublisher>();
-builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
-    provider.GetRequiredService<InProcessEventPublisher>(),
-    provider.GetRequiredService<MessagingMetrics>()));
+if (messagingOptions.Transport == MessagingTransport.Rabbit)
+{
+    builder.Services.AddSingleton(_ => new RabbitEventPublisher(messagingOptions.Rabbit!));
+    builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
+        provider.GetRequiredService<RabbitEventPublisher>(),
+        provider.GetRequiredService<MessagingMetrics>()));
+}
+else
+{
+    builder.Services.AddScoped<InProcessEventPublisher>();
+    builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
+        provider.GetRequiredService<InProcessEventPublisher>(),
+        provider.GetRequiredService<MessagingMetrics>()));
+}
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
         .AllowAnyHeader()
