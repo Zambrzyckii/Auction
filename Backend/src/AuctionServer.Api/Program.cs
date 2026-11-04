@@ -24,6 +24,7 @@ using AuctionServer.Api.Infrastructure.Gateway;
 using AuctionServer.Api.Infrastructure.Health;
 using AuctionServer.Api.Infrastructure.Messaging;
 using AuctionServer.Api.Infrastructure.Observability;
+using AuctionServer.Api.Infrastructure.Secrets;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Modules.Identity.Presentation;
@@ -52,6 +53,7 @@ using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddVaultConfiguration();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Missing configuration value 'ConnectionStrings:DefaultConnection'");
 var startingFunds = builder.Configuration.GetValue<decimal?>("Wallets:StartingFunds") ?? throw new InvalidOperationException("Missing configuration value 'Wallets:StartingFunds'");
 var starterItems = builder.Configuration.GetSection("Inventory:StarterItems").Get<List<StarterItemDefinition>>() ?? [];
