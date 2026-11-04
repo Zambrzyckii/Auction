@@ -20,6 +20,20 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
 - Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s, odkąd faza czwarta wliczyła 2 s TTL bidów (< 6 s przed 2026-11-01). Pęknięty próg failuje przebieg kodem wyjścia 99.
 
+## Transport RabbitMQ — 2026-11-04, commit `d73baa2`
+
+Faza piąta przełączyła api w Compose na transport Rabbit (ADR-013): każde przekazanie z outboxa przechodzi odtąd przez brokera, zanim trafi do magazynu doręczeń. Ten wpis potwierdza, że noga brokera nie rusza `visibility_lag`. Domyślne Compose na zamrożonych limitach (cache włączony, L1 plus L2, broker na 1 CPU i 384 MB), obraz api przebudowany i sprawdzony jako młodszy od commita HEAD, dwa przebiegi `mixed.js`. HTTP p95 utrzymało się na 1,4-1,6 ms z 0% błędów, a osiem outboxów, tabela doręczeń i kolejka brokera skończyły puste.
+
+| Potok | Przebieg | Przyjęte bidy | med | p90 | p95 | p99 | max |
+|---|---|---|---|---|---|---|---|
+| outbox + doręczanie, in-process (para z 2026-11-01) | 1 | 30 | 6,51 s | 7,02 s | 7,30 s | 8,24 s | 8,53 s |
+| outbox + doręczanie, in-process (para z 2026-11-01) | 2 | 29 | 6,52 s | 7,52 s | 7,52 s | 7,52 s | 7,52 s |
+| outbox + broker + doręczanie (`d73baa2`) | 1 | 30 | 6,52 s | 7,07 s | 7,52 s | 7,52 s | 7,53 s |
+| outbox + broker + doręczanie (`d73baa2`) | 2 | 30 | 6,52 s | 7,52 s | 7,52 s | 7,88 s | 8,02 s |
+
+- Mediany są identyczne (6,52 s), a każdy percentyl mieści się w szumie między przebiegami ~0,3 s, więc noga brokera kosztuje milisekundy: lag wciąż dominują oba 3-sekundowe polle, dokładnie jak przewidział ADR-011 i zapisuje ADR-013.
+- Oba przebiegi mieszczą się w progu 8 s z tym samym zapasem ~0,5 s na p95 co przed brokerem; p99/max wciąż ocierają się o 7,9-8,0 s, więc obserwacja o braku miejsca na trzeci przeskok stoi.
+
 ## Podział doręczania — 2026-11-01, commit `82d0e00`
 
 Etap szósty sprzątania po przeglądzie podzielił publikację na transport i doręczanie (ADR-011), co dodało każdemu zdarzeniu drugi przeskok odpytywania co 3 s (kurier outboxa przekazuje, `DeliveryProcessor` doręcza). Ten wpis mierzy koszt tego przeskoku na `visibility_lag` przed fazą piątą. Domyślne wartości Compose na zamrożonych limitach (cache włączony, L1 plus L2), dwa przebiegi `mixed.js` na potok. Pierwsza para przypadkiem pobiegła na nieświeżym obrazie api zbudowanym przed podziałem i została zachowana jako baza jednoprzeskokowego potoku z tego samego dnia. HTTP p95 trzymało się 1,5-1,7 ms z 0% błędów we wszystkich czterech przebiegach, a osiem outboxów plus tabela doręczeń skończyły z zerem oczekujących i zerem martwych wierszy.

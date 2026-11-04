@@ -20,6 +20,20 @@ Every change that claims a performance or reliability effect is measured with k6
 - `gateway-limits.js` runs four 20-second windows against the gateway (anonymous below and above its limit, with a token above its limit, login above its limit), and its thresholds assert that each window gets the 200s and 429s it should.
 - Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s since phase four priced in the 2 s bids TTL (< 6 s before 2026-11-01). A threshold breach fails the run with exit code 99.
 
+## RabbitMQ transport — 2026-11-04, commit `d73baa2`
+
+Phase five switched the Compose api to the Rabbit transport (ADR-013): every outbox hand-off now crosses the broker before it reaches the delivery store. This entry confirms the broker leg does not move `visibility_lag`. Compose defaults at the frozen limits (cache on, L1 plus L2, the broker at 1 CPU and 384 MB), the api image rebuilt and checked younger than the head commit, two `mixed.js` runs. HTTP p95 stayed at 1.4-1.6 ms with 0% failures, and the eight outboxes, the delivery table and the broker queue ended empty.
+
+| Pipeline | Run | Accepted bids | med | p90 | p95 | p99 | max |
+|---|---|---|---|---|---|---|---|
+| outbox + delivery, in-process (2026-11-01 pair) | 1 | 30 | 6.51 s | 7.02 s | 7.30 s | 8.24 s | 8.53 s |
+| outbox + delivery, in-process (2026-11-01 pair) | 2 | 29 | 6.52 s | 7.52 s | 7.52 s | 7.52 s | 7.52 s |
+| outbox + broker + delivery (`d73baa2`) | 1 | 30 | 6.52 s | 7.07 s | 7.52 s | 7.52 s | 7.53 s |
+| outbox + broker + delivery (`d73baa2`) | 2 | 30 | 6.52 s | 7.52 s | 7.52 s | 7.88 s | 8.02 s |
+
+- The medians are identical (6.52 s) and every percentile sits inside the ~0.3 s run-to-run noise, so the broker leg costs milliseconds: both 3 s polls still dominate the lag, exactly as ADR-011 predicted and ADR-013 records.
+- Both runs pass the 8 s threshold with the same ~0.5 s of headroom at p95 as before the broker; p99/max still graze 7.9-8.0 s, so the no-room-for-a-third-hop observation stands.
+
 ## Delivery split — 2026-11-01, commit `82d0e00`
 
 Stage six of the review cleanup split publishing into transport and delivery (ADR-011), which added a second 3 s polling hop (the outbox courier hands over, the `DeliveryProcessor` delivers) to every event. This entry measures that hop's cost on `visibility_lag` before phase five. Compose defaults at the frozen limits (cache on, L1 plus L2), two `mixed.js` runs per pipeline. The first pair accidentally ran against a stale api image built before the split and was kept as a same-day baseline of the single-hop pipeline. HTTP p95 stayed at 1.5-1.7 ms with 0% failures in all four runs, and all eight outboxes plus the delivery table ended with zero pending and zero dead rows.
