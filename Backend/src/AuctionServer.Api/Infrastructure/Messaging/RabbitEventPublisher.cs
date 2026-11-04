@@ -27,6 +27,10 @@ public sealed class RabbitEventPublisher(MessagingRabbitOptions options) : IInte
             var body = System.Text.Encoding.UTF8.GetBytes(content);
             await channel.BasicPublishAsync(RabbitTopology.EventsExchange, RabbitTopology.DeliveryRoutingKey,
                 mandatory: false, properties, body, token);
+
+            if (MarketEvents.Published.Contains(type))
+                await channel.BasicPublishAsync(RabbitTopology.MarketExchange, routingKey: type,
+                    mandatory: false, properties, body, token);
         }
         finally
         {
