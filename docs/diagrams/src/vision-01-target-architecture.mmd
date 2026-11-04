@@ -20,7 +20,7 @@ flowchart TB
         Backup["pg_dump cron<br/>retention volume"]:::db
         Redis[("Redis<br/>hot auction reads, TTL 2 s")]:::db
         Seaweed[("SeaweedFS<br/>avatars via S3 gateway")]:::db
-        Rabbit["RabbitMQ<br/>topic exchange auction.events,<br/>retry tiers + dead queue"]:::shared
+        Rabbit["RabbitMQ<br/>auctionserver.events + auctionserver.market,<br/>retries and dead letters stay in the database"]:::shared
         Vault["OpenBao<br/>KV v2 secrets, AppRole"]:::shared
     end
 

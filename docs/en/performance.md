@@ -100,7 +100,7 @@ The reference point for phases two to six, taken on the fresh telemetry stack wi
 | bid-storm | 10 bots, no pacing, 60 s | 86.4 | 0.91 ms | 1.65 ms | 3.47 ms | 143 ms | 4.41% (domain 400s) |
 | mixed | 30 iters/s, 85/15, 60 s | 27.0 | 0.80 ms | 1.46 ms | 8.06 ms | 142 ms | 0% |
 
-- `visibility_lag` (mixed): med 3.01 s, p90 4.36 s, p95 4.52 s, p99 5.02 s, max 5.02 s. This is the measured cost of the two-poll outbox pipeline, previously only estimated at 3-9 s; phase five (RabbitMQ) is expected to cut it, phases two to four must not move it.
+- `visibility_lag` (mixed): med 3.01 s, p90 4.36 s, p95 4.52 s, p99 5.02 s, max 5.02 s. This is the measured cost of the two-poll outbox pipeline, previously only estimated at 3-9 s. Phases two to four must not move it. Phase five (RabbitMQ) was expected to cut it at the time, but since the delivery split both polls stay whatever the transport (ADR-011, ADR-013).
 - bid-storm domain outcomes: 20 bids accepted, 3620 rejected with 409 (the pending-bid lock working as designed, a confirmation needs two outbox polls), 356 rejected with 400. Acceptance throughput is bounded by the saga, not by HTTP capacity.
 - Every `max` around 140 ms is the setup's registration and login, which hash with BCrypt (corrected during phase two, the original note blamed JIT on a cold endpoint). The percentiles show the API under load.
 - Reading the table: at these loads the API is nowhere near its limits, sub-millisecond medians on 2 CPUs. The baseline exists so the pooler and the cache phases can prove their effect (or honestly show its absence at one instance) instead of claiming it.

@@ -2,11 +2,11 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/infrastructure.md](../en/infrastructure.md)
 
-Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/` i konfigurację PgBouncera w `Infrastructure/pgbouncer/`. Broker i usługa sekretów pozostają planowane. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), 2026-10-24 faza trzecia (PgBouncer), a 2026-11-01 faza czwarta (cache odczytów na Redisie). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
+Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/` i konfigurację PgBouncera w `Infrastructure/pgbouncer/`. Broker działa w stacku Compose od 2026-11-04 (jego konfiguracja to definicja usługi plus `RabbitTopology` w hoście), a usługa sekretów pozostaje planowana. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), 2026-10-24 faza trzecia (PgBouncer), 2026-11-01 faza czwarta (cache odczytów na Redisie), a 2026-11-04 faza piąta (RabbitMQ). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
 
 ## Status
 
-Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. 2026-11-01 doszedł Redis jako dziesiąta usługa (`redis:7.2-alpine`, 1 CPU i 128 MB, `--maxmemory 64mb` z `allkeys-lru`, bez persystencji i bez wolumenu) w sieci `data`; api celowo nie ma na niego `depends_on`, bo brak Redisa degraduje tylko opóźnienie odczytów. Broker dochodzi w kolejnej fazie.
+Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. 2026-11-01 doszedł Redis jako dziesiąta usługa (`redis:7.2-alpine`, 1 CPU i 128 MB, `--maxmemory 64mb` z `allkeys-lru`, bez persystencji i bez wolumenu) w sieci `data`; api celowo nie ma na niego `depends_on`, bo brak Redisa degraduje tylko opóźnienie odczytów. 2026-11-04 doszedł RabbitMQ jako jedenasta usługa (`rabbitmq:4.1-management-alpine`, 1 CPU i 384 MB, UI zarządzania na `127.0.0.1:15672`, poświadczenia `auction`/`auction`) w sieci `data`, a api przełączyło się na transport Rabbit.
 
 ## Co istnieje dziś
 
@@ -57,12 +57,16 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 - Stanu sesyjnego (advisory locki, tabele tymczasowe, LISTEN/NOTIFY, prepared statements) nie wolno wprowadzić bez zdjęcia tego wołającego z poolera. Dziś kod nie ma żadnego.
 - `SHOW POOLS` pokazuje połączenia klienckie i serwerowe na żywo, przez `docker compose exec -e PGPASSWORD=auction pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. Testy integracyjne robią asercje na jego liczbach.
 
+## Broker komunikatów
+
+RabbitMQ 4.1 niesie dwa trwałe exchange'e, deklarowane idempotentnie przez każdą łączącą się stronę poprzez `RabbitTopology` hosta. Exchange direct `auctionserver.events` karmi trwałą kolejkę `auctionserver.deliveries`, wewnętrzny odcinek między procesorami outboxa a magazynem doręczeń: `RabbitEventPublisher` publikuje trwałe wiadomości z metadanymi we właściwościach AMQP `MessageId` i `Type` oraz surowym JSON-em zdarzenia jako body i wraca dopiero na confirm publishera, a `RabbitDeliveryConsumer` karmi `DeliveryDispatcher.AcceptAsync` z ręcznymi ackami, prefetch 20 i 5 s chłodzenia przed oddaniem nieprzyjętej wiadomości do kolejki. Exchange topic `auctionserver.market` publikuje ponownie cztery publiczne zdarzenia aukcyjne z nazwą typu jako kluczem routingu, feed tylko do konsumpcji dla planowanych botów. Ponowienia i martwe listy zostają w bazie (ADR-011), więc broker nie ma żadnego DLX, a bezczynny stack pokazuje pustą kolejkę. Przełącznikiem transportu jest sekcja `Messaging` hosta z fail-fast, domyślnie `InProcess`, w Compose `Rabbit`. Rekord decyzji to [ADR-013](adr/013-rabbitmq-transport.md).
+
 ## Projekt docelowy
 
 - **API gateway nginx** (faza 2): wszedł 2026-10-23, zob. [Gateway](#gateway). Nadal brakuje TLS.
 - **PgBouncer** (faza 3): wszedł 2026-10-24, zob. [Pooling połączeń](#pooling-połączeń). Migracje też idą przez poolera.
 - **Redis** (faza 4, weszła 2026-11-01): rozproszony poziom cache gorących odczytów aukcji za szwem modułu, samo TTL; szczegóły w [backend/auctions.md](backend/auctions.md) i [ADR-009](adr/009-hybrid-read-cache-in-auctions.md).
-- **RabbitMQ** (faza 5): transport zdarzeń integracyjnych za `IIntegrationEventPublisher`, z poziomami retry, martwą kolejką i sekwencyjnym konsumentem po stronie hosta; zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
+- **RabbitMQ** (faza 5, weszła 2026-11-04): transport AMQP za `IIntegrationEventPublisher` plus rynkowy exchange tylko do konsumpcji dla botów. Ponowienia i martwe listy zostały w bazie, nie w brokerze (ADR-011); zob. [Broker komunikatów](#broker-komunikatow) i [ADR-013](adr/013-rabbitmq-transport.md).
 - **OpenBao** (faza 6): usługa sekretów czytana na starcie przez własny provider konfiguracji.
 - **Hardening** (faza 7): budowa obrazu w CI, backupy, limiter .NET per użytkownik i notatki migracyjne k8s/OIDC.
 
@@ -84,13 +88,12 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 - **TLS jeszcze nie ma, więc dopóki nie wejdzie, stack nie może być wystawiony do internetu.** Cel właściciela to wyłącznie HTTPS z własnym certyfikatem, odnawianym automatycznie albo serwowanym przez redundantną parę, żeby certyfikat nie stał się pojedynczym punktem awarii.
 - nginx odpowiada na 502 (api nieosiągalne, na przykład w 5-sekundowym oknie odświeżania adresu) swoją domyślną stroną HTML, inaczej niż na 413 i 429, które mają JSON.
 - nginx przekazuje `Host` bez portu, więc wpis `servers` w OpenAPI to `http://localhost/`. Api buduje tylko adresy względne, więc nic innego tego nie odczuwa.
-- Brak publishera AMQP i konsumenta po stronie hosta; [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md) opisuje, z czym wiąże się podmiana.
 - Pipeline CI nie ma etapu deploy, artefaktów ani budowy obrazu.
 - Sekrety w `compose.yaml` są plaintextowymi zmiennymi środowiskowymi do fazy 6.
 
 ## API
 
-Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który nginx odpowiada bez api. Cała reszta na porcie 8080 to API backendu, a broker poniesie trzydzieści osiem zdarzeń integracyjnych wymienionych w [backend/messaging.md](backend/messaging.md#katalog-zdarzen).
+Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który nginx odpowiada bez api. Cała reszta na porcie 8080 to API backendu. Wewnętrzna kolejka niesie wszystkie trzydzieści osiem zdarzeń integracyjnych wymienionych w [backend/messaging.md](backend/messaging.md#katalog-zdarzen), a exchange rynkowy publikuje ponownie cztery z nich dla botów ([bots.md](bots.md)).
 
 ## Decyzje
 
@@ -98,7 +101,8 @@ Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który n
 - Gateway to nginx z limitami IP, limitami body, błędami w JSON i modelem zaufania CIDR dla nagłówków forwarded, zob. [ADR-006](adr/006-nginx-gateway.md).
 - Pooler to PgBouncer w trybie transaction i migracje idą przez niego, bo blokada migracji w Npgsql EF 10 to blokada tabeli wewnątrz transakcji migracji, z włączoną pulą Npgsql plus `No Reset On Close=true`, zob. [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
 - Testy obciążeniowe celują w `http://api:8080` bezpośrednio z sieci Compose, żeby baseline pozostał porównywalny teraz, gdy gateway stoi przed api. Przez gateway idzie tylko `gateway-limits.js`, uruchamiany z `BASE_URL=http://gateway`.
-- Transport wchodzi za istniejący szew zamiast przez zmianę modułów, zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
+- Transport wchodzi za istniejący szew zamiast przez zmianę modułów, zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md); podmiana z 2026-11-04 to potwierdziła i dotknęła tylko hosta.
+- Broker mówi przez surowy `RabbitMQ.Client`, nie framework komunikacyjny, z confirmami publishera zanim wiersz outboxa uzna się za przetworzony i całym stanem ponawiania w bazie, zob. [ADR-013](adr/013-rabbitmq-transport.md).
 
 ## Powiązane dokumenty
 

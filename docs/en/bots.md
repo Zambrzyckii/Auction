@@ -6,14 +6,18 @@ This module does not exist yet: the repository contains no `Bots/` folder and no
 
 ## Status
 
-Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous actors that listen to market events on RabbitMQ and send commands through the API gateway, written in Python; the broker does not exist yet, so a first bot would have to poll the HTTP API through the gateway.
+Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous actors that listen to market events on RabbitMQ and send commands through the API gateway, written in Python. Since 2026-11-04 the broker runs in the Compose stack and the market feed exists (see [The market feed](#the-market-feed)), so a first bot can subscribe instead of polling.
 
 ## Target design
 
 - Python processes, each running under its own bot account.
-- Input: market events (`AuctionActivatedEvent`, `BidPlacedEvent`, `AuctionFinishedEvent`) consumed from RabbitMQ once the transport is in place.
+- Input: market events (`AuctionActivatedEvent`, `BidPlacedEvent`, `AuctionFinishedEvent`, `AuctionCancelledEvent`) consumed from the RabbitMQ exchange `auctionserver.market`, live since 2026-11-04.
 - Output: commands through the gateway, which means the same HTTP endpoints players use plus the bot-only ones. The RabbitMQ queue is consume-only for bots. A command never travels through the broker, and every bot write is an ordinary synchronous HTTP call like a player's ([ADR-008](adr/008-synchronous-writes-outbox-boundary.md)).
 - Purpose, as far as it is recorded: "AI market bots" that act in the market on their own; the bot-only endpoints (minting items, adding funds) show that bots are meant to put items and money into circulation.
+
+## The market feed
+
+Since 2026-11-04 the host re-publishes the four public auction events on the durable topic exchange `auctionserver.market`, with the event type name as the routing key (`AuctionActivatedEvent`, `BidPlacedEvent`, `AuctionFinishedEvent`, `AuctionCancelledEvent`; the allowlist is the host's `MarketEvents` set, see [ADR-013](adr/013-rabbitmq-transport.md)). A message carries the event id in the AMQP `MessageId` property, the type name in `Type` and the raw event JSON as the body, the same shapes the handlers consume (see the [event catalog](backend/messaging.md#event-catalog)). The feed is consume-only and at-least-once: a bot declares its own queue, binds it with the routing keys it wants (or `#` for all four) and must tolerate duplicates, deduplicating on `MessageId` when its actions are not naturally idempotent. The broker listens on `rabbitmq:5672` inside the Compose `data` network with the dev credentials `auction`/`auction`, and the management UI on `127.0.0.1:15672` shows the exchanges and queues live. No AMQP port is published to the host, so a bot process either joins the Compose network or waits for an operational decision to expose the broker.
 
 ## What the backend provides
 
@@ -26,7 +30,7 @@ Planned. The deleted design note (`AGENTS.md`) describes "AI BOTS" as autonomous
 
 ## What is missing
 
-- No event feed outside the process: `AuctionActivatedEvent` and the other events reach only in-process MediatR handlers, so a bot cannot subscribe to anything until the RabbitMQ transport exists.
+- No bot code: the feed exists, but nothing consumes it yet, and no provisioning script exists either.
 - The gateway limits a bot like any other client by its address (60 requests per second with a bearer token) and does not tell bots apart, because the bot zone keyed on `X-Api-Key` was left out ([ADR-006](adr/006-nginx-gateway.md)). Several bots on one machine share one address and therefore one bucket of 60 requests per second.
 - No bid history and no "my auctions" query, so a bot has to remember what it did.
 - No token revocation and no endpoint to disable an account, so a bot token stays valid for its full 24 hours.
@@ -46,4 +50,4 @@ The endpoints a bot would call, in the order of a typical session: `POST /api/us
 
 - [backend/identity.md](backend/identity.md) - provisioning, roles and token lifetimes.
 - [backend/wallets.md](backend/wallets.md) and [backend/inventory.md](backend/inventory.md) - the bot-only endpoints.
-- [infrastructure.md](infrastructure.md) - the broker and the gateway the bots depend on.
+- [infrastructure.md](infrastructure.md) - the broker and the gateway the bots depend on, with the broker section under [Message broker](infrastructure.md#message-broker).

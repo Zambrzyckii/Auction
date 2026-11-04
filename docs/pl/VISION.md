@@ -47,7 +47,7 @@ Pierwotny cel pochodzi z notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15
 - **gateway nginx** jako jedyny publikowany adres i punkt wejścia dla frontendu i botów, niosący TLS, limity IP, limity rozmiaru body i kompresję, podczas gdy limity per użytkownik i CORS zostają w backendzie;
 - **backend API**, czyli istniejący dziś modular monolith, utrzymany jako jeden artefakt wdrożeniowy i oprzyrządowany OpenTelemetry;
 - **warstwa danych** osiągalna tylko wewnątrz sieci Compose: PostgreSQL za PgBouncerem (pooling transakcyjny, migracje też przez poolera, kopie `pg_dump` z crona), Redis jako rozproszony poziom cache gorących odczytów aukcji, SeaweedFS na awatary i OpenBao na sekrety;
-- **RabbitMQ** jako transport zdarzeń integracyjnych opuszczających monolit, wpięty w szew `IIntegrationEventPublisher` i zasilający tego samego dyżurnego doręczania po stronie hosta, który dziś działa in-process i już prowadzi ponowienia i martwe listy per adresat;
+- **RabbitMQ** jako transport zdarzeń integracyjnych opuszczających monolit, wpięty w szew `IIntegrationEventPublisher` i zasilający tego samego dyżurnego doręczania po stronie hosta (weszło 2026-11-04, domyślnie in-process, a w stacku Compose na RabbitMQ), który już prowadzi ponowienia i martwe listy per adresat;
 - **boty AI** napisane w Pythonie, które nasłuchują zdarzeń rynkowych na własnej kolejce RabbitMQ i działają przez gateway;
 - **stack obserwowalności** (OTel Collector, Prometheus, Tempo, Grafana) zasilany po OTLP, z testami obciążeniowymi k6 jako narzędziem pomiaru każdej zmiany wydajnościowej;
 - z tyłu głowy i celowo jeszcze nieplanowane: **Kubernetes** (Deploymenty z HPA, Ingress, operatory Postgresa i RabbitMQ) oraz opcjonalny **Keycloak/OIDC** zastępujący własnoręczne wydawanie JWT.
@@ -80,8 +80,9 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 
 Planowane nadal po nich:
 
-- RabbitMQ jako transport zdarzeń za `IIntegrationEventPublisher`.
 - Frontend Angular i boty rynkowe AI.
+
+RabbitMQ, wymieniany tu do 2026-11-04, wszedł tego dnia jako transport zdarzeń za `IIntegrationEventPublisher` z rynkowym exchange'em tylko do konsumpcji dla botów (zobacz [ADR-013](adr/013-rabbitmq-transport.md)).
 
 ## 7. Zasady projektu
 

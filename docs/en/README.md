@@ -12,7 +12,7 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md), [backend/profiles.md](backend/profiles.md), [backend/identity.md](backend/identity.md) - one chapter per module.
 5. [STATE.md](STATE.md) and [VISION.md](VISION.md) - where the project stands and where it is going.
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) and [adr/](adr) - the rules and the reasons.
-7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - the modules that do not exist yet.
+7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - the planned modules and the platform around the backend.
 
 ## Map
 
@@ -33,10 +33,10 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 | [VISION.md](VISION.md) | What is the product, what do the terms mean, what is planned next? |
 | [CONVENTIONS.md](CONVENTIONS.md) | How are code, tests and documentation kept, what is the definition of done? |
 | [DECISIONS.md](DECISIONS.md) | Which decisions were taken when, and why? |
-| [adr/](adr) | The twelve decisions with lasting consequences, in context, decision and consequences form. |
+| [adr/](adr) | The thirteen decisions with lasting consequences, in context, decision and consequences form. |
 | [STATE.md](STATE.md) | What exists right now, what is the environment, what is the next step? |
 | [CHANGELOG.md](CHANGELOG.md) | How did the project get here, milestone by milestone? |
-| [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | What is planned for each missing module, and what does the backend already offer it? |
+| [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | What is planned for each missing module, what the backend already offers it, and the platform that exists today. |
 | [performance.md](performance.md) | How is performance measured, and what did each k6 run show? |
 | [../diagrams/README.md](../diagrams/README.md) | How are the diagrams authored and re-rendered? |
 

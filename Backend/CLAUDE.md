@@ -21,7 +21,7 @@ Projects live under `src/` (application code) and `tests/` (test projects).
 dotnet build AuctionServer.slnx
 dotnet run --project src/AuctionServer.Api        # http://localhost:5244 (https profile: 7009)
 dotnet test AuctionServer.slnx                    # NOTE: starts Docker containers, see below
-docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436) + redis for the read cache, migrates at startup
+docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436) + redis for the read cache + rabbitmq as the event transport (management UI on 127.0.0.1:15672), migrates at startup
 ```
 
 ### Tests
@@ -252,11 +252,18 @@ the shared `OutboxProcessor<TContext>` (`Shared.Infrastructure`, registered thro
 SKIP LOCKED ... RETURNING *` statement, safe behind PgBouncer), hands them — raw `Type` + JSON `Content` — to
 `IIntegrationEventPublisher` (`Shared.Integration/Messaging/`) and once an hour deletes rows processed more than
 7 days ago. The processors know nothing about the transport.
-The host registers `InProcessEventPublisher`, the only transport implementation
-(`AuctionServer.Api/Infrastructure/Messaging/`), behind the `InstrumentedEventPublisher` decorator that measures
-each hand-off; since the delivery split (ADR-011) the transport passes the message to `DeliveryDispatcher.AcceptAsync`
+The host picks the transport from the fail-fast `Messaging` section (`MessagingOptions`, default `InProcess`, the
+compose stack runs `Rabbit`) and registers `InProcessEventPublisher` or `RabbitEventPublisher`
+(`AuctionServer.Api/Infrastructure/Messaging/`) behind the `InstrumentedEventPublisher` decorator that measures
+each hand-off. The Rabbit publisher sends a persistent message per outbox row to the durable exchange
+`auctionserver.events` (metadata in the AMQP `MessageId`/`Type` properties, body = the raw event JSON) and awaits the
+publisher confirm, so the outbox row is marked processed only once the broker has it on disk; `RabbitDeliveryConsumer`
+(manual acks, prefetch 20, nack+requeue after a 5 s cooldown) then feeds the same dispatcher, and the four public
+auction events additionally go out on the topic exchange `auctionserver.market` (`MarketEvents` allowlist) for the
+future bots (ADR-013). Whatever the transport, delivery converges on `DeliveryDispatcher.AcceptAsync`
 (`Shared.Infrastructure/Delivery/`), which writes one `DeliveryMessages` row per recipient taken, order included, from
-the host's explicit `IntegrationEventRecipients` map, and the outbox row is marked processed at that hand-off. The
+the host's explicit `IntegrationEventRecipients` map. The outbox row is marked processed when `PublishAsync` returns,
+which on the in-process transport is that hand-off and on Rabbit the broker confirm. The
 single `DeliveryProcessor` (3 s cycle, leased claims like the outbox courier) resolves the CLR type through the
 `IntegrationEventTypes` registry and invokes that one recipient's `INotificationHandler<>` implementation in the
 module's Application layer; retries and dead letters live per recipient on the delivery row.
@@ -630,10 +637,10 @@ Still aspirational — verify before building on them:
 
 - **Auctions created before the saga** (any `ItemId`, no locked item) dead-letter in Inventory with a 404 when
   they close; Wallets still settles them correctly. Clean the dev database rather than special-casing them.
-- **RabbitMQ, Angular frontend and AI bots do not exist** in this repository — no packages, no code.
-  The transport seam is in place (`IIntegrationEventPublisher`), but `InProcessEventPublisher` is its only
-  implementation; a broker means adding an AMQP publisher + a host-side consumer that feeds the same
-  `DeliveryDispatcher.AcceptAsync`, not touching the modules.
+- **Angular frontend and AI bots do not exist** in this repository — no code. RabbitMQ exists since 2026-11-04
+  (phase five, ADR-013): `RabbitMQ.Client` 7.2.2 in the Api project only, the `Messaging` transport switch defaults
+  to `InProcess`, so tests and `dotnet run` never need a broker, and the consume-only market exchange
+  `auctionserver.market` is what the future bots will subscribe to.
 
-Known debt worth keeping in mind: `AuctionActivatedEvent` is published but nobody consumes it;
+Known debt worth keeping in mind: `AuctionActivatedEvent` has no module recipient (since 2026-11-04 it at least reaches the market exchange);
 `SellItemToShopCommandHandler.cs` breaks the "outbox `Id` == `EventId`" convention with two separate Guids.

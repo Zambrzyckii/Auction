@@ -47,7 +47,7 @@ The original target comes from the project's design note (`AGENTS.md`, deleted o
 - an **nginx API gateway** as the single published address and entry point for the frontend and the bots, carrying TLS, IP rate limits, body caps and compression, while per-user limits and CORS stay in the backend;
 - the **backend API**, the modular monolith that exists today, kept as one deployable and instrumented with OpenTelemetry;
 - a **data plane** reachable only inside the Compose network: PostgreSQL behind PgBouncer (transaction pooling, migrations through the pooler too, cron `pg_dump` backups), Redis as the distributed level of the hot-auction-read cache, SeaweedFS for avatars and OpenBao for secrets;
-- **RabbitMQ** as the transport for integration events leaving the monolith, plugged into the `IIntegrationEventPublisher` seam and feeding the same host-side delivery dispatcher that runs in-process today, which already keeps per-recipient retries and dead letters;
+- **RabbitMQ** as the transport for integration events leaving the monolith, plugged into the `IIntegrationEventPublisher` seam and feeding the same host-side delivery dispatcher (shipped 2026-11-04, in-process by default and on RabbitMQ in the Compose stack), which already keeps per-recipient retries and dead letters;
 - **AI bots** written in Python that listen to market events on their own RabbitMQ queue and act through the gateway;
 - an **observability stack** (OTel Collector, Prometheus, Tempo, Grafana) fed over OTLP, with k6 load tests as the measurement tool for every performance change;
 - at the back of the head and deliberately not planned yet: **Kubernetes** (Deployments with HPA, an Ingress, Postgres and RabbitMQ operators) and an optional **Keycloak/OIDC** issuer replacing the hand-rolled JWT.
@@ -80,8 +80,9 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 
 Still planned after these:
 
-- RabbitMQ as the event transport behind `IIntegrationEventPublisher`.
 - Angular frontend and AI market bots.
+
+RabbitMQ, listed here until 2026-11-04, shipped that day as the event transport behind `IIntegrationEventPublisher` with the consume-only market exchange for the bots (see [ADR-013](adr/013-rabbitmq-transport.md)).
 
 ## 7. Ground rules
 

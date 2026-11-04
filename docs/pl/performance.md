@@ -100,7 +100,7 @@ Punkt odniesienia dla faz od drugiej do szóstej, zdjęty na świeżym stacku te
 | bid-storm | 10 botów, bez pauz, 60 s | 86.4 | 0.91 ms | 1.65 ms | 3.47 ms | 143 ms | 4.41% (domenowe 400) |
 | mixed | 30 iteracji/s, 85/15, 60 s | 27.0 | 0.80 ms | 1.46 ms | 8.06 ms | 142 ms | 0% |
 
-- `visibility_lag` (mixed): med 3.01 s, p90 4.36 s, p95 4.52 s, p99 5.02 s, max 5.02 s. To zmierzony koszt dwupollowego pipeline'u outboxa, wcześniej jedynie szacowany na 3-9 s; faza piąta (RabbitMQ) ma go ściąć, fazy od drugiej do czwartej nie mogą go ruszyć.
+- `visibility_lag` (mixed): med 3.01 s, p90 4.36 s, p95 4.52 s, p99 5.02 s, max 5.02 s. To zmierzony koszt dwupollowego pipeline'u outboxa, wcześniej jedynie szacowany na 3-9 s. Fazy od drugiej do czwartej nie mogą go ruszyć. Faza piąta (RabbitMQ) miała go wtedy ściąć, ale od podziału doręczania oba polle zostają niezależnie od transportu (ADR-011, ADR-013).
 - Wyniki domenowe bid-storm: 20 bidów przyjętych, 3620 odbitych z 409 (blokada oczekującego bida działa zgodnie z projektem, potwierdzenie potrzebuje dwóch polli outboxa), 356 odrzuconych z 400. Przepustowość przyjęć ogranicza saga, nie pojemność HTTP.
 - Każde `max` w okolicy 140 ms to rejestracja i logowanie w setupie, które liczą BCrypt (poprawione w fazie drugiej, pierwotna notka obwiniała JIT zimnego endpointu). Percentyle pokazują API pod obciążeniem.
 - Czytanie tabeli: przy tych obciążeniach API nie zbliża się do granic, submilisekundowe mediany na 2 CPU. Baseline istnieje po to, żeby fazy poolera i cache mogły udowodnić swój efekt (albo uczciwie pokazać jego brak przy jednej instancji) zamiast go deklarować.

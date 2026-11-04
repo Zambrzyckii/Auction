@@ -2,11 +2,11 @@
 
 > English version. Polish 1:1 counterpart: [../pl/infrastructure.md](../pl/infrastructure.md)
 
-The `Infrastructure/` folder exists since 2026-10-23 and holds the configuration of the services around the backend, namely the telemetry pipeline under `Infrastructure/observability/`, the k6 load tests under `Infrastructure/k6/`, the nginx gateway under `Infrastructure/gateway/` and the PgBouncer configuration under `Infrastructure/pgbouncer/`. The broker and the secrets service remain planned. The owner adopted the seven-phase server-infrastructure plan on 2026-10-22. Phase one (observability and the k6 baseline) landed first, phase two (the nginx gateway) followed the same day, 2026-10-23, phase three (PgBouncer) landed on 2026-10-24 and phase four (the Redis read cache) on 2026-11-01. The full target picture is the diagram in [VISION.md](VISION.md#4-target-system).
+The `Infrastructure/` folder exists since 2026-10-23 and holds the configuration of the services around the backend, namely the telemetry pipeline under `Infrastructure/observability/`, the k6 load tests under `Infrastructure/k6/`, the nginx gateway under `Infrastructure/gateway/` and the PgBouncer configuration under `Infrastructure/pgbouncer/`. The broker runs in the Compose stack since 2026-11-04 (its configuration is the service definition plus `RabbitTopology` in the host), and the secrets service remains planned. The owner adopted the seven-phase server-infrastructure plan on 2026-10-22. Phase one (observability and the k6 baseline) landed first, phase two (the nginx gateway) followed the same day, 2026-10-23, phase three (PgBouncer) landed on 2026-10-24, phase four (the Redis read cache) on 2026-11-01 and phase five (RabbitMQ) on 2026-11-04. The full target picture is the diagram in [VISION.md](VISION.md#4-target-system).
 
 ## Status
 
-Started on 2026-10-14 with the Compose file. On 2026-10-23 the Compose stack grew from three services to seven plus an optional load generator, split into an `edge` and a `data` network, with CPU and memory limits on `api` (2 CPUs, 1 GB) and `postgres` (1 CPU, 512 MB) so that k6 results stay comparable between runs. Later that day the nginx gateway joined as the eighth service and the only entry point, limited to 1 CPU and 128 MB, and the `edge` network got the fixed range `172.16.80.0/24`. On 2026-10-24 PgBouncer joined as the ninth service, limited to 1 CPU and 64 MB, between the api and postgres on the `data` network. On 2026-11-01 Redis joined as the tenth service (`redis:7.2-alpine`, 1 CPU and 128 MB, `--maxmemory 64mb` with `allkeys-lru`, no persistence and no volume) on the `data` network; the api deliberately does not `depends_on` it, because a missing Redis only degrades read latency. The broker joins in a later phase.
+Started on 2026-10-14 with the Compose file. On 2026-10-23 the Compose stack grew from three services to seven plus an optional load generator, split into an `edge` and a `data` network, with CPU and memory limits on `api` (2 CPUs, 1 GB) and `postgres` (1 CPU, 512 MB) so that k6 results stay comparable between runs. Later that day the nginx gateway joined as the eighth service and the only entry point, limited to 1 CPU and 128 MB, and the `edge` network got the fixed range `172.16.80.0/24`. On 2026-10-24 PgBouncer joined as the ninth service, limited to 1 CPU and 64 MB, between the api and postgres on the `data` network. On 2026-11-01 Redis joined as the tenth service (`redis:7.2-alpine`, 1 CPU and 128 MB, `--maxmemory 64mb` with `allkeys-lru`, no persistence and no volume) on the `data` network; the api deliberately does not `depends_on` it, because a missing Redis only degrades read latency. On 2026-11-04 RabbitMQ joined as the eleventh service (`rabbitmq:4.1-management-alpine`, 1 CPU and 384 MB, management UI on `127.0.0.1:15672`, credentials `auction`/`auction`) on the `data` network, and the api switched to the Rabbit transport.
 
 ## What exists today
 
@@ -57,12 +57,16 @@ The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infras
 - Session state (advisory locks, temporary tables, LISTEN/NOTIFY, prepared statements) must not be introduced without moving that caller off the pooler. The code has none today.
 - `SHOW POOLS` shows client and server connections live, through `docker compose exec -e PGPASSWORD=auction pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. The integration tests assert on its numbers.
 
+## Message broker
+
+RabbitMQ 4.1 carries two durable exchanges, declared idempotently by every connecting side through the host's `RabbitTopology`. The direct exchange `auctionserver.events` feeds the durable queue `auctionserver.deliveries`, the internal leg between the outbox processors and the delivery store: `RabbitEventPublisher` publishes persistent messages with the metadata in the AMQP `MessageId` and `Type` properties and the raw event JSON as the body, and returns only on the publisher confirm, while `RabbitDeliveryConsumer` feeds `DeliveryDispatcher.AcceptAsync` with manual acks, prefetch 20 and a 5 s cooldown before a failed message is requeued. The topic exchange `auctionserver.market` re-publishes the four public auction events with the type name as the routing key, the consume-only feed for the planned bots. Retries and dead letters stay in the database (ADR-011), so the broker holds no DLX and an idle stack shows an empty queue. The transport switch is the host's fail-fast `Messaging` section, `InProcess` by default and `Rabbit` in Compose. The decision record is [ADR-013](adr/013-rabbitmq-transport.md).
+
 ## Target design
 
 - **nginx API gateway** (phase 2): landed on 2026-10-23, see [Gateway](#gateway). TLS is still missing.
 - **PgBouncer** (phase 3): landed on 2026-10-24, see [Connection pooling](#connection-pooling). Migrations go through the pooler too.
 - **Redis** (phase 4, landed 2026-11-01): the distributed level of the hot-auction-read cache behind a module-owned seam, TTL-only; details in [backend/auctions.md](backend/auctions.md) and [ADR-009](adr/009-hybrid-read-cache-in-auctions.md).
-- **RabbitMQ** (phase 5): the transport for integration events behind `IIntegrationEventPublisher`, with retry tiers, a dead queue and a sequential host-side consumer; see [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
+- **RabbitMQ** (phase 5, landed 2026-11-04): the AMQP transport behind `IIntegrationEventPublisher` plus the consume-only market exchange for the bots. Retries and dead letters stayed in the database rather than in the broker (ADR-011); see [Message broker](#message-broker) and [ADR-013](adr/013-rabbitmq-transport.md).
 - **OpenBao** (phase 6): the secrets service read at startup through a custom configuration provider.
 - **Hardening** (phase 7): image build in CI, backups, a .NET per-user rate limiter and the k8s/OIDC migration notes.
 
@@ -84,13 +88,12 @@ The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infras
 - **There is no TLS yet, so the stack must not face the internet until it lands.** The owner's target is HTTPS only with an own certificate, renewed automatically or served by a redundant pair so the certificate does not become a single point of failure.
 - nginx answers 502 (api unreachable, for example inside the 5-second re-resolve window) with its default HTML page, unlike the JSON bodies of 413 and 429.
 - nginx forwards `Host` without the port, so the OpenAPI `servers` entry reads `http://localhost/`. The api builds only relative URLs, so nothing else is affected.
-- No AMQP publisher and no host-side consumer; [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md) describes what the swap involves.
 - The CI pipeline has no deploy stage, no artifacts and no image build.
 - Secrets in `compose.yaml` are plaintext environment variables until phase 6.
 
 ## API
 
-The infrastructure layer has one endpoint of its own, `/gateway-health`, which nginx answers without the api. Everything else on port 8080 is the backend API, and the broker will carry the thirty-eight integration events listed in [backend/messaging.md](backend/messaging.md#event-catalog).
+The infrastructure layer has one endpoint of its own, `/gateway-health`, which nginx answers without the api. Everything else on port 8080 is the backend API. The internal queue carries all thirty-eight integration events listed in [backend/messaging.md](backend/messaging.md#event-catalog), and the market exchange re-publishes four of them for the bots ([bots.md](bots.md)).
 
 ## Decisions
 
@@ -98,7 +101,8 @@ The infrastructure layer has one endpoint of its own, `/gateway-health`, which n
 - The gateway is nginx with IP rate limits, body caps, JSON errors and a CIDR trust model for forwarded headers, see [ADR-006](adr/006-nginx-gateway.md).
 - The pooler is PgBouncer in transaction mode and the migrations go through it, because the Npgsql EF 10 migration lock is a table lock inside the migration transaction, with Npgsql pooling kept on plus `No Reset On Close=true`, see [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
 - Load tests target `http://api:8080` directly from inside the Compose network, so the baseline stays comparable now that the gateway sits in front. Only `gateway-limits.js` goes through the gateway, run with `BASE_URL=http://gateway`.
-- The transport is introduced behind the existing seam rather than by changing the modules, see [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md).
+- The transport is introduced behind the existing seam rather than by changing the modules, see [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md); the 2026-11-04 swap confirmed it and touched only the host.
+- The broker speaks through the raw `RabbitMQ.Client`, not a messaging framework, with publisher confirms before an outbox row counts as processed and all retry state in the database, see [ADR-013](adr/013-rabbitmq-transport.md).
 
 ## Related documents
 

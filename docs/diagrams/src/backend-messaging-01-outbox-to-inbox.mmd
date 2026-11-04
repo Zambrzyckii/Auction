@@ -5,8 +5,11 @@ flowchart LR
     end
 
     Out --> Proc["OutboxProcessor&lt;TContext&gt; (Shared.Infrastructure)<br/>every 3 s OutboxCourier.ClaimAsync: due, unleased rows,<br/>lease 30 s via FOR UPDATE SKIP LOCKED, ORDER BY CreatedOn, max 20;<br/>hourly cleanup of rows processed over 7 days ago"]:::shared
-    Proc -->|"PublishAsync = hand-off,<br/>MarkAsProcessed on accept"| Pub["IIntegrationEventPublisher<br/>InProcessEventPublisher"]:::host
-    Pub --> Disp["DeliveryDispatcher.AcceptAsync<br/>recipients and order from IntegrationEventRecipients (strict map);<br/>one DeliveryMessages row per recipient, PK (MessageId, Recipient)"]:::shared
+    Proc -->|"PublishAsync = hand-off,<br/>MarkAsProcessed on accept or broker confirm"| Pub["IIntegrationEventPublisher<br/>InProcessEventPublisher | RabbitEventPublisher"]:::host
+    Pub -.->|"Rabbit: persistent message on auctionserver.events,<br/>publisher confirm awaited"| MQ["RabbitMQ queue auctionserver.deliveries<br/>RabbitDeliveryConsumer: manual ack, prefetch 20,<br/>requeue after 5 s on failure"]:::host
+    Pub -.->|"4 public auction events"| Market["auctionserver.market (topic)<br/>consume-only bot feed"]:::planned
+    MQ -.-> Disp
+    Pub -->|"InProcess"| Disp["DeliveryDispatcher.AcceptAsync<br/>recipients and order from IntegrationEventRecipients (strict map);<br/>one DeliveryMessages row per recipient, PK (MessageId, Recipient)"]:::shared
     Disp --> DProc["DeliveryProcessor (host, one sequential instance)<br/>every 3 s DeliveryCourier.ClaimAsync: lease 30 s, ORDER BY CreatedOn, Position, max 20;<br/>IntegrationEventTypes.Deserialize, 38 registered event types;<br/>invokes that one recipient's handler; hourly cleanup"]:::shared
 
     subgraph Cn ["consuming module - ApplyOnceAsync, one SaveChangesAsync"]

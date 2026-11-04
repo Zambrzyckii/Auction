@@ -12,7 +12,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md), [backend/profiles.md](backend/profiles.md), [backend/identity.md](backend/identity.md) - jeden rozdział na moduł.
 5. [STATE.md](STATE.md) i [VISION.md](VISION.md) - gdzie projekt stoi i dokąd zmierza.
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) i [adr/](adr) - reguły i powody.
-7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - moduły, które jeszcze nie istnieją.
+7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - planowane moduły i platforma wokół backendu.
 
 ## Mapa
 
@@ -33,10 +33,10 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 | [VISION.md](VISION.md) | Czym jest produkt, co znaczą pojęcia, co jest planowane dalej? |
 | [CONVENTIONS.md](CONVENTIONS.md) | Jak utrzymywane są kod, testy i dokumentacja, czym jest definition of done? |
 | [DECISIONS.md](DECISIONS.md) | Jakie decyzje podjęto kiedy i dlaczego? |
-| [adr/](adr) | Dwanaście decyzji o trwałych konsekwencjach, w formie kontekst, decyzja i konsekwencje. |
+| [adr/](adr) | Trzynaście decyzji o trwałych konsekwencjach, w formie kontekst, decyzja i konsekwencje. |
 | [STATE.md](STATE.md) | Co istnieje w tej chwili, jakie jest środowisko, jaki jest następny krok? |
 | [CHANGELOG.md](CHANGELOG.md) | Jak projekt tu doszedł, kamień milowy po kamieniu milowym? |
-| [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | Co jest planowane dla każdego brakującego modułu i co backend już mu oferuje? |
+| [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | Co jest planowane dla każdego brakującego modułu, co backend już mu oferuje i jaka platforma istnieje dziś. |
 | [performance.md](performance.md) | Jak mierzona jest wydajność i co pokazał każdy przebieg k6? |
 | [../diagrams/README.md](../diagrams/README.md) | Jak diagramy są tworzone i przerenderowywane? |
 
