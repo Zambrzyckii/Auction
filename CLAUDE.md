@@ -11,7 +11,7 @@ backed by PostgreSQL.
 Backend/          the entire codebase (solution: AuctionServer.slnx)
 Frontend/         planned Angular client, not started
 Bots/             planned AI market bots, not started
-Infrastructure/   nginx gateway, telemetry configuration, k6 scenarios and PgBouncer configuration (platform phases 1-3; Redis and RabbitMQ are defined in the root compose.yaml)
+Infrastructure/   nginx gateway, telemetry configuration, k6 scenarios, PgBouncer configuration, the OpenBao bootstrap (vault/) and the gitignored secret files with their generator (secrets/); Redis and RabbitMQ are defined in the root compose.yaml
 ```
 
 `Frontend/` and `Bots/` are **planned work** and may be absent from the tree entirely (git does not

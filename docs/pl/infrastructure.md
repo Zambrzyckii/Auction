@@ -2,11 +2,11 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/infrastructure.md](../en/infrastructure.md)
 
-Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/` i konfigurację PgBouncera w `Infrastructure/pgbouncer/`. Broker działa w stacku Compose od 2026-11-04 (jego konfiguracja to definicja usługi plus `RabbitTopology` w hoście), a usługa sekretów pozostaje planowana. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), 2026-10-24 faza trzecia (PgBouncer), 2026-11-01 faza czwarta (cache odczytów na Redisie), a 2026-11-04 faza piąta (RabbitMQ). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
+Katalog `Infrastructure/` istnieje od 2026-10-23 i trzyma konfigurację usług wokół backendu, czyli pipeline telemetrii w `Infrastructure/observability/`, testy obciążeniowe k6 w `Infrastructure/k6/`, gateway nginx w `Infrastructure/gateway/`, konfigurację PgBouncera w `Infrastructure/pgbouncer/`, bootstrap OpenBao i konfigurację trwałą w `Infrastructure/vault/` oraz gitignorowane pliki sekretów z ich generatorem w `Infrastructure/secrets/`. Broker działa w stacku Compose od 2026-11-04 (jego konfiguracja to definicja usługi plus `RabbitTopology` w hoście), a usługa sekretów działa tam od tego samego dnia. Właściciel przyjął 2026-10-22 siedmiofazowy plan infrastruktury serwerowej. Jako pierwsza weszła faza pierwsza (obserwowalność i baseline k6), tego samego dnia, 2026-10-23, faza druga (gateway nginx), 2026-10-24 faza trzecia (PgBouncer), 2026-11-01 faza czwarta (cache odczytów na Redisie), a 2026-11-04 faza piąta (RabbitMQ) i faza szósta (OpenBao). Pełny obraz docelowy to diagram w [VISION.md](VISION.md#4-docelowy-system).
 
 ## Status
 
-Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. 2026-11-01 doszedł Redis jako dziesiąta usługa (`redis:7.2-alpine`, 1 CPU i 128 MB, `--maxmemory 64mb` z `allkeys-lru`, bez persystencji i bez wolumenu) w sieci `data`; api celowo nie ma na niego `depends_on`, bo brak Redisa degraduje tylko opóźnienie odczytów. 2026-11-04 doszedł RabbitMQ jako jedenasta usługa (`rabbitmq:4.1-management-alpine`, 1 CPU i 384 MB, UI zarządzania na `127.0.0.1:15672`, poświadczenia `auction`/`auction`) w sieci `data`, a api przełączyło się na transport Rabbit.
+Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usług do siedmiu plus opcjonalny generator obciążenia, podzielony na sieci `edge` i `data`, z limitami CPU i pamięci na `api` (2 CPU, 1 GB) i `postgres` (1 CPU, 512 MB), żeby wyniki k6 były porównywalne między przebiegami. Później tego dnia doszedł gateway nginx jako ósma usługa i jedyne wejście, z limitem 1 CPU i 128 MB, a sieć `edge` dostała stały zakres `172.16.80.0/24`. 2026-10-24 doszedł PgBouncer jako dziewiąta usługa, z limitem 1 CPU i 64 MB, między api a postgresem w sieci `data`. 2026-11-01 doszedł Redis jako dziesiąta usługa (`redis:7.2-alpine`, 1 CPU i 128 MB, `--maxmemory 64mb` z `allkeys-lru`, bez persystencji i bez wolumenu) w sieci `data`; api celowo nie ma na niego `depends_on`, bo brak Redisa degraduje tylko opóźnienie odczytów. 2026-11-04 doszedł RabbitMQ jako jedenasta usługa (`rabbitmq:4.1-management-alpine`, 1 CPU i 384 MB, UI zarządzania na `127.0.0.1:15672`, użytkownik `auction` z hasłem z `Infrastructure/secrets/`) w sieci `data`, a api przełączyło się na transport Rabbit. Później tego samego dnia faza szósta dodała OpenBao jako dwunastą usługę (`openbao/openbao:2.7.2`, 1 CPU i 256 MB, tryb dev) z jednorazowym `vault-init` seedującym go przy każdym starcie stacku, a każdy jawny sekret opuścił plik compose na rzecz gitignorowanego katalogu `Infrastructure/secrets/`.
 
 ## Co istnieje dziś
 
@@ -21,6 +21,8 @@ Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usł
 | prometheus | prom/prometheus:v3.15.1 | brak | zbiera z collectora co 10 s, trzyma metryki 7 dni |
 | tempo | grafana/tempo:3.1.1 | brak | trzyma trace'y na wolumenie |
 | grafana | grafana/grafana:13.2.4 | 127.0.0.1:3000 | czyta Prometheusa i Tempo, provisioning z plików |
+| vault | openbao/openbao:2.7.2 | brak (127.0.0.1:8200 z `compose.debug.yaml`) | usługa sekretów, domyślnie tryb dev, raft przez `compose.vault-persistent.yaml` |
+| vault-init | openbao/openbao:2.7.2 | brak | jednorazowy seeder, kończy się po zapisaniu polityki, AppRole, sekretów i poświadczeń api |
 | k6 | grafana/k6:2.3.0 | brak | generator obciążenia za profilem `loadtest`, uruchamiany na żądanie |
 
 Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/README.md); stronę hosta (opcje, sampler sierocych spanów, dekorator publishera, metryki outboxa) [ADR-005](adr/005-observability-and-k6.md). Scenariusze k6 (`browse.js`, `bid-storm.js`, `mixed.js`) seedują własne dane przez publiczne API, klasyfikują oczekiwane domenowe 409 jako spodziewane i failują na progach zapisanych w [performance.md](performance.md) razem z baseline. `gateway-limits.js` obciąża sam gateway i sprawdza każdą strefę limitów pod obciążeniem.
@@ -49,17 +51,21 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 
 ## Pooling połączeń
 
-`Infrastructure/pgbouncer/pgbouncer.ini` to cała konfiguracja poolera. Compose montuje go tylko do odczytu w usłudze `pgbouncer`, entrypoint obrazu generuje `userlist.txt` z `DB_USER` i `DB_PASSWORD`, a api, razem z migracjami startowymi, dociera do postgresa wyłącznie przez `pgbouncer:6432`. Zapis decyzji to [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
+`Infrastructure/pgbouncer/pgbouncer.ini` to cała konfiguracja poolera. Compose montuje go tylko do odczytu w usłudze `pgbouncer` razem z wygenerowanym `Infrastructure/secrets/pgbouncer-userlist.txt` jako `auth_file` (do fazy szóstej userlistę generował entrypoint obrazu ze zmiennych `DB_USER` i `DB_PASSWORD`), a api, razem z migracjami startowymi, dociera do postgresa wyłącznie przez `pgbouncer:6432`. Zapis decyzji to [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
 
 - Transaction pooling. Połączenie serwerowe jest wypożyczane na czas jednej transakcji, więc do `max_client_conn` (500) połączeń klienckich dzieli `default_pool_size` (25) połączeń serwerowych plus `reserve_pool_size` (10) sięganych po 5 s czekania, z `max_db_connections` (40) jako sufitem dla wszystkich pul razem. Jedna instancja api kosztuje postgresa najwyżej 35 ze 100 miejsc.
 - Api zostawia pulę Npgsql włączoną i dodaje `No Reset On Close=true`, więc oddane połączenie nie wysyła `DISCARD ALL`, które czyściłoby połączenie serwerowe współdzielone z innymi klientami.
 - Nieznany parametr w `pgbouncer.ini` jest fatalny, więc literówka zatrzymuje kontener na starcie, zamiast zostać po cichu zignorowana.
 - Stanu sesyjnego (advisory locki, tabele tymczasowe, LISTEN/NOTIFY, prepared statements) nie wolno wprowadzić bez zdjęcia tego wołającego z poolera. Dziś kod nie ma żadnego.
-- `SHOW POOLS` pokazuje połączenia klienckie i serwerowe na żywo, przez `docker compose exec -e PGPASSWORD=auction pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. Testy integracyjne robią asercje na jego liczbach.
+- `SHOW POOLS` pokazuje połączenia klienckie i serwerowe na żywo, przez `docker compose exec -e PGPASSWORD="$(cat Infrastructure/secrets/postgres-password.secret)" pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. Testy integracyjne robią asercje na jego liczbach.
 
 ## Broker komunikatów
 
 RabbitMQ 4.1 niesie dwa trwałe exchange'e, deklarowane idempotentnie przez każdą łączącą się stronę poprzez `RabbitTopology` hosta. Exchange direct `auctionserver.events` karmi trwałą kolejkę `auctionserver.deliveries`, wewnętrzny odcinek między procesorami outboxa a magazynem doręczeń: `RabbitEventPublisher` publikuje trwałe wiadomości z metadanymi we właściwościach AMQP `MessageId` i `Type` oraz surowym JSON-em zdarzenia jako body i wraca dopiero na confirm publishera, a `RabbitDeliveryConsumer` karmi `DeliveryDispatcher.AcceptAsync` z ręcznymi ackami, prefetch 20 i 5 s chłodzenia przed oddaniem nieprzyjętej wiadomości do kolejki. Exchange topic `auctionserver.market` publikuje ponownie cztery publiczne zdarzenia aukcyjne z nazwą typu jako kluczem routingu, feed tylko do konsumpcji dla planowanych botów. Ponowienia i martwe listy zostają w bazie (ADR-011), więc broker nie ma żadnego DLX, a bezczynny stack pokazuje pustą kolejkę. Przełącznikiem transportu jest sekcja `Messaging` hosta z fail-fast, domyślnie `InProcess`, w Compose `Rabbit`. Rekord decyzji to [ADR-013](adr/013-rabbitmq-transport.md).
+
+## Sekrety
+
+Od fazy szóstej żadna wartość sekretu nie żyje w `compose.yaml`. `Infrastructure/secrets/gen-secrets.sh` generuje losowe hasła do gitignorowanego katalogu (śledzone są tylko generator i szablony `*.example`), kontenery infrastruktury czytają je jako sekrety plikowe compose albo jako montowane pliki wygenerowane, a api czyta swoje pięć sekretów z OpenBao. Deweloperski serwis `vault` plus jednorazowy `vault-init` seedują przy każdym starcie stacku politykę `auction-api`, AppRole, sekrety pod `secret/auction/api` i pliki `role-id`/`secret-id` w wolumenie `vaultcreds`, a api, którego sekcja `Vault` z fail-fastem jest domyślnie wyłączona, loguje się na starcie AppRole'em przez ręcznie napisany `IConfigurationProvider` (około 120 linii, bez paczki) dodany jako ostatnie źródło konfiguracji, więc wartości z vaulta wygrywają ze zmiennymi środowiskowymi. Rotację, overlay trwałego rafta i ćwiczenie ręcznego odpieczętowania opisuje krok po kroku [operations.md](operations.md). Rekord decyzji to [ADR-014](adr/014-openbao-secrets.md).
 
 ## Projekt docelowy
 
@@ -67,7 +73,7 @@ RabbitMQ 4.1 niesie dwa trwałe exchange'e, deklarowane idempotentnie przez każ
 - **PgBouncer** (faza 3): wszedł 2026-10-24, zob. [Pooling połączeń](#pooling-połączeń). Migracje też idą przez poolera.
 - **Redis** (faza 4, weszła 2026-11-01): rozproszony poziom cache gorących odczytów aukcji za szwem modułu, samo TTL; szczegóły w [backend/auctions.md](backend/auctions.md) i [ADR-009](adr/009-hybrid-read-cache-in-auctions.md).
 - **RabbitMQ** (faza 5, weszła 2026-11-04): transport AMQP za `IIntegrationEventPublisher` plus rynkowy exchange tylko do konsumpcji dla botów. Ponowienia i martwe listy zostały w bazie, nie w brokerze (ADR-011); zob. [Broker komunikatów](#broker-komunikatow) i [ADR-013](adr/013-rabbitmq-transport.md).
-- **OpenBao** (faza 6): usługa sekretów czytana na starcie przez własny provider konfiguracji.
+- **OpenBao** (faza 6, weszła 2026-11-04): usługa sekretów czytana na starcie przez własny provider konfiguracji, z sekretami plikowymi compose dla kontenerów infrastruktury; zob. [Sekrety](#sekrety) i [ADR-014](adr/014-openbao-secrets.md).
 - **Hardening** (faza 7): budowa obrazu w CI, backupy, limiter .NET per użytkownik i notatki migracyjne k8s/OIDC.
 
 ## Co daje backend
@@ -78,7 +84,7 @@ RabbitMQ 4.1 niesie dwa trwałe exchange'e, deklarowane idempotentnie przez każ
 | telemetria | sekcja konfiguracji `Observability` (domyślnie wyłączona, walidacja fail-fast po włączeniu) eksportuje trace'y, metryki i logi po OTLP; źródła i metery `AuctionServer.*` są zasubskrybowane, więc nowe metery modułów pojawiają się bez zmian w hoście |
 | zaufany pośrednik | sekcja konfiguracji `Gateway` (domyślnie wyłączona, walidacja fail-fast po włączeniu) pozwala, by `UseForwardedHeaders`, pierwsze middleware, ufało `X-Forwarded-For` i `X-Forwarded-Proto` tylko z wymienionych sieci CIDR |
 | zdrowie dla orkiestracji | `/health/live` (bez checków) i `/health/ready` (checki z tagiem `ready`, dziś baza) obok pełnego `/health` |
-| konfiguracja ze środowiska | każde ustawienie czytane jest przez `IConfiguration`, więc `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` i klucze `Observability__*` można wstrzyknąć zmiennymi środowiskowymi |
+| konfiguracja ze środowiska | każde ustawienie czytane jest przez `IConfiguration`, więc `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` i klucze `Observability__*` można wstrzyknąć zmiennymi środowiskowymi; od fazy szóstej sekcja `Vault` z fail-fastem może dodać OpenBao jako ostatnie źródło konfiguracji, którego wartości wygrywają ze środowiskiem |
 | odtwarzalna baza | schemat w pełni opisuje dziewięć zestawów migracji, aplikowanych `dotnet ef database update` per kontekst albo na starcie, gdy `Database:MigrateOnStartup` jest `true` (Compose to ustawia) |
 | object storage na awatary | usługa `seaweedfs` w `compose.yaml`: przypięty obraz, bez publikowanych portów, osiągana za szwem `IAvatarStorage` ([backend/profiles.md](backend/profiles.md)) |
 | baza CI | `.gitlab-ci.yml` i jego lustro na GitHub Actions `.github/workflows/ci.yml` budują i testują każdy push, łącznie z projektem testowym hosta `AuctionServer.Api.Tests`, którego testy gatewaya uruchamiają nginx i traefik/whoami przez Testcontainers, oraz sprawdzają `nginx.conf` komendą `nginx -t` w jobie `gateway-config` |
@@ -89,7 +95,7 @@ RabbitMQ 4.1 niesie dwa trwałe exchange'e, deklarowane idempotentnie przez każ
 - nginx odpowiada na 502 (api nieosiągalne, na przykład w 5-sekundowym oknie odświeżania adresu) swoją domyślną stroną HTML, inaczej niż na 413 i 429, które mają JSON.
 - nginx przekazuje `Host` bez portu, więc wpis `servers` w OpenAPI to `http://localhost/`. Api buduje tylko adresy względne, więc nic innego tego nie odczuwa.
 - Pipeline CI nie ma etapu deploy, artefaktów ani budowy obrazu.
-- Sekrety w `compose.yaml` są plaintextowymi zmiennymi środowiskowymi do fazy 6.
+- Secret zero zostaje: wygenerowane pliki sekretów i wolumen poświadczeń AppRole żyją na systemie plików hosta, więc łańcuch zaufania wciąż się tam kończy (nazwane uczciwie w [ADR-014](adr/014-openbao-secrets.md)).
 
 ## API
 
@@ -103,6 +109,8 @@ Warstwa infrastruktury ma jeden własny endpoint, `/gateway-health`, na który n
 - Testy obciążeniowe celują w `http://api:8080` bezpośrednio z sieci Compose, żeby baseline pozostał porównywalny teraz, gdy gateway stoi przed api. Przez gateway idzie tylko `gateway-limits.js`, uruchamiany z `BASE_URL=http://gateway`.
 - Transport wchodzi za istniejący szew zamiast przez zmianę modułów, zob. [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md); podmiana z 2026-11-04 to potwierdziła i dotknęła tylko hosta.
 - Broker mówi przez surowy `RabbitMQ.Client`, nie framework komunikacyjny, z confirmami publishera zanim wiersz outboxa uzna się za przetworzony i całym stanem ponawiania w bazie, zob. [ADR-013](adr/013-rabbitmq-transport.md).
+- Zapleczem sekretów jest OpenBao czytany raz na starcie przez ręcznie napisany provider konfiguracji (bez paczki), a kontenery infrastruktury dostają generowane sekrety plikowe compose, zob. [ADR-014](adr/014-openbao-secrets.md).
+- PgBouncer zostaje na oryginalnym obrazie z montowaną wygenerowaną userlistą, wybór właściciela zamiast obrazu z wrapperem i obsługą `_FILE`, a Redis działa z `--requirepass` z pliku sekretu, również wybór właściciela, zob. [ADR-014](adr/014-openbao-secrets.md).
 
 ## Powiązane dokumenty
 

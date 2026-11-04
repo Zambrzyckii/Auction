@@ -2,11 +2,11 @@
 
 > English version. Polish 1:1 counterpart: [../pl/infrastructure.md](../pl/infrastructure.md)
 
-The `Infrastructure/` folder exists since 2026-10-23 and holds the configuration of the services around the backend, namely the telemetry pipeline under `Infrastructure/observability/`, the k6 load tests under `Infrastructure/k6/`, the nginx gateway under `Infrastructure/gateway/` and the PgBouncer configuration under `Infrastructure/pgbouncer/`. The broker runs in the Compose stack since 2026-11-04 (its configuration is the service definition plus `RabbitTopology` in the host), and the secrets service remains planned. The owner adopted the seven-phase server-infrastructure plan on 2026-10-22. Phase one (observability and the k6 baseline) landed first, phase two (the nginx gateway) followed the same day, 2026-10-23, phase three (PgBouncer) landed on 2026-10-24, phase four (the Redis read cache) on 2026-11-01 and phase five (RabbitMQ) on 2026-11-04. The full target picture is the diagram in [VISION.md](VISION.md#4-target-system).
+The `Infrastructure/` folder exists since 2026-10-23 and holds the configuration of the services around the backend, namely the telemetry pipeline under `Infrastructure/observability/`, the k6 load tests under `Infrastructure/k6/`, the nginx gateway under `Infrastructure/gateway/`, the PgBouncer configuration under `Infrastructure/pgbouncer/`, the OpenBao bootstrap and persistent config under `Infrastructure/vault/` and the gitignored secret files with their generator under `Infrastructure/secrets/`. The broker runs in the Compose stack since 2026-11-04 (its configuration is the service definition plus `RabbitTopology` in the host), and the secrets service runs there since the same day. The owner adopted the seven-phase server-infrastructure plan on 2026-10-22. Phase one (observability and the k6 baseline) landed first, phase two (the nginx gateway) followed the same day, 2026-10-23, phase three (PgBouncer) landed on 2026-10-24, phase four (the Redis read cache) on 2026-11-01, and phase five (RabbitMQ) and phase six (OpenBao) both on 2026-11-04. The full target picture is the diagram in [VISION.md](VISION.md#4-target-system).
 
 ## Status
 
-Started on 2026-10-14 with the Compose file. On 2026-10-23 the Compose stack grew from three services to seven plus an optional load generator, split into an `edge` and a `data` network, with CPU and memory limits on `api` (2 CPUs, 1 GB) and `postgres` (1 CPU, 512 MB) so that k6 results stay comparable between runs. Later that day the nginx gateway joined as the eighth service and the only entry point, limited to 1 CPU and 128 MB, and the `edge` network got the fixed range `172.16.80.0/24`. On 2026-10-24 PgBouncer joined as the ninth service, limited to 1 CPU and 64 MB, between the api and postgres on the `data` network. On 2026-11-01 Redis joined as the tenth service (`redis:7.2-alpine`, 1 CPU and 128 MB, `--maxmemory 64mb` with `allkeys-lru`, no persistence and no volume) on the `data` network; the api deliberately does not `depends_on` it, because a missing Redis only degrades read latency. On 2026-11-04 RabbitMQ joined as the eleventh service (`rabbitmq:4.1-management-alpine`, 1 CPU and 384 MB, management UI on `127.0.0.1:15672`, credentials `auction`/`auction`) on the `data` network, and the api switched to the Rabbit transport.
+Started on 2026-10-14 with the Compose file. On 2026-10-23 the Compose stack grew from three services to seven plus an optional load generator, split into an `edge` and a `data` network, with CPU and memory limits on `api` (2 CPUs, 1 GB) and `postgres` (1 CPU, 512 MB) so that k6 results stay comparable between runs. Later that day the nginx gateway joined as the eighth service and the only entry point, limited to 1 CPU and 128 MB, and the `edge` network got the fixed range `172.16.80.0/24`. On 2026-10-24 PgBouncer joined as the ninth service, limited to 1 CPU and 64 MB, between the api and postgres on the `data` network. On 2026-11-01 Redis joined as the tenth service (`redis:7.2-alpine`, 1 CPU and 128 MB, `--maxmemory 64mb` with `allkeys-lru`, no persistence and no volume) on the `data` network; the api deliberately does not `depends_on` it, because a missing Redis only degrades read latency. On 2026-11-04 RabbitMQ joined as the eleventh service (`rabbitmq:4.1-management-alpine`, 1 CPU and 384 MB, management UI on `127.0.0.1:15672`, user `auction` with the password from `Infrastructure/secrets/`) on the `data` network, and the api switched to the Rabbit transport. Later the same day phase six added OpenBao as the twelfth service (`openbao/openbao:2.7.2`, 1 CPU and 256 MB, dev mode) with the one-shot `vault-init` seeding it on every stack start, and every plaintext secret left the compose file for the gitignored `Infrastructure/secrets/` directory.
 
 ## What exists today
 
@@ -21,6 +21,8 @@ Started on 2026-10-14 with the Compose file. On 2026-10-23 the Compose stack gre
 | prometheus | prom/prometheus:v3.15.1 | none | scrapes the collector every 10 s, stores metrics for 7 days |
 | tempo | grafana/tempo:3.1.1 | none | stores traces on a volume |
 | grafana | grafana/grafana:13.2.4 | 127.0.0.1:3000 | reads Prometheus and Tempo, provisioned from files |
+| vault | openbao/openbao:2.7.2 | none (127.0.0.1:8200 with `compose.debug.yaml`) | the secrets service, dev mode by default, raft through `compose.vault-persistent.yaml` |
+| vault-init | openbao/openbao:2.7.2 | none | one-shot seeder, exits after writing the policy, the AppRole, the secrets and the api credentials |
 | k6 | grafana/k6:2.3.0 | none | load generator behind the `loadtest` profile, run on demand |
 
 The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infrastructure/README.md); the host side (options, the orphan-span sampler, the publisher decorator, the outbox metrics) in [ADR-005](adr/005-observability-and-k6.md). The k6 scenarios (`browse.js`, `bid-storm.js`, `mixed.js`) seed their own data through the public API, classify the domain's expected 409s as expected and fail on the thresholds recorded in [performance.md](performance.md) together with the baseline. `gateway-limits.js` drives the gateway itself and checks every rate-limit zone under load.
@@ -49,17 +51,21 @@ The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infras
 
 ## Connection pooling
 
-`Infrastructure/pgbouncer/pgbouncer.ini` is the whole pooler configuration. Compose mounts it read-only into the `pgbouncer` service, the image's entrypoint generates `userlist.txt` from `DB_USER` and `DB_PASSWORD`, and the api, startup migrations included, reaches postgres only through `pgbouncer:6432`. The decision record is [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
+`Infrastructure/pgbouncer/pgbouncer.ini` is the whole pooler configuration. Compose mounts it read-only into the `pgbouncer` service together with the generated `Infrastructure/secrets/pgbouncer-userlist.txt` as the `auth_file` (until phase six the image's entrypoint generated the userlist from `DB_USER` and `DB_PASSWORD` environment variables), and the api, startup migrations included, reaches postgres only through `pgbouncer:6432`. The decision record is [ADR-007](adr/007-pgbouncer-transaction-pooling.md).
 
 - Transaction pooling. A server connection is borrowed for the duration of one transaction, so up to `max_client_conn` (500) client connections share `default_pool_size` (25) server connections plus `reserve_pool_size` (10) drawn after a 5 s wait, with `max_db_connections` (40) as the ceiling across pools. One api instance costs postgres at most 35 of its 100 slots.
 - The api keeps Npgsql pooling on and adds `No Reset On Close=true`, so a returned connection does not send a `DISCARD ALL` that would wipe a server connection other clients share.
 - An unknown parameter in `pgbouncer.ini` is fatal, so a typo stops the container at startup instead of being silently ignored.
 - Session state (advisory locks, temporary tables, LISTEN/NOTIFY, prepared statements) must not be introduced without moving that caller off the pooler. The code has none today.
-- `SHOW POOLS` shows client and server connections live, through `docker compose exec -e PGPASSWORD=auction pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. The integration tests assert on its numbers.
+- `SHOW POOLS` shows client and server connections live, through `docker compose exec -e PGPASSWORD="$(cat Infrastructure/secrets/postgres-password.secret)" pgbouncer psql -h 127.0.0.1 -p 6432 -U auction -d pgbouncer -c "SHOW POOLS"`. The integration tests assert on its numbers.
 
 ## Message broker
 
 RabbitMQ 4.1 carries two durable exchanges, declared idempotently by every connecting side through the host's `RabbitTopology`. The direct exchange `auctionserver.events` feeds the durable queue `auctionserver.deliveries`, the internal leg between the outbox processors and the delivery store: `RabbitEventPublisher` publishes persistent messages with the metadata in the AMQP `MessageId` and `Type` properties and the raw event JSON as the body, and returns only on the publisher confirm, while `RabbitDeliveryConsumer` feeds `DeliveryDispatcher.AcceptAsync` with manual acks, prefetch 20 and a 5 s cooldown before a failed message is requeued. The topic exchange `auctionserver.market` re-publishes the four public auction events with the type name as the routing key, the consume-only feed for the planned bots. Retries and dead letters stay in the database (ADR-011), so the broker holds no DLX and an idle stack shows an empty queue. The transport switch is the host's fail-fast `Messaging` section, `InProcess` by default and `Rabbit` in Compose. The decision record is [ADR-013](adr/013-rabbitmq-transport.md).
+
+## Secrets
+
+Since phase six no secret value lives in `compose.yaml`. `Infrastructure/secrets/gen-secrets.sh` generates random passwords into a gitignored directory (only the generator and the `*.example` templates are tracked), the infrastructure containers read them as compose file secrets or as mounted generated files, and the api reads its five secrets from OpenBao. A dev-mode `vault` service plus the one-shot `vault-init` seed the `auction-api` policy, the AppRole, the secrets under `secret/auction/api` and the `role-id`/`secret-id` files in the `vaultcreds` volume on every stack start, and the api, whose fail-fast `Vault` section defaults to disabled, logs in with AppRole at startup through a hand-written `IConfigurationProvider` (about 120 lines, no package) added as the last configuration source, so vault values win over environment variables. Rotation, the persistent raft overlay and the manual unseal drill are documented step by step in [operations.md](operations.md). The decision record is [ADR-014](adr/014-openbao-secrets.md).
 
 ## Target design
 
@@ -67,7 +73,7 @@ RabbitMQ 4.1 carries two durable exchanges, declared idempotently by every conne
 - **PgBouncer** (phase 3): landed on 2026-10-24, see [Connection pooling](#connection-pooling). Migrations go through the pooler too.
 - **Redis** (phase 4, landed 2026-11-01): the distributed level of the hot-auction-read cache behind a module-owned seam, TTL-only; details in [backend/auctions.md](backend/auctions.md) and [ADR-009](adr/009-hybrid-read-cache-in-auctions.md).
 - **RabbitMQ** (phase 5, landed 2026-11-04): the AMQP transport behind `IIntegrationEventPublisher` plus the consume-only market exchange for the bots. Retries and dead letters stayed in the database rather than in the broker (ADR-011); see [Message broker](#message-broker) and [ADR-013](adr/013-rabbitmq-transport.md).
-- **OpenBao** (phase 6): the secrets service read at startup through a custom configuration provider.
+- **OpenBao** (phase 6, landed 2026-11-04): the secrets service read at startup through a custom configuration provider, with compose file secrets for the infrastructure containers; see [Secrets](#secrets) and [ADR-014](adr/014-openbao-secrets.md).
 - **Hardening** (phase 7): image build in CI, backups, a .NET per-user rate limiter and the k8s/OIDC migration notes.
 
 ## What the backend provides
@@ -78,7 +84,7 @@ RabbitMQ 4.1 carries two durable exchanges, declared idempotently by every conne
 | telemetry | the `Observability` configuration section (disabled by default, fail-fast validation when enabled) exports traces, metrics and logs over OTLP; `AuctionServer.*` sources and meters are subscribed, so new module meters appear without host changes |
 | a trusted proxy hop | the `Gateway` configuration section (disabled by default, fail-fast validation when enabled) lets `UseForwardedHeaders`, the first middleware, trust `X-Forwarded-For` and `X-Forwarded-Proto` only from the listed CIDR networks |
 | health for orchestration | `/health/live` (no checks) and `/health/ready` (checks tagged `ready`, the database today) next to the full `/health` |
-| configuration from the environment | every setting is read through `IConfiguration`, so `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` and the `Observability__*` keys can be injected as environment variables |
+| configuration from the environment | every setting is read through `IConfiguration`, so `ConnectionStrings__DefaultConnection`, `Jwt__Key`, `Bots__ApiKey` and the `Observability__*` keys can be injected as environment variables; since phase six the fail-fast `Vault` section can add OpenBao as the last configuration source, whose values win over the environment |
 | a reproducible database | the schema is fully described by the nine migration sets, applied with `dotnet ef database update` per context or at startup when `Database:MigrateOnStartup` is `true` (Compose sets it) |
 | object storage for avatars | the `seaweedfs` service in `compose.yaml`: pinned image, no published ports, reached behind the `IAvatarStorage` seam ([backend/profiles.md](backend/profiles.md)) |
 | a CI baseline | `.gitlab-ci.yml` and its GitHub Actions mirror `.github/workflows/ci.yml` build and test on every push, including the host test project `AuctionServer.Api.Tests`, whose gateway tests start nginx and traefik/whoami through Testcontainers, and check `nginx.conf` with `nginx -t` in a `gateway-config` job |
@@ -89,7 +95,7 @@ RabbitMQ 4.1 carries two durable exchanges, declared idempotently by every conne
 - nginx answers 502 (api unreachable, for example inside the 5-second re-resolve window) with its default HTML page, unlike the JSON bodies of 413 and 429.
 - nginx forwards `Host` without the port, so the OpenAPI `servers` entry reads `http://localhost/`. The api builds only relative URLs, so nothing else is affected.
 - The CI pipeline has no deploy stage, no artifacts and no image build.
-- Secrets in `compose.yaml` are plaintext environment variables until phase 6.
+- Secret zero remains: the generated secret files and the AppRole credentials volume live on the host filesystem, so the trust chain still ends there (named honestly in [ADR-014](adr/014-openbao-secrets.md)).
 
 ## API
 
@@ -103,6 +109,8 @@ The infrastructure layer has one endpoint of its own, `/gateway-health`, which n
 - Load tests target `http://api:8080` directly from inside the Compose network, so the baseline stays comparable now that the gateway sits in front. Only `gateway-limits.js` goes through the gateway, run with `BASE_URL=http://gateway`.
 - The transport is introduced behind the existing seam rather than by changing the modules, see [ADR-003](adr/003-in-process-event-bus-before-rabbitmq.md); the 2026-11-04 swap confirmed it and touched only the host.
 - The broker speaks through the raw `RabbitMQ.Client`, not a messaging framework, with publisher confirms before an outbox row counts as processed and all retry state in the database, see [ADR-013](adr/013-rabbitmq-transport.md).
+- The secrets backend is OpenBao read once at startup through a hand-written configuration provider (no package), while the infrastructure containers get generated compose file secrets, see [ADR-014](adr/014-openbao-secrets.md).
+- PgBouncer keeps the stock image with a mounted generated userlist, the owner's pick over a wrapper image with `_FILE` support, and Redis runs with `--requirepass` from a secret file, also the owner's pick, see [ADR-014](adr/014-openbao-secrets.md).
 
 ## Related documents
 

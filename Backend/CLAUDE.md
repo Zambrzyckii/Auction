@@ -21,12 +21,12 @@ Projects live under `src/` (application code) and `tests/` (test projects).
 dotnet build AuctionServer.slnx
 dotnet run --project src/AuctionServer.Api        # http://localhost:5244 (https profile: 7009)
 dotnet test AuctionServer.slnx                    # NOTE: starts Docker containers, see below
-docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436) + redis for the read cache + rabbitmq as the event transport (management UI on 127.0.0.1:15672), migrates at startup
+docker compose up -d                              # from the repo ROOT: nginx gateway on :8080 in front of the API + postgres behind PgBouncer (host port 5436) + redis for the read cache + rabbitmq as the event transport (management UI on 127.0.0.1:15672) + openbao serving the api secrets; run ./Infrastructure/secrets/gen-secrets.sh once first, migrates at startup
 ```
 
 ### Tests
 
-Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox, inbox and delivery (the entity offline; the couriers, the dispatcher, the apply-once inbox operation and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
+Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox, inbox and delivery (the entity offline; the couriers, the dispatcher, the apply-once inbox operation and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints, the `Vault` options and the vault configuration provider on a fake `HttpMessageHandler`) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well, and under `IntegrationTests/Secrets/` it proves the real AppRole login and policy contract on an `openbao/openbao` Testcontainer. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
 
 - All nine mix offline unit tests (domain, validators) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
@@ -134,8 +134,12 @@ context overrides `MigrationsHistoryTable`, they also share a single `__EFMigrat
 `appsettings.json` has **no** `ConnectionStrings` section. `AuctionServer.Api/Program.cs:51` reads
 `DefaultConnection` and fails fast with `InvalidOperationException` when it is missing (until 2026-10-23 the
 null went through with `!` and every database call failed later). The connection string comes from User Secrets
-(`UserSecretsId` `577a6cdc-…` in `AuctionServer.Api.csproj`) or from the
-`ConnectionStrings__DefaultConnection` environment variable.
+(`UserSecretsId` `577a6cdc-…` in `AuctionServer.Api.csproj`), from the
+`ConnectionStrings__DefaultConnection` environment variable or, in the Compose stack, from OpenBao: the
+fail-fast `Vault` section (default `Enabled=false`, so `dotnet run` and the tests never need a vault) makes
+`AddVaultConfiguration` (`Api/Infrastructure/Secrets/`) log in with AppRole and add the secrets as the LAST
+configuration source, so vault values win over environment variables (ADR-014). Rotation is restart-only, and
+the runbook is `docs/en/operations.md`.
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<npgsql-connection-string>" \
@@ -185,11 +189,9 @@ Redis configured, `AddStackExchangeRedisCache` (`AbortOnConnectFail=false`, 500/
 lives in `Cache` — but `AddAuctionModule` rejects TTLs outside 1-60 s. The root `compose.yaml` sets both keys and
 runs `redis:7.2-alpine` without an api dependency, because a missing Redis only degrades read latency (fail-open).
 
-`.env` / `.env.example` (`DB_USER`, `DB_PASSWORD`) have no consumer in the repository — Compose reads a `.env`
-only from the project root (the repo root, not `Backend/`), the root `compose.yaml` deliberately uses none
-(dev-only values are inline there) and no code reads these files either. The `DB_USER`/`DB_PASSWORD` variables
-of the `pgbouncer` service are the edoburu image's own env names set inline in `compose.yaml`, unrelated to
-these leftover files.
+The legacy `Backend/.env` / `.env.example` pair (`DB_USER`, `DB_PASSWORD`) was deleted in phase six: nothing
+ever read it. Secrets for the Compose services now come from the gitignored `Infrastructure/secrets/` files
+(generated by `gen-secrets.sh`), and `compose.yaml` holds no secret values, only references (ADR-014).
 
 The root `compose.yaml` runs the host with `Database__MigrateOnStartup=true`: `Program.cs` then applies all nine
 contexts' migrations between `Build()` and `Run()`, before the outbox processors start, through PgBouncer like

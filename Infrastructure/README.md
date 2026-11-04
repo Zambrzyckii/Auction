@@ -30,6 +30,21 @@ request to stdout and re-resolves the api through Docker's DNS every 5 s. Check 
 `docker run --rm -v "$PWD/Infrastructure/gateway/nginx.conf:/etc/nginx/nginx.conf:ro" nginx:1.28.3-alpine nginx -t`.
 The full description is in `docs/en/infrastructure.md` and the decision in ADR-006.
 
+## secrets/
+
+Gitignored secret files for the whole stack. `gen-secrets.sh` generates six random `*.secret`
+values plus two derived files (the PgBouncer userlist and the RabbitMQ defaults config) and never
+overwrites an existing `.secret`. Only the generator and the `*.example` templates are tracked.
+Run it once before the first `docker compose up`; the rotation steps are in `docs/en/operations.md`.
+
+## vault/
+
+The OpenBao side of phase six. `vault-init.sh` runs as a one-shot compose service on every stack
+start and seeds the dev-mode vault: the `auction-api` policy, the AppRole, the five application
+secrets under `secret/auction/api` and the `role-id`/`secret-id` files the api reads at startup.
+`vault-persistent.hcl` is the raft configuration used by the `compose.vault-persistent.yaml`
+overlay, whose manual unseal drill is described in `docs/en/operations.md` and ADR-014.
+
 ## k6/
 
 Load scenarios for the `k6` service behind the `loadtest` Compose profile. `browse.js`,
