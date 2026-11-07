@@ -1,0 +1,29 @@
+services:
+  loki:
+    image: grafana/loki:3.5.7
+    restart: unless-stopped
+    cpus: 1
+    mem_limit: 256m
+    volumes:
+      - lokidata:/loki
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3100/ready"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  otel-collector:
+    volumes:
+      - ./Infrastructure/observability/otel-collector.loki.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  grafana:
+    volumes:
+      - ./Infrastructure/observability/grafana-datasource-loki.yaml:/etc/grafana/provisioning/datasources/loki.yaml:ro
+
+volumes:
+  lokidata:
