@@ -20,7 +20,7 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
 - `bid-storm.js` każe 10 samofinansującym się botom tłuc w jedną aukcję. Projektową odpowiedzią na sztorm jest 409 (jeden oczekujący bid na aukcję), więc 409 są klasyfikowane jako oczekiwane; 400 (ponowny bid potwierdzonego lidera, kwota wyprzedzona w locie) zostają w odsetku błędów pod poluzowanym progiem.
 - `mixed.js` to 85% odczytów i 15% bidów, a jego trend `visibility_lag` mierzy czas od przyjętego `POST /bid` do pojawienia się bida w `GET /bids`, pipeline outboxa tak, jak doświadcza go gracz.
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
-- Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s, odkąd faza czwarta wliczyła 2 s TTL bidów (< 6 s przed 2026-11-01). Pęknięty próg failuje przebieg kodem wyjścia 99.
+- Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 9 s od 2026-11-07, kiedy wpis o hardeningu zmierzył sufit potoku na ~8,5 s (< 8 s od 2026-11-01, kiedy faza czwarta wliczyła 2 s TTL bidów, a < 6 s wcześniej). Pęknięty próg failuje przebieg kodem wyjścia 99.
 
 ## Hardening — 2026-11-07, commit `d766780`
 
@@ -33,7 +33,7 @@ Faza siódma utwardziła stack wokół nietkniętego potoku: api działa odtąd 
 | 3 | 27 | 6,52 s | 8,52 s | 8,87 s | 9,03 s | 9,03 s | pęknięty |
 
 - Mediany (6,05-7,02 s) leżą okrakiem wokół 6,52 s pary z fazy piątej, więc środek rozkładu się nie ruszył: wciąż dominują oba 3-sekundowe polle plus 2 s TTL bidów, a żadna zmiana fazy siódmej nie siedzi na tej ścieżce — limiter rozstrzyga w mikrosekundach przed handlerem, a łapacz awarii brokera działa tylko wtedy, gdy broker leży.
-- Ruszył się ogon: dwa z trzech przebiegów pękają progiem 8 s na p95, tam gdzie para z fazy piątej przechodziła na 7,52 s z p99/max ocierającymi się o 7,9-8,0 s. Przy ~27 przyjętych bidach na przebieg p95 to druga najgorsza próbka, więc to pojedyncze bidy łapiące wszystkie trzy czekania blisko ich maksimum — dwa pełne 3-sekundowe polle plus pełny 2 s TTL plus 0,5 s ziarnistości sondy składają się do ~8,5 s przed jitterem. Wpisy od fazy czwartej notowały, że potok nie ma zapasu przy tym progu; te przebiegi przekroczyły samą linię. Podniesienie progu do uczciwego sufitu potoku, skrócenie któregoś polla albo akceptacja czerwonych par to decyzja właściciela, tu zostawiona otwarta.
+- Ruszył się ogon: dwa z trzech przebiegów pękają progiem 8 s na p95, tam gdzie para z fazy piątej przechodziła na 7,52 s z p99/max ocierającymi się o 7,9-8,0 s. Przy ~27 przyjętych bidach na przebieg p95 to druga najgorsza próbka, więc to pojedyncze bidy łapiące wszystkie trzy czekania blisko ich maksimum — dwa pełne 3-sekundowe polle plus pełny 2 s TTL plus 0,5 s ziarnistości sondy składają się do ~8,5 s przed jitterem. Wpisy od fazy czwartej notowały, że potok nie ma zapasu przy tym progu; te przebiegi przekroczyły samą linię. 2026-11-07 właściciel podniósł próg do 9 s, zmierzonego sufitu z marginesem, zamiast skracać poll albo akceptować czerwone pary ([DECISIONS.md](DECISIONS.md)); próg wciąż łapie każdą realną regresję, taką jak trzeci przeskok.
 
 ## Transport RabbitMQ — 2026-11-04, commit `d73baa2`
 

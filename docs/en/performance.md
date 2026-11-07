@@ -20,7 +20,7 @@ Every change that claims a performance or reliability effect is measured with k6
 - `bid-storm.js` lets 10 self-funded bots hammer one auction. The design answer to a storm is a 409 (one pending bid per auction), so 409s are classified as expected; the 400s (a confirmed leader re-bidding, an amount overtaken in flight) stay in the failure rate under a loosened threshold.
 - `mixed.js` is 85% reads and 15% bids, and its `visibility_lag` trend measures the time from an accepted `POST /bid` to the bid appearing in `GET /bids`, the outbox pipeline as a player experiences it.
 - `gateway-limits.js` runs four 20-second windows against the gateway (anonymous below and above its limit, with a token above its limit, login above its limit), and its thresholds assert that each window gets the 200s and 429s it should.
-- Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s since phase four priced in the 2 s bids TTL (< 6 s before 2026-11-01). A threshold breach fails the run with exit code 99.
+- Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 9 s since 2026-11-07, when the hardening entry measured the pipeline's ceiling at ~8.5 s (< 8 s from 2026-11-01, when phase four priced in the 2 s bids TTL, and < 6 s before that). A threshold breach fails the run with exit code 99.
 
 ## Hardening — 2026-11-07, commit `d766780`
 
@@ -33,7 +33,7 @@ Phase seven hardened the stack around an untouched pipeline: the api now runs no
 | 3 | 27 | 6.52 s | 8.52 s | 8.87 s | 9.03 s | 9.03 s | breached |
 
 - The medians (6.05-7.02 s) straddle the phase-five pair's 6.52 s, so the middle of the distribution did not move: the two 3 s polls plus the 2 s bids TTL still dominate, and no phase-seven change sits on that path — the limiter decides in microseconds before the handler, and the broker-outage catch runs only when the broker is down.
-- The tail did move: two of three runs breach the 8 s threshold at p95, where the phase-five pair passed at 7.52 s with p99/max grazing 7.9-8.0 s. With ~27 accepted bids per run, p95 is the second-worst sample, so this is single bids catching all three waits near their worst — two full 3 s polls plus a full 2 s TTL plus the 0.5 s probe granularity stack to ~8.5 s before jitter. The entries since phase four recorded that the pipeline has no room at this threshold; these runs crossed the line itself. Raising the threshold to the pipeline's honest ceiling, shortening a poll or accepting red pairs is an owner decision, left open here.
+- The tail did move: two of three runs breach the 8 s threshold at p95, where the phase-five pair passed at 7.52 s with p99/max grazing 7.9-8.0 s. With ~27 accepted bids per run, p95 is the second-worst sample, so this is single bids catching all three waits near their worst — two full 3 s polls plus a full 2 s TTL plus the 0.5 s probe granularity stack to ~8.5 s before jitter. The entries since phase four recorded that the pipeline has no room at this threshold; these runs crossed the line itself. On 2026-11-07 the owner raised the threshold to 9 s, the measured ceiling plus margin, rather than shorten a poll or accept red pairs ([DECISIONS.md](DECISIONS.md)); it still catches any real regression, such as a third hop.
 
 ## RabbitMQ transport — 2026-11-04, commit `d73baa2`
 
