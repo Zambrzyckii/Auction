@@ -1,5 +1,7 @@
+using System.Net.Sockets;
 using AuctionServer.Shared.Integration.Messaging;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 
 namespace AuctionServer.Api.Infrastructure.Messaging;
 
@@ -32,11 +34,23 @@ public sealed class RabbitEventPublisher(MessagingRabbitOptions options) : IInte
                 await channel.BasicPublishAsync(RabbitTopology.MarketExchange, routingKey: type,
                     mandatory: false, properties, body, token);
         }
+        catch (Exception e) when (IsBrokerUnavailable(e))
+        {
+            throw new TransportUnavailableException(
+                $"RabbitMQ at '{options.HostName}:{options.Port}' is unavailable", e);
+        }
         finally
         {
             _gate.Release();
         }
     }
+
+    private static bool IsBrokerUnavailable(Exception exception) =>
+        exception is 
+            BrokerUnreachableException 
+            or ConnectFailureException or AlreadyClosedException
+            or OperationInterruptedException
+            or IOException or SocketException;
 
     private async Task<IChannel> EnsureChannelAsync(CancellationToken token)
     {

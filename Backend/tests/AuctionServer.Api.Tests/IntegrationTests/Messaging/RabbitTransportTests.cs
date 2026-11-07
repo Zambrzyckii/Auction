@@ -39,6 +39,22 @@ public class RabbitTransportTests(RabbitMqFixture fixture)
     }
 
     [Fact]
+    public async Task PublishAsync_WhenTheBrokerIsUnreachable_ShouldThrowTransportUnavailable()
+    {
+        var unreachable = new MessagingRabbitOptions
+        {
+            HostName = "127.0.0.1",
+            Port = 1,
+            UserName = "auction",
+            Password = "wrong"
+        };
+        await using var publisher = new RabbitEventPublisher(unreachable);
+
+        await Assert.ThrowsAsync<AuctionServer.Shared.Integration.Messaging.TransportUnavailableException>(
+            () => publisher.PublishAsync(Guid.NewGuid(), "TestEvent", "{}", CancellationToken.None));
+    }
+
+    [Fact]
     public async Task PublishAsync_WhenTheDispatcherFailsOnce_ShouldRedeliverTheMessage()
     {
         await PurgeDeliveriesAsync();
