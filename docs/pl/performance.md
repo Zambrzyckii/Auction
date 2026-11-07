@@ -14,11 +14,26 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
   docker compose run --rm k6 run browse.js --summary-export=results/browse.json
   ```
 
+  Od fazy szóstej scenariusze seedujące boty (`mixed.js`, `bid-storm.js`) potrzebują dodatkowo wygenerowanego klucza, `-e BOTS_API_KEY="$(cat Infrastructure/secrets/bots-api-key.secret)"` — fallback w `lib/config.js` nie odpowiada już prawdziwemu kluczowi.
+
 - `browse.js` wysyła anonimowe odczyty (70% lista, 20% szczegół, 10% historia bidów) ze stałym tempem napływu, domyślnie 50/s przez 60 s. To trzy zapytania, które od fazy czwartej obsługuje cache.
 - `bid-storm.js` każe 10 samofinansującym się botom tłuc w jedną aukcję. Projektową odpowiedzią na sztorm jest 409 (jeden oczekujący bid na aukcję), więc 409 są klasyfikowane jako oczekiwane; 400 (ponowny bid potwierdzonego lidera, kwota wyprzedzona w locie) zostają w odsetku błędów pod poluzowanym progiem.
 - `mixed.js` to 85% odczytów i 15% bidów, a jego trend `visibility_lag` mierzy czas od przyjętego `POST /bid` do pojawienia się bida w `GET /bids`, pipeline outboxa tak, jak doświadcza go gracz.
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
 - Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s, odkąd faza czwarta wliczyła 2 s TTL bidów (< 6 s przed 2026-11-01). Pęknięty próg failuje przebieg kodem wyjścia 99.
+
+## Hardening — 2026-11-07, commit `d766780`
+
+Faza siódma utwardziła stack wokół nietkniętego potoku: api działa odtąd nierootowo na systemie plików tylko do odczytu, każdy uwierzytelniony zapis przechodzi przez limiter token bucket per użytkownik w hoście, a `pgbackup` czuwa obok postgresa. Ten wpis dowodzi, że hardening nie kosztuje nic na ścieżce HTTP, i uczciwie zapisuje ogon visibility lag. Świeży `down -v && up -d --build --wait` na zamrożonych limitach, obraz sprawdzony względem HEAD, trzy przebiegi `mixed.js` — zwykła para plus dogrywka po tym, jak drugi przebieg pękł progiem. HTTP utrzymało 1,5-2,0 ms p95 z 0% błędów na ~2500 żądań na przebieg; `mixed.js` traktuje jako oczekiwane tylko 2xx, 400 i 409, więc zero błędów dowodzi zarazem, że limiter jest niewidzialny dla uczciwego ruchu (dziesięciu licytantów dzieli ~4 bidy/s, daleko poniżej 5 tokenów/s uzupełniania kubełka gorących zapisów jednego użytkownika). Osiem outboxów i tabela doręczeń skończyły każdy przebieg z zerem oczekujących i zerem martwych wierszy.
+
+| Przebieg | Przyjęte bidy | med | p90 | p95 | p99 | max | Próg p95 (8 s) |
+|---|---|---|---|---|---|---|---|
+| 1 | 29 | 6,05 s | 7,52 s | 7,82 s | 8,02 s | 8,02 s | zaliczony |
+| 2 | 27 | 7,02 s | 8,02 s | 8,02 s | 8,40 s | 8,53 s | pęknięty |
+| 3 | 27 | 6,52 s | 8,52 s | 8,87 s | 9,03 s | 9,03 s | pęknięty |
+
+- Mediany (6,05-7,02 s) leżą okrakiem wokół 6,52 s pary z fazy piątej, więc środek rozkładu się nie ruszył: wciąż dominują oba 3-sekundowe polle plus 2 s TTL bidów, a żadna zmiana fazy siódmej nie siedzi na tej ścieżce — limiter rozstrzyga w mikrosekundach przed handlerem, a łapacz awarii brokera działa tylko wtedy, gdy broker leży.
+- Ruszył się ogon: dwa z trzech przebiegów pękają progiem 8 s na p95, tam gdzie para z fazy piątej przechodziła na 7,52 s z p99/max ocierającymi się o 7,9-8,0 s. Przy ~27 przyjętych bidach na przebieg p95 to druga najgorsza próbka, więc to pojedyncze bidy łapiące wszystkie trzy czekania blisko ich maksimum — dwa pełne 3-sekundowe polle plus pełny 2 s TTL plus 0,5 s ziarnistości sondy składają się do ~8,5 s przed jitterem. Wpisy od fazy czwartej notowały, że potok nie ma zapasu przy tym progu; te przebiegi przekroczyły samą linię. Podniesienie progu do uczciwego sufitu potoku, skrócenie któregoś polla albo akceptacja czerwonych par to decyzja właściciela, tu zostawiona otwarta.
 
 ## Transport RabbitMQ — 2026-11-04, commit `d73baa2`
 

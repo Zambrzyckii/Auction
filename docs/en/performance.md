@@ -14,11 +14,26 @@ Every change that claims a performance or reliability effect is measured with k6
   docker compose run --rm k6 run browse.js --summary-export=results/browse.json
   ```
 
+  Since phase six the scenarios that seed bots (`mixed.js`, `bid-storm.js`) additionally need the generated key, `-e BOTS_API_KEY="$(cat Infrastructure/secrets/bots-api-key.secret)"` — the fallback in `lib/config.js` no longer matches a real key.
+
 - `browse.js` sends anonymous reads (70% list, 20% detail, 10% bid history) at a constant arrival rate, 50/s for 60 s by default. These are the three queries the phase-four cache serves.
 - `bid-storm.js` lets 10 self-funded bots hammer one auction. The design answer to a storm is a 409 (one pending bid per auction), so 409s are classified as expected; the 400s (a confirmed leader re-bidding, an amount overtaken in flight) stay in the failure rate under a loosened threshold.
 - `mixed.js` is 85% reads and 15% bids, and its `visibility_lag` trend measures the time from an accepted `POST /bid` to the bid appearing in `GET /bids`, the outbox pipeline as a player experiences it.
 - `gateway-limits.js` runs four 20-second windows against the gateway (anonymous below and above its limit, with a token above its limit, login above its limit), and its thresholds assert that each window gets the 200s and 429s it should.
 - Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 8 s since phase four priced in the 2 s bids TTL (< 6 s before 2026-11-01). A threshold breach fails the run with exit code 99.
+
+## Hardening — 2026-11-07, commit `d766780`
+
+Phase seven hardened the stack around an untouched pipeline: the api now runs non-root on a read-only filesystem, every authenticated write passes the host's per-user token-bucket limiter, and `pgbackup` idles next to postgres. This entry proves the hardening costs nothing on the HTTP path and records the visibility-lag tail honestly. Fresh `down -v && up -d --build --wait` at the frozen limits, the image checked against HEAD, three `mixed.js` runs — the usual pair plus a tiebreaker after the second run breached the threshold. HTTP stayed at 1.5-2.0 ms p95 with 0% failures out of ~2500 requests per run; `mixed.js` treats only 2xx, 400 and 409 as expected, so zero failures also proves the limiter invisible to legitimate load (ten bidders share ~4 bids/s, far under the 5 tokens/s refill of one user's hot-write bucket). All eight outboxes and the delivery table ended every run with zero pending and zero dead rows.
+
+| Run | Accepted bids | med | p90 | p95 | p99 | max | p95 threshold (8 s) |
+|---|---|---|---|---|---|---|---|
+| 1 | 29 | 6.05 s | 7.52 s | 7.82 s | 8.02 s | 8.02 s | passed |
+| 2 | 27 | 7.02 s | 8.02 s | 8.02 s | 8.40 s | 8.53 s | breached |
+| 3 | 27 | 6.52 s | 8.52 s | 8.87 s | 9.03 s | 9.03 s | breached |
+
+- The medians (6.05-7.02 s) straddle the phase-five pair's 6.52 s, so the middle of the distribution did not move: the two 3 s polls plus the 2 s bids TTL still dominate, and no phase-seven change sits on that path — the limiter decides in microseconds before the handler, and the broker-outage catch runs only when the broker is down.
+- The tail did move: two of three runs breach the 8 s threshold at p95, where the phase-five pair passed at 7.52 s with p99/max grazing 7.9-8.0 s. With ~27 accepted bids per run, p95 is the second-worst sample, so this is single bids catching all three waits near their worst — two full 3 s polls plus a full 2 s TTL plus the 0.5 s probe granularity stack to ~8.5 s before jitter. The entries since phase four recorded that the pipeline has no room at this threshold; these runs crossed the line itself. Raising the threshold to the pipeline's honest ceiling, shortening a poll or accepting red pairs is an owner decision, left open here.
 
 ## RabbitMQ transport — 2026-11-04, commit `d73baa2`
 
