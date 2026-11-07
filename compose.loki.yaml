@@ -1,6 +1,6 @@
 services:
   loki:
-    image: grafana/loki:3.5.7
+    image: grafana/loki:3.7.9
     restart: unless-stopped
     cpus: 1
     mem_limit: 256m
