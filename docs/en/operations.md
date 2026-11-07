@@ -63,6 +63,20 @@ Verified end to end on 2026-11-04 (4 users and 40 tables matched between the sou
 
 To replace the real database instead, stop the api first (`docker compose stop api`), drop and recreate `auctionserver` the same way, restore into it and start the api again. The dump contains plain SQL, so a restore needs an empty database, not a schema-migrated one.
 
+## Reviving dead outbox rows
+
+A broker outage no longer parks outbox rows: the processors release their leases and wait (hardening phase, 2026-11-07, amendment in ADR-013). A row still dead-letters when the failure is tied to the message itself, after five attempts. The Prometheus rule `OutboxDeadMessages` fires when that happens (`OutboxPublishFailing` warns earlier about sustained failures); there is no Alertmanager, so check the alerts in Grafana Explore or the Prometheus API.
+
+To revive the parked rows of one module after fixing the cause, reset their counters, here for Identity:
+
+```sql
+UPDATE "IdentityOutboxMessages"
+SET "IsDead" = FALSE, "AttemptCount" = 1, "NextAttemptOn" = now()
+WHERE "IsDead";
+```
+
+The eight outbox tables are `OutboxMessages` (Auctions), `IdentityOutboxMessages`, `WalletsOutboxMessages`, `InventoryOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` and `CasinoOutboxMessages`. A dead letter on the delivery side lives per recipient in `DeliveryMessages` and is revived with the same UPDATE against that table. The `Errors` column keeps the failure history, so read it before reviving.
+
 ## Troubleshooting
 
 | Symptom | Meaning | Fix |

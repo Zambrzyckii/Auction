@@ -63,6 +63,20 @@ Zweryfikowane od początku do końca 2026-11-04 (4 użytkowników i 40 tabel zgo
 
 Aby zamiast tego podmienić prawdziwą bazę, najpierw zatrzymaj api (`docker compose stop api`), skasuj i utwórz `auctionserver` tak samo, odtwórz do niej zrzut i wystartuj api ponownie. Zrzut zawiera czysty SQL, więc restore potrzebuje pustej bazy, nie bazy po migracjach.
 
+## Ożywianie martwych wierszy outboxa
+
+Awaria brokera nie parkuje już wierszy outboxa: procesory zwalniają lease'y i czekają (faza hardeningu, 2026-11-07, amendment w ADR-013). Wiersz nadal ląduje jako martwy list, gdy błąd dotyczy samej wiadomości, po pięciu próbach. Wtedy odpala się reguła Prometheusa `OutboxDeadMessages` (`OutboxPublishFailing` ostrzega wcześniej o utrzymujących się błędach); Alertmanagera nie ma, więc alerty sprawdzisz w Grafana Explore albo w API Prometheusa.
+
+Aby po usunięciu przyczyny ożywić zaparkowane wiersze jednego modułu, zresetuj ich liczniki, tu dla Identity:
+
+```sql
+UPDATE "IdentityOutboxMessages"
+SET "IsDead" = FALSE, "AttemptCount" = 1, "NextAttemptOn" = now()
+WHERE "IsDead";
+```
+
+Osiem tabel outboxa to `OutboxMessages` (Auctions), `IdentityOutboxMessages`, `WalletsOutboxMessages`, `InventoryOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` i `CasinoOutboxMessages`. Martwy list po stronie doręczania żyje per odbiorca w `DeliveryMessages` i ożywia go ten sam UPDATE na tej tabeli. Kolumna `Errors` trzyma historię błędów, przeczytaj ją przed ożywieniem.
+
 ## Rozwiązywanie problemów
 
 | Objaw | Znaczenie | Naprawa |

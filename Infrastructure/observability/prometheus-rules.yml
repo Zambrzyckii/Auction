@@ -1,0 +1,19 @@
+groups:
+  - name: outbox
+    rules:
+      - alert: OutboxDeadMessages
+        expr: increase(auctionserver_outbox_dead_total[1h]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox rows were dead-lettered in module {{ $labels.outbox_module }}"
+          description: "A message exhausted its five attempts and was parked. Revive it with the runbook in docs/en/operations.md."
+
+      - alert: OutboxPublishFailing
+        expr: rate(auctionserver_outbox_failed_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox publishing keeps failing in module {{ $labels.outbox_module }}"
+          description: "Sustained publish failures point at broker trouble or a poison message burning retries."

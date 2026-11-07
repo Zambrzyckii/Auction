@@ -265,6 +265,7 @@ services:
       - "--storage.tsdb.retention.time=7d"
     volumes:
       - ./Infrastructure/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./Infrastructure/observability/prometheus-rules.yml:/etc/prometheus/rules.yml:ro
       - prometheusdata:/prometheus
     networks:
       - data
