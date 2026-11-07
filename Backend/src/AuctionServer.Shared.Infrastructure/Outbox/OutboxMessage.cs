@@ -23,4 +23,6 @@ public sealed class OutboxMessage
     }
 
     public void MarkMessageAsDead() => IsDead = true;
+
+    public void ReleaseLease() => LeasedUntil = null;
 }

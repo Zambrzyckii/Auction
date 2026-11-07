@@ -24,7 +24,7 @@ public sealed class OutboxProcessor<TContext>(
         {
             try
             {
-                await ProcessPendingMessagesAsync(stoppingToken);
+                await RunPassAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -39,7 +39,7 @@ public sealed class OutboxProcessor<TContext>(
         }
     }
 
-    private async Task ProcessPendingMessagesAsync(CancellationToken stoppingToken)
+    public async Task RunPassAsync(CancellationToken stoppingToken)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<TContext>();
@@ -67,6 +67,15 @@ public sealed class OutboxProcessor<TContext>(
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 throw;
+            }
+            catch (TransportUnavailableException e)
+            {
+                var index = messages.IndexOf(message);
+                foreach (var claimed in messages.Skip(index)) claimed.ReleaseLease();
+                await context.SaveChangesAsync(stoppingToken);
+                logger.LogWarning(e,
+                    "Transport unavailable; released {Count} leases and aborted the outbox pass", messages.Count - index);
+                return;
             }
             catch (Exception e)
             {
