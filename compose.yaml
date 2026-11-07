@@ -80,7 +80,7 @@ services:
       retries: 15
 
   redis:
-    image: redis:7.2-alpine
+    image: redis:8.0-alpine
     restart: unless-stopped
     command:
       - /bin/sh
