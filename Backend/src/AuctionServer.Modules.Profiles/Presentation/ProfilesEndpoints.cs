@@ -121,11 +121,13 @@ public static class ProfilesEndpoints
 
         group.MapGet("/{publicUserId:guid}/avatar", async (Guid publicUserId, HttpContext http, ISender sender) =>
         {
-            var result = await sender.Send(new GetAvatarQuery(publicUserId));
+            var result = await sender.Send(new GetAvatarQuery(publicUserId, http.Request.Headers.IfNoneMatch));
             http.Response.Headers["X-Content-Type-Options"] = "nosniff";
             http.Response.Headers.ETag = $"\"{result.Hash}\"";
             http.Response.Headers.CacheControl = "private, max-age=86400";
-            return Results.Stream(result.Content, result.ContentType);
+            return result.NotModified
+                ? Results.StatusCode(StatusCodes.Status304NotModified)
+                : Results.Stream(result.Content!, result.ContentType!);
         }).RequireAuthorization();
 
         group.MapGet("/{publicUserId:guid}", async (Guid publicUserId, ClaimsPrincipal user, ISender sender) =>

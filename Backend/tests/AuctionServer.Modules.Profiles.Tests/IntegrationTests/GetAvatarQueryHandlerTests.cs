@@ -26,12 +26,14 @@ public class GetAvatarQueryHandlerTests(ProfilesPostgresFixture fixture)
         return userId;
     }
 
-    private async Task<AvatarStreamDto> QueryAsync(Guid userId, FakeAvatarStorage storage)
+    private async Task<AvatarStreamDto> QueryAsync(Guid userId, FakeAvatarStorage storage, string? ifNoneMatch = null)
     {
         await using var context = fixture.CreateContext();
         var handler = new GetAvatarQueryHandler(new ProfilesRepository(context), storage);
-        return await handler.Handle(new GetAvatarQuery(userId), CancellationToken.None);
+        return await handler.Handle(new GetAvatarQuery(userId, ifNoneMatch), CancellationToken.None);
     }
+
+    private static string CurrentHash => Convert.ToHexStringLower(SHA256.HashData(PngPayload));
 
     [Fact]
     public async Task Handle_ShouldReturnStreamContentTypeAndHash()
@@ -62,6 +64,39 @@ public class GetAvatarQueryHandlerTests(ProfilesPostgresFixture fixture)
     {
         await Assert.ThrowsAsync<ProfilesExceptions.AvatarNotFoundException>(() =>
             QueryAsync(Guid.NewGuid(), new FakeAvatarStorage()));
+    }
+
+    [Theory]
+    [InlineData("\"{hash}\"")]
+    [InlineData("W/\"{hash}\"")]
+    [InlineData("\"somethingelse\", \"{hash}\"")]
+    [InlineData("*")]
+    public async Task Handle_WhenIfNoneMatchHits_ShouldReturnNotModifiedWithoutTouchingStorage(string headerTemplate)
+    {
+        var storage = new FakeAvatarStorage();
+        var userId = await SeedWithAvatarAsync(storage);
+        await storage.DeleteAsync(userId, CancellationToken.None);
+        var header = headerTemplate.Replace("{hash}", CurrentHash);
+
+        var dto = await QueryAsync(userId, storage, header);
+
+        Assert.True(dto.NotModified);
+        Assert.Null(dto.Content);
+        Assert.Equal(CurrentHash, dto.Hash);
+    }
+
+    [Fact]
+    public async Task Handle_WhenIfNoneMatchMisses_ShouldReturnTheFullStream()
+    {
+        var storage = new FakeAvatarStorage();
+        var userId = await SeedWithAvatarAsync(storage);
+
+        var dto = await QueryAsync(userId, storage, "\"deadbeef\"");
+
+        Assert.False(dto.NotModified);
+        using var memory = new MemoryStream();
+        await dto.Content!.CopyToAsync(memory);
+        Assert.Equal(PngPayload, memory.ToArray());
     }
 
     [Fact]
