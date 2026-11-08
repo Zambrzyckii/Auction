@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Scope
 
-This file covers the .NET backend in `Backend/`. `Frontend/` and `Bots/` are planned work
-with no code — they may not even exist in the tree yet. `Infrastructure/` holds the nginx gateway, the telemetry
+This file covers the .NET backend in `Backend/`. The Angular client lives in `Frontend/`
+(`Frontend/CLAUDE.md`); `Bots/` is planned work with no code and may not exist in the tree yet.
+`Infrastructure/` holds the nginx gateway, the telemetry
 configuration and the k6 scenarios (`docs/en/infrastructure.md`).
 
 The original design note (`AGENTS.md`) was deleted on 2026-08-15; the target architecture now lives in

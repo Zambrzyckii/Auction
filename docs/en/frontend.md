@@ -1,12 +1,12 @@
-# Frontend (planned)
+# Frontend (in progress)
 
 > English version. Polish 1:1 counterpart: [../pl/frontend.md](../pl/frontend.md)
 
-This module does not exist yet: the repository contains no `Frontend/` folder, no `package.json` and no TypeScript. This page records the target, what the backend already offers a client and what it still lacks, so that the frontend can start from facts rather than assumptions.
+The scaffold exists since 2026-11-08: `Frontend/` holds an Angular 22 CLI workspace (standalone components, signals, zoneless change detection, Vitest, SCSS) with the dev server proxying `/api` to the gateway. The views are not built yet, so this page still records the target, what the backend already offers a client and what it still lacks.
 
 ## Status
 
-Planned. The previous README named it "Angular frontend" and the deleted design note (`AGENTS.md`) placed it as "UI/FRONTEND" in front of the API gateway; no framework version, repository layout or design has been decided in writing.
+In progress since 2026-11-08. The stack and the repository layout are decided in [ADR-015](adr/015-angular-frontend-stack.md) and the DECISIONS.md rows of that date, and the views land batch by batch. The MVP UI stays deliberately bare, readable for manual testing only; the real UI/UX pass is a separate branch of the plan at the end of the project.
 
 ## Target design
 
@@ -41,7 +41,7 @@ Planned. The previous README named it "Angular frontend" and the deleted design 
 
 ## Decisions
 
-- Angular was named as the frontend framework in the original design note; the version and the tooling are open.
+- Angular 22 with the CLI defaults, plain SCSS and Signal Forms, decided 2026-11-08; see [ADR-015](adr/015-angular-frontend-stack.md).
 - The frontend talks only to the gateway, which passes CORS preflights through to the host (checked on 2026-10-23, a preflight from `http://localhost:4200` gets 204 with the matching `Access-Control-Allow-Origin`). The host has CORS for `http://localhost:4200`, the OpenAPI document at `/openapi/v1.json` (open to private networks through the gateway) and the health routes `/health`, `/health/live` and `/health/ready`.
 
 ## Related documents

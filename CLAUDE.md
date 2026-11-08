@@ -4,18 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository map
 
-Gamified auction system. Only `Backend/` contains application code — everything below it is a .NET 10 modular monolith
-backed by PostgreSQL.
+Gamified auction system. `Backend/` is a .NET 10 modular monolith backed by PostgreSQL,
+`Frontend/` is its Angular 22 client, scaffolded on 2026-11-08 with the MVP views in progress.
 
 ```
-Backend/          the entire codebase (solution: AuctionServer.slnx)
-Frontend/         planned Angular client, not started
+Backend/          the backend codebase (solution: AuctionServer.slnx)
+Frontend/         Angular 22 client (MVP in progress), commands in Frontend/CLAUDE.md
 Bots/             planned AI market bots, not started
 Infrastructure/   nginx gateway, telemetry configuration, k6 scenarios, PgBouncer configuration, the OpenBao bootstrap (vault/) and the gitignored secret files with their generator (secrets/); Redis and RabbitMQ are defined in the root compose.yaml
 ```
 
-`Frontend/` and `Bots/` are **planned work** and may be absent from the tree entirely (git does not
-track empty directories) — that is not a broken checkout. Do not scaffold anything into them unless asked.
+`Bots/` is **planned work** and may be absent from the tree entirely (git does not track empty
+directories) — that is not a broken checkout. Do not scaffold anything into it unless asked.
+`Frontend/` exists since 2026-11-08 and is described in `docs/en/frontend.md` and `Frontend/CLAUDE.md`.
 `Infrastructure/` exists since 2026-10-23 and is described in `docs/en/infrastructure.md`.
 
 ## Entry point
@@ -23,7 +24,7 @@ track empty directories) — that is not a broken checkout. Do not scaffold anyt
 All build, run, test and EF Core migration commands run from `Backend/`, and their canonical documentation —
 including per-project test commands, the two-migration-folder trap in Auctions, and how the connection string
 is supplied — lives in **`Backend/CLAUDE.md`**. Read that file before touching backend code; do not duplicate
-its commands here.
+its commands here. Frontend commands run from `Frontend/` and live in **`Frontend/CLAUDE.md`**.
 
 Quick sanity check that the tree is healthy:
 
