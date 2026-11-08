@@ -117,6 +117,6 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 
 ## Powiązane dokumenty
 
-- [adr/](adr) - czternaście rekordów decyzji architektonicznych.
+- [adr/](adr) - piętnaście rekordów decyzji architektonicznych.
 - [CHANGELOG.md](CHANGELOG.md) - kamienie milowe, do których należą te decyzje.
 - [CONVENTIONS.md](CONVENTIONS.md) - reguły, które z nich wynikają.

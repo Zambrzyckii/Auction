@@ -117,6 +117,6 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 
 ## Related documents
 
-- [adr/](adr) - the fourteen architecture decision records.
+- [adr/](adr) - the fifteen architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.
