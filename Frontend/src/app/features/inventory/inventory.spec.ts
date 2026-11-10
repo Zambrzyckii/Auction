@@ -58,7 +58,7 @@ describe('Inventory', () => {
   it('sells an available item and shows the funds note', () => {
     http.expectOne('/api/inventory').flush([item({ publicItemId: 'a' })]);
     fixture.detectChanges();
-    el().querySelector('button')!.click();
+    el().querySelector<HTMLButtonElement>('button.sell')!.click();
 
     const sellReq = http.expectOne('/api/inventory/a/sell');
     sellReq.flush(null);
@@ -69,18 +69,80 @@ describe('Inventory', () => {
   it('disables selling for an item locked for an auction', () => {
     http.expectOne('/api/inventory').flush([item({ status: 'LockedForAuction' })]);
     fixture.detectChanges();
-    expect(el().querySelector('button')!.disabled).toBe(true);
+    expect(el().querySelector<HTMLButtonElement>('button.sell')!.disabled).toBe(true);
   });
 
   it('shows the API message when selling fails', () => {
     http.expectOne('/api/inventory').flush([item({ publicItemId: 'a' })]);
     fixture.detectChanges();
-    el().querySelector('button')!.click();
+    el().querySelector<HTMLButtonElement>('button.sell')!.click();
 
     http
       .expectOne('/api/inventory/a/sell')
       .flush({ error: 'Item is not available (LockedForAuction)' }, { status: 400, statusText: 'Bad Request' });
     fixture.detectChanges();
     expect(el().querySelector('.notice')?.textContent).toContain('not available');
+  });
+
+  describe('crafting', () => {
+    const trio = [
+      item({ publicItemId: 'a' }),
+      item({ publicItemId: 'b' }),
+      item({ publicItemId: 'c' }),
+    ];
+
+    function flushItems(items: InventoryItem[]): void {
+      http.expectOne('/api/inventory').flush(items);
+      fixture.detectChanges();
+    }
+
+    function selectAll(ids: readonly string[]): void {
+      for (const id of ids) {
+        fixture.componentInstance.toggle(id);
+      }
+    }
+
+    it('allows crafting three distinct available items of one rarity', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c']);
+      expect(fixture.componentInstance.canCraft()).toBe(true);
+    });
+
+    it('blocks crafting with fewer than three items', () => {
+      flushItems(trio);
+      selectAll(['a', 'b']);
+      expect(fixture.componentInstance.canCraft()).toBe(false);
+    });
+
+    it('blocks mixed rarities', () => {
+      flushItems([trio[0], trio[1], item({ publicItemId: 'c', rarity: 'Rare' })]);
+      selectAll(['a', 'b', 'c']);
+      expect(fixture.componentInstance.canCraft()).toBe(false);
+    });
+
+    it('blocks Legendary ingredients', () => {
+      flushItems(trio.map((i) => ({ ...i, rarity: 'Legendary' as const })));
+      selectAll(['a', 'b', 'c']);
+      expect(fixture.componentInstance.canCraft()).toBe(false);
+    });
+
+    it('blocks ingredients that are not available', () => {
+      flushItems([trio[0], trio[1], item({ publicItemId: 'c', status: 'LockedForAuction' })]);
+      selectAll(['a', 'b', 'c']);
+      expect(fixture.componentInstance.canCraft()).toBe(false);
+    });
+
+    it('posts the ingredient ids and clears the selection on a 201', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c']);
+      fixture.componentInstance.craft();
+
+      const req = http.expectOne('/api/inventory/craft');
+      expect(req.request.body).toEqual({ ingredientsIds: ['a', 'b', 'c'] });
+      req.flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selection()).toEqual([]);
+      expect(el().querySelector('.notice')?.textContent).toContain('Crafted');
+    });
   });
 });

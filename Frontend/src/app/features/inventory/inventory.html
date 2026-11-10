@@ -8,6 +8,7 @@
   } @else {
     <table>
       <tr>
+        <th></th>
         <th>Name</th>
         <th>Rarity</th>
         <th>Status</th>
@@ -16,6 +17,13 @@
       </tr>
       @for (item of items; track item.publicItemId) {
         <tr>
+          <td>
+            <input
+              type="checkbox"
+              [checked]="selection().includes(item.publicItemId)"
+              (change)="toggle(item.publicItemId)"
+            />
+          </td>
           <td>{{ item.name }}</td>
           <td>{{ item.rarity }}</td>
           <td>{{ item.status }}</td>
@@ -23,6 +31,7 @@
           <td>
             <button
               type="button"
+              class="sell"
               (click)="sell(item.publicItemId)"
               [disabled]="item.status !== 'Available' || sellingId() !== null"
             >
@@ -32,6 +41,11 @@
         </tr>
       }
     </table>
+    <p>
+      Craft three available items of one rarity into one of the next.
+      Selected: {{ selection().length }}/3
+      <button type="button" class="craft" [disabled]="!canCraft()" (click)="craft()">Craft</button>
+    </p>
   }
 } @else if (poller.error(); as error) {
   <p class="error">{{ error.message }}</p>
