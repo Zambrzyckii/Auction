@@ -1,0 +1,21 @@
+<h2>Wallet</h2>
+@if (poller.value(); as wallet) {
+  <table>
+    <tr>
+      <th>Available funds</th>
+      <td>{{ wallet.availableFunds | number }}</td>
+    </tr>
+    <tr>
+      <th>Locked funds</th>
+      <td>{{ wallet.lockedFunds | number }}</td>
+    </tr>
+    <tr>
+      <th>Lifetime turnover</th>
+      <td>{{ wallet.lifetimeTurnover | number }}</td>
+    </tr>
+  </table>
+} @else if (poller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Setting up your wallet…</p>
+}
