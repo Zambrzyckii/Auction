@@ -1,0 +1,30 @@
+<h2>Auctions</h2>
+<p><a routerLink="/auctions/new">List an item</a></p>
+@if (poller.value(); as auctions) {
+  @if (auctions.length === 0) {
+    <p>No active auctions right now.</p>
+  } @else {
+    <table>
+      <tr>
+        <th>Item</th>
+        <th>Rarity</th>
+        <th>Current price</th>
+        <th>Ends in</th>
+        <th></th>
+      </tr>
+      @for (auction of auctions; track auction.publicAuctionId) {
+        <tr>
+          <td>{{ auction.itemName }}</td>
+          <td>{{ auction.itemRarity }}</td>
+          <td>{{ auction.currentPrice | number }}</td>
+          <td>{{ timeLeft(auction.endsOn) }}</td>
+          <td><a [routerLink]="['/auctions', auction.publicAuctionId]">View</a></td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (poller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading…</p>
+}
