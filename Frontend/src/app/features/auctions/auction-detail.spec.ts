@@ -6,7 +6,7 @@ import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction, AuctionBid } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
-import { AuctionDetail } from './auction-detail';
+import { AuctionDetail, isBidConfirmed } from './auction-detail';
 
 const URL = '/api/auctions/abc';
 const BIDS_URL = '/api/auctions/abc/bids';
@@ -36,6 +36,25 @@ function bid(overrides: Partial<AuctionBid>): AuctionBid {
     ...overrides,
   };
 }
+
+describe('isBidConfirmed', () => {
+  it('confirms when the history holds my id with my amount', () => {
+    const history = [bid({ amount: 220 }), bid({ bidderUserId: MY_ID, amount: 200 })];
+    expect(isBidConfirmed(history, MY_ID, 200)).toBe(true);
+  });
+
+  it('ignores someone else bidding the same amount', () => {
+    expect(isBidConfirmed([bid({ amount: 200 })], MY_ID, 200)).toBe(false);
+  });
+
+  it('ignores my bids over other amounts', () => {
+    expect(isBidConfirmed([bid({ bidderUserId: MY_ID, amount: 180 })], MY_ID, 200)).toBe(false);
+  });
+
+  it('never confirms while logged out', () => {
+    expect(isBidConfirmed([bid({ bidderUserId: MY_ID, amount: 200 })], null, 200)).toBe(false);
+  });
+});
 
 describe('AuctionDetail', () => {
   let fixture: ComponentFixture<AuctionDetail>;
@@ -147,5 +166,93 @@ describe('AuctionDetail', () => {
     flushBids([bid({ bidderUserId: MY_ID })]);
     fixture.detectChanges();
     expect(el().textContent).toContain('You');
+  });
+
+  describe('bidding', () => {
+    function load(overrides: Partial<Auction>): void {
+      http.expectOne(URL).flush(auction(overrides));
+      flushBids([]);
+      fixture.detectChanges();
+    }
+
+    function blockReason(): string | null {
+      return fixture.componentInstance.bidBlockReason();
+    }
+
+    it('allows a higher bid from a challenger', () => {
+      load({ currentPrice: 150 });
+      fixture.componentInstance.bidAmount.set(200);
+      expect(blockReason()).toBeNull();
+    });
+
+    it('blocks a bid at or below the current price', () => {
+      load({ currentPrice: 150 });
+      fixture.componentInstance.bidAmount.set(150);
+      expect(blockReason()).toBeTypeOf('string');
+      expect(blockReason()!.length).toBeGreaterThan(0);
+    });
+
+    it('blocks the seller', () => {
+      load({ sellerUserId: MY_ID });
+      fixture.componentInstance.bidAmount.set(200);
+      expect(blockReason()).toBeTypeOf('string');
+    });
+
+    it('blocks the current leader', () => {
+      load({ currentWinningUserId: MY_ID });
+      fixture.componentInstance.bidAmount.set(200);
+      expect(blockReason()).toBeTypeOf('string');
+    });
+
+    it('posts the bid and shows the pending note', () => {
+      load({});
+      fixture.componentInstance.bidAmount.set(200);
+      fixture.componentInstance.placeBid();
+      const req = http.expectOne('/api/auctions/abc/bid');
+      expect(req.request.body).toEqual({ amount: 200 });
+      req.flush(null);
+      fixture.detectChanges();
+      expect(el().querySelector('.notice')?.textContent).toContain('confirmation');
+    });
+
+    it('reports confirmation once the history shows the bid', () => {
+      load({});
+      fixture.componentInstance.bidAmount.set(200);
+      fixture.componentInstance.placeBid();
+      http.expectOne('/api/auctions/abc/bid').flush(null);
+      fixture.detectChanges();
+      expect(el().textContent).toContain('waiting for confirmation');
+
+      vi.advanceTimersByTime(2500);
+      http.expectOne(URL).flush(auction({ currentPrice: 200 }));
+      flushBids([bid({ bidderUserId: MY_ID, amount: 200 })]);
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Bid confirmed.');
+    });
+
+    it('warns when the bid is still unconfirmed after twenty seconds', () => {
+      load({});
+      fixture.componentInstance.bidAmount.set(200);
+      fixture.componentInstance.placeBid();
+      http.expectOne('/api/auctions/abc/bid').flush(null);
+      for (let i = 0; i < 9; i++) {
+        vi.advanceTimersByTime(2500);
+        http.expectOne(URL).flush(auction({}));
+        flushBids([]);
+      }
+      fixture.detectChanges();
+      expect(el().textContent).toContain('not confirmed yet');
+    });
+
+    it('surfaces the BidInProgress conflict', () => {
+      load({});
+      fixture.componentInstance.bidAmount.set(200);
+      fixture.componentInstance.placeBid();
+      http
+        .expectOne('/api/auctions/abc/bid')
+        .flush({ error: 'Bid already in progress.' }, { status: 409, statusText: 'Conflict' });
+      fixture.detectChanges();
+      expect(el().querySelector('.notice')?.textContent).toContain('already in progress');
+    });
   });
 });

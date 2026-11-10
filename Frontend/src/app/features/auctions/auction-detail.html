@@ -24,6 +24,26 @@
   @if (auction.status === 'Cancelled') {
     <p class="error">Cancelled: {{ auction.cancellationReason }}</p>
   }
+  @if (auction.status === 'Active' && session.isLoggedIn()) {
+    <form (submit)="$event.preventDefault(); placeBid()">
+      <label>
+        Your bid
+        <input type="number" [value]="bidAmount()" (input)="setBidAmount($event)" />
+      </label>
+      @if (bidBlockReason(); as reason) {
+        <p class="error">{{ reason }}</p>
+      }
+      <button type="submit" [disabled]="bidBlockReason() !== null || bidPending()">
+        Place bid
+      </button>
+    </form>
+  }
+  @if (bidNotice(); as notice) {
+    <p class="notice">{{ notice }}</p>
+  }
+  @if (bidConfirmation(); as confirmation) {
+    <p class="notice">{{ confirmation }}</p>
+  }
   <h3>Bids</h3>
   @if (bidsPoller.value(); as bids) {
     @if (bids.length === 0) {
