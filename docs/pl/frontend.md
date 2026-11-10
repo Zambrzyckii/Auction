@@ -1,12 +1,12 @@
-# Frontend (w trakcie)
+# Frontend (MVP)
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/frontend.md](../en/frontend.md)
 
-Scaffold istnieje od 2026-11-08: `Frontend/` zawiera workspace Angular CLI 22 (komponenty standalone, sygnały, zoneless change detection, Vitest, SCSS) z dev-serverem proxującym `/api` na gateway. Widoków jeszcze nie ma, więc ta strona wciąż zapisuje cel, to, co backend już oferuje klientowi, i to, czego mu wciąż brakuje.
+Scaffold istnieje od 2026-11-08: `Frontend/` zawiera workspace Angular CLI 22 (komponenty standalone, sygnały, zoneless change detection, Vitest, SCSS) z dev-serverem proxującym `/api` na gateway. Widoki MVP weszły 2026-11-10, więc ta strona zapisuje to, co klient robi dziś, co backend mu oferuje i czego mu wciąż brakuje.
 
 ## Status
 
-W trakcie od 2026-11-08. Stack i układ repozytorium rozstrzygają [ADR-015](adr/015-angular-frontend-stack.md) oraz wiersze DECISIONS.md z tej daty, a widoki wchodzą partiami. UI MVP pozostaje celowo surowe, czytelne jedynie do testów ręcznych; właściwy UI/UX to osobna odnoga planu na końcu projektu.
+MVP weszło 2026-11-10 na stacku rozstrzygniętym w [ADR-015](adr/015-angular-frontend-stack.md) i wierszach DECISIONS.md z 2026-11-08. Sześć widoków pokrywa przepływy gracza, trasy dla zalogowanych siedzą za guardem tokenu, a 401 czyści sesję i przekierowuje na login z returnUrl (refresh tokeny czekają jako issue #18). Bez kanału push klient odpytuje. Detal aukcji i jego historia ofert odświeżają się co 2,5 s, portfel i ekwipunek co 5 s, lista co 10 s, a przy 5xx lub błędach sieci poller wycofuje się wykładniczo do 30 s, podczas gdy 429 honoruje `Retry-After`. 200 z endpointu oferty znaczy tylko tyle, że oferta czeka. Widok detalu uznaje ją za potwierdzoną, gdy historia wymieni id gracza z tą kwotą, a po dwudziestu cichych sekundach ostrzega. UI MVP pozostaje celowo surowe, czytelne jedynie do testów ręcznych; właściwy UI/UX to osobna odnoga planu na końcu projektu, a widok "moje aukcje" czeka na swój endpoint po MVP.
 
 ## Projekt docelowy
 
@@ -30,14 +30,14 @@ W trakcie od 2026-11-08. Stack i układ repozytorium rozstrzygają [ADR-015](adr
 
 ## Widoki (trasy)
 
-| Kandydat na widok | Endpointy backendu, których by używał |
+| Widok (trasa) | Endpointy backendu, których używa |
 |---|---|
-| lista aukcji | `GET /api/auctions` |
-| szczegóły aukcji z licytacją | `GET /api/auctions/{id}`, `GET /api/auctions/{id}/bids`, `POST /api/auctions/{id}/bid` |
-| wystawienie przedmiotu na sprzedaż | `GET /api/inventory`, `POST /api/auctions` |
-| ekwipunek z craftingiem i sklepem | `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
-| portfel | `GET /api/wallets/{id}` z własnym `PublicUserId` użytkownika wziętym z tokenu |
-| rejestracja i logowanie | `POST /api/users/register`, `POST /api/users/login` |
+| lista aukcji (`/auctions`) | `GET /api/auctions?limit=50` |
+| szczegóły aukcji z licytacją i historią (`/auctions/:id`) | `GET /api/auctions/{id}`, `GET /api/auctions/{id}/bids`, `POST /api/auctions/{id}/bid` |
+| wystawienie przedmiotu na sprzedaż (`/auctions/new`, za guardem) | `GET /api/inventory`, `POST /api/auctions` |
+| ekwipunek z craftingiem i sklepem (`/inventory`, za guardem) | `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
+| portfel (`/wallet`, za guardem) | `GET /api/wallets/{id}` z własnym `PublicUserId` użytkownika wziętym z tokenu |
+| rejestracja i logowanie (`/register`, `/login`) | `POST /api/users/register` z auto-loginem po 201, `POST /api/users/login` |
 
 ## Decyzje
 

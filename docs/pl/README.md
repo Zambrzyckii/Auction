@@ -12,7 +12,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 4. [backend/auctions.md](backend/auctions.md), [backend/inventory.md](backend/inventory.md), [backend/wallets.md](backend/wallets.md), [backend/warehouses.md](backend/warehouses.md), [backend/banking.md](backend/banking.md), [backend/pawnshop.md](backend/pawnshop.md), [backend/casino.md](backend/casino.md), [backend/profiles.md](backend/profiles.md), [backend/identity.md](backend/identity.md) - jeden rozdział na moduł.
 5. [STATE.md](STATE.md) i [VISION.md](VISION.md) - gdzie projekt stoi i dokąd zmierza.
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) i [adr/](adr) - reguły i powody.
-7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - planowane moduły i platforma wokół backendu.
+7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - klient frontendu, planowane boty i platforma wokół backendu.
 8. [operations.md](operations.md) - praktyczny runbook: pliki sekretów, cykl życia vaulta i ćwiczenie unseal.
 
 ## Mapa
@@ -37,7 +37,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 | [adr/](adr) | Piętnaście decyzji o trwałych konsekwencjach, w formie kontekst, decyzja i konsekwencje. |
 | [STATE.md](STATE.md) | Co istnieje w tej chwili, jakie jest środowisko, jaki jest następny krok? |
 | [CHANGELOG.md](CHANGELOG.md) | Jak projekt tu doszedł, kamień milowy po kamieniu milowym? |
-| [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | Co jest planowane dla każdego brakującego modułu, co backend już mu oferuje i jaka platforma istnieje dziś. |
+| [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | Co robi klient frontendu, co jest planowane dla botów, co backend już im oferuje i jaka platforma istnieje dziś. |
 | [operations.md](operations.md) | Jak generuje się i rotuje sekrety oraz jak vault zachowuje się w trybie dev i trwałym? |
 | [performance.md](performance.md) | Jak mierzona jest wydajność i co pokazał każdy przebieg k6? |
 | [../diagrams/README.md](../diagrams/README.md) | Jak diagramy są tworzone i przerenderowywane? |

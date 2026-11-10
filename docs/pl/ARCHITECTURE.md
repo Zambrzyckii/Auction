@@ -13,7 +13,7 @@ Diagram pokazuje jedyny istniejący dziś proces, bazę PostgreSQL za nim oraz, 
   <img alt="Diagram: kontekst systemu" src="../diagrams/architecture-01-system-context.svg">
 </picture>
 
-Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backend/src/AuctionServer.Api/Program.cs), nasłuchujący w trybie deweloperskim na `http://localhost:5244` ([`launchSettings.json`](../../Backend/src/AuctionServer.Api/Properties/launchSettings.json)). Klienci wołają endpointy minimal API z JSON-em; repozytorium nie zawiera frontendu, brokera wiadomości ani kodu botów, a w stacku Compose przed hostem stoi gateway nginx ([infrastructure.md](infrastructure.md#gateway)). Docelowy kształt, opisany w usuniętym `AGENTS.md` i w poprzednim README, stawia frontend Angulara i boty AI w Pythonie za API gatewayem i przenosi zdarzenia integracyjne do RabbitMQ; szew `IIntegrationEventPublisher` to miejsce, w które ten transport zostałby wpięty.
+Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backend/src/AuctionServer.Api/Program.cs), nasłuchujący w trybie deweloperskim na `http://localhost:5244` ([`launchSettings.json`](../../Backend/src/AuctionServer.Api/Properties/launchSettings.json)). Klienci wołają endpointy minimal API z JSON-em; repozytorium nie zawiera kodu botów, `Frontend/` zawiera klienta Angulara (widoki MVP od 2026-11-10), a w stacku Compose przed hostem stoi gateway nginx ([infrastructure.md](infrastructure.md#gateway)), przy czym od 2026-11-04 zdarzenia integracyjne niesie RabbitMQ za szwem `IIntegrationEventPublisher`. Z docelowego kształtu opisanego w usuniętym `AGENTS.md` i w poprzednim README brakuje już tylko botów AI w Pythonie.
 
 | Komponent | Status | Opisany w |
 |---|---|---|
@@ -22,7 +22,7 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 | Object storage SeaweedFS dla awatarów | istnieje (serwis Compose, bez publikowanych portów) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (gateway nginx, obraz API, PostgreSQL, SeaweedFS i stack telemetrii) | istnieje | [infrastructure.md](infrastructure.md) |
 | Pipeline CI na GitHub Actions | istnieje | [Build i CI](#build-i-ci) |
-| Frontend Angular | planowany | [frontend.md](frontend.md) |
+| Frontend Angular | istnieje (widoki MVP, dev-server poza Compose) | [frontend.md](frontend.md) |
 | API gateway nginx | istnieje (usługa Compose, jedyne publikowane wejście) | [infrastructure.md](infrastructure.md#gateway) |
 | RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
 | Boty AI (Python) | planowane | [bots.md](bots.md) |

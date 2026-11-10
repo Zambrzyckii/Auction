@@ -6,7 +6,7 @@
 
 ## Status
 
-The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 38 integration events, 910 test methods, a GitHub Actions CI pipeline, an OpenTelemetry observability stack measured with k6, an nginx gateway in front of the API, PgBouncer in front of PostgreSQL, a Redis-backed TTL cache for the hot auction reads, RabbitMQ carrying the integration events plus a consume-only market feed for the bots, and OpenBao serving the application secrets. The Angular frontend and the AI bots are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
+The backend is complete for the main flow: nine modules (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpoints, 38 integration events, 927 test methods, a GitHub Actions CI pipeline, an OpenTelemetry observability stack measured with k6, an nginx gateway in front of the API, PgBouncer in front of PostgreSQL, a Redis-backed TTL cache for the hot auction reads, RabbitMQ carrying the integration events plus a consume-only market feed for the bots, and OpenBao serving the application secrets. The Angular frontend shipped its MVP views on 2026-11-10, and the AI bots are planned and not started. Live status: [docs/en/STATE.md](docs/en/STATE.md).
 
 ## Quick start
 
@@ -43,4 +43,4 @@ Bilingual EN/PL, 1:1 structure: [docs/en](docs/en) / [docs/pl](docs/pl). Start w
 - [Conventions](docs/en/CONVENTIONS.md) - how the code, tests and documentation are kept
 - [Decisions](docs/en/DECISIONS.md) and [ADRs](docs/en/adr) - why it is built this way
 - [State](docs/en/STATE.md) and [Changelog](docs/en/CHANGELOG.md) - where the project stands and how it got here
-- [Frontend](docs/en/frontend.md), [Bots](docs/en/bots.md), [Infrastructure](docs/en/infrastructure.md) - the planned modules
+- [Frontend](docs/en/frontend.md), [Bots](docs/en/bots.md), [Infrastructure](docs/en/infrastructure.md) - the frontend client, the planned bots and the platform

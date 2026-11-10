@@ -6,7 +6,7 @@
 
 ## Status
 
-Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpointów, 38 zdarzeń integracyjnych, 910 metod testowych, pipeline CI na GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6, gateway nginx przed API, PgBouncer przed PostgreSQL, cache TTL na Redisie dla gorących odczytów aukcji, RabbitMQ niosący zdarzenia integracyjne plus rynkowy feed tylko do konsumpcji dla botów oraz OpenBao serwujący sekrety aplikacji. Frontend Angular i boty AI są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
+Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 51 endpointów, 38 zdarzeń integracyjnych, 927 metod testowych, pipeline CI na GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6, gateway nginx przed API, PgBouncer przed PostgreSQL, cache TTL na Redisie dla gorących odczytów aukcji, RabbitMQ niosący zdarzenia integracyjne plus rynkowy feed tylko do konsumpcji dla botów oraz OpenBao serwujący sekrety aplikacji. Frontend Angular dowiózł widoki MVP 2026-11-10, a boty AI są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
 
 ## Szybki start
 
@@ -43,4 +43,4 @@ Dwujęzyczna EN/PL, struktura 1:1: [docs/en](docs/en) / [docs/pl](docs/pl). Zacz
 - [Konwencje](docs/pl/CONVENTIONS.md) - jak utrzymywane są kod, testy i dokumentacja
 - [Decyzje](docs/pl/DECISIONS.md) i [ADR-y](docs/pl/adr) - dlaczego jest zbudowany w ten sposób
 - [Stan](docs/pl/STATE.md) i [Historia zmian](docs/pl/CHANGELOG.md) - gdzie projekt stoi i jak tu doszedł
-- [Frontend](docs/pl/frontend.md), [Boty](docs/pl/bots.md), [Infrastruktura](docs/pl/infrastructure.md) - moduły planowane
+- [Frontend](docs/pl/frontend.md), [Boty](docs/pl/bots.md), [Infrastruktura](docs/pl/infrastructure.md) - klient frontendu, planowane boty i platforma

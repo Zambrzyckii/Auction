@@ -640,7 +640,7 @@ Still aspirational — verify before building on them:
 
 - **Auctions created before the saga** (any `ItemId`, no locked item) dead-letter in Inventory with a 404 when
   they close; Wallets still settles them correctly. Clean the dev database rather than special-casing them.
-- **Angular frontend and AI bots do not exist** in this repository — no code. RabbitMQ exists since 2026-11-04
+- **AI bots do not exist** in this repository — no code. The Angular frontend exists in `Frontend/` with the MVP views since 2026-11-10 (see `Frontend/CLAUDE.md`). RabbitMQ exists since 2026-11-04
   (phase five, ADR-013): `RabbitMQ.Client` 7.2.2 in the Api project only, the `Messaging` transport switch defaults
   to `InProcess`, so tests and `dotnet run` never need a broker, and the consume-only market exchange
   `auctionserver.market` is what the future bots will subscribe to.

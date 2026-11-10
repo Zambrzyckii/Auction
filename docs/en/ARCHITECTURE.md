@@ -13,7 +13,7 @@ The diagram shows the single process that exists today, the PostgreSQL database 
   <img alt="System context diagram" src="../diagrams/architecture-01-system-context.svg">
 </picture>
 
-Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Backend/src/AuctionServer.Api/Program.cs), listening on `http://localhost:5244` in development ([`launchSettings.json`](../../Backend/src/AuctionServer.Api/Properties/launchSettings.json)). Clients call minimal-API endpoints with JSON; the repository contains no frontend, no message broker and no bot code, and in the Compose stack an nginx gateway stands in front of the host ([infrastructure.md](infrastructure.md#gateway)). The planned target, described in the deleted `AGENTS.md` and in the previous README, puts an Angular frontend and Python AI bots behind an API gateway and moves integration events to RabbitMQ; the `IIntegrationEventPublisher` seam is the place where that transport would plug in.
+Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Backend/src/AuctionServer.Api/Program.cs), listening on `http://localhost:5244` in development ([`launchSettings.json`](../../Backend/src/AuctionServer.Api/Properties/launchSettings.json)). Clients call minimal-API endpoints with JSON; the repository contains no bot code, `Frontend/` holds the Angular client (MVP views since 2026-11-10), and in the Compose stack an nginx gateway stands in front of the host ([infrastructure.md](infrastructure.md#gateway)) with RabbitMQ carrying the integration events behind the `IIntegrationEventPublisher` seam since 2026-11-04. Of the planned target described in the deleted `AGENTS.md` and in the previous README, only the Python AI bots are still missing.
 
 | Component | Status | Documented in |
 |---|---|---|
@@ -22,7 +22,7 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 | SeaweedFS object storage for avatars | exists (Compose service, no published ports) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (nginx gateway, API image, PostgreSQL, SeaweedFS and the telemetry stack) | exists | [infrastructure.md](infrastructure.md) |
 | A GitHub Actions CI pipeline | exists | [Build and CI](#build-and-ci) |
-| Angular frontend | planned | [frontend.md](frontend.md) |
+| Angular frontend | exists (MVP views, dev server outside Compose) | [frontend.md](frontend.md) |
 | nginx API gateway | exists (Compose service, the only published entry point) | [infrastructure.md](infrastructure.md#gateway) |
 | RabbitMQ | planned | [infrastructure.md](infrastructure.md) |
 | AI bots (Python) | planned | [bots.md](bots.md) |
