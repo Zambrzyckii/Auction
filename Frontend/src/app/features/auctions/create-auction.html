@@ -1,0 +1,43 @@
+<h2>List an item</h2>
+@if (items(); as available) {
+  @if (available.length === 0) {
+    <p>No available items to list. Craft one or wait for the starter pack.</p>
+  } @else {
+    <form (submit)="$event.preventDefault(); submitForm()">
+      <label>
+        Item
+        <select [formField]="createForm.itemId">
+          <option value="">Choose an item</option>
+          @for (item of available; track item.publicItemId) {
+            <option [value]="item.publicItemId">
+              {{ item.name }} ({{ item.rarity }}, official price {{ item.officialPrice }})
+            </option>
+          }
+        </select>
+      </label>
+      @if (createForm.itemId().touched() && createForm.itemId().invalid()) {
+        <p class="error">Pick an item to list.</p>
+      }
+      <label>
+        Starting price
+        <input type="number" [formField]="createForm.startingPrice" />
+      </label>
+      @if (createForm.startingPrice().touched() && createForm.startingPrice().invalid()) {
+        <p class="error">Starting price must be above zero.</p>
+      }
+      <label>
+        Ends on
+        <input type="datetime-local" [formField]="createForm.endsOn" />
+      </label>
+      @if (createForm.endsOn().touched() && createForm.endsOn().invalid()) {
+        <p class="error">The end must lie between one minute and 30 days from now.</p>
+      }
+      @if (error() !== null) {
+        <p class="error">{{ error() }}</p>
+      }
+      <button type="submit" [disabled]="pending()">Create auction</button>
+    </form>
+  }
+} @else {
+  <p>Loading your items…</p>
+}
