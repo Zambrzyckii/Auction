@@ -3,16 +3,9 @@ import {
   REAL_TOKEN_EMAIL,
   REAL_TOKEN_EXP,
   REAL_TOKEN_USER_ID,
+  tokenWithClaims,
 } from '../../../testing/token-fixture';
 import { decodeJwtClaims } from './jwt';
-
-function tokenWithPayload(payload: object): string {
-  const bytes = new TextEncoder().encode(JSON.stringify(payload));
-  let bin = '';
-  bytes.forEach((b) => (bin += String.fromCharCode(b)));
-  const segment = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  return `h.${segment}.s`;
-}
 
 describe('decodeJwtClaims', () => {
   it('reads the claims of a token issued by the backend', () => {
@@ -25,7 +18,7 @@ describe('decodeJwtClaims', () => {
 
   it('decodes url-safe characters, stripped padding and UTF-8', () => {
     const claims = decodeJwtClaims(
-      tokenWithPayload({ nameid: 'x', unique_name: 'zażółć@test.local', role: 'User', exp: 1 }),
+      tokenWithClaims({ nameid: 'x', unique_name: 'zażółć@test.local', role: 'User', exp: 1 }),
     );
     expect(claims?.unique_name).toBe('zażółć@test.local');
   });

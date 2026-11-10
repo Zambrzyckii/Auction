@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
-import { REAL_TOKEN } from '../../../testing/token-fixture';
+import { tokenWithClaims } from '../../../testing/token-fixture';
 import { routes } from '../../app.routes';
 import { Register, isBirthdayBeforeToday, isPasswordStrong } from './register';
 
@@ -91,7 +91,9 @@ describe('Register', () => {
     registerReq.flush(null, { status: 201, statusText: 'Created' });
 
     await vi.waitFor(() => {
-      http.expectOne('/api/users/login').flush({ token: REAL_TOKEN });
+      // the token must be alive, or authGuard bounces the /wallet navigation back to login
+      const liveToken = tokenWithClaims({ nameid: 'x', exp: Math.floor(Date.now() / 1000) + 600 });
+      http.expectOne('/api/users/login').flush({ token: liveToken });
     });
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/wallet'));
   });

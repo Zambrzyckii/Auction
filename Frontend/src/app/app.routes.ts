@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/auth/auth.guard';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'auctions' },
@@ -8,6 +9,7 @@ export const routes: Routes = [
   },
   {
     path: 'auctions/new',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/auctions/create-auction').then((m) => m.CreateAuction),
   },
   {
@@ -24,10 +26,12 @@ export const routes: Routes = [
   },
   {
     path: 'inventory',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/inventory/inventory').then((m) => m.Inventory),
   },
   {
     path: 'wallet',
+    canActivate: [authGuard],
     loadComponent: () => import('./features/wallet/wallet').then((m) => m.Wallet),
   },
   { path: '**', redirectTo: 'auctions' },

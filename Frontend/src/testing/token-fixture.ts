@@ -8,3 +8,11 @@ export const REAL_TOKEN =
 export const REAL_TOKEN_USER_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 export const REAL_TOKEN_EMAIL = 'probe1@test.local';
 export const REAL_TOKEN_EXP = 1794149067;
+
+export function tokenWithClaims(claims: object): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(claims));
+  let bin = '';
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  const segment = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `h.${segment}.s`;
+}
