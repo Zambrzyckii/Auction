@@ -1,0 +1,50 @@
+<h2>Register</h2>
+<form (submit)="$event.preventDefault(); submitForm()">
+  <label>
+    Email
+    <input type="email" [formField]="registerForm.email" />
+  </label>
+  @if (registerForm.email().touched() && registerForm.email().invalid()) {
+    <p class="error">Enter a valid email.</p>
+  }
+  <label>
+    Username
+    <input type="text" [formField]="registerForm.username" />
+  </label>
+  @if (registerForm.username().touched() && registerForm.username().invalid()) {
+    <p class="error">Username is required (max 30 characters).</p>
+  }
+  <label>
+    Name
+    <input type="text" [formField]="registerForm.name" />
+  </label>
+  @if (registerForm.name().touched() && registerForm.name().invalid()) {
+    <p class="error">Name is required (max 30 characters).</p>
+  }
+  <label>
+    Surname
+    <input type="text" [formField]="registerForm.surname" />
+  </label>
+  @if (registerForm.surname().touched() && registerForm.surname().invalid()) {
+    <p class="error">Surname is required (max 30 characters).</p>
+  }
+  <label>
+    Password
+    <input type="password" [formField]="registerForm.password" />
+  </label>
+  @if (registerForm.password().touched() && registerForm.password().invalid()) {
+    <p class="error">Min 8 characters with a lowercase, an uppercase, a digit and a special character.</p>
+  }
+  <label>
+    Birthday
+    <input type="date" [formField]="registerForm.birthday" />
+  </label>
+  @if (registerForm.birthday().touched() && registerForm.birthday().invalid()) {
+    <p class="error">Birthday must be before today.</p>
+  }
+  @if (error() !== null) {
+    <p class="error">{{ error() }}</p>
+  }
+  <button type="submit" [disabled]="pending()">Register</button>
+</form>
+<p>Already have an account? <a routerLink="/login">Log in</a></p>
