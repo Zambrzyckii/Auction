@@ -1,4 +1,4 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { toApiError } from './api-error';
 
 function httpError(status: number, error: unknown): HttpErrorResponse {
@@ -42,6 +42,19 @@ describe('toApiError', () => {
     const result = toApiError(httpError(0, new ProgressEvent('error')));
     expect(result.status).toBe(0);
     expect(result.message.length).toBeGreaterThan(0);
+  });
+
+  it('carries a numeric Retry-After header into retryAfterSeconds', () => {
+    const headers = new HttpHeaders({ 'Retry-After': '1' });
+    const result = toApiError(new HttpErrorResponse({ status: 429, error: null, headers }));
+    expect(result.retryAfterSeconds).toBe(1);
+  });
+
+  it('ignores a missing or malformed Retry-After header', () => {
+    expect(toApiError(httpError(429, null)).retryAfterSeconds).toBeUndefined();
+    const headers = new HttpHeaders({ 'Retry-After': 'Wed, 21 Oct 2026 07:28:00 GMT' });
+    const result = toApiError(new HttpErrorResponse({ status: 429, error: null, headers }));
+    expect(result.retryAfterSeconds).toBeUndefined();
   });
 
   it('gives distinct texts to statuses a player acts on differently', () => {
