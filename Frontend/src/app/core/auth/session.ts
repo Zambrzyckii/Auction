@@ -49,7 +49,6 @@ export class Session {
     this.tokenSignal.set(null);
   }
 
-  // the 401 interceptor clears the storage without touching this service
   syncFromStorage(): void {
     this.tokenSignal.set(this.storage.get());
   }

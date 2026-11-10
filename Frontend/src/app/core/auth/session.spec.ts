@@ -2,13 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
+import { REAL_TOKEN, REAL_TOKEN_USER_ID } from '../../../testing/token-fixture';
 import { Session } from './session';
 import { TokenStorage } from './token-storage';
-
-const REAL_TOKEN =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
-  'eyJ1bmlxdWVfbmFtZSI6InByb2JlMUB0ZXN0LmxvY2FsIiwibmFtZWlkIjoiMjZhNDUxZDQtZGQ3NC00YTU4LTg1OWYtNjM2YWNhMjU4NDQzIiwicm9sZSI6IlVzZXIiLCJuYmYiOjE3OTQxNDgxNjcsImV4cCI6MTc5NDE0OTA2NywiaWF0IjoxNzk0MTQ4MTY3LCJpc3MiOiJBdWN0aW9uU2VydmVyIiwiYXVkIjoiQXVjdGlvblNlcnZlci5DbGllbnQifQ.' +
-  'x';
 
 describe('Session', () => {
   beforeEach(() => {
@@ -30,7 +26,7 @@ describe('Session', () => {
     new TokenStorage().set(REAL_TOKEN);
     const session = TestBed.inject(Session);
     expect(session.isLoggedIn()).toBe(true);
-    expect(session.userId()).toBe('26a451d4-dd74-4a58-859f-636aca258443');
+    expect(session.userId()).toBe(REAL_TOKEN_USER_ID);
   });
 
   it('login posts the credentials, stores the token and exposes the claims', () => {
