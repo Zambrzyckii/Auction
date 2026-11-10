@@ -1,0 +1,35 @@
+<h2>Auction</h2>
+@if (poller.value(); as auction) {
+  <table>
+    <tr>
+      <th>Item</th>
+      <td>{{ auction.itemName }} ({{ auction.itemRarity }})</td>
+    </tr>
+    <tr>
+      <th>Status</th>
+      <td>{{ auction.status }}</td>
+    </tr>
+    <tr>
+      <th>Current price</th>
+      <td>{{ auction.currentPrice | number }}</td>
+    </tr>
+    <tr>
+      <th>Ends in</th>
+      <td>{{ auction.status === 'Active' ? timeLeft(auction.endsOn) : '—' }}</td>
+    </tr>
+  </table>
+  @if (auction.status === 'Pending') {
+    <p>Waiting for the item lock. The auction activates in a few seconds.</p>
+  }
+  @if (auction.status === 'Cancelled') {
+    <p class="error">Cancelled: {{ auction.cancellationReason }}</p>
+  }
+} @else if (poller.error(); as error) {
+  @if (error.status === 404) {
+    <p class="error">Auction not found.</p>
+  } @else {
+    <p class="error">{{ error.message }}</p>
+  }
+} @else {
+  <p>Loading…</p>
+}
