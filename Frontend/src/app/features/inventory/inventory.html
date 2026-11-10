@@ -1,0 +1,40 @@
+<h2>Inventory</h2>
+@if (notice(); as text) {
+  <p class="notice">{{ text }}</p>
+}
+@if (poller.value(); as items) {
+  @if (items.length === 0) {
+    <p>No items yet. The starter pack arrives shortly after registration.</p>
+  } @else {
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>Rarity</th>
+        <th>Status</th>
+        <th>Official price</th>
+        <th></th>
+      </tr>
+      @for (item of items; track item.publicItemId) {
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>{{ item.rarity }}</td>
+          <td>{{ item.status }}</td>
+          <td>{{ item.officialPrice | number }}</td>
+          <td>
+            <button
+              type="button"
+              (click)="sell(item.publicItemId)"
+              [disabled]="item.status !== 'Available' || sellingId() !== null"
+            >
+              Sell to shop
+            </button>
+          </td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (poller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading…</p>
+}
