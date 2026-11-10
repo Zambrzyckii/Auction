@@ -24,6 +24,27 @@
   @if (auction.status === 'Cancelled') {
     <p class="error">Cancelled: {{ auction.cancellationReason }}</p>
   }
+  <h3>Bids</h3>
+  @if (bidsPoller.value(); as bids) {
+    @if (bids.length === 0) {
+      <p>No bids yet.</p>
+    } @else {
+      <table>
+        <tr>
+          <th>Bidder</th>
+          <th>Amount</th>
+          <th>Placed</th>
+        </tr>
+        @for (bid of bids; track bid.placedOn) {
+          <tr>
+            <td>{{ bidderLabel(bid) }}</td>
+            <td>{{ bid.amount | number }}</td>
+            <td>{{ bid.placedOn | date: 'HH:mm:ss' }}</td>
+          </tr>
+        }
+      </table>
+    }
+  }
 } @else if (poller.error(); as error) {
   @if (error.status === 404) {
     <p class="error">Auction not found.</p>
