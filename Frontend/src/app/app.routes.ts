@@ -40,6 +40,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/transfers/transfers').then((m) => m.Transfers),
   },
   {
+    path: 'bank',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/bank/bank').then((m) => m.Bank),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),

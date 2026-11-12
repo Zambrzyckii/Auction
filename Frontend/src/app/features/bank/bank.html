@@ -1,0 +1,87 @@
+<h2>Bank</h2>
+@if (walletPoller.value(); as wallet) {
+  <p>
+    Available funds: {{ wallet.availableFunds | number }}, lifetime turnover:
+    {{ wallet.lifetimeTurnover | number }}
+  </p>
+}
+
+<h3>Loan offers</h3>
+@if (offers(); as catalog) {
+  <table>
+    <tr>
+      <th>Offer</th>
+      <th>Principal</th>
+      <th>Interest rate</th>
+      <th>Total due</th>
+      <th>Term</th>
+      <th>Required turnover</th>
+    </tr>
+    @for (offer of catalog; track offer.name) {
+      <tr>
+        <td>{{ offer.name }}</td>
+        <td>{{ offer.principal | number }}</td>
+        <td>{{ offer.interestRate | number }}</td>
+        <td>{{ offer.totalDue | number }}</td>
+        <td>{{ offer.term }}</td>
+        <td>{{ offer.requiredTurnover | number }}</td>
+      </tr>
+    }
+  </table>
+} @else if (offersError(); as error) {
+  <p class="error">{{ error }}</p>
+} @else {
+  <p>Loading the offers…</p>
+}
+
+<h3>Your loans</h3>
+@if (loansPoller.value(); as loans) {
+  @if (loans.length === 0) {
+    <p>No loans yet.</p>
+  } @else {
+    <table>
+      <tr>
+        <th>Offer</th>
+        <th>Status</th>
+        <th>Total due</th>
+        <th>Penalty</th>
+        <th>Repaid</th>
+        <th>Outstanding</th>
+        <th>Due</th>
+      </tr>
+      @for (loan of loans; track loan.publicLoanId) {
+        <tr>
+          <td>{{ loan.offerName }}</td>
+          <td>{{ loan.status }}</td>
+          <td>{{ loan.totalDue | number }}</td>
+          <td>{{ loan.penalty | number }}</td>
+          <td>{{ loan.amountRepaid | number }}</td>
+          <td>{{ loan.outstanding | number }}</td>
+          <td>
+            @if (loan.status === 'Active' && loan.dueOn !== null) {
+              {{ timeLeft(loan.dueOn, now()) }}
+            } @else if (loan.status === 'Overdue' && loan.overdueSince !== null) {
+              overdue since {{ loan.overdueSince | date: 'medium' }}
+            } @else if (loan.repaidOn !== null) {
+              repaid {{ loan.repaidOn | date: 'medium' }}
+            }
+          </td>
+        </tr>
+        @if (loan.status === 'Overdue') {
+          <tr>
+            <td colspan="7" class="overdue-note">The bank retries collection every 2 minutes</td>
+          </tr>
+        }
+        @if (loan.rejectionReason !== null) {
+          <tr>
+            <td colspan="7" class="rejection">{{ loan.rejectionReason }}</td>
+          </tr>
+        }
+      }
+    </table>
+  }
+} @else if (loansPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading your loans…</p>
+}

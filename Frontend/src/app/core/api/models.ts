@@ -85,6 +85,40 @@ export interface Transfer {
   readonly sentOn: string;
 }
 
+export type LoanStatus =
+  | 'PendingApproval'
+  | 'Active'
+  | 'CollectionPending'
+  | 'Overdue'
+  | 'Repaid'
+  | 'Rejected';
+
+export interface LoanOffer {
+  readonly name: string;
+  readonly principal: number;
+  readonly interestRate: number;
+  readonly totalDue: number;
+  readonly term: string;
+  readonly requiredTurnover: number;
+}
+
+export interface Loan {
+  readonly publicLoanId: string;
+  readonly offerName: string;
+  readonly principal: number;
+  readonly interestRate: number;
+  readonly totalDue: number;
+  readonly penalty: number;
+  readonly amountRepaid: number;
+  readonly outstanding: number;
+  readonly status: LoanStatus;
+  readonly requestedOn: string;
+  readonly dueOn: string | null;
+  readonly overdueSince: string | null;
+  readonly repaidOn: string | null;
+  readonly rejectionReason: string | null;
+}
+
 export interface FriendRequestResult {
   readonly publicFriendshipId: string;
   readonly status: FriendshipStatus;
