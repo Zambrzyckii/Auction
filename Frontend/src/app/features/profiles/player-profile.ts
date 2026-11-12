@@ -6,12 +6,13 @@ import { tap } from 'rxjs';
 import { Profile as ProfileDto } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { ProfileAvatar } from './avatar';
 
 const POLL_MS = 10_000;
 
 @Component({
   selector: 'app-player-profile',
-  imports: [DatePipe],
+  imports: [DatePipe, ProfileAvatar],
   templateUrl: './player-profile.html',
 })
 export class PlayerProfile {

@@ -1,5 +1,6 @@
 <h2>Your profile</h2>
 @if (poller.value(); as profile) {
+  <app-profile-avatar [avatarUrl]="profile.avatarUrl" />
   <table>
     <tr>
       <th>Username</th>
@@ -35,6 +36,30 @@
 
   @if (notice(); as text) {
     <p class="notice">{{ text }}</p>
+  }
+
+  <h3>Avatar</h3>
+  <input type="file" (change)="onAvatarChange($event)" />
+  <button
+    type="button"
+    class="upload-avatar"
+    (click)="uploadAvatar()"
+    [disabled]="avatarPending() || avatarProblem() !== null"
+  >
+    Upload avatar
+  </button>
+  @if (avatarFile() !== null && avatarProblem() !== null) {
+    <p class="avatar-problem">{{ avatarProblem() }}</p>
+  }
+  @if (profile.avatarUrl !== null) {
+    <button
+      type="button"
+      class="delete-avatar"
+      (click)="deleteAvatar()"
+      [disabled]="avatarPending()"
+    >
+      Delete avatar
+    </button>
   }
 
   <h3>Friends</h3>

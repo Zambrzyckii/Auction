@@ -35,6 +35,8 @@ describe('OwnProfile', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     installStorageStub();
+    (URL as unknown as Record<string, unknown>)['createObjectURL'] = vi.fn(() => 'blob:fake-1');
+    (URL as unknown as Record<string, unknown>)['revokeObjectURL'] = vi.fn();
     new TokenStorage().set(
       tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
@@ -55,6 +57,8 @@ describe('OwnProfile', () => {
   afterEach(() => {
     fixture.destroy();
     http.verify();
+    delete (URL as unknown as Record<string, unknown>)['createObjectURL'];
+    delete (URL as unknown as Record<string, unknown>)['revokeObjectURL'];
     vi.useRealTimers();
   });
 
@@ -223,6 +227,61 @@ describe('OwnProfile', () => {
       put.flush(null, { status: 204, statusText: 'No Content' });
 
       http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+    });
+  });
+
+  describe('avatar', () => {
+    const AVATAR_PATH = `/api/profiles/${USER_ID}/avatar?v=cafebabe1234`;
+
+    function chooseFile(file: File): void {
+      const input = el().querySelector('input[type="file"]') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    }
+
+    it('uploads the file as multipart without a content type and refreshes', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      const file = new File([new Uint8Array(16)], 'a.png', { type: 'image/png' });
+      chooseFile(file);
+      (el().querySelector('button.upload-avatar') as HTMLButtonElement).click();
+
+      const put = http.expectOne('/api/profiles/me/avatar');
+      expect(put.request.method).toBe('PUT');
+      expect((put.request.body as FormData).get('file')).toBe(file);
+      expect(put.request.headers.get('Content-Type')).toBeNull();
+      put.flush(null);
+
+      http.expectOne(ME_URL).flush(ownProfile({}));
+    });
+
+    it('blocks an oversized file with the server text and sends nothing', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      chooseFile(new File([new Uint8Array(2_097_153)], 'big.png', { type: 'image/png' }));
+
+      expect((el().querySelector('button.upload-avatar') as HTMLButtonElement).disabled).toBe(
+        true,
+      );
+      expect(el().textContent).toContain('exceeds the limit');
+      http.expectNone('/api/profiles/me/avatar');
+    });
+
+    it('deletes the avatar and refreshes', () => {
+      http.expectOne(ME_URL).flush(ownProfile({ avatarUrl: AVATAR_PATH }));
+      fixture.detectChanges();
+      http.expectOne(AVATAR_PATH).flush(new Blob(['x'], { type: 'image/png' }));
+      fixture.detectChanges();
+
+      (el().querySelector('button.delete-avatar') as HTMLButtonElement).click();
+      const del = http.expectOne('/api/profiles/me/avatar');
+      expect(del.request.method).toBe('DELETE');
+      del.flush(null, { status: 204, statusText: 'No Content' });
+
+      http.expectOne(ME_URL).flush(ownProfile({ avatarUrl: null }));
+      fixture.detectChanges();
+      expect(el().querySelector('button.delete-avatar')).toBeNull();
     });
   });
 });

@@ -7,6 +7,7 @@ import { toApiError } from '../../core/api/api-error';
 import { OwnProfile as OwnProfileDto, SocialLink, SocialPlatform } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { ProfileAvatar, avatarFileProblem } from './avatar';
 import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORMS, socialLinkProblem } from './social-links';
 
 const POLL_MS = 5000;
@@ -15,7 +16,7 @@ const PROVISIONING_WINDOW_MS = 30_000;
 
 @Component({
   selector: 'app-own-profile',
-  imports: [DatePipe, FormField],
+  imports: [DatePipe, FormField, ProfileAvatar],
   templateUrl: './own-profile.html',
 })
 export class OwnProfile {
@@ -43,6 +44,59 @@ export class OwnProfile {
       error: (err: unknown) => {
         this.notice.set(toApiError(err).message);
         this.privacyPending.set(false);
+      },
+    });
+  }
+
+  protected readonly avatarFile = signal<File | null>(null);
+  readonly avatarPending = signal(false);
+
+  readonly avatarProblem = computed<string | null>(() => {
+    const file = this.avatarFile();
+    if (file === null) {
+      return 'Choose a file.';
+    }
+    return avatarFileProblem(file);
+  });
+
+  onAvatarChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.avatarFile.set(input.files?.[0] ?? null);
+  }
+
+  uploadAvatar(): void {
+    const file = this.avatarFile();
+    if (file === null || this.avatarProblem() !== null) {
+      return;
+    }
+    const data = new FormData();
+    data.append('file', file);
+    this.avatarPending.set(true);
+    this.notice.set(null);
+    this.http.put('/api/profiles/me/avatar', data).subscribe({
+      next: () => {
+        this.avatarPending.set(false);
+        this.avatarFile.set(null);
+        this.poller.refresh();
+      },
+      error: (err: unknown) => {
+        this.notice.set(toApiError(err).message);
+        this.avatarPending.set(false);
+      },
+    });
+  }
+
+  deleteAvatar(): void {
+    this.avatarPending.set(true);
+    this.notice.set(null);
+    this.http.delete('/api/profiles/me/avatar').subscribe({
+      next: () => {
+        this.avatarPending.set(false);
+        this.poller.refresh();
+      },
+      error: (err: unknown) => {
+        this.notice.set(toApiError(err).message);
+        this.avatarPending.set(false);
       },
     });
   }

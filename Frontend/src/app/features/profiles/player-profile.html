@@ -1,6 +1,7 @@
 <h2>Player profile</h2>
 @if (poller.value(); as profile) {
   <h3>{{ profile.username }}</h3>
+  <app-profile-avatar [avatarUrl]="profile.avatarUrl" />
   @if (profile.isPrivate) {
     <p class="private">This profile is private.</p>
   } @else {
