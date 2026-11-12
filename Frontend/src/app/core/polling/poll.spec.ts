@@ -45,7 +45,10 @@ describe('startPolling', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  function start<T>(load: () => Observable<T>, baseMs: number): Poller<T> {
+  function start<T>(
+    load: () => Observable<T>,
+    baseMs: number | ((latest: T | null) => number),
+  ): Poller<T> {
     return TestBed.runInInjectionContext(() => startPolling(load, baseMs));
   }
 
@@ -133,5 +136,39 @@ describe('startPolling', () => {
     poller.refresh();
     vi.advanceTimersByTime(60_000);
     expect(calls).toBe(1);
+  });
+
+  it('computes the next delay from the latest value', () => {
+    let calls = 0;
+    const poller = start(
+      () => of(++calls),
+      (latest) => (latest === 1 ? 1000 : 5000),
+    );
+    expect(poller.value()).toBe(1);
+    vi.advanceTimersByTime(1000);
+    expect(poller.value()).toBe(2);
+    vi.advanceTimersByTime(4999);
+    expect(poller.value()).toBe(2);
+    vi.advanceTimersByTime(1);
+    expect(poller.value()).toBe(3);
+    poller.stop();
+  });
+
+  it('keeps the backoff on top of a function interval', () => {
+    let fail = false;
+    const load = () =>
+      fail
+        ? throwError(() => new HttpErrorResponse({ status: 502, error: null }))
+        : of('fresh');
+    const poller = start(load, () => 1000);
+    fail = true;
+    vi.advanceTimersByTime(1000);
+    expect(poller.error()?.status).toBe(502);
+    vi.advanceTimersByTime(1999);
+    expect(poller.error()?.status).toBe(502);
+    fail = false;
+    vi.advanceTimersByTime(1);
+    expect(poller.value()).toBe('fresh');
+    poller.stop();
   });
 });

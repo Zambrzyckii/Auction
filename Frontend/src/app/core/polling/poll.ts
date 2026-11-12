@@ -22,7 +22,10 @@ export function nextDelay(baseMs: number, attempt: number, error: ApiError | nul
   return baseMs;
 }
 
-export function startPolling<T>(load: () => Observable<T>, baseMs: number): Poller<T> {
+export function startPolling<T>(
+  load: () => Observable<T>,
+  baseMs: number | ((latest: T | null) => number),
+): Poller<T> {
   const value = signal<T | null>(null);
   const error = signal<ApiError | null>(null);
   let attempt = 0;
@@ -30,9 +33,11 @@ export function startPolling<T>(load: () => Observable<T>, baseMs: number): Poll
   let sub: Subscription | undefined;
   let stopped = false;
 
+  const base = (): number => (typeof baseMs === 'number' ? baseMs : baseMs(value()));
+
   const schedule = (apiError: ApiError | null): void => {
     if (!stopped) {
-      timer = setTimeout(tick, nextDelay(baseMs, attempt, apiError));
+      timer = setTimeout(tick, nextDelay(base(), attempt, apiError));
     }
   };
 
