@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Observable, retry, tap, throwError, timer } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { OwnProfile as OwnProfileDto } from '../../core/api/models';
@@ -22,6 +22,28 @@ export class OwnProfile {
   private readonly provisioningDeadline = Date.now() + PROVISIONING_WINDOW_MS;
 
   readonly poller = startPolling(() => this.loadProfile(), POLL_MS);
+
+  readonly privacyPending = signal(false);
+  readonly notice = signal<string | null>(null);
+
+  togglePrivacy(): void {
+    const profile = this.poller.value();
+    if (profile === null) {
+      return;
+    }
+    this.privacyPending.set(true);
+    this.notice.set(null);
+    this.http.put('/api/profiles/me/privacy', { isPrivate: !profile.isPrivate }).subscribe({
+      next: () => {
+        this.privacyPending.set(false);
+        this.poller.refresh();
+      },
+      error: (err: unknown) => {
+        this.notice.set(toApiError(err).message);
+        this.privacyPending.set(false);
+      },
+    });
+  }
 
   private loadProfile(): Observable<OwnProfileDto> {
     return this.http.get<OwnProfileDto>('/api/profiles/me').pipe(

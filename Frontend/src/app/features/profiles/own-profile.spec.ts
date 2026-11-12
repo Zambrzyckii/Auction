@@ -120,4 +120,32 @@ describe('OwnProfile', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('7');
   });
+
+  it('sends the inverted privacy flag and refreshes', () => {
+    http.expectOne(ME_URL).flush(ownProfile({ isPrivate: false }));
+    fixture.detectChanges();
+    (el().querySelector('button.privacy') as HTMLButtonElement).click();
+
+    const put = http.expectOne('/api/profiles/me/privacy');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual({ isPrivate: true });
+    put.flush(null, { status: 204, statusText: 'No Content' });
+
+    http.expectOne(ME_URL).flush(ownProfile({ isPrivate: true }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Private');
+  });
+
+  it('shows the server error when the privacy toggle fails', () => {
+    http.expectOne(ME_URL).flush(ownProfile({}));
+    fixture.detectChanges();
+    (el().querySelector('button.privacy') as HTMLButtonElement).click();
+
+    http
+      .expectOne('/api/profiles/me/privacy')
+      .flush({ error: 'Too many requests.' }, { status: 429, statusText: 'Too Many Requests' });
+    fixture.detectChanges();
+    expect(el().querySelector('.notice')?.textContent).toContain('Too many requests.');
+    expect((el().querySelector('button.privacy') as HTMLButtonElement).disabled).toBe(false);
+  });
 });

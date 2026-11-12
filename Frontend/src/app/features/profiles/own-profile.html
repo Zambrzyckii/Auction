@@ -19,9 +19,23 @@
     </tr>
     <tr>
       <th>Visibility</th>
-      <td>{{ profile.isPrivate ? 'Private' : 'Public' }}</td>
+      <td>
+        {{ profile.isPrivate ? 'Private' : 'Public' }}
+        <button
+          type="button"
+          class="privacy"
+          (click)="togglePrivacy()"
+          [disabled]="privacyPending()"
+        >
+          {{ profile.isPrivate ? 'Make public' : 'Make private' }}
+        </button>
+      </td>
     </tr>
   </table>
+
+  @if (notice(); as text) {
+    <p class="notice">{{ text }}</p>
+  }
 
   <h3>Friends</h3>
   @if (profile.friends.length === 0) {
