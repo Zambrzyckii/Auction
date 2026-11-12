@@ -8,7 +8,7 @@ import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto, Transfer, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory, shortId } from '../../core/profiles/profile-directory';
-import { Transfers } from './transfers';
+import { Transfers, transferProblem } from './transfers';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const OTHER_ID = 'deadbeef-1111-2222-3333-444444444444';
@@ -45,6 +45,31 @@ function me(overrides: Partial<OwnProfileDto>): OwnProfileDto {
     ...overrides,
   };
 }
+
+describe('transferProblem', () => {
+  const funds = wallet({ availableFunds: 100 });
+
+  it('accepts a valid transfer', () => {
+    expect(transferProblem(25.5, OTHER_ID, MY_ID, funds)).toBeNull();
+  });
+
+  it('rejects a non-positive amount', () => {
+    expect(transferProblem(0, OTHER_ID, MY_ID, funds)).toMatch(/above zero/);
+    expect(transferProblem(-5, OTHER_ID, MY_ID, funds)).toMatch(/above zero/);
+  });
+
+  it('rejects more than two decimal places', () => {
+    expect(transferProblem(0.001, OTHER_ID, MY_ID, funds)).toMatch(/decimal/);
+  });
+
+  it('rejects myself with the validator text', () => {
+    expect(transferProblem(10, MY_ID, MY_ID, funds)).toBe('Cannot transfer funds to yourself');
+  });
+
+  it('rejects more than the available funds', () => {
+    expect(transferProblem(100.01, OTHER_ID, MY_ID, funds)).toBe('Not enough funds on account');
+  });
+});
 
 describe('Transfers', () => {
   let fixture: ComponentFixture<Transfers>;
@@ -146,5 +171,102 @@ describe('Transfers', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('280');
     expect(el().textContent).toContain('Sent to');
+  });
+
+  describe('send form', () => {
+    function fillForm(recipient: string, amount: string): void {
+      const inputs = el().querySelectorAll('.send-form input');
+      (inputs[0] as HTMLInputElement).value = recipient;
+      inputs[0].dispatchEvent(new Event('input'));
+      (inputs[1] as HTMLInputElement).value = amount;
+      inputs[1].dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+
+    it('sends the transfer and refreshes the wallet and the history', () => {
+      flushAll([]);
+      fillForm(OTHER_ID, '25.5');
+      (el().querySelector('button.send') as HTMLButtonElement).click();
+
+      const post = http.expectOne('/api/wallets/transfers');
+      expect(post.request.body).toEqual({ recipientUserId: OTHER_ID, amount: 25.5 });
+      post.flush(null);
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Sent.');
+
+      http.expectOne(WALLET_URL).flush(wallet({ availableFunds: 274.5 }));
+      http.expectOne(HISTORY_URL).flush([transfer({})]);
+    });
+
+    it('shows the recipient preview for a valid guid', () => {
+      directoryNames.set(new Map([[OTHER_ID, 'alice']]));
+      flushAll([]);
+      fillForm(OTHER_ID, '10');
+      expect(el().querySelector('.recipient-preview')?.textContent).toContain('alice');
+      expect(ensure).toHaveBeenCalledWith([OTHER_ID]);
+    });
+
+    it('blocks sending to myself with the validator text', () => {
+      flushAll([]);
+      fillForm(MY_ID, '10');
+      expect((el().querySelector('button.send') as HTMLButtonElement).disabled).toBe(true);
+      expect(el().textContent).toContain('Cannot transfer funds to yourself');
+    });
+
+    it('shows the server text on a rejected transfer and unblocks the button', () => {
+      flushAll([]);
+      fillForm(OTHER_ID, '25.5');
+      (el().querySelector('button.send') as HTMLButtonElement).click();
+
+      http
+        .expectOne('/api/wallets/transfers')
+        .flush({ error: 'Data corrupted, try again' }, { status: 409, statusText: 'Conflict' });
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Data corrupted, try again');
+      expect((el().querySelector('button.send') as HTMLButtonElement).disabled).toBe(false);
+    });
+  });
+});
+
+describe('Transfers with ?to=', () => {
+  let http: HttpTestingController;
+
+  it('prefills the recipient from the query parameter', async () => {
+    vi.useFakeTimers();
+    installStorageStub();
+    new TokenStorage().set(
+      tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
+    );
+    await TestBed.configureTestingModule({
+      imports: [Transfers],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ProfileDirectory,
+          useValue: { ensure: vi.fn(), remember: vi.fn(), label: shortId },
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ to: OTHER_ID }) } },
+        },
+      ],
+    }).compileComponents();
+    http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(Transfers);
+    fixture.detectChanges();
+    http.expectOne(WALLET_URL).flush(wallet({}));
+    http.expectOne(HISTORY_URL).flush([]);
+    http.expectOne(ME_URL).flush(me({}));
+    fixture.detectChanges();
+
+    const input = (fixture.nativeElement as HTMLElement).querySelector(
+      '.send-form input',
+    ) as HTMLInputElement;
+    expect(input.value).toBe(OTHER_ID);
+
+    fixture.destroy();
+    http.verify();
+    vi.useRealTimers();
   });
 });

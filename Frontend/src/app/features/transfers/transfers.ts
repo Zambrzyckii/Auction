@@ -1,6 +1,8 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { FormField, form } from '@angular/forms/signals';
 import { tap } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import {
@@ -15,10 +17,24 @@ import { ProfileDirectory } from '../../core/profiles/profile-directory';
 
 const WALLET_POLL_MS = 5000;
 const HISTORY_POLL_MS = 10_000;
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function transferProblem(
+  amount: number,
+  recipientId: string,
+  myId: string | null,
+  wallet: WalletDto,
+): string | null {
+  if (!(amount > 0)) return 'Amount must be above zero.';
+  if (Math.round(amount * 100) / 100 !== amount) return 'Use at most 2 decimal places.';
+  if (recipientId === myId) return 'Cannot transfer funds to yourself';
+  if (amount > wallet.availableFunds) return 'Not enough funds on account';
+  return null;
+}
 
 @Component({
   selector: 'app-transfers',
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, FormField],
   templateUrl: './transfers.html',
 })
 export class Transfers {
@@ -42,7 +58,59 @@ export class Transfers {
   readonly friends = signal<readonly FriendSummary[] | null>(null);
   readonly friendsError = signal<string | null>(null);
 
+  private readonly sendModel = signal({
+    recipientUserId: inject(ActivatedRoute).snapshot.queryParamMap.get('to') ?? '',
+    amount: 0,
+  });
+  protected readonly sendForm = form(this.sendModel);
+  readonly sendPending = signal(false);
+  readonly sendNotice = signal<string | null>(null);
+
+  readonly sendProblem = computed<string | null>(() => {
+    const funds = this.walletPoller.value();
+    if (funds === null) {
+      return 'Loading…';
+    }
+    const { recipientUserId, amount } = this.sendModel();
+    if (!GUID_RE.test(recipientUserId)) {
+      return 'Enter a recipient id (a GUID).';
+    }
+    return transferProblem(amount, recipientUserId, this.session.userId(), funds);
+  });
+
+  readonly recipientPreview = computed<string | null>(() => {
+    const id = this.sendModel().recipientUserId;
+    return GUID_RE.test(id) ? this.directory.label(id) : null;
+  });
+
+  send(): void {
+    if (this.sendProblem() !== null) {
+      return;
+    }
+    const { recipientUserId, amount } = this.sendModel();
+    this.sendPending.set(true);
+    this.sendNotice.set(null);
+    this.http.post('/api/wallets/transfers', { recipientUserId, amount }).subscribe({
+      next: () => {
+        this.sendPending.set(false);
+        this.sendNotice.set('Sent.');
+        this.walletPoller.refresh();
+        this.historyPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.sendNotice.set(toApiError(err).message);
+        this.sendPending.set(false);
+      },
+    });
+  }
+
   constructor() {
+    effect(() => {
+      const id = this.sendModel().recipientUserId;
+      if (GUID_RE.test(id)) {
+        this.directory.ensure([id]);
+      }
+    });
     this.http.get<OwnProfileDto>('/api/profiles/me').subscribe({
       next: (me) => {
         for (const friend of me.friends) {

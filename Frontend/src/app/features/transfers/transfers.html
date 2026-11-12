@@ -7,6 +7,35 @@
   <p>Loading your wallet…</p>
 }
 
+<h3>Send funds</h3>
+<form class="send-form" (submit)="$event.preventDefault(); send()">
+  <label>
+    Recipient id
+    <input list="friends-list" [formField]="sendForm.recipientUserId" />
+  </label>
+  <datalist id="friends-list">
+    @for (friend of friends() ?? []; track friend.userId) {
+      <option [value]="friend.userId">{{ friend.username }}</option>
+    }
+  </datalist>
+  <label>
+    Amount
+    <input type="number" step="any" [formField]="sendForm.amount" />
+  </label>
+  <button type="submit" class="send" [disabled]="sendPending() || sendProblem() !== null">
+    Send
+  </button>
+  @if (recipientPreview(); as name) {
+    <p class="recipient-preview">Recipient: {{ name }}</p>
+  }
+  @if (sendProblem(); as problem) {
+    <p class="send-problem">{{ problem }}</p>
+  }
+  @if (sendNotice(); as text) {
+    <p class="send-notice">{{ text }}</p>
+  }
+</form>
+
 <h3>History</h3>
 @if (historyPoller.value(); as rows) {
   @if (rows.length === 0) {
