@@ -5,6 +5,7 @@ import { ApiError, toApiError } from '../api/api-error';
 export interface Poller<T> {
   readonly value: Signal<T | null>;
   readonly error: Signal<ApiError | null>;
+  refresh(): void;
   stop(): void;
 }
 
@@ -58,7 +59,16 @@ export function startPolling<T>(load: () => Observable<T>, baseMs: number): Poll
     sub?.unsubscribe();
   };
 
+  const refresh = (): void => {
+    if (stopped) {
+      return;
+    }
+    clearTimeout(timer);
+    sub?.unsubscribe();
+    tick();
+  };
+
   inject(DestroyRef).onDestroy(stop);
   tick();
-  return { value, error, stop };
+  return { value, error, refresh, stop };
 }

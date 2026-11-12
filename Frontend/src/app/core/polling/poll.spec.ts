@@ -97,4 +97,41 @@ describe('startPolling', () => {
     vi.advanceTimersByTime(60_000);
     expect(calls).toBe(1);
   });
+
+  it('refresh() reloads immediately and reschedules from now', () => {
+    let calls = 0;
+    const poller = start(() => of(++calls), 5000);
+    vi.advanceTimersByTime(3000);
+    poller.refresh();
+    expect(poller.value()).toBe(2);
+    vi.advanceTimersByTime(4999);
+    expect(poller.value()).toBe(2);
+    vi.advanceTimersByTime(1);
+    expect(poller.value()).toBe(3);
+    poller.stop();
+  });
+
+  it('refresh() unsubscribes the request in flight', () => {
+    const teardown = vi.fn();
+    let calls = 0;
+    const load = (): Observable<number> => {
+      calls += 1;
+      return calls === 1 ? new Observable<number>(() => teardown) : of(calls);
+    };
+    const poller = start(load, 5000);
+    expect(poller.value()).toBeNull();
+    poller.refresh();
+    expect(teardown).toHaveBeenCalled();
+    expect(poller.value()).toBe(2);
+    poller.stop();
+  });
+
+  it('refresh() does nothing after stop()', () => {
+    let calls = 0;
+    const poller = start(() => of(++calls), 5000);
+    poller.stop();
+    poller.refresh();
+    vi.advanceTimersByTime(60_000);
+    expect(calls).toBe(1);
+  });
 });
