@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../pl/STATE.md](../pl/STATE.md)
 >
-> Last updated: 2026-11-10
+> Last updated: 2026-11-12
 
 ## Phase
 
@@ -29,10 +29,11 @@
 
 - Nothing blocks a browser client any more; the remaining smaller limitations are listed in [ARCHITECTURE.md](ARCHITECTURE.md#known-limitations).
 - The gateway has no TLS yet, so the stack must not face the internet, see [infrastructure.md](infrastructure.md#what-is-missing).
+- A host reboot leaves the dev-mode vault empty and the api in a restart loop, because the one-shot `vault-init` seeder does not run again; the remedy is `docker compose up -d` followed by an api restart, tracked as issue #24.
 
 ## Next step
 
-On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day, the warehouse wars, the bank and the pawnshop followed on 2026-10-15, the casino on 2026-10-17 and the user profiles, the last gameplay item, on 2026-10-22, with the private-profile option following the same day. The platform work started on 2026-10-23 with the observability phase and the nginx gateway, and PgBouncer followed on 2026-10-24. The Redis read cache (2026-11-01), then RabbitMQ and OpenBao (both 2026-11-04) and the hardening phase (2026-11-07) followed, completing the seven-phase server-infrastructure plan. The frontend kickoff landed on 2026-11-08 (ADR-015) and the MVP views shipped on 2026-11-10. The next step is the AI bots, and the UI/UX pass over the deliberately bare frontend stays a separate branch at the end ([VISION.md](VISION.md)).
+On 2026-10-14 the owner decided to grow the backend with gameplay features before the Angular frontend. The first batch (starter item pack, player-to-player transfers) shipped the same day, the warehouse wars, the bank and the pawnshop followed on 2026-10-15, the casino on 2026-10-17 and the user profiles, the last gameplay item, on 2026-10-22, with the private-profile option following the same day. The platform work started on 2026-10-23 with the observability phase and the nginx gateway, and PgBouncer followed on 2026-10-24. The Redis read cache (2026-11-01), then RabbitMQ and OpenBao (both 2026-11-04) and the hardening phase (2026-11-07) followed, completing the seven-phase server-infrastructure plan. The frontend kickoff landed on 2026-11-08 (ADR-015) and the MVP views shipped on 2026-11-10. On 2026-11-12 the owner decided that views for the remaining modules (profiles, transfers, warehouse wars, banking, pawnshop, casino) come next, before the AI bots, and the UI/UX pass over the deliberately bare frontend stays a separate branch at the end ([VISION.md](VISION.md)).
 
 ## Related documents
 

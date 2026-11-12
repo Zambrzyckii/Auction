@@ -80,7 +80,7 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 
 Planowane nadal po nich:
 
-- Boty rynkowe AI oraz przejście UI/UX nad celowo surowym MVP frontendu jako ostatnia odnoga planu.
+- Widoki dla pozostałych modułów (decyzja z 2026-11-12), potem boty rynkowe AI, potem przejście UI/UX nad celowo surowym MVP frontendu jako ostatnia odnoga planu.
 
 RabbitMQ, wymieniany tu do 2026-11-04, wszedł tego dnia jako transport zdarzeń za `IIntegrationEventPublisher` z rynkowym exchange'em tylko do konsumpcji dla botów (zobacz [ADR-013](adr/013-rabbitmq-transport.md)). Frontend Angular, wymieniany tu do 2026-11-10, wszedł tego dnia jako widoki MVP na istniejącym API (zobacz [frontend.md](frontend.md)). Właściwe przejście UI/UX zostaje na końcu roadmapy.
 

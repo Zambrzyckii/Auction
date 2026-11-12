@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../en/STATE.md](../en/STATE.md)
 >
-> Ostatnia aktualizacja: 2026-11-10
+> Ostatnia aktualizacja: 2026-11-12
 
 ## Faza
 
@@ -29,10 +29,11 @@
 
 - Nic już nie blokuje klienta przeglądarkowego; pozostałe mniejsze ograniczenia są wymienione w [ARCHITECTURE.md](ARCHITECTURE.md#znane-ograniczenia).
 - Gateway nie ma jeszcze TLS, więc stack nie może być wystawiony do internetu, zob. [infrastructure.md](infrastructure.md#czego-brakuje).
+- Reboot hosta zostawia dev-vault pusty, a api w pętli restartów, bo jednorazowy seeder `vault-init` nie uruchamia się ponownie; lekarstwem jest `docker compose up -d` i restart api, śledzone jako issue #24.
 
 ## Następny krok
 
-2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki. Pierwsza partia (pakiet startowy, przelewy między graczami) weszła tego samego dnia, wojny magazynowe, bank i lombard 2026-10-15, kasyno 2026-10-17, a profile użytkowników, ostatni punkt rozgrywkowy, 2026-10-22, z opcją prywatnego profilu dowiezioną tego samego dnia. Praca platformowa ruszyła 2026-10-23 fazą obserwowalności i gatewayem nginx, a 2026-10-24 wszedł PgBouncer. Cache odczytów na Redisie (2026-11-01), potem RabbitMQ i OpenBao (oba 2026-11-04), a 2026-11-07 faza hardeningu domknęła siedmiofazowy plan infrastruktury serwerowej. Kickoff frontendu wszedł 2026-11-08 (ADR-015), a widoki MVP weszły 2026-11-10. Następny krok to boty AI, a przejście UI/UX nad celowo surowym frontendem zostaje osobną odnogą na końcu ([VISION.md](VISION.md)).
+2026-10-14 właściciel zdecydował, że przed frontendem Angular backend rośnie o funkcje rozgrywki. Pierwsza partia (pakiet startowy, przelewy między graczami) weszła tego samego dnia, wojny magazynowe, bank i lombard 2026-10-15, kasyno 2026-10-17, a profile użytkowników, ostatni punkt rozgrywkowy, 2026-10-22, z opcją prywatnego profilu dowiezioną tego samego dnia. Praca platformowa ruszyła 2026-10-23 fazą obserwowalności i gatewayem nginx, a 2026-10-24 wszedł PgBouncer. Cache odczytów na Redisie (2026-11-01), potem RabbitMQ i OpenBao (oba 2026-11-04), a 2026-11-07 faza hardeningu domknęła siedmiofazowy plan infrastruktury serwerowej. Kickoff frontendu wszedł 2026-11-08 (ADR-015), a widoki MVP weszły 2026-11-10. 2026-11-12 właściciel zdecydował, że następne są widoki pozostałych modułów (profile, transfery, wojny magazynowe, bank, lombard, kasyno), przed botami AI, a przejście UI/UX nad celowo surowym frontendem zostaje osobną odnogą na końcu ([VISION.md](VISION.md)).
 
 ## Powiązane dokumenty
 
