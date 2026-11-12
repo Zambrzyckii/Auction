@@ -2,11 +2,13 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { tap } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { Auction, AuctionBid } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
+import { ProfileDirectory } from '../../core/profiles/profile-directory';
 
 const POLL_MS = 2500;
 const CONFIRM_WAIT_MS = 20_000;
@@ -30,6 +32,7 @@ export class AuctionDetail {
   private readonly http = inject(HttpClient);
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id');
   protected readonly session = inject(Session);
+  private readonly directory = inject(ProfileDirectory);
 
   readonly poller = startPolling(
     () => this.http.get<Auction>(`/api/auctions/${this.id}`),
@@ -37,7 +40,10 @@ export class AuctionDetail {
   );
 
   readonly bidsPoller = startPolling(
-    () => this.http.get<AuctionBid[]>(`/api/auctions/${this.id}/bids`),
+    () =>
+      this.http
+        .get<AuctionBid[]>(`/api/auctions/${this.id}/bids`)
+        .pipe(tap((bids) => this.directory.ensure(bids.map((b) => b.bidderUserId)))),
     POLL_MS,
   );
 
@@ -113,6 +119,6 @@ export class AuctionDetail {
   }
 
   bidderLabel(bid: AuctionBid): string {
-    return bid.bidderUserId === this.session.userId() ? 'You' : bid.bidderUserId.slice(0, 8);
+    return bid.bidderUserId === this.session.userId() ? 'You' : this.directory.label(bid.bidderUserId);
   }
 }

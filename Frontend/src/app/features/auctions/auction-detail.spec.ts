@@ -1,11 +1,13 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction, AuctionBid } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { ProfileDirectory, shortId } from '../../core/profiles/profile-directory';
 import { AuctionDetail, isBidConfirmed } from './auction-detail';
 
 const URL = '/api/auctions/abc';
@@ -59,6 +61,8 @@ describe('isBidConfirmed', () => {
 describe('AuctionDetail', () => {
   let fixture: ComponentFixture<AuctionDetail>;
   let http: HttpTestingController;
+  let directoryNames: WritableSignal<ReadonlyMap<string, string>>;
+  let directoryStub: { ensure: ReturnType<typeof vi.fn>; label(userId: string): string };
 
   beforeEach(async () => {
     vi.useFakeTimers();
@@ -66,11 +70,17 @@ describe('AuctionDetail', () => {
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
+    directoryNames = signal<ReadonlyMap<string, string>>(new Map());
+    directoryStub = {
+      ensure: vi.fn(),
+      label: (userId: string) => directoryNames().get(userId) ?? shortId(userId),
+    };
     await TestBed.configureTestingModule({
       imports: [AuctionDetail],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: ProfileDirectory, useValue: directoryStub },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: 'abc' }) } },
@@ -166,6 +176,23 @@ describe('AuctionDetail', () => {
     flushBids([bid({ bidderUserId: MY_ID })]);
     fixture.detectChanges();
     expect(el().textContent).toContain('You');
+  });
+
+  it('passes the bidder ids to the profile directory', () => {
+    http.expectOne(URL).flush(auction({}));
+    flushBids([bid({}), bid({ bidderUserId: MY_ID })]);
+    expect(directoryStub.ensure).toHaveBeenCalledWith([
+      'cafebabe-0000-0000-0000-000000000000',
+      MY_ID,
+    ]);
+  });
+
+  it('shows the username once the directory knows it', () => {
+    directoryNames.set(new Map([['cafebabe-0000-0000-0000-000000000000', 'alice']]));
+    http.expectOne(URL).flush(auction({}));
+    flushBids([bid({})]);
+    fixture.detectChanges();
+    expect(el().textContent).toContain('alice');
   });
 
   describe('bidding', () => {
