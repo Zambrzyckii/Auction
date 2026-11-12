@@ -39,5 +39,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),
   },
+  {
+    path: 'profiles/:id',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/profiles/player-profile').then((m) => m.PlayerProfile),
+  },
   { path: '**', redirectTo: 'auctions' },
 ];

@@ -1,0 +1,44 @@
+<h2>Player profile</h2>
+@if (poller.value(); as profile) {
+  <h3>{{ profile.username }}</h3>
+  @if (profile.isPrivate) {
+    <p class="private">This profile is private.</p>
+  } @else {
+    <table>
+      <tr>
+        <th>Level</th>
+        <td>{{ profile.level }}</td>
+      </tr>
+      <tr>
+        <th>Member since</th>
+        <td>{{ profile.memberSince | date: 'medium' }}</td>
+      </tr>
+    </table>
+
+    <h4>Friends</h4>
+    @if (profile.friends.length === 0) {
+      <p>No friends to show.</p>
+    } @else {
+      <ul class="friends">
+        @for (friend of profile.friends; track friend.userId) {
+          <li>{{ friend.username }}</li>
+        }
+      </ul>
+    }
+
+    <h4>Social links</h4>
+    @if (profile.socialLinks.length === 0) {
+      <p>No links to show.</p>
+    } @else {
+      <ul class="social-links">
+        @for (link of profile.socialLinks; track link.platform) {
+          <li>{{ link.platform }}: {{ link.url }}</li>
+        }
+      </ul>
+    }
+  }
+} @else if (poller.error(); as error) {
+  <p class="error">{{ error.status === 404 ? 'Player not found' : error.message }}</p>
+} @else {
+  <p>Loading…</p>
+}
