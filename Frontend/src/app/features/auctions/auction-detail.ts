@@ -1,7 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { tap } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { Auction, AuctionBid } from '../../core/api/models';
@@ -25,7 +25,7 @@ export function isBidConfirmed(
 
 @Component({
   selector: 'app-auction-detail',
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, RouterLink],
   templateUrl: './auction-detail.html',
 })
 export class AuctionDetail {

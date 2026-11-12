@@ -57,7 +57,13 @@
         </tr>
         @for (bid of bids; track bid.placedOn) {
           <tr>
-            <td>{{ bidderLabel(bid) }}</td>
+            <td>
+              @if (session.isLoggedIn() && bid.bidderUserId !== session.userId()) {
+                <a [routerLink]="['/profiles', bid.bidderUserId]">{{ bidderLabel(bid) }}</a>
+              } @else {
+                {{ bidderLabel(bid) }}
+              }
+            </td>
             <td>{{ bid.amount | number }}</td>
             <td>{{ bid.placedOn | date: 'HH:mm:ss' }}</td>
           </tr>

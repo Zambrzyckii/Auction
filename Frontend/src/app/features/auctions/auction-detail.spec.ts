@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction, AuctionBid } from '../../core/api/models';
@@ -80,6 +80,7 @@ describe('AuctionDetail', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: ProfileDirectory, useValue: directoryStub },
         {
           provide: ActivatedRoute,
@@ -193,6 +194,15 @@ describe('AuctionDetail', () => {
     flushBids([bid({})]);
     fixture.detectChanges();
     expect(el().textContent).toContain('alice');
+  });
+
+  it('links other bidders to their profiles but never myself', () => {
+    http.expectOne(URL).flush(auction({}));
+    flushBids([bid({}), bid({ bidderUserId: MY_ID, amount: 180 })]);
+    fixture.detectChanges();
+    const links = Array.from(el().querySelectorAll('td a')).map((a) => a.getAttribute('href'));
+    expect(links).toContain('/profiles/cafebabe-0000-0000-0000-000000000000');
+    expect(links).not.toContain(`/profiles/${MY_ID}`);
   });
 
   describe('bidding', () => {
