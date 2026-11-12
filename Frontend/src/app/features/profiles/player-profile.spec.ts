@@ -4,14 +4,15 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
-import { Profile } from '../../core/api/models';
+import { OwnProfile as OwnProfileDto, Profile } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
-import { PlayerProfile } from './player-profile';
+import { PlayerProfile, relationTo } from './player-profile';
 
 const MY_ID = 'me-user';
 const PLAYER_ID = 'deadbeef-1111-2222-3333-444444444444';
 const PROFILE_URL = `/api/profiles/${PLAYER_ID}`;
+const ME_URL = '/api/profiles/me';
 
 function profile(overrides: Partial<Profile>): Profile {
   return {
@@ -26,6 +27,52 @@ function profile(overrides: Partial<Profile>): Profile {
     ...overrides,
   };
 }
+
+function me(overrides: Partial<OwnProfileDto>): OwnProfileDto {
+  return {
+    userId: MY_ID,
+    username: 'probe1',
+    isPrivate: false,
+    level: 2,
+    memberSince: '2026-11-01T00:00:00Z',
+    avatarUrl: null,
+    friends: [],
+    incomingFriendRequests: [],
+    outgoingFriendRequests: [],
+    socialLinks: [],
+    ...overrides,
+  };
+}
+
+describe('relationTo', () => {
+  it('says self for my own id', () => {
+    expect(relationTo(me({}), MY_ID)).toBe('self');
+  });
+
+  it('says friend for a listed friend', () => {
+    expect(relationTo(me({ friends: [{ userId: PLAYER_ID, username: 'alice' }] }), PLAYER_ID)).toBe(
+      'friend',
+    );
+  });
+
+  it('says incoming when they asked me', () => {
+    const mine = me({
+      incomingFriendRequests: [{ publicFriendshipId: 'fr-1', userId: PLAYER_ID, username: 'a' }],
+    });
+    expect(relationTo(mine, PLAYER_ID)).toBe('incoming');
+  });
+
+  it('says outgoing when I asked them', () => {
+    const mine = me({
+      outgoingFriendRequests: [{ publicFriendshipId: 'fr-2', userId: PLAYER_ID, username: 'a' }],
+    });
+    expect(relationTo(mine, PLAYER_ID)).toBe('outgoing');
+  });
+
+  it('says none for a stranger', () => {
+    expect(relationTo(me({}), PLAYER_ID)).toBe('none');
+  });
+});
 
 describe('PlayerProfile', () => {
   let fixture: ComponentFixture<PlayerProfile>;
@@ -66,10 +113,15 @@ describe('PlayerProfile', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
+  function flushMe(overrides: Partial<OwnProfileDto>): void {
+    http.expectOne(ME_URL).flush(me(overrides));
+  }
+
   it('shows a public profile with level and social links', () => {
-    http.expectOne(PROFILE_URL).flush(
-      profile({ socialLinks: [{ platform: 'GitHub', url: 'https://github.com/alice' }] }),
-    );
+    flushMe({});
+    http
+      .expectOne(PROFILE_URL)
+      .flush(profile({ socialLinks: [{ platform: 'GitHub', url: 'https://github.com/alice' }] }));
     fixture.detectChanges();
     const text = el().textContent ?? '';
     expect(text).toContain('alice');
@@ -78,9 +130,10 @@ describe('PlayerProfile', () => {
   });
 
   it('shows only the username and a note for a private profile', () => {
-    http.expectOne(PROFILE_URL).flush(
-      profile({ isPrivate: true, level: null, memberSince: null }),
-    );
+    flushMe({});
+    http
+      .expectOne(PROFILE_URL)
+      .flush(profile({ isPrivate: true, level: null, memberSince: null }));
     fixture.detectChanges();
     const text = el().textContent ?? '';
     expect(text).toContain('alice');
@@ -89,6 +142,7 @@ describe('PlayerProfile', () => {
   });
 
   it('says the player was not found on a 404', () => {
+    flushMe({});
     http
       .expectOne(PROFILE_URL)
       .flush({ error: 'Profile not found' }, { status: 404, statusText: 'Not Found' });
@@ -97,18 +151,73 @@ describe('PlayerProfile', () => {
   });
 
   it('remembers the player and their friends in the directory', () => {
-    http.expectOne(PROFILE_URL).flush(
-      profile({ friends: [{ userId: 'friend-1', username: 'bob' }] }),
-    );
+    flushMe({});
+    http
+      .expectOne(PROFILE_URL)
+      .flush(profile({ friends: [{ userId: 'friend-1', username: 'bob' }] }));
     expect(remember).toHaveBeenCalledWith(PLAYER_ID, 'alice');
     expect(remember).toHaveBeenCalledWith('friend-1', 'bob');
   });
 
   it('keeps polling every 10 seconds', () => {
+    flushMe({});
     http.expectOne(PROFILE_URL).flush(profile({}));
-    vi.advanceTimersByTime(10_000);
+    vi.advanceTimersByTime(5000);
+    flushMe({});
+    vi.advanceTimersByTime(5000);
     http.expectOne(PROFILE_URL).flush(profile({ level: 9 }));
+    flushMe({});
     fixture.detectChanges();
     expect(el().textContent).toContain('9');
+  });
+
+  it('offers Add friend to a stranger and reports the sent request', () => {
+    flushMe({});
+    http.expectOne(PROFILE_URL).flush(profile({}));
+    fixture.detectChanges();
+    (el().querySelector('button.add-friend') as HTMLButtonElement).click();
+
+    const post = http.expectOne('/api/profiles/friends/requests');
+    expect(post.request.body).toEqual({ userId: PLAYER_ID });
+    post.flush(
+      { publicFriendshipId: 'fr-9', status: 'Pending' },
+      { status: 201, statusText: 'Created' },
+    );
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Request sent.');
+
+    flushMe({
+      outgoingFriendRequests: [{ publicFriendshipId: 'fr-9', userId: PLAYER_ID, username: 'a' }],
+    });
+    fixture.detectChanges();
+    expect(el().querySelector('button.cancel-request')).not.toBeNull();
+  });
+
+  it('offers Remove friend to a friend', () => {
+    flushMe({ friends: [{ userId: PLAYER_ID, username: 'alice' }] });
+    http.expectOne(PROFILE_URL).flush(profile({}));
+    fixture.detectChanges();
+    (el().querySelector('button.remove-friend') as HTMLButtonElement).click();
+
+    const del = http.expectOne(`/api/profiles/friends/${PLAYER_ID}`);
+    expect(del.request.method).toBe('DELETE');
+    del.flush(null, { status: 204, statusText: 'No Content' });
+    flushMe({});
+    fixture.detectChanges();
+    expect(el().querySelector('button.add-friend')).not.toBeNull();
+  });
+
+  it('accepts an incoming request through the one button', () => {
+    flushMe({
+      incomingFriendRequests: [{ publicFriendshipId: 'fr-1', userId: PLAYER_ID, username: 'a' }],
+    });
+    http.expectOne(PROFILE_URL).flush(profile({}));
+    fixture.detectChanges();
+    (el().querySelector('button.accept') as HTMLButtonElement).click();
+
+    http.expectOne('/api/profiles/friends/requests/fr-1/accept').flush(null);
+    flushMe({ friends: [{ userId: PLAYER_ID, username: 'alice' }] });
+    fixture.detectChanges();
+    expect(el().querySelector('button.remove-friend')).not.toBeNull();
   });
 });

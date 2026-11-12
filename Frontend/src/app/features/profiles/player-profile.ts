@@ -1,14 +1,30 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { tap } from 'rxjs';
-import { Profile as ProfileDto } from '../../core/api/models';
+import { toApiError } from '../../core/api/api-error';
+import {
+  FriendRequestResult,
+  OwnProfile as OwnProfileDto,
+  Profile as ProfileDto,
+} from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
 import { ProfileAvatar } from './avatar';
 
 const POLL_MS = 10_000;
+const ME_POLL_MS = 5000;
+
+export type Relation = 'self' | 'friend' | 'incoming' | 'outgoing' | 'none';
+
+export function relationTo(me: OwnProfileDto, userId: string): Relation {
+  if (me.userId === userId) return 'self';
+  if (me.friends.some((f) => f.userId === userId)) return 'friend';
+  if (me.incomingFriendRequests.some((r) => r.userId === userId)) return 'incoming';
+  if (me.outgoingFriendRequests.some((r) => r.userId === userId)) return 'outgoing';
+  return 'none';
+}
 
 @Component({
   selector: 'app-player-profile',
@@ -32,4 +48,78 @@ export class PlayerProfile {
       ),
     POLL_MS,
   );
+
+  readonly mePoller = startPolling(
+    () => this.http.get<OwnProfileDto>('/api/profiles/me'),
+    ME_POLL_MS,
+  );
+
+  readonly actionPending = signal(false);
+  readonly actionNotice = signal<string | null>(null);
+
+  protected readonly relation = computed<Relation | null>(() => {
+    const myProfile = this.mePoller.value();
+    if (myProfile === null || this.id === null) {
+      return null;
+    }
+    return relationTo(myProfile, this.id);
+  });
+
+  act(): void {
+    const rel = this.relation();
+    const myProfile = this.mePoller.value();
+    if (rel === null || rel === 'self' || myProfile === null || this.id === null) {
+      return;
+    }
+    if (rel === 'none') {
+      this.sendRequest();
+      return;
+    }
+    if (rel === 'incoming') {
+      const incoming = myProfile.incomingFriendRequests.find((r) => r.userId === this.id);
+      if (incoming === undefined) {
+        return;
+      }
+      this.run(
+        this.http.post(`/api/profiles/friends/requests/${incoming.publicFriendshipId}/accept`, null),
+      );
+      return;
+    }
+    this.run(this.http.delete(`/api/profiles/friends/${this.id}`));
+  }
+
+  private sendRequest(): void {
+    this.actionPending.set(true);
+    this.actionNotice.set(null);
+    this.http
+      .post<FriendRequestResult>('/api/profiles/friends/requests', { userId: this.id })
+      .subscribe({
+        next: (result) => {
+          this.actionPending.set(false);
+          this.actionNotice.set(
+            result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
+          );
+          this.mePoller.refresh();
+        },
+        error: (err: unknown) => {
+          this.actionNotice.set(toApiError(err).message);
+          this.actionPending.set(false);
+        },
+      });
+  }
+
+  private run(request: ReturnType<typeof this.http.delete>): void {
+    this.actionPending.set(true);
+    this.actionNotice.set(null);
+    request.subscribe({
+      next: () => {
+        this.actionPending.set(false);
+        this.mePoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.actionNotice.set(toApiError(err).message);
+        this.actionPending.set(false);
+      },
+    });
+  }
 }
