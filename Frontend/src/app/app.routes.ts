@@ -34,5 +34,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/wallet/wallet').then((m) => m.Wallet),
   },
+  {
+    path: 'profile',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),
+  },
   { path: '**', redirectTo: 'auctions' },
 ];

@@ -69,3 +69,22 @@ export interface Profile {
   readonly friends: readonly FriendSummary[];
   readonly socialLinks: readonly SocialLink[];
 }
+
+export interface FriendRequest {
+  readonly publicFriendshipId: string;
+  readonly userId: string;
+  readonly username: string;
+}
+
+export interface OwnProfile {
+  readonly userId: string;
+  readonly username: string;
+  readonly isPrivate: boolean;
+  readonly level: number;
+  readonly memberSince: string;
+  readonly avatarUrl: string | null;
+  readonly friends: readonly FriendSummary[];
+  readonly incomingFriendRequests: readonly FriendRequest[];
+  readonly outgoingFriendRequests: readonly FriendRequest[];
+  readonly socialLinks: readonly SocialLink[];
+}

@@ -25,6 +25,7 @@ describe('App', () => {
     );
     expect(texts).toContain('Auctions');
     expect(texts).toContain('Wallet');
+    expect(texts).toContain('Profile');
     expect(texts).toContain('Log in');
   });
 
