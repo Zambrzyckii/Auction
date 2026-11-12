@@ -76,6 +76,13 @@ export interface FriendRequest {
   readonly username: string;
 }
 
+export type FriendshipStatus = 'Pending' | 'Accepted';
+
+export interface FriendRequestResult {
+  readonly publicFriendshipId: string;
+  readonly status: FriendshipStatus;
+}
+
 export interface OwnProfile {
   readonly userId: string;
   readonly username: string;

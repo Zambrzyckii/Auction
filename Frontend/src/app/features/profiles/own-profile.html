@@ -68,7 +68,17 @@
   } @else {
     <ul class="friends">
       @for (friend of profile.friends; track friend.userId) {
-        <li>{{ friend.username }}</li>
+        <li>
+          {{ friend.username }}
+          <button
+            type="button"
+            class="remove-friend"
+            (click)="removeFriend(friend.userId)"
+            [disabled]="friendPending()"
+          >
+            Remove
+          </button>
+        </li>
       }
     </ul>
   }
@@ -79,12 +89,60 @@
   } @else {
     <ul class="requests">
       @for (request of profile.incomingFriendRequests; track request.publicFriendshipId) {
-        <li>Incoming from {{ request.username }}</li>
+        <li>
+          Incoming from {{ request.username }}
+          <button
+            type="button"
+            class="accept"
+            (click)="acceptRequest(request.publicFriendshipId)"
+            [disabled]="friendPending()"
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            class="decline"
+            (click)="declineRequest(request.publicFriendshipId)"
+            [disabled]="friendPending()"
+          >
+            Decline
+          </button>
+        </li>
       }
       @for (request of profile.outgoingFriendRequests; track request.publicFriendshipId) {
-        <li>Sent to {{ request.username }}</li>
+        <li>
+          Sent to {{ request.username }}
+          <button
+            type="button"
+            class="cancel-request"
+            (click)="removeFriend(request.userId)"
+            [disabled]="friendPending()"
+          >
+            Cancel
+          </button>
+        </li>
       }
     </ul>
+  }
+
+  <form class="friend-form" (submit)="$event.preventDefault(); addFriend()">
+    <label>
+      Add a friend by player id
+      <input [formField]="friendForm.userId" />
+    </label>
+    <button
+      type="submit"
+      class="add-friend"
+      [disabled]="friendPending() || friendProblem() !== null"
+    >
+      Add friend
+    </button>
+    @if (friendProblem(); as problem) {
+      <p class="friend-problem">{{ problem }}</p>
+    }
+  </form>
+  @if (friendNotice(); as text) {
+    <p class="friend-notice">{{ text }}</p>
   }
 
   <h3>Social links</h3>
@@ -103,7 +161,7 @@
         }
       </ul>
     }
-    <form (submit)="$event.preventDefault(); addLink()">
+    <form class="link-form" (submit)="$event.preventDefault(); addLink()">
       <label>
         Platform
         <select [formField]="linkForm.platform">

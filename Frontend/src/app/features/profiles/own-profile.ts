@@ -4,7 +4,12 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { Observable, retry, tap, throwError, timer } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
-import { OwnProfile as OwnProfileDto, SocialLink, SocialPlatform } from '../../core/api/models';
+import {
+  FriendRequestResult,
+  OwnProfile as OwnProfileDto,
+  SocialLink,
+  SocialPlatform,
+} from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
 import { ProfileAvatar, avatarFileProblem } from './avatar';
@@ -13,6 +18,20 @@ import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORMS, socialLinkProblem } from './social-
 const POLL_MS = 5000;
 const PROVISIONING_RETRY_MS = 1500;
 const PROVISIONING_WINDOW_MS = 30_000;
+const MAX_FRIENDS = 100;
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function addFriendProblem(userId: string, me: OwnProfileDto): string | null {
+  if (!GUID_RE.test(userId)) return 'Enter a player id (a GUID).';
+  if (userId === me.userId) return 'You cannot befriend yourself';
+  const known =
+    me.friends.some((f) => f.userId === userId) ||
+    me.incomingFriendRequests.some((r) => r.userId === userId) ||
+    me.outgoingFriendRequests.some((r) => r.userId === userId);
+  if (known) return 'Friendship or a pending request already exists';
+  if (me.friends.length >= MAX_FRIENDS) return `You already have ${MAX_FRIENDS} friends.`;
+  return null;
+}
 
 @Component({
   selector: 'app-own-profile',
@@ -44,6 +63,76 @@ export class OwnProfile {
       error: (err: unknown) => {
         this.notice.set(toApiError(err).message);
         this.privacyPending.set(false);
+      },
+    });
+  }
+
+  readonly friendPending = signal(false);
+  readonly friendNotice = signal<string | null>(null);
+  private readonly friendModel = signal({ userId: '' });
+  protected readonly friendForm = form(this.friendModel);
+
+  readonly friendProblem = computed<string | null>(() => {
+    const profile = this.poller.value();
+    if (profile === null) {
+      return 'Loading…';
+    }
+    return addFriendProblem(this.friendModel().userId, profile);
+  });
+
+  addFriend(): void {
+    if (this.friendProblem() !== null) {
+      return;
+    }
+    this.friendPending.set(true);
+    this.friendNotice.set(null);
+    this.http
+      .post<FriendRequestResult>('/api/profiles/friends/requests', {
+        userId: this.friendModel().userId,
+      })
+      .subscribe({
+        next: (result) => {
+          this.friendPending.set(false);
+          this.friendNotice.set(
+            result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
+          );
+          this.friendModel.set({ userId: '' });
+          this.poller.refresh();
+        },
+        error: (err: unknown) => {
+          this.friendNotice.set(toApiError(err).message);
+          this.friendPending.set(false);
+        },
+      });
+  }
+
+  acceptRequest(publicFriendshipId: string): void {
+    this.friendAction(
+      this.http.post(`/api/profiles/friends/requests/${publicFriendshipId}/accept`, null),
+    );
+  }
+
+  declineRequest(publicFriendshipId: string): void {
+    this.friendAction(
+      this.http.post(`/api/profiles/friends/requests/${publicFriendshipId}/decline`, null),
+    );
+  }
+
+  removeFriend(userId: string): void {
+    this.friendAction(this.http.delete(`/api/profiles/friends/${userId}`));
+  }
+
+  private friendAction(request: Observable<unknown>): void {
+    this.friendPending.set(true);
+    this.friendNotice.set(null);
+    request.subscribe({
+      next: () => {
+        this.friendPending.set(false);
+        this.poller.refresh();
+      },
+      error: (err: unknown) => {
+        this.friendNotice.set(toApiError(err).message);
+        this.friendPending.set(false);
       },
     });
   }

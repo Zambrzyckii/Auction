@@ -6,7 +6,7 @@ import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
-import { OwnProfile } from './own-profile';
+import { OwnProfile, addFriendProblem } from './own-profile';
 
 const USER_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const ME_URL = '/api/profiles/me';
@@ -26,6 +26,62 @@ function ownProfile(overrides: Partial<OwnProfileDto>): OwnProfileDto {
     ...overrides,
   };
 }
+
+describe('addFriendProblem', () => {
+  const GUID = 'deadbeef-1111-2222-3333-444444444444';
+  const me = (overrides: Partial<OwnProfileDto>): OwnProfileDto => ({
+    userId: USER_ID,
+    username: 'probe1',
+    isPrivate: false,
+    level: 2,
+    memberSince: '2026-11-01T00:00:00Z',
+    avatarUrl: null,
+    friends: [],
+    incomingFriendRequests: [],
+    outgoingFriendRequests: [],
+    socialLinks: [],
+    ...overrides,
+  });
+
+  it('accepts a fresh guid', () => {
+    expect(addFriendProblem(GUID, me({}))).toBeNull();
+  });
+
+  it('rejects text that is not a guid', () => {
+    expect(addFriendProblem('alice', me({}))).toMatch(/player id/i);
+  });
+
+  it('rejects my own id with the server text', () => {
+    expect(addFriendProblem(USER_ID, me({}))).toBe('You cannot befriend yourself');
+  });
+
+  it('rejects an existing relation with the server text', () => {
+    const existing = 'Friendship or a pending request already exists';
+    expect(addFriendProblem(GUID, me({ friends: [{ userId: GUID, username: 'x' }] }))).toBe(
+      existing,
+    );
+    expect(
+      addFriendProblem(
+        GUID,
+        me({ incomingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
+      ),
+    ).toBe(existing);
+    expect(
+      addFriendProblem(
+        GUID,
+        me({ outgoingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
+      ),
+    ).toBe(existing);
+  });
+
+  it('rejects the 101st friend', () => {
+    const friends = Array.from({ length: 100 }, (_, i) => ({
+      userId: `user-${i}`,
+      username: `u${i}`,
+    }));
+    expect(addFriendProblem(GUID, me({ friends }))).toMatch(/100/);
+  });
+});
 
 describe('OwnProfile', () => {
   let fixture: ComponentFixture<OwnProfile>;
@@ -157,11 +213,11 @@ describe('OwnProfile', () => {
     const GITHUB_LINK = { platform: 'GitHub' as const, url: 'https://github.com/probe' };
 
     function fillLink(platform: string, url: string): void {
-      const select = el().querySelector('form select') as HTMLSelectElement;
+      const select = el().querySelector('.link-form select') as HTMLSelectElement;
       select.value = platform;
       select.dispatchEvent(new Event('change'));
       select.dispatchEvent(new Event('input'));
-      const input = el().querySelector('form input') as HTMLInputElement;
+      const input = el().querySelector('.link-form input') as HTMLInputElement;
       input.value = url;
       input.dispatchEvent(new Event('input'));
       fixture.detectChanges();
@@ -227,6 +283,104 @@ describe('OwnProfile', () => {
       put.flush(null, { status: 204, statusText: 'No Content' });
 
       http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+    });
+  });
+
+  describe('friend actions', () => {
+    const FRIEND_ID = 'deadbeef-1111-2222-3333-444444444444';
+
+    function fillFriendId(userId: string): void {
+      const input = el().querySelector('.friend-form input') as HTMLInputElement;
+      input.value = userId;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+
+    it('accepts an incoming request and refreshes', () => {
+      http.expectOne(ME_URL).flush(
+        ownProfile({
+          incomingFriendRequests: [
+            { publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' },
+          ],
+        }),
+      );
+      fixture.detectChanges();
+      (el().querySelector('button.accept') as HTMLButtonElement).click();
+
+      const post = http.expectOne('/api/profiles/friends/requests/fr-1/accept');
+      expect(post.request.method).toBe('POST');
+      post.flush(null);
+
+      http.expectOne(ME_URL).flush(ownProfile({ friends: [{ userId: 'u-2', username: 'bob' }] }));
+      fixture.detectChanges();
+      expect(el().textContent).toContain('bob');
+    });
+
+    it('declines an incoming request', () => {
+      http.expectOne(ME_URL).flush(
+        ownProfile({
+          incomingFriendRequests: [
+            { publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' },
+          ],
+        }),
+      );
+      fixture.detectChanges();
+      (el().querySelector('button.decline') as HTMLButtonElement).click();
+
+      http.expectOne('/api/profiles/friends/requests/fr-1/decline').flush(null);
+      http.expectOne(ME_URL).flush(ownProfile({}));
+    });
+
+    it('removes a friend with the delete endpoint', () => {
+      http.expectOne(ME_URL).flush(
+        ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }),
+      );
+      fixture.detectChanges();
+      (el().querySelector('button.remove-friend') as HTMLButtonElement).click();
+
+      const del = http.expectOne(`/api/profiles/friends/${FRIEND_ID}`);
+      expect(del.request.method).toBe('DELETE');
+      del.flush(null, { status: 204, statusText: 'No Content' });
+      http.expectOne(ME_URL).flush(ownProfile({}));
+    });
+
+    it('cancels an outgoing request with the same delete endpoint', () => {
+      http.expectOne(ME_URL).flush(
+        ownProfile({
+          outgoingFriendRequests: [
+            { publicFriendshipId: 'fr-2', userId: 'u-3', username: 'carol' },
+          ],
+        }),
+      );
+      fixture.detectChanges();
+      (el().querySelector('button.cancel-request') as HTMLButtonElement).click();
+
+      const del = http.expectOne('/api/profiles/friends/u-3');
+      expect(del.request.method).toBe('DELETE');
+      del.flush(null, { status: 204, statusText: 'No Content' });
+      http.expectOne(ME_URL).flush(ownProfile({}));
+    });
+
+    it('sends a request by id and reports the auto-accept branch', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      fillFriendId(FRIEND_ID);
+      (el().querySelector('button.add-friend') as HTMLButtonElement).click();
+
+      const post = http.expectOne('/api/profiles/friends/requests');
+      expect(post.request.body).toEqual({ userId: FRIEND_ID });
+      post.flush({ publicFriendshipId: 'fr-9', status: 'Accepted' }, { status: 201, statusText: 'Created' });
+      fixture.detectChanges();
+      expect(el().textContent).toContain('You are now friends.');
+      http.expectOne(ME_URL).flush(ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }));
+    });
+
+    it('blocks my own id with the server text', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      fillFriendId(USER_ID);
+      expect((el().querySelector('button.add-friend') as HTMLButtonElement).disabled).toBe(true);
+      expect(el().textContent).toContain('You cannot befriend yourself');
     });
   });
 
