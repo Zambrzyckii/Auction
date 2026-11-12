@@ -148,4 +148,81 @@ describe('OwnProfile', () => {
     expect(el().querySelector('.notice')?.textContent).toContain('Too many requests.');
     expect((el().querySelector('button.privacy') as HTMLButtonElement).disabled).toBe(false);
   });
+
+  describe('social links editor', () => {
+    const GITHUB_LINK = { platform: 'GitHub' as const, url: 'https://github.com/probe' };
+
+    function fillLink(platform: string, url: string): void {
+      const select = el().querySelector('form select') as HTMLSelectElement;
+      select.value = platform;
+      select.dispatchEvent(new Event('change'));
+      select.dispatchEvent(new Event('input'));
+      const input = el().querySelector('form input') as HTMLInputElement;
+      input.value = url;
+      input.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+    }
+
+    it('adds a link locally and keeps the edit across polls', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      fillLink('GitHub', GITHUB_LINK.url);
+      (el().querySelector('button.add-link') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el().textContent).toContain(GITHUB_LINK.url);
+
+      vi.advanceTimersByTime(5000);
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      expect(el().textContent).toContain(GITHUB_LINK.url);
+    });
+
+    it('blocks a duplicate platform with a reason', () => {
+      http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+      fixture.detectChanges();
+      fillLink('GitHub', 'https://github.com/other');
+      expect((el().querySelector('button.add-link') as HTMLButtonElement).disabled).toBe(true);
+      expect(el().textContent).toContain('already have a GitHub link');
+    });
+
+    it('blocks the seventh link', () => {
+      http.expectOne(ME_URL).flush(
+        ownProfile({
+          socialLinks: [
+            { platform: 'Twitch', url: 'https://twitch.tv/probe' },
+            { platform: 'YouTube', url: 'https://youtube.com/@probe' },
+            { platform: 'X', url: 'https://x.com/probe' },
+            { platform: 'Instagram', url: 'https://instagram.com/probe' },
+            { platform: 'GitHub', url: 'https://github.com/probe' },
+            { platform: 'Steam', url: 'https://steamcommunity.com/id/probe' },
+          ],
+        }),
+      );
+      fixture.detectChanges();
+      fillLink('Website', 'https://example.org/me');
+      expect((el().querySelector('button.add-link') as HTMLButtonElement).disabled).toBe(true);
+      expect(el().textContent).toContain('at most 6');
+    });
+
+    it('removes a link from the working list', () => {
+      http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+      fixture.detectChanges();
+      (el().querySelector('button.remove-link') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el().textContent).not.toContain(GITHUB_LINK.url);
+    });
+
+    it('saves the whole working list and refreshes', () => {
+      http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+      fixture.detectChanges();
+      (el().querySelector('button.save-links') as HTMLButtonElement).click();
+
+      const put = http.expectOne('/api/profiles/me/socials');
+      expect(put.request.method).toBe('PUT');
+      expect(put.request.body).toEqual({ links: [GITHUB_LINK] });
+      put.flush(null, { status: 204, statusText: 'No Content' });
+
+      http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+    });
+  });
 });

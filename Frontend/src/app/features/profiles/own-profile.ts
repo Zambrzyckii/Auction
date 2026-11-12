@@ -1,11 +1,13 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormField, form } from '@angular/forms/signals';
 import { Observable, retry, tap, throwError, timer } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
-import { OwnProfile as OwnProfileDto } from '../../core/api/models';
+import { OwnProfile as OwnProfileDto, SocialLink, SocialPlatform } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORMS, socialLinkProblem } from './social-links';
 
 const POLL_MS = 5000;
 const PROVISIONING_RETRY_MS = 1500;
@@ -13,7 +15,7 @@ const PROVISIONING_WINDOW_MS = 30_000;
 
 @Component({
   selector: 'app-own-profile',
-  imports: [DatePipe],
+  imports: [DatePipe, FormField],
   templateUrl: './own-profile.html',
 })
 export class OwnProfile {
@@ -45,6 +47,75 @@ export class OwnProfile {
     });
   }
 
+  protected readonly platforms = SOCIAL_PLATFORMS;
+  readonly workingLinks = signal<readonly SocialLink[] | null>(null);
+  readonly linksPending = signal(false);
+  private linksDirty = false;
+
+  private readonly linkModel = signal<{ platform: SocialPlatform; url: string }>({
+    platform: 'Twitch',
+    url: '',
+  });
+  protected readonly linkForm = form(this.linkModel);
+
+  readonly addProblem = computed<string | null>(() => {
+    const links = this.workingLinks();
+    if (links === null) {
+      return 'Loading…';
+    }
+    const { platform, url } = this.linkModel();
+    if (links.length >= MAX_SOCIAL_LINKS) {
+      return `You can keep at most ${MAX_SOCIAL_LINKS} links.`;
+    }
+    if (links.some((link) => link.platform === platform)) {
+      return `You already have a ${platform} link.`;
+    }
+    if (url === '') {
+      return 'Enter a url.';
+    }
+    return socialLinkProblem(platform, url);
+  });
+
+  addLink(): void {
+    const links = this.workingLinks();
+    if (links === null || this.addProblem() !== null) {
+      return;
+    }
+    const { platform, url } = this.linkModel();
+    this.linksDirty = true;
+    this.workingLinks.set([...links, { platform, url }]);
+    this.linkModel.update((model) => ({ ...model, url: '' }));
+  }
+
+  removeLink(platform: SocialPlatform): void {
+    const links = this.workingLinks();
+    if (links === null) {
+      return;
+    }
+    this.linksDirty = true;
+    this.workingLinks.set(links.filter((link) => link.platform !== platform));
+  }
+
+  saveLinks(): void {
+    const links = this.workingLinks();
+    if (links === null) {
+      return;
+    }
+    this.linksPending.set(true);
+    this.notice.set(null);
+    this.http.put('/api/profiles/me/socials', { links }).subscribe({
+      next: () => {
+        this.linksPending.set(false);
+        this.linksDirty = false;
+        this.poller.refresh();
+      },
+      error: (err: unknown) => {
+        this.notice.set(toApiError(err).message);
+        this.linksPending.set(false);
+      },
+    });
+  }
+
   private loadProfile(): Observable<OwnProfileDto> {
     return this.http.get<OwnProfileDto>('/api/profiles/me').pipe(
       retry({
@@ -56,6 +127,9 @@ export class OwnProfile {
       tap((profile) => {
         for (const friend of profile.friends) {
           this.directory.remember(friend.userId, friend.username);
+        }
+        if (!this.linksDirty) {
+          this.workingLinks.set([...profile.socialLinks]);
         }
       }),
     );
