@@ -38,3 +38,34 @@ export interface Wallet {
 export interface LoginResponse {
   readonly token: string;
 }
+
+export type SocialPlatform =
+  | 'Twitch'
+  | 'YouTube'
+  | 'X'
+  | 'Instagram'
+  | 'GitHub'
+  | 'Steam'
+  | 'Discord'
+  | 'Website';
+
+export interface FriendSummary {
+  readonly userId: string;
+  readonly username: string;
+}
+
+export interface SocialLink {
+  readonly platform: SocialPlatform;
+  readonly url: string;
+}
+
+export interface Profile {
+  readonly userId: string;
+  readonly username: string;
+  readonly isPrivate: boolean;
+  readonly level: number | null;
+  readonly memberSince: string | null;
+  readonly avatarUrl: string | null;
+  readonly friends: readonly FriendSummary[];
+  readonly socialLinks: readonly SocialLink[];
+}
