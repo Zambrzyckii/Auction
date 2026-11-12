@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto } from '../../core/api/models';
@@ -102,6 +103,7 @@ describe('OwnProfile', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        provideRouter([]),
         { provide: ProfileDirectory, useValue: { remember } },
       ],
     }).compileComponents();
@@ -171,6 +173,8 @@ describe('OwnProfile', () => {
     expect(text).toContain('alice');
     expect(text).toContain('bob');
     expect(text).toContain('carol');
+    const sendLink = el().querySelector('ul.friends a');
+    expect(sendLink?.getAttribute('href')).toBe('/transfers?to=friend-1');
   });
 
   it('keeps polling every 5 seconds', () => {

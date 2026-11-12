@@ -70,6 +70,7 @@
       @for (friend of profile.friends; track friend.userId) {
         <li>
           {{ friend.username }}
+          <a [routerLink]="['/transfers']" [queryParams]="{ to: friend.userId }">Send funds</a>
           <button
             type="button"
             class="remove-friend"

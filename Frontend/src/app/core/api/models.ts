@@ -78,6 +78,13 @@ export interface FriendRequest {
 
 export type FriendshipStatus = 'Pending' | 'Accepted';
 
+export interface Transfer {
+  readonly senderUserId: string;
+  readonly recipientUserId: string;
+  readonly amount: number;
+  readonly sentOn: string;
+}
+
 export interface FriendRequestResult {
   readonly publicFriendshipId: string;
   readonly status: FriendshipStatus;

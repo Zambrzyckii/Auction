@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FormField, form } from '@angular/forms/signals';
 import { Observable, retry, tap, throwError, timer } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
@@ -35,7 +36,7 @@ export function addFriendProblem(userId: string, me: OwnProfileDto): string | nu
 
 @Component({
   selector: 'app-own-profile',
-  imports: [DatePipe, FormField, ProfileAvatar],
+  imports: [DatePipe, FormField, ProfileAvatar, RouterLink],
   templateUrl: './own-profile.html',
 })
 export class OwnProfile {

@@ -1,0 +1,36 @@
+<h2>Transfers</h2>
+@if (walletPoller.value(); as wallet) {
+  <p>Available funds: {{ wallet.availableFunds | number }}</p>
+} @else if (walletPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading your wallet…</p>
+}
+
+<h3>History</h3>
+@if (historyPoller.value(); as rows) {
+  @if (rows.length === 0) {
+    <p>No transfers yet.</p>
+  } @else {
+    <table>
+      <tr>
+        <th>Direction</th>
+        <th>Player</th>
+        <th>Amount</th>
+        <th>Sent on</th>
+      </tr>
+      @for (row of rows; track row.sentOn + row.senderUserId) {
+        <tr>
+          <td>{{ row.senderUserId === session.userId() ? 'Sent to' : 'Received from' }}</td>
+          <td>{{ directory.label(otherParty(row)) }}</td>
+          <td>{{ row.amount | number }}</td>
+          <td>{{ row.sentOn | date: 'medium' }}</td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (historyPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the history…</p>
+}

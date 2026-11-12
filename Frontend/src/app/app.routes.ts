@@ -35,6 +35,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/wallet/wallet').then((m) => m.Wallet),
   },
   {
+    path: 'transfers',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/transfers/transfers').then((m) => m.Transfers),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),
