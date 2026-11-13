@@ -1,0 +1,35 @@
+<h2>Casino</h2>
+@if (casinoPoller.value(); as casino) {
+  <p>Chip balance: {{ casino.balance | number }}</p>
+  <p>
+    Bought in total: {{ casino.lifetimeBought | number }}, cashed out in total:
+    {{ casino.lifetimeCashedOut | number }}
+  </p>
+  @if (notice(); as text) {
+    <p class="purchase-notice">{{ text }}</p>
+  }
+} @else if (casinoPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the casino…</p>
+}
+@if (walletPoller.value(); as wallet) {
+  <p>Available funds: {{ wallet.availableFunds | number }}</p>
+}
+
+<h3>Buy chips</h3>
+<form class="buy-form" (submit)="$event.preventDefault(); buy()">
+  <label>
+    Amount
+    <input type="number" step="any" [formField]="buyForm.amount" />
+  </label>
+  <button type="submit" class="buy-chips" [disabled]="buyPending() || buyProblem() !== null">
+    Buy
+  </button>
+  @if (buyProblem(); as problem) {
+    <p class="buy-problem">{{ problem }}</p>
+  }
+  @if (buyError(); as text) {
+    <p class="buy-error">{{ text }}</p>
+  }
+</form>

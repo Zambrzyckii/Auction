@@ -27,6 +27,7 @@ describe('App', () => {
     expect(texts).toContain('Wallet');
     expect(texts).toContain('Transfers');
     expect(texts).toContain('Bank');
+    expect(texts).toContain('Casino');
     expect(texts).toContain('Profile');
     expect(texts).toContain('Log in');
   });

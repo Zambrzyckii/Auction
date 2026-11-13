@@ -136,3 +136,28 @@ export interface OwnProfile {
   readonly outgoingFriendRequests: readonly FriendRequest[];
   readonly socialLinks: readonly SocialLink[];
 }
+
+export type ChipPurchaseStatus = 'Pending' | 'Completed' | 'Rejected' | 'Expired';
+
+export interface ChipPurchase {
+  readonly publicPurchaseId: string;
+  readonly amount: number;
+  readonly status: ChipPurchaseStatus;
+  readonly requestedOn: string;
+  readonly resolvedOn: string | null;
+  readonly rejectionReason: string | null;
+}
+
+export interface RouletteLimits {
+  readonly minBet: number;
+  readonly maxBet: number;
+  readonly maxBetsPerSpin: number;
+}
+
+export interface Casino {
+  readonly balance: number;
+  readonly lifetimeBought: number;
+  readonly lifetimeCashedOut: number;
+  readonly latestPurchase: ChipPurchase | null;
+  readonly roulette: RouletteLimits;
+}
