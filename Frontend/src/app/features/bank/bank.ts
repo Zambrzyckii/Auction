@@ -38,6 +38,20 @@ export function offerBlockReason(
   return null;
 }
 
+export function repayHint(loan: Loan, wallet: WalletDto): string | null {
+  if (loan.status !== 'Active' && loan.status !== 'Overdue') {
+    return null;
+  }
+  const collect = Math.min(wallet.availableFunds, loan.outstanding);
+  if (collect === 0) {
+    return 'Nothing to collect now, your available funds are 0';
+  }
+  if (collect < loan.outstanding) {
+    return `This collects ${collect} now, the rest stays outstanding`;
+  }
+  return `This collects ${collect} now and repays the loan`;
+}
+
 @Component({
   selector: 'app-bank',
   imports: [DatePipe, DecimalPipe],
@@ -65,6 +79,8 @@ export class Bank {
 
   readonly requestPending = signal(false);
   readonly bankNotice = signal<string | null>(null);
+  readonly repayPending = signal(false);
+  readonly loanNotice = signal<string | null>(null);
 
   offerProblem(offer: LoanOffer): string | null {
     const funds = this.walletPoller.value();
@@ -90,6 +106,36 @@ export class Bank {
       error: (err: unknown) => {
         this.bankNotice.set(toApiError(err).message);
         this.requestPending.set(false);
+      },
+    });
+  }
+
+  showsRepay(loan: Loan): boolean {
+    return (
+      loan.status === 'Active' || loan.status === 'Overdue' || loan.status === 'CollectionPending'
+    );
+  }
+
+  repayPreview(loan: Loan): string | null {
+    const funds = this.walletPoller.value();
+    return funds === null ? null : repayHint(loan, funds);
+  }
+
+  repay(loan: Loan): void {
+    if (this.repayPending() || (loan.status !== 'Active' && loan.status !== 'Overdue')) {
+      return;
+    }
+    this.repayPending.set(true);
+    this.loanNotice.set(null);
+    this.http.post(`/api/bank/loans/${loan.publicLoanId}/repayments`, null).subscribe({
+      next: () => {
+        this.repayPending.set(false);
+        this.loanNotice.set('Collection requested…');
+        this.loansPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.loanNotice.set(toApiError(err).message);
+        this.repayPending.set(false);
       },
     });
   }

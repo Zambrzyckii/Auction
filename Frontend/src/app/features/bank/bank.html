@@ -65,6 +65,7 @@
         <th>Repaid</th>
         <th>Outstanding</th>
         <th>Due</th>
+        <th></th>
       </tr>
       @for (loan of loans; track loan.publicLoanId) {
         <tr>
@@ -83,19 +84,37 @@
               repaid {{ loan.repaidOn | date: 'medium' }}
             }
           </td>
+          <td>
+            @if (showsRepay(loan)) {
+              <button
+                type="button"
+                class="repay"
+                (click)="repay(loan)"
+                [disabled]="repayPending() || loan.status === 'CollectionPending'"
+              >
+                Repay
+              </button>
+              @if (repayPreview(loan); as hint) {
+                <span class="repay-hint">{{ hint }}</span>
+              }
+            }
+          </td>
         </tr>
         @if (loan.status === 'Overdue') {
           <tr>
-            <td colspan="7" class="overdue-note">The bank retries collection every 2 minutes</td>
+            <td colspan="8" class="overdue-note">The bank retries collection every 2 minutes</td>
           </tr>
         }
         @if (loan.rejectionReason !== null) {
           <tr>
-            <td colspan="7" class="rejection">{{ loan.rejectionReason }}</td>
+            <td colspan="8" class="rejection">{{ loan.rejectionReason }}</td>
           </tr>
         }
       }
     </table>
+    @if (loanNotice(); as text) {
+      <p class="loan-notice">{{ text }}</p>
+    }
   }
 } @else if (loansPoller.error(); as error) {
   <p class="error">{{ error.message }}</p>

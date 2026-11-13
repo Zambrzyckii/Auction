@@ -5,7 +5,7 @@ import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Loan, LoanOffer, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
-import { Bank, loansPollMs, offerBlockReason } from './bank';
+import { Bank, loansPollMs, offerBlockReason, repayHint } from './bank';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const OFFERS_URL = '/api/bank/offers';
@@ -84,6 +84,37 @@ describe('offerBlockReason', () => {
   it('blocks a turnover below the requirement and names both numbers', () => {
     const reason = offerBlockReason(offer({}), wallet({ lifetimeTurnover: 100 }), []);
     expect(reason).toBe('Needs lifetime turnover 400, you have 100');
+  });
+});
+
+describe('repayHint', () => {
+  it('previews nothing for a loan the bank cannot collect now', () => {
+    const funds = wallet({ availableFunds: 1000 });
+    for (const status of ['PendingApproval', 'CollectionPending', 'Repaid', 'Rejected'] as const) {
+      expect(repayHint(loan({ status }), funds)).toBeNull();
+    }
+  });
+
+  it('repays the outstanding debt with the penalty and earlier repayments counted', () => {
+    const funds = wallet({ availableFunds: 1000 });
+    const overdue = loan({ status: 'Overdue', penalty: 44, outstanding: 264 });
+    expect(repayHint(overdue, funds)).toBe('This collects 264 now and repays the loan');
+    const partlyRepaid = loan({ amountRepaid: 50, outstanding: 170 });
+    expect(repayHint(partlyRepaid, funds)).toBe('This collects 170 now and repays the loan');
+  });
+
+  it('collects only the available funds, never the locked ones', () => {
+    const funds = wallet({ availableFunds: 100, lockedFunds: 500 });
+    expect(repayHint(loan({ outstanding: 220 }), funds)).toBe(
+      'This collects 100 now, the rest stays outstanding',
+    );
+  });
+
+  it('says there is nothing to collect when the available funds are zero', () => {
+    const funds = wallet({ availableFunds: 0, lockedFunds: 300 });
+    expect(repayHint(loan({ outstanding: 220 }), funds)).toBe(
+      'Nothing to collect now, your available funds are 0',
+    );
   });
 });
 
@@ -178,6 +209,50 @@ describe('Bank', () => {
     fixture.detectChanges();
     expect((el().querySelector('button.request-loan') as HTMLButtonElement).disabled).toBe(true);
     expect(el().textContent).toContain('User already has an open loan');
+  });
+
+  it('repays a running loan and keeps the button disabled while collecting', () => {
+    flushAll([loan({})]);
+    (el().querySelector('button.repay') as HTMLButtonElement).click();
+
+    const post = http.expectOne(`${LOANS_URL}/loan-1/repayments`);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toBeNull();
+    post.flush(null, { status: 202, statusText: 'Accepted' });
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Collection requested…');
+
+    http.expectOne(LOANS_URL).flush([loan({ status: 'CollectionPending' })]);
+    fixture.detectChanges();
+    expect((el().querySelector('button.repay') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('offers no repay button for a loan that is not running', () => {
+    flushAll([
+      loan({ status: 'PendingApproval', dueOn: null }),
+      loan({ publicLoanId: 'loan-2', status: 'Repaid', repaidOn: '2026-11-12T10:01:00Z' }),
+      loan({ publicLoanId: 'loan-3', status: 'Rejected', rejectionReason: 'Not enough' }),
+    ]);
+    expect(el().querySelector('button.repay')).toBeNull();
+  });
+
+  it('shows the server text when the repayment is refused', () => {
+    flushAll([loan({ status: 'Overdue', overdueSince: '2026-11-12T10:05:00Z' })]);
+    (el().querySelector('button.repay') as HTMLButtonElement).click();
+    http
+      .expectOne(`${LOANS_URL}/loan-1/repayments`)
+      .flush(
+        { error: 'A collection for this loan is already in progress' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    fixture.detectChanges();
+    expect(el().textContent).toContain('A collection for this loan is already in progress');
+    expect((el().querySelector('button.repay') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('previews the repayment next to the button', () => {
+    flushAll([loan({})]);
+    expect(el().textContent).toContain('This collects 220 now and repays the loan');
   });
 
   it('polls loans every 2 seconds while one is pending approval', () => {
