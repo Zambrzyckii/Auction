@@ -33,3 +33,24 @@
     <p class="buy-error">{{ text }}</p>
   }
 </form>
+
+<h3>Cash out chips</h3>
+<form class="cash-out-form" (submit)="$event.preventDefault(); cashOut()">
+  <label>
+    Amount
+    <input type="number" step="any" [formField]="cashOutForm.amount" />
+  </label>
+  <button
+    type="submit"
+    class="cash-out"
+    [disabled]="cashOutPending() || cashOutFormProblem() !== null"
+  >
+    Cash out
+  </button>
+  @if (cashOutFormProblem(); as problem) {
+    <p class="cash-out-problem">{{ problem }}</p>
+  }
+  @if (cashOutNotice(); as text) {
+    <p class="cash-out-notice">{{ text }}</p>
+  }
+</form>

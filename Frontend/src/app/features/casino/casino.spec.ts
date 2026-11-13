@@ -5,7 +5,7 @@ import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Casino as CasinoDto, ChipPurchase, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
-import { Casino, casinoPollMs, purchaseNotice, purchaseProblem } from './casino';
+import { Casino, cashOutProblem, casinoPollMs, purchaseNotice, purchaseProblem } from './casino';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const CASINO_URL = '/api/casino';
@@ -76,6 +76,24 @@ describe('purchaseProblem', () => {
   });
 });
 
+describe('cashOutProblem', () => {
+  const chips = casino({ balance: 100 });
+
+  it('allows up to two decimal places within the chip balance', () => {
+    expect(cashOutProblem(10.25, chips)).toBeNull();
+    expect(cashOutProblem(100, chips)).toBeNull();
+  });
+
+  it('rejects zero and a third decimal place with the validator texts', () => {
+    expect(cashOutProblem(0, chips)).toBe('Amount must be above zero.');
+    expect(cashOutProblem(10.255, chips)).toBe('Amount cannot have more than two decimal places');
+  });
+
+  it('rejects more than the chip balance with the domain text', () => {
+    expect(cashOutProblem(100.01, chips)).toBe('Not enough chips on account');
+  });
+});
+
 describe('purchaseNotice', () => {
   it('says nothing before the first purchase', () => {
     expect(purchaseNotice(null)).toBeNull();
@@ -140,8 +158,8 @@ describe('Casino', () => {
     fixture.detectChanges();
   }
 
-  function typeAmount(value: string): void {
-    const input = el().querySelector('.buy-form input') as HTMLInputElement;
+  function typeAmount(value: string, formClass = '.buy-form'): void {
+    const input = el().querySelector(`${formClass} input`) as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
@@ -209,6 +227,50 @@ describe('Casino', () => {
       'Another chip purchase is already in progress',
     );
     expect(buyButton().disabled).toBe(false);
+  });
+
+  describe('cash-out form', () => {
+    function cashOutButton(): HTMLButtonElement {
+      return el().querySelector('button.cash-out') as HTMLButtonElement;
+    }
+
+    it('cashes out, says when the funds arrive and refreshes the balance', () => {
+      flushAll(casino({ balance: 100 }));
+      typeAmount('10.25', '.cash-out-form');
+      cashOutButton().click();
+
+      const post = http.expectOne('/api/casino/chips/cashouts');
+      expect(post.request.method).toBe('POST');
+      expect(post.request.body).toEqual({ amount: 10.25 });
+      post.flush(null, { status: 202, statusText: 'Accepted' });
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Funds reach your wallet in a few seconds');
+
+      http.expectOne(CASINO_URL).flush(casino({ balance: 89.75, lifetimeCashedOut: 10.25 }));
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Chip balance: 89.75');
+    });
+
+    it('blocks a cash-out above the chip balance', () => {
+      flushAll(casino({ balance: 0 }));
+      typeAmount('5', '.cash-out-form');
+      expect(cashOutButton().disabled).toBe(true);
+      expect(el().textContent).toContain('Not enough chips on account');
+    });
+
+    it('shows the server text when the cash-out is refused', () => {
+      flushAll(casino({ balance: 100 }));
+      typeAmount('10', '.cash-out-form');
+      cashOutButton().click();
+      http
+        .expectOne('/api/casino/chips/cashouts')
+        .flush({ error: 'Data corrupted, try again' }, { status: 409, statusText: 'Conflict' });
+      fixture.detectChanges();
+      expect(el().querySelector('.cash-out-notice')?.textContent).toContain(
+        'Data corrupted, try again',
+      );
+      expect(cashOutButton().disabled).toBe(false);
+    });
   });
 
   it('polls every 2 seconds while a purchase is pending', () => {

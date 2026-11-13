@@ -27,6 +27,15 @@ export function purchaseProblem(
   return null;
 }
 
+export function cashOutProblem(amount: number, casino: CasinoDto): string | null {
+  if (!(amount > 0)) return 'Amount must be above zero.';
+  if (Math.round(amount * 100) / 100 !== amount) {
+    return 'Amount cannot have more than two decimal places';
+  }
+  if (amount > casino.balance) return 'Not enough chips on account';
+  return null;
+}
+
 export function purchaseNotice(latest: ChipPurchase | null): string | null {
   if (latest === null) {
     return null;
@@ -93,6 +102,39 @@ export class Casino {
       error: (err: unknown) => {
         this.buyError.set(toApiError(err).message);
         this.buyPending.set(false);
+      },
+    });
+  }
+
+  private readonly cashOutModel = signal({ amount: 0 });
+  protected readonly cashOutForm = form(this.cashOutModel);
+  readonly cashOutPending = signal(false);
+  readonly cashOutNotice = signal<string | null>(null);
+
+  readonly cashOutFormProblem = computed<string | null>(() => {
+    const casino = this.casinoPoller.value();
+    if (casino === null) {
+      return 'Loading…';
+    }
+    return cashOutProblem(this.cashOutModel().amount, casino);
+  });
+
+  cashOut(): void {
+    if (this.cashOutFormProblem() !== null) {
+      return;
+    }
+    const { amount } = this.cashOutModel();
+    this.cashOutPending.set(true);
+    this.cashOutNotice.set(null);
+    this.http.post('/api/casino/chips/cashouts', { amount }).subscribe({
+      next: () => {
+        this.cashOutPending.set(false);
+        this.cashOutNotice.set('Funds reach your wallet in a few seconds');
+        this.casinoPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.cashOutNotice.set(toApiError(err).message);
+        this.cashOutPending.set(false);
       },
     });
   }
