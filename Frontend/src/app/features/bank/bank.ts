@@ -2,7 +2,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { toApiError } from '../../core/api/api-error';
-import { Loan, LoanOffer, Wallet as WalletDto } from '../../core/api/models';
+import { Loan, LoanOffer, LoanStatus, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
@@ -15,6 +15,27 @@ export function loansPollMs(loans: readonly Loan[] | null): number {
     (loan) => loan.status === 'PendingApproval' || loan.status === 'CollectionPending',
   );
   return busy ? 2000 : 5000;
+}
+
+const OPEN_LOAN_STATUSES: readonly LoanStatus[] = [
+  'PendingApproval',
+  'Active',
+  'CollectionPending',
+  'Overdue',
+];
+
+export function offerBlockReason(
+  offer: LoanOffer,
+  wallet: WalletDto,
+  loans: readonly Loan[],
+): string | null {
+  if (loans.some((loan) => OPEN_LOAN_STATUSES.includes(loan.status))) {
+    return 'User already has an open loan';
+  }
+  if (wallet.lifetimeTurnover < offer.requiredTurnover) {
+    return `Needs lifetime turnover ${offer.requiredTurnover}, you have ${wallet.lifetimeTurnover}`;
+  }
+  return null;
 }
 
 @Component({
@@ -41,6 +62,37 @@ export class Bank {
 
   readonly now = clock();
   readonly timeLeft = timeLeft;
+
+  readonly requestPending = signal(false);
+  readonly bankNotice = signal<string | null>(null);
+
+  offerProblem(offer: LoanOffer): string | null {
+    const funds = this.walletPoller.value();
+    const loans = this.loansPoller.value();
+    if (funds === null || loans === null) {
+      return 'Loading…';
+    }
+    return offerBlockReason(offer, funds, loans);
+  }
+
+  requestLoan(offer: LoanOffer): void {
+    if (this.offerProblem(offer) !== null) {
+      return;
+    }
+    this.requestPending.set(true);
+    this.bankNotice.set(null);
+    this.http.post('/api/bank/loans', { offerName: offer.name }).subscribe({
+      next: () => {
+        this.requestPending.set(false);
+        this.bankNotice.set('Loan requested, waiting for approval…');
+        this.loansPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.bankNotice.set(toApiError(err).message);
+        this.requestPending.set(false);
+      },
+    });
+  }
 
   constructor() {
     this.http.get<LoanOffer[]>('/api/bank/offers').subscribe({

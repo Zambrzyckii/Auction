@@ -5,7 +5,7 @@ import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Loan, LoanOffer, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
-import { Bank, loansPollMs } from './bank';
+import { Bank, loansPollMs, offerBlockReason } from './bank';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const OFFERS_URL = '/api/bank/offers';
@@ -58,6 +58,32 @@ describe('loansPollMs', () => {
     expect(loansPollMs(null)).toBe(5000);
     expect(loansPollMs([])).toBe(5000);
     expect(loansPollMs([loan({ status: 'Active' }), loan({ status: 'Repaid' })])).toBe(5000);
+  });
+});
+
+describe('offerBlockReason', () => {
+  it('allows an offer within the turnover and with no open loan', () => {
+    expect(offerBlockReason(offer({}), wallet({ lifetimeTurnover: 400 }), [])).toBeNull();
+    expect(
+      offerBlockReason(offer({}), wallet({ lifetimeTurnover: 500 }), [
+        loan({ status: 'Repaid' }),
+        loan({ status: 'Rejected' }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('blocks every open loan status with the server text', () => {
+    const funds = wallet({ lifetimeTurnover: 1000 });
+    for (const status of ['PendingApproval', 'Active', 'CollectionPending', 'Overdue'] as const) {
+      expect(offerBlockReason(offer({}), funds, [loan({ status })])).toBe(
+        'User already has an open loan',
+      );
+    }
+  });
+
+  it('blocks a turnover below the requirement and names both numbers', () => {
+    const reason = offerBlockReason(offer({}), wallet({ lifetimeTurnover: 100 }), []);
+    expect(reason).toBe('Needs lifetime turnover 400, you have 100');
   });
 });
 
@@ -124,6 +150,34 @@ describe('Bank', () => {
     const text = el().textContent ?? '';
     expect(text).toContain('The bank retries collection every 2 minutes');
     expect(text).toContain('below the required 400');
+  });
+
+  it('requests a loan with the exact offer name and refreshes', () => {
+    http.expectOne(OFFERS_URL).flush([offer({})]);
+    http.expectOne(LOANS_URL).flush([]);
+    http.expectOne(WALLET_URL).flush(wallet({ lifetimeTurnover: 400 }));
+    fixture.detectChanges();
+    (el().querySelector('button.request-loan') as HTMLButtonElement).click();
+
+    const post = http.expectOne(LOANS_URL);
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ offerName: 'Quick' });
+    post.flush({ publicLoanId: 'loan-9' }, { status: 201, statusText: 'Created' });
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Loan requested, waiting for approval…');
+
+    http.expectOne(LOANS_URL).flush([loan({ status: 'PendingApproval', dueOn: null })]);
+    fixture.detectChanges();
+    expect(el().textContent).toContain('PendingApproval');
+  });
+
+  it('blocks the offer while a loan is open', () => {
+    http.expectOne(OFFERS_URL).flush([offer({})]);
+    http.expectOne(LOANS_URL).flush([loan({ status: 'Active' })]);
+    http.expectOne(WALLET_URL).flush(wallet({ lifetimeTurnover: 400 }));
+    fixture.detectChanges();
+    expect((el().querySelector('button.request-loan') as HTMLButtonElement).disabled).toBe(true);
+    expect(el().textContent).toContain('User already has an open loan');
   });
 
   it('polls loans every 2 seconds while one is pending approval', () => {

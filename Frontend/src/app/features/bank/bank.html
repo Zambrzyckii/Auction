@@ -16,6 +16,7 @@
       <th>Total due</th>
       <th>Term</th>
       <th>Required turnover</th>
+      <th></th>
     </tr>
     @for (offer of catalog; track offer.name) {
       <tr>
@@ -25,9 +26,25 @@
         <td>{{ offer.totalDue | number }}</td>
         <td>{{ offer.term }}</td>
         <td>{{ offer.requiredTurnover | number }}</td>
+        <td>
+          <button
+            type="button"
+            class="request-loan"
+            (click)="requestLoan(offer)"
+            [disabled]="requestPending() || offerProblem(offer) !== null"
+          >
+            Request
+          </button>
+          @if (offerProblem(offer); as problem) {
+            <span class="offer-problem">{{ problem }}</span>
+          }
+        </td>
       </tr>
     }
   </table>
+  @if (bankNotice(); as text) {
+    <p class="bank-notice">{{ text }}</p>
+  }
 } @else if (offersError(); as error) {
   <p class="error">{{ error }}</p>
 } @else {
