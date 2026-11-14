@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Profile } from '../api/models';
+import { Session } from '../auth/session';
 import { TokenStorage } from '../auth/token-storage';
 import { MISS_RETRY_MS, ProfileDirectory, shortId } from './profile-directory';
 
@@ -33,6 +34,7 @@ describe('shortId', () => {
 
 describe('labelWithId', () => {
   it('appends the short id to a known name and falls back to the short id alone', () => {
+    installStorageStub();
     const directory = TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     }).inject(ProfileDirectory);
@@ -122,6 +124,23 @@ describe('ProfileDirectory', () => {
     directory.ensure([A]);
     http.expectOne(`/api/profiles/${A}`).flush(profile({ username: 'alice' }));
     expect(directory.label(A)).toBe('alice');
+  });
+
+  it('forgets the names on logout', () => {
+    const directory = setup();
+    directory.remember(A, 'alice');
+    TestBed.inject(Session).logout();
+    TestBed.tick();
+    expect(directory.label(A)).toBe('aaaaaaaa');
+  });
+
+  it('drops a response that lands after logout', () => {
+    const directory = setup();
+    directory.ensure([A]);
+    TestBed.inject(Session).logout();
+    TestBed.tick();
+    http.expectOne(`/api/profiles/${A}`).flush(profile({ username: 'alice' }));
+    expect(directory.label(A)).toBe('aaaaaaaa');
   });
 
   it('does not remember a 5xx as a missing profile', () => {

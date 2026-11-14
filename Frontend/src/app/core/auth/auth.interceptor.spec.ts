@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
+import { ProfileDirectory } from '../profiles/profile-directory';
 import { authInterceptor } from './auth.interceptor';
 import { TokenStorage } from './token-storage';
 
@@ -67,6 +68,23 @@ describe('authInterceptor', () => {
     await vi.waitFor(() => expect(router.url).toContain('/login'));
     expect(router.url).toContain('returnUrl=%2Fwallet');
     expect(new TokenStorage().get()).toBeNull();
+  });
+
+  it('clears the profile directory on a 401', async () => {
+    const userId = 'aaaaaaaa-1111-2222-3333-444444444444';
+    new TokenStorage().set('tok');
+    const directory = TestBed.inject(ProfileDirectory);
+    directory.remember(userId, 'alice');
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/wallet');
+
+    request('/api/wallets/x');
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/wallets/x')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    expect(directory.label(userId)).toBe('aaaaaaaa');
+    await vi.waitFor(() => expect(router.url).toContain('/login'));
   });
 
   it('does not redirect again when already on the login page', async () => {

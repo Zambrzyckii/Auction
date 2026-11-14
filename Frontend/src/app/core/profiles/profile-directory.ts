@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { toApiError } from '../api/api-error';
 import { Profile } from '../api/models';
 import { Session } from '../auth/session';
@@ -18,6 +18,20 @@ export class ProfileDirectory {
   private readonly names = signal<ReadonlyMap<string, string>>(new Map());
   private readonly inFlight = new Set<string>();
   private readonly missedAt = new Map<string, number>();
+
+  constructor() {
+    effect(() => {
+      if (!this.session.isLoggedIn()) {
+        this.clear();
+      }
+    });
+  }
+
+  clear(): void {
+    this.names.set(new Map());
+    this.inFlight.clear();
+    this.missedAt.clear();
+  }
 
   label(userId: string): string {
     return this.names().get(userId) ?? shortId(userId);
@@ -56,6 +70,9 @@ export class ProfileDirectory {
     this.http.get<Profile>(`/api/profiles/${userId}`).subscribe({
       next: (profile) => {
         this.inFlight.delete(userId);
+        if (!this.session.isLoggedIn()) {
+          return;
+        }
         this.missedAt.delete(userId);
         this.remember(userId, profile.username);
       },
