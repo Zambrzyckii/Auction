@@ -8,7 +8,7 @@ import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto, Transfer, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory, shortId } from '../../core/profiles/profile-directory';
-import { Transfers, transferProblem } from './transfers';
+import { Transfers } from './transfers';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const OTHER_ID = 'deadbeef-1111-2222-3333-444444444444';
@@ -45,31 +45,6 @@ function me(overrides: Partial<OwnProfileDto>): OwnProfileDto {
     ...overrides,
   };
 }
-
-describe('transferProblem', () => {
-  const funds = wallet({ availableFunds: 100 });
-
-  it('accepts a valid transfer', () => {
-    expect(transferProblem(25.5, OTHER_ID, MY_ID, funds)).toBeNull();
-  });
-
-  it('rejects a non-positive amount', () => {
-    expect(transferProblem(0, OTHER_ID, MY_ID, funds)).toMatch(/above zero/);
-    expect(transferProblem(-5, OTHER_ID, MY_ID, funds)).toMatch(/above zero/);
-  });
-
-  it('rejects more than two decimal places', () => {
-    expect(transferProblem(0.001, OTHER_ID, MY_ID, funds)).toMatch(/decimal/);
-  });
-
-  it('rejects myself with the validator text', () => {
-    expect(transferProblem(10, MY_ID, MY_ID, funds)).toBe('Cannot transfer funds to yourself');
-  });
-
-  it('rejects more than the available funds', () => {
-    expect(transferProblem(100.01, OTHER_ID, MY_ID, funds)).toBe('Not enough funds on account');
-  });
-});
 
 describe('Transfers', () => {
   let fixture: ComponentFixture<Transfers>;

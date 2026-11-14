@@ -15,23 +15,11 @@ import {
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { transferProblem } from './transfers-rules';
 
 const WALLET_POLL_MS = 5000;
 const HISTORY_POLL_MS = 10_000;
 const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function transferProblem(
-  amount: number,
-  recipientId: string,
-  myId: string | null,
-  wallet: WalletDto,
-): string | null {
-  if (!(amount > 0)) return 'Amount must be above zero.';
-  if (Math.round(amount * 100) / 100 !== amount) return 'Use at most 2 decimal places.';
-  if (recipientId === myId) return 'Cannot transfer funds to yourself';
-  if (amount > wallet.availableFunds) return 'Not enough funds on account';
-  return null;
-}
 
 @Component({
   selector: 'app-transfers',
