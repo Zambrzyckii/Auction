@@ -377,6 +377,18 @@ describe('Blackjack', () => {
     expect(el().querySelector('button.new-hand')).not.toBeNull();
   });
 
+  it('counts down to the auto-stand', () => {
+    flushAll(casino({}));
+    dealWith(handDto({}));
+    http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
+    fixture.detectChanges();
+    expect(el().querySelector('.auto-stand')?.textContent).toContain('Auto-stand in 5 min 0 s');
+
+    vi.advanceTimersByTime(2000);
+    fixture.detectChanges();
+    expect(el().querySelector('.auto-stand')?.textContent).toContain('4 min 58 s');
+  });
+
   it('lists the finished hands', () => {
     flushAll(casino({}), [
       historyDto({}),

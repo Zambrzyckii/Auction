@@ -4,6 +4,8 @@ import { Component, computed, effect, inject, signal, untracked } from '@angular
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
+import { timeLeft } from '../../core/format/time-left';
+import { clock } from '../../core/time/clock';
 import {
   ActiveBlackjackHand,
   BlackjackHand,
@@ -16,6 +18,7 @@ import { casinoPollMs } from './casino';
 import { HandView, fromActive, fromHand, fromHistory } from './hand-view';
 
 const HISTORY_POLL_MS = 10_000;
+export const HAND_TIMEOUT_MS = 300_000;
 
 const CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
 const CARD_SUITS = ['♣', '♦', '♥', '♠'] as const;
@@ -85,6 +88,7 @@ export class Blackjack {
   private staleCasino: CasinoDto | null = null;
 
   readonly cardLabel = cardLabel;
+  readonly now = clock();
 
   private readonly dealModel = signal({ stake: 5 });
   protected readonly dealForm = form(this.dealModel);
@@ -122,6 +126,10 @@ export class Blackjack {
         { action },
       ),
     );
+  }
+
+  autoStandIn(hand: HandView): string {
+    return timeLeft(new Date(hand.lastActionOn + HAND_TIMEOUT_MS).toISOString(), this.now());
   }
 
   newHand(): void {

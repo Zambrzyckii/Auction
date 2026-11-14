@@ -29,6 +29,7 @@
         Stake: {{ current.stake | number }}{{ current.doubled ? ' (doubled)' : '' }}
       </p>
       @if (current.status === 'InProgress') {
+        <p class="auto-stand">Auto-stand in {{ autoStandIn(current) }}</p>
         <button type="button" class="hit" (click)="act('Hit')" [disabled]="actionPending()">
           Hit
         </button>
