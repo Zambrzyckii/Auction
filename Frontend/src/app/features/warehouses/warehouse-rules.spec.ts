@@ -120,6 +120,9 @@ describe('raiseBlockReason', () => {
     );
     const closed = bidding({ biddingEndsOn: new Date(NOW - 1).toISOString() });
     expect(raiseBlockReason(closed, 10, NOW)).toBe('Raise window has already closed');
+    expect(
+      raiseBlockReason(bidding({ isParticipant: false, participantState: null }), 10, NOW),
+    ).toBe('User is not a participant of this warehouse war');
     expect(raiseBlockReason(bidding({ participantState: 'PendingLock' }), 10, NOW)).toBe(
       'Entry fee is not confirmed yet',
     );
@@ -134,16 +137,16 @@ describe('raiseBlockReason', () => {
 });
 
 describe('warehousePollMs', () => {
-  it('polls fast during the countdown and the bidding', () => {
-    expect(warehousePollMs(war({ status: 'Open', biddingStartsOn: '2026-11-14T12:00:00Z' }))).toBe(
-      2000,
-    );
-    expect(warehousePollMs(war({ status: 'Bidding' }))).toBe(2000);
+  it('polls every second during the bidding', () => {
+    expect(warehousePollMs(war({ status: 'Bidding' }))).toBe(1000);
   });
 
-  it('polls slow otherwise', () => {
-    expect(warehousePollMs(null)).toBe(5000);
-    expect(warehousePollMs(war({}))).toBe(5000);
-    expect(warehousePollMs(war({ status: 'Settled' }))).toBe(5000);
+  it('polls every 2.5 seconds otherwise', () => {
+    expect(warehousePollMs(null)).toBe(2500);
+    expect(warehousePollMs(war({}))).toBe(2500);
+    expect(warehousePollMs(war({ status: 'Open', biddingStartsOn: '2026-11-14T12:00:00Z' }))).toBe(
+      2500,
+    );
+    expect(warehousePollMs(war({ status: 'Settled' }))).toBe(2500);
   });
 });

@@ -55,6 +55,9 @@ export function raiseBlockReason(
   if (war.biddingEndsOn !== null && Date.parse(war.biddingEndsOn) < now) {
     return 'Raise window has already closed';
   }
+  if (!war.isParticipant) {
+    return 'User is not a participant of this warehouse war';
+  }
   if (war.participantState !== 'Active') {
     return 'Entry fee is not confirmed yet';
   }
@@ -70,12 +73,6 @@ export function raiseBlockReason(
   return null;
 }
 
-export function warehousePollMs(war: Pick<WarehouseSummary, 'status' | 'biddingStartsOn'> | null): number {
-  if (war === null) {
-    return 5000;
-  }
-  if (war.status === 'Bidding' || (war.status === 'Open' && war.biddingStartsOn !== null)) {
-    return 2000;
-  }
-  return 5000;
+export function warehousePollMs(war: Pick<WarehouseSummary, 'status'> | null): number {
+  return war !== null && war.status === 'Bidding' ? 1000 : 2500;
 }
