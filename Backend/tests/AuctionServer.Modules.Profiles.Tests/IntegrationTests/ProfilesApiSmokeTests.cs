@@ -119,6 +119,41 @@ public class ProfilesApiSmokeTests(ProfilesCustomApi factory)
         Assert.Equal("smoke-player", profile.GetProperty("username").GetString());
     }
 
+    [Fact]
+    public async Task PostWarehouseInvite_ShouldReturnCreatedWithInviteIdAndLocation()
+    {
+        var (inviterId, inviteeId) = await SeedFriendsAsync();
+        var inviter = CreateAuthorizedClient(inviterId);
+
+        var response = await inviter.PostAsJsonAsync("/api/profiles/warehouse-invites",
+            new { FriendUserId = inviteeId, PublicWarehouseId = Guid.NewGuid() });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("/api/profiles/warehouse-invites", response.Headers.Location?.ToString());
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var publicInviteId = body.GetProperty("publicInviteId").GetGuid();
+        var invites = await CreateAuthorizedClient(inviteeId)
+            .GetFromJsonAsync<JsonElement>("/api/profiles/warehouse-invites");
+        Assert.Equal(publicInviteId, invites.EnumerateArray().Single().GetProperty("publicInviteId").GetGuid());
+    }
+
+    [Fact]
+    public async Task DeclineWarehouseInvite_ShouldReturnOkOnceThenNotFound()
+    {
+        var (inviterId, inviteeId) = await SeedFriendsAsync();
+        var created = await CreateAuthorizedClient(inviterId).PostAsJsonAsync("/api/profiles/warehouse-invites",
+            new { FriendUserId = inviteeId, PublicWarehouseId = Guid.NewGuid() });
+        var publicInviteId = (await created.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("publicInviteId").GetGuid();
+        var invitee = CreateAuthorizedClient(inviteeId);
+
+        var first = await invitee.PostAsync($"/api/profiles/warehouse-invites/{publicInviteId}/decline", null);
+        var second = await invitee.PostAsync($"/api/profiles/warehouse-invites/{publicInviteId}/decline", null);
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, second.StatusCode);
+    }
+
     private async Task<Guid> SeedProfileAsync()
     {
         using var scope = factory.Services.CreateScope();
@@ -127,6 +162,19 @@ public class ProfilesApiSmokeTests(ProfilesCustomApi factory)
         context.UserProfiles.Add(profile);
         await context.SaveChangesAsync();
         return profile.UserId;
+    }
+
+    private async Task<(Guid InviterId, Guid InviteeId)> SeedFriendsAsync()
+    {
+        var inviterId = await SeedProfileAsync();
+        var inviteeId = await SeedProfileAsync();
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ProfilesDbContext>();
+        var friendship = Friendship.Create(inviterId, inviteeId, DateTime.UtcNow);
+        friendship.Accept(inviteeId);
+        context.Friendships.Add(friendship);
+        await context.SaveChangesAsync();
+        return (inviterId, inviteeId);
     }
 
     private HttpClient CreateAuthorizedClient(Guid userId)

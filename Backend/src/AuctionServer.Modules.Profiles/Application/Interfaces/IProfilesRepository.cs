@@ -20,10 +20,13 @@ public interface IProfilesRepository
     Task<List<WarehouseInviteEntry>> GetActiveWarehouseInvitesAsync(Guid inviteeId, DateTime threshold, CancellationToken token);
     Task<int> PurgeExpiredWarehouseInvitesAsync(DateTime threshold, CancellationToken token);
     Task AddWarehouseInviteAsync(WarehouseInvite invite, CancellationToken token);
+    Task<WarehouseInvite?> FindWarehouseInviteAsync(Guid inviteId, CancellationToken token);
+    Task RemoveWarehouseInviteAsync(WarehouseInvite invite, CancellationToken token);
 }
 
 public sealed record FriendEntry(Guid UserId, string Username);
 
 public sealed record PendingFriendEntry(Guid PublicFriendshipId, Guid UserId, string Username, bool Incoming);
 
-public sealed record WarehouseInviteEntry(Guid PublicWarehouseId, Guid InviterUserId, string InviterUsername, DateTime CreatedOn);
+public sealed record WarehouseInviteEntry(
+    Guid Id, Guid PublicWarehouseId, Guid InviterUserId, string InviterUsername, DateTime CreatedOn);

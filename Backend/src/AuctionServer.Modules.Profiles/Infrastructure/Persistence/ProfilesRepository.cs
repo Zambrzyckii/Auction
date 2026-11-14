@@ -112,9 +112,9 @@ public sealed class ProfilesRepository(ProfilesDbContext context) : IProfilesRep
             .Join(context.UserProfiles,
                 i => i.InviterId,
                 p => p.UserId,
-                (i, p) => new { i.PublicWarehouseId, p.UserId, p.Username, i.CreatedOn })
+                (i, p) => new { i.Id, i.PublicWarehouseId, p.UserId, p.Username, i.CreatedOn })
             .OrderByDescending(x => x.CreatedOn)
-            .Select(x => new WarehouseInviteEntry(x.PublicWarehouseId, x.UserId, x.Username, x.CreatedOn))
+            .Select(x => new WarehouseInviteEntry(x.Id, x.PublicWarehouseId, x.UserId, x.Username, x.CreatedOn))
             .ToListAsync(token);
 
     public async Task<int> PurgeExpiredWarehouseInvitesAsync(DateTime threshold, CancellationToken token) =>
@@ -136,5 +136,14 @@ public sealed class ProfilesRepository(ProfilesDbContext context) : IProfilesRep
         {
             throw new ProfilesExceptions.DuplicateWarehouseInviteException();
         }
+    }
+
+    public async Task<WarehouseInvite?> FindWarehouseInviteAsync(Guid inviteId, CancellationToken token) =>
+        await context.WarehouseInvites.SingleOrDefaultAsync(i => i.Id == inviteId, token);
+
+    public async Task RemoveWarehouseInviteAsync(WarehouseInvite invite, CancellationToken token)
+    {
+        context.WarehouseInvites.Remove(invite);
+        await context.SaveChangesAsync(token);
     }
 }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AuctionServer.Modules.Profiles.Application.Command.AcceptFriendRequest;
 using AuctionServer.Modules.Profiles.Application.Command.CreateWarehouseInvite;
 using AuctionServer.Modules.Profiles.Application.Command.DeclineFriendRequest;
+using AuctionServer.Modules.Profiles.Application.Command.DeclineWarehouseInvite;
 using AuctionServer.Modules.Profiles.Application.Command.DeleteAvatar;
 using AuctionServer.Modules.Profiles.Application.Command.RemoveFriend;
 using AuctionServer.Modules.Profiles.Application.Command.ReplaceSocialLinks;
@@ -108,8 +109,8 @@ public static class ProfilesEndpoints
         group.MapPost("/warehouse-invites", async (WarehouseInviteRequest request, ClaimsPrincipal user, ISender sender) =>
         {
             var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            await sender.Send(new CreateWarehouseInviteCommand(userId, request.FriendUserId, request.PublicWarehouseId));
-            return Results.Created("/api/profiles/warehouse-invites", null);
+            var id = await sender.Send(new CreateWarehouseInviteCommand(userId, request.FriendUserId, request.PublicWarehouseId));
+            return Results.Created("/api/profiles/warehouse-invites", new { PublicInviteId = id });
         }).RequireAuthorization();
 
         group.MapGet("/warehouse-invites", async (ClaimsPrincipal user, ISender sender) =>
@@ -118,6 +119,14 @@ public static class ProfilesEndpoints
             var result = await sender.Send(new GetWarehouseInvitesQuery(userId));
             return Results.Ok(result);
         }).RequireAuthorization();
+
+        group.MapPost("/warehouse-invites/{publicInviteId:guid}/decline",
+            async (Guid publicInviteId, ClaimsPrincipal user, ISender sender) =>
+            {
+                var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+                await sender.Send(new DeclineWarehouseInviteCommand(userId, publicInviteId));
+                return Results.Ok();
+            }).RequireAuthorization();
 
         group.MapGet("/{publicUserId:guid}/avatar", async (Guid publicUserId, HttpContext http, ISender sender) =>
         {

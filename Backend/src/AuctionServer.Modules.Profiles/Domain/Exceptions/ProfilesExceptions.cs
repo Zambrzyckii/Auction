@@ -39,4 +39,7 @@ public static class ProfilesExceptions
 
     public sealed class DuplicateWarehouseInviteException()
         : AppException("Invite for this warehouse already exists", 409);
+
+    public sealed class WarehouseInviteNotFoundException()
+        : AppException("Warehouse invite was not found", 404);
 }

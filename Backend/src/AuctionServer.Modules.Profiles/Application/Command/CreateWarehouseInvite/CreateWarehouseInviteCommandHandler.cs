@@ -9,9 +9,9 @@ using MediatR;
 namespace AuctionServer.Modules.Profiles.Application.Command.CreateWarehouseInvite;
 
 public sealed class CreateWarehouseInviteCommandHandler(IProfilesRepository repository, ProfilesOptions options)
-    : IRequestHandler<CreateWarehouseInviteCommand>
+    : IRequestHandler<CreateWarehouseInviteCommand, Guid>
 {
-    public async Task Handle(CreateWarehouseInviteCommand request, CancellationToken token)
+    public async Task<Guid> Handle(CreateWarehouseInviteCommand request, CancellationToken token)
     {
         var (low, high) = FriendshipPair.Normalize(request.UserId, request.FriendUserId);
         var friendship = await repository.FindFriendshipAsync(low, high, token);
@@ -23,5 +23,6 @@ public sealed class CreateWarehouseInviteCommandHandler(IProfilesRepository repo
         var invite = WarehouseInvite.Create(
             request.UserId, request.FriendUserId, request.PublicWarehouseId, DateTime.UtcNow);
         await repository.AddWarehouseInviteAsync(invite, token);
+        return invite.Id;
     }
 }

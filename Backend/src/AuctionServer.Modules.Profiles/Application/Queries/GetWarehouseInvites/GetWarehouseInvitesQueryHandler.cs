@@ -14,7 +14,8 @@ public sealed class GetWarehouseInvitesQueryHandler(IProfilesRepository reposito
         var invites = await repository.GetActiveWarehouseInvitesAsync(request.UserId, threshold, cancellationToken);
 
         return invites
-            .Select(i => new WarehouseInviteDto(i.PublicWarehouseId, i.InviterUserId, i.InviterUsername, i.CreatedOn))
+            .Select(i => new WarehouseInviteDto(i.Id, i.PublicWarehouseId, i.InviterUserId, i.InviterUsername,
+                i.CreatedOn, i.CreatedOn + options.Invites.Lifetime))
             .ToList();
     }
 }
