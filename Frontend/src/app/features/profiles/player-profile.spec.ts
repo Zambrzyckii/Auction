@@ -141,6 +141,16 @@ describe('PlayerProfile', () => {
     expect(text).not.toContain('Level');
   });
 
+  it('shows the full profile of a private friend', () => {
+    flushMe({ friends: [{ userId: PLAYER_ID, username: 'alice' }] });
+    http.expectOne(PROFILE_URL).flush(profile({ isPrivate: true }));
+    fixture.detectChanges();
+    const text = el().textContent ?? '';
+    expect(text).toContain('Level');
+    expect(text).toContain('4');
+    expect(text).not.toContain('This profile is private');
+  });
+
   it('says the player was not found on a 404', () => {
     flushMe({});
     http
@@ -189,6 +199,7 @@ describe('PlayerProfile', () => {
     flushMe({
       outgoingFriendRequests: [{ publicFriendshipId: 'fr-9', userId: PLAYER_ID, username: 'a' }],
     });
+    http.expectOne(PROFILE_URL).flush(profile({}));
     fixture.detectChanges();
     expect(el().querySelector('button.cancel-request')).not.toBeNull();
   });
@@ -203,6 +214,7 @@ describe('PlayerProfile', () => {
     expect(del.request.method).toBe('DELETE');
     del.flush(null, { status: 204, statusText: 'No Content' });
     flushMe({});
+    http.expectOne(PROFILE_URL).flush(profile({}));
     fixture.detectChanges();
     expect(el().querySelector('button.add-friend')).not.toBeNull();
   });
@@ -217,7 +229,9 @@ describe('PlayerProfile', () => {
 
     http.expectOne('/api/profiles/friends/requests/fr-1/accept').flush(null);
     flushMe({ friends: [{ userId: PLAYER_ID, username: 'alice' }] });
+    http.expectOne(PROFILE_URL).flush(profile({ isPrivate: true }));
     fixture.detectChanges();
     expect(el().querySelector('button.remove-friend')).not.toBeNull();
+    expect(el().textContent).toContain('Level');
   });
 });

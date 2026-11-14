@@ -100,6 +100,7 @@ export class PlayerProfile {
             result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
           );
           this.mePoller.refresh();
+          this.poller.refresh();
         },
         error: (err: unknown) => {
           this.actionNotice.set(toApiError(err).message);
@@ -115,6 +116,7 @@ export class PlayerProfile {
       next: () => {
         this.actionPending.set(false);
         this.mePoller.refresh();
+        this.poller.refresh();
       },
       error: (err: unknown) => {
         this.actionNotice.set(toApiError(err).message);

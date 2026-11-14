@@ -28,7 +28,7 @@
   @if (actionNotice(); as text) {
     <p class="friend-notice">{{ text }}</p>
   }
-  @if (profile.isPrivate) {
+  @if (profile.level === null) {
     <p class="private">This profile is private.</p>
   } @else {
     <table>
