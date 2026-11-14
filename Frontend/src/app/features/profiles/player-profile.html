@@ -5,27 +5,27 @@
 
   @switch (relation()) {
     @case ('none') {
-      <button type="button" class="add-friend" (click)="act()" [disabled]="actionPending()">
+      <button type="button" class="add-friend" (click)="act()" [disabled]="action.pending()">
         Add friend
       </button>
     }
     @case ('incoming') {
-      <button type="button" class="accept" (click)="act()" [disabled]="actionPending()">
+      <button type="button" class="accept" (click)="act()" [disabled]="action.pending()">
         Accept request
       </button>
     }
     @case ('outgoing') {
-      <button type="button" class="cancel-request" (click)="act()" [disabled]="actionPending()">
+      <button type="button" class="cancel-request" (click)="act()" [disabled]="action.pending()">
         Cancel request
       </button>
     }
     @case ('friend') {
-      <button type="button" class="remove-friend" (click)="act()" [disabled]="actionPending()">
+      <button type="button" class="remove-friend" (click)="act()" [disabled]="action.pending()">
         Remove friend
       </button>
     }
   }
-  @if (actionNotice(); as text) {
+  @if (action.notice(); as text) {
     <p class="friend-notice">{{ text }}</p>
   }
   @if (profile.level === null) {

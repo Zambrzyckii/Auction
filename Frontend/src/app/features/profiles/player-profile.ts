@@ -1,9 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { tap } from 'rxjs';
-import { toApiError } from '../../core/api/api-error';
+import { Observable, tap } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import {
   FriendRequestResult,
   OwnProfile as OwnProfileDto,
@@ -54,8 +54,7 @@ export class PlayerProfile {
     ME_POLL_MS,
   );
 
-  readonly actionPending = signal(false);
-  readonly actionNotice = signal<string | null>(null);
+  readonly action = actionState();
 
   protected readonly relation = computed<Relation | null>(() => {
     const myProfile = this.mePoller.value();
@@ -89,39 +88,22 @@ export class PlayerProfile {
   }
 
   private sendRequest(): void {
-    this.actionPending.set(true);
-    this.actionNotice.set(null);
-    this.http
-      .post<FriendRequestResult>('/api/profiles/friends/requests', { userId: this.id })
-      .subscribe({
-        next: (result) => {
-          this.actionPending.set(false);
-          this.actionNotice.set(
-            result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
-          );
-          this.mePoller.refresh();
-          this.poller.refresh();
-        },
-        error: (err: unknown) => {
-          this.actionNotice.set(toApiError(err).message);
-          this.actionPending.set(false);
-        },
-      });
-  }
-
-  private run(request: ReturnType<typeof this.http.delete>): void {
-    this.actionPending.set(true);
-    this.actionNotice.set(null);
-    request.subscribe({
-      next: () => {
-        this.actionPending.set(false);
+    this.action.run(
+      this.http.post<FriendRequestResult>('/api/profiles/friends/requests', { userId: this.id }),
+      (result) => {
+        this.action.notice.set(
+          result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
+        );
         this.mePoller.refresh();
         this.poller.refresh();
       },
-      error: (err: unknown) => {
-        this.actionNotice.set(toApiError(err).message);
-        this.actionPending.set(false);
-      },
+    );
+  }
+
+  private run(request: Observable<unknown>): void {
+    this.action.run(request, () => {
+      this.mePoller.refresh();
+      this.poller.refresh();
     });
   }
 }
