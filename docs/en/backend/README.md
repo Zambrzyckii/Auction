@@ -155,7 +155,7 @@ Each module test project has an offline part (`Application/`, `Domain/`, `Infras
 | `AuctionServer.Modules.Pawnshop.Tests` | 89 | 62 | 27 |
 | `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
 | `AuctionServer.Modules.Wallets.Tests` | 153 | 65 | 88 |
-| `AuctionServer.Modules.Warehouses.Tests` | 67 | 44 | 23 |
+| `AuctionServer.Modules.Warehouses.Tests` | 74 | 44 | 30 |
 | `AuctionServer.Shared.Infrastructure.Tests` | 21 | 5 | 16 |
 | `AuctionServer.Api.Tests` | 71 | 37 | 34 |
 

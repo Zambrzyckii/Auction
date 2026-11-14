@@ -112,7 +112,7 @@ share one schema. Inventory follows the same layout (snapshot `InventoryDbContex
 `Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. Warehouses uses the Wallets layout as well:
 `Initial_Warehouses` (wars, stock items, outbox, inbox), `Add_Warehouses_Lobby` (participants table plus
 `CancellationReason`) and `Add_Warehouse_Participant_Request` (`EntryRequestId` on participants, backfilled with
-`Guid.Empty`) under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
+`Guid.Empty`) and `Add_Warehouse_Participant_User_Index` under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
 `Initial_Pawnshop` (shops, outbox, inbox), `Add_Pawnshop_Bot` (bot snapshot columns), `Add_Pawnshop_Stock` (pending
 stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Precision` (`numeric(5,4)` for
 `PendingStockPayoutRate`). Casino follows the same layout with `Initial_Casino` (chip accounts, purchases, outbox,
@@ -557,7 +557,7 @@ On 2026-10-15 the fifth module, Warehouses, landed: warehouse wars with a server
 1 s loop), a hidden manifest quoted by Inventory, misleading public estimates, an entry fee locked through a
 dedicated Wallets saga that doubles as the bid budget, 5-10 s raise windows with tier-fixed increments, and a
 settlement that burns the final price (`Wallet.SpendLock`) and mints the manifest (`Item.CreateWithPrice`).
-Five endpoints under `/api/warehouses`, six events, five tables. Chapter: `docs/en/backend/warehouses.md`.
+Six endpoints under `/api/warehouses`, six events, five tables. Chapter: `docs/en/backend/warehouses.md`.
 
 Also on 2026-10-15 the sixth module, Banking, landed: loans from fixed configured offers gated by the new
 `Wallet.LifetimeTurnover` counter (economy credits only — `AddFunds` counts, `ReceiveTransfer` and
@@ -614,7 +614,7 @@ private-profile option followed the same day: `UserProfile.IsPrivate` (migration
 by `PUT /api/profiles/me/privacy`, and `GetProfileQueryHandler` applies the rule at read time — the owner and
 accepted friends (checked through the canonical pair lookup) see the full profile, a stranger gets only the
 username, the `isPrivate` flag and the `avatarUrl`, and the avatar route stays open. Thirteen
-endpoints under `/api/profiles` (52 total), event registry at 37, tables at 38. The chain was probed live against a
+endpoints under `/api/profiles` (53 total), event registry at 37, tables at 38. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`

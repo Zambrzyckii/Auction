@@ -26,18 +26,18 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 | bank loans | `GET /api/bank/offers`, `GET /api/bank/loans`, `POST /api/bank/loans`, `POST /api/bank/loans/{id}/repayments` |
 | casino | `GET /api/casino`, `POST /api/casino/chips/purchases`, `POST /api/casino/chips/cashouts`, `GET` and `POST /api/casino/roulette/spins`, `POST /api/casino/blackjack/hands`, `POST /api/casino/blackjack/hands/{id}/actions` |
 | pawnshop | `GET /api/pawnshop` (404 before the premises are bought), `GET /api/pawnshop/offers`, `POST /api/pawnshop`, `POST /api/pawnshop/bot`, `POST /api/pawnshop/stock/{id}/withdraw` |
-| warehouse wars | `GET /api/warehouses?limit=N`, `GET /api/warehouses/{id}`, `POST /api/warehouses/{id}/join`, `POST /api/warehouses/{id}/leave`, `POST /api/warehouses/{id}/bids` |
+| warehouse wars | `GET /api/warehouses?limit=N`, `GET /api/warehouses/{id}` (with the tier's `increments`), `POST /api/warehouses/{id}/join`, `POST /api/warehouses/{id}/leave`, `POST /api/warehouses/{id}/bids` |
+| warehouse war history | `GET /api/warehouses/mine` (every war the caller joined, any status, newest first, at most 50) |
 | profiles, friends and invites | `GET /api/profiles/me`, `GET /api/profiles/{id}`, `GET /api/profiles/{id}/avatar`, the own-profile writes under `/api/profiles/me/...` (privacy, socials, avatar), the friend lifecycle under `/api/profiles/friends/...`, `GET` and `POST /api/profiles/warehouse-invites` |
 | machine-readable responses | camelCase property names, enums serialized as strings, `201` responses with the new id and a `Location` header, one error shape `{ "error": "..." }` for domain, validation and binding errors (binding failures joined on 2026-11-14 through `RouteHandlerOptions.ThrowOnBadRequest`) |
 
 ## What is missing
 
 - No push channel: everything above is polling, and a freshly created auction stays `Pending` for up to two outbox polling cycles before it appears in the list.
-- No endpoint lists a user's past warehouse wars: a settled or cancelled war drops out of the public list, so the client cannot show a war history.
 - No profile search and no batch profile endpoint: views resolve usernames one `GET /api/profiles/{id}` at a time and cache them client-side for the session.
 - Warehouse invites carry no id and no accept or decline action: the client can only follow the link or let the invite expire.
 - The avatar endpoint requires a JWT, so a public page cannot show avatars without a signed-in session.
-- The warehouse tier table (entry fees and raise increments) and the blackjack hand timeout live only in the backend configuration: the client mirrors them as constants and labels a tier it does not know "Unknown tier" instead of guessing.
+- The blackjack hand timeout lives only in the backend configuration: the client mirrors it as a constant.
 
 ## Views (routes)
 
@@ -67,7 +67,6 @@ Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions
 | Client constant (module) | Mirrors |
 |---|---|
 | `PASSWORD_REQUIREMENTS` and the 30-character caps (`register.ts`) | the register validator: the password-strength rule and the username, name and surname length limits |
-| `WAREHOUSE_TIERS`, `MIN_PLAYERS` (`warehouse-rules.ts`) | the warehouse tier table: entry fees, raise increments and the minimum player count |
 | `INVITE_TTL_MS` (`warehouse-list.ts`) | the warehouse invite lifetime (15 minutes) |
 | `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | the blackjack auto-stand timeout (5 minutes) |
 | `CARD_RANKS`, `CARD_SUITS` (`blackjack-rules.ts`) | the card encoding of the casino deck (rank from `code % 13`, suit from `code / 13`) |

@@ -26,18 +26,18 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 | pożyczki bankowe | `GET /api/bank/offers`, `GET /api/bank/loans`, `POST /api/bank/loans`, `POST /api/bank/loans/{id}/repayments` |
 | kasyno | `GET /api/casino`, `POST /api/casino/chips/purchases`, `POST /api/casino/chips/cashouts`, `GET` i `POST /api/casino/roulette/spins`, `POST /api/casino/blackjack/hands`, `POST /api/casino/blackjack/hands/{id}/actions` |
 | lombard | `GET /api/pawnshop` (404 przed kupnem lokalu), `GET /api/pawnshop/offers`, `POST /api/pawnshop`, `POST /api/pawnshop/bot`, `POST /api/pawnshop/stock/{id}/withdraw` |
-| wojny magazynowe | `GET /api/warehouses?limit=N`, `GET /api/warehouses/{id}`, `POST /api/warehouses/{id}/join`, `POST /api/warehouses/{id}/leave`, `POST /api/warehouses/{id}/bids` |
+| wojny magazynowe | `GET /api/warehouses?limit=N`, `GET /api/warehouses/{id}` (z `increments` taryfy), `POST /api/warehouses/{id}/join`, `POST /api/warehouses/{id}/leave`, `POST /api/warehouses/{id}/bids` |
+| historia wojen magazynowych | `GET /api/warehouses/mine` (każda wojna, do której wołający dołączył, dowolny status, od najnowszych, najwyżej 50) |
 | profile, znajomi i zaproszenia | `GET /api/profiles/me`, `GET /api/profiles/{id}`, `GET /api/profiles/{id}/avatar`, zapisy własnego profilu pod `/api/profiles/me/...` (prywatność, sociale, awatar), cykl życia znajomości pod `/api/profiles/friends/...`, `GET` i `POST /api/profiles/warehouse-invites` |
 | odpowiedzi czytelne maszynowo | nazwy pól camelCase, enumy serializowane jako stringi, odpowiedzi `201` z nowym id i nagłówkiem `Location`, jeden kształt błędu `{ "error": "..." }` dla błędów domenowych, walidacyjnych i bindowania (błędy bindowania dołączyły 2026-11-14 przez `RouteHandlerOptions.ThrowOnBadRequest`) |
 
 ## Czego brakuje
 
 - Brak kanału push: wszystko powyżej to polling, a świeżo utworzona aukcja pozostaje `Pending` do dwóch cykli pollingu outboxa, zanim pojawi się na liście.
-- Żaden endpoint nie listuje minionych wojen magazynowych użytkownika: rozstrzygnięta lub anulowana wojna wypada z publicznej listy, więc klient nie pokaże historii wojen.
 - Brak wyszukiwarki profili i endpointu batch: widoki rozwiązują nazwy użytkowników pojedynczymi `GET /api/profiles/{id}` i cache'ują je po stronie klienta na czas sesji.
 - Zaproszenia magazynowe nie mają id ani akcji przyjęcia lub odrzucenia: klient może tylko przejść po linku albo pozwolić zaproszeniu wygasnąć.
 - Endpoint awatara wymaga JWT, więc publiczna strona nie pokaże awatarów bez zalogowanej sesji.
-- Tabela taryf magazynów (wpisowe i inkrementy podbić) oraz timeout ręki blackjacka żyją tylko w konfiguracji backendu: klient lustrzy je jako stałe, a nieznaną taryfę etykietuje "Unknown tier" zamiast zgadywać.
+- Timeout ręki blackjacka żyje tylko w konfiguracji backendu: klient lustrzy go jako stałą.
 
 ## Widoki (trasy)
 
@@ -67,7 +67,6 @@ Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, 
 | Stała klienta (moduł) | Lustrzy |
 |---|---|
 | `PASSWORD_REQUIREMENTS` i limity 30 znaków (`register.ts`) | walidator rejestracji: regułę siły hasła oraz limity długości username, imienia i nazwiska |
-| `WAREHOUSE_TIERS`, `MIN_PLAYERS` (`warehouse-rules.ts`) | tabelę taryf magazynów: wpisowe, inkrementy podbić i minimalną liczbę graczy |
 | `INVITE_TTL_MS` (`warehouse-list.ts`) | czas życia zaproszenia magazynowego (15 minut) |
 | `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | timeout auto-stand blackjacka (5 minut) |
 | `CARD_RANKS`, `CARD_SUITS` (`blackjack-rules.ts`) | kodowanie kart talii kasyna (figura z `code % 13`, kolor z `code / 13`) |

@@ -2,14 +2,14 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/warehouses.md](../../en/backend/warehouses.md)
 
-`AuctionServer.Modules.Warehouses` prowadzi wojny magazynowe: utrzymywaną przez serwer pulę magazynów z ukrytą zawartością, lobby o ograniczonym składzie (3-5 graczy), wpisowe będące zarazem budżetem podbić, szybkie okna podbić liczone w sekundach i odsłonięcie manifestu dopiero po rozliczeniu. Gracze nigdy nie widzą prawdziwej wartości, tylko celowo zwodnicze widełki. Zwycięzca płaci cenę końcową w nicość (zlew pieniędzy), przegrani odzyskują wpisowe, a przedmioty są mintowane w Inventory w cenach wylosowanych podczas wyceny. Pięć endpointów żyje pod `/api/warehouses`, wszystkie za JWT.
+`AuctionServer.Modules.Warehouses` prowadzi wojny magazynowe: utrzymywaną przez serwer pulę magazynów z ukrytą zawartością, lobby o ograniczonym składzie (3-5 graczy), wpisowe będące zarazem budżetem podbić, szybkie okna podbić liczone w sekundach i odsłonięcie manifestu dopiero po rozliczeniu. Gracze nigdy nie widzą prawdziwej wartości, tylko celowo zwodnicze widełki. Zwycięzca płaci cenę końcową w nicość (zlew pieniędzy), przegrani odzyskują wpisowe, a przedmioty są mintowane w Inventory w cenach wylosowanych podczas wyceny. Sześć endpointów żyje pod `/api/warehouses`, wszystkie za JWT.
 
 ## Przegląd
 
 | Obszar | Pliki |
 |---|---|
 | Endpointy | [`Presentation/WarehouseEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Warehouses/Presentation/WarehouseEndpoints.cs), rekord żądania `PlaceWarehouseBidRequest` |
-| Komendy i zapytania | `Application/Command/JoinWarehouseWar/`, `Application/Command/LeaveWarehouseWar/` i `Application/Command/PlaceWarehouseBid/` (komenda, handler, walidator w każdym), `Application/Queries/GetWarehouses/` (zapytanie, handler, `WarehouseSummaryDto`), `Application/Queries/GetWarehouseById/` (zapytanie, handler, `WarehouseDetailsDto`, `ManifestItemDto`) |
+| Komendy i zapytania | `Application/Command/JoinWarehouseWar/`, `Application/Command/LeaveWarehouseWar/` i `Application/Command/PlaceWarehouseBid/` (komenda, handler, walidator w każdym), `Application/Queries/GetWarehouses/` (zapytanie, handler, `WarehouseSummaryDto`), `Application/Queries/GetWarehouseById/` (zapytanie, handler, `WarehouseDetailsDto`, `ManifestItemDto`), `Application/Queries/GetMyWarehouses/` (zapytanie, handler, `MyWarehouseDto`) |
 | Opcje i estymaty | `Application/Options/` (`WarehousesOptions`, `WarehouseTierDefinition`, `RarityWeight`, `EstimateVariant`), [`Application/Estimates/EstimateGenerator.cs`](../../../Backend/src/AuctionServer.Modules.Warehouses/Application/Estimates/EstimateGenerator.cs) |
 | Handlery zdarzeń | `Application/Handlers/WarehouseStockedEventHandler.cs`, `WarehouseEntryLockedEventHandler.cs`, `WarehouseEntryLockRejectedEventHandler.cs` |
 | Domena | [`Domain/Entities/WarehouseWar.cs`](../../../Backend/src/AuctionServer.Modules.Warehouses/Domain/Entities/WarehouseWar.cs), `Domain/Entities/WarehouseParticipant.cs`, `Domain/Entities/StockItem.cs`, `Domain/Enums/` (`WarehouseWarStatus`, `ParticipantState`), [`Domain/Exceptions/WarehouseExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Warehouses/Domain/Exceptions/WarehouseExceptions.cs) |
@@ -26,7 +26,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Warehouses --start
 dotnet test tests/AuctionServer.Modules.Warehouses.Tests
 ```
 
-Migracje żyją w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Persistence/Migrations): `20261014171153_Initial_Warehouses` i `20261014191955_Add_Warehouses_Lobby`.
+Migracje żyją w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Persistence/Migrations): `20261014171153_Initial_Warehouses`, `20261014191955_Add_Warehouses_Lobby` i `20261114214818_Add_Warehouse_Participant_User_Index`.
 
 ## Konfiguracja
 
@@ -64,7 +64,7 @@ Cała sekcja `Warehouses` z `appsettings.json` binduje się do `WarehousesOption
 | `CreatedOn` | `timestamp` | używane przez timeout lobby |
 | `Version` | `uuid` | token współbieżności odnawiany każdą metodą mutującą; przegrany wyścig podbić kończy się 409 |
 
-Moduł posiada też `WarehousesParticipants`, kolekcję owned agregatu `WarehouseWar` (`Id`, FK `WarehouseWarId` z kasowaniem kaskadowym, `UserId`, `EntryRequestId` z `EventId` prośby o blokadę wpisowego z dołączenia (`Guid.Empty` w wierszach sprzed migracji z 2026-11-01), `State` z `PendingLock = 0`, `Active = 1`; unikalny indeks na `WarehouseWarId, UserId`) - inaczej niż `AuctionsBids` uczestnicy biorą udział w niezmiennikach (pojemność, kto może podbijać), więc żyją wewnątrz agregatu i mutują wyłącznie jego metodami. `WarehousesStockItems` (`Id`, indeksowane `PublicWarehouseId`, `Name(100)`, `Rarity(16)`, `Price`) stoi poza agregatem jak `Bid`: nic się o nią nie waliduje, to ukryty manifest zapisywany raz po wycenie. `WarehousesOutboxMessages` i `WarehousesProcessedMessages` opisuje [messaging.md](messaging.md).
+Moduł posiada też `WarehousesParticipants`, kolekcję owned agregatu `WarehouseWar` (`Id`, FK `WarehouseWarId` z kasowaniem kaskadowym, `UserId`, `EntryRequestId` z `EventId` prośby o blokadę wpisowego z dołączenia (`Guid.Empty` w wierszach sprzed migracji z 2026-11-01), `State` z `PendingLock = 0`, `Active = 1`; unikalny indeks na `WarehouseWarId, UserId`, zwykły indeks na `UserId` pod listę własną) - inaczej niż `AuctionsBids` uczestnicy biorą udział w niezmiennikach (pojemność, kto może podbijać), więc żyją wewnątrz agregatu i mutują wyłącznie jego metodami. `WarehousesStockItems` (`Id`, indeksowane `PublicWarehouseId`, `Name(100)`, `Rarity(16)`, `Price`) stoi poza agregatem jak `Bid`: nic się o nią nie waliduje, to ukryty manifest zapisywany raz po wycenie. `WarehousesOutboxMessages` i `WarehousesProcessedMessages` opisuje [messaging.md](messaging.md).
 
 | Metoda | Reguła | Efekt |
 |---|---|---|
@@ -88,12 +88,13 @@ Moduł posiada też `WarehousesParticipants`, kolekcję owned agregatu `Warehous
 
 ## API
 
-Wszystkie pięć tras wymaga JWT.
+Wszystkie sześć tras wymaga JWT.
 
 | Metoda i trasa | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|
 | `GET /api/warehouses?limit=` | `limit` 1-100, wymagany | 200 z listą `WarehouseSummaryDto`: wojny `Open` i `Bidding`, najstarsze pierwsze - tier, widełki, wpisowe, bieżąca cena, liczba przedmiotów, gracze/max, timery; nigdy `TotalValue` | `GetWarehousesQueryHandler` |
-| `GET /api/warehouses/{id}` | `id` to `PublicWarehouseId` | 200 z `WarehouseDetailsDto`: pola podsumowania plus stan wołającego (`IsParticipant`, `ParticipantState`, `IsLeader`), `CancellationReason`, a po `Settled` pełny `Manifest` (nazwa, rzadkość, cena per przedmiot); 404 dla nieznanego id | `GetWarehouseByIdQueryHandler` |
+| `GET /api/warehouses/mine` | — | 200 z listą `MyWarehouseDto`: każda wojna, w której wołający brał udział, dowolny status, najnowsze pierwsze, najwyżej 50 wierszy - tier, status, wpisowe, bieżąca cena (po `Settled` cena zapłacona), liczba przedmiotów, gracze, `BiddingEndsOn`, `IsLeader` (po `Settled` wygrana), `ParticipantState`, `CancellationReason` | `GetMyWarehousesQueryHandler` |
+| `GET /api/warehouses/{id}` | `id` to `PublicWarehouseId` | 200 z `WarehouseDetailsDto`: pola podsumowania plus stan wołającego (`IsParticipant`, `ParticipantState`, `IsLeader`), `CancellationReason`, inkrementy podbić taryfy `Increments` (puste, gdy taryfy nie ma już w konfiguracji), a po `Settled` pełny `Manifest` (nazwa, rzadkość, cena per przedmiot); 404 dla nieznanego id | `GetWarehouseByIdQueryHandler` |
 | `POST /api/warehouses/{id}/join` | puste body; dołącza wołający | 200 natychmiast; blokada wpisowego jest asynchroniczna - klient odpytuje GET aż `ParticipantState` zmieni się na `Active` albo uczestnik zniknie; 409 przy komplecie, ponownym dołączeniu lub skończonym odliczaniu | `JoinWarehouseWarCommandHandler` |
 | `POST /api/warehouses/{id}/leave` | puste body | 200; usuwa uczestnika i zleca zwrot wpisowego; 404 gdy nie jest uczestnikiem, 409 po odliczaniu | `LeaveWarehouseWarCommandHandler` |
 | `POST /api/warehouses/{id}/bids` | `{ increment }` ze zbioru tieru | 200; podbicie działa synchronicznie (bez sagi - budżetem jest już zablokowane wpisowe); strażnicy domeny odpowiadają 400/409, przegrany wyścig zapisu 409 przez token `Version` | `PlaceWarehouseBidCommandHandler` |
@@ -122,6 +123,7 @@ Wszystkie pięć tras wymaga JWT.
 - Bez pre-mintingu: Inventory nie umie trzymać przedmiotów "niczyich" (unikalny indeks na `LockedForAuctionId` dopuszcza jeden przedmiot na id aukcji, nie ma użytkownika-domu, `TransferTo` wymaga zablokowanego przedmiotu). Zamiast tego Inventory wycenia na przejściowych wynikach `Item.Create`, które nigdy nie są zapisywane, manifest żyje w `WarehousesStockItems`, a prawdziwe przedmioty mintują się dopiero przy rozliczeniu z manifestu niesionego zdarzeniem, idempotentnie przez inbox.
 - Cena końcowa to zlew pieniędzy: nie istnieje sprzedawca, więc `Wallet.SpendLock` konsumuje blokadę zwycięzcy, oddaje resztę, a sama cena znika. Znane ograniczenie: zmintowane przedmioty można sprzedać do sklepu za `OfficialPrice` (kran pieniędzy), więc jeśli typowe ceny końcowe będą niżej typowych wartości manifestów, wojny drukują pieniądze; dźwigniami są warianty zwodzenia i strojenie tierów.
 - Uczestnicy `PendingLock` rezerwują miejsce przed zapłatą, inaczej pięć równoczesnych dołączeń przeszłoby kontrolę pojemności. Odrzucona blokada zwalnia miejsce; blokada potwierdzona po tym, jak wojna poszła dalej, wraca gałęzią osieroconych blokad.
+- Lista własna (`GET /api/warehouses/mine`) to same wiersze uczestników: nic nie jest usuwane po rozliczeniu, a wiersz znika tylko przy wyjściu albo odrzuconej blokadzie wpisowego, więc osobna tabela historii nie jest potrzebna. Jest ograniczona do 50 wierszy (`MaxRows` w handlerze) jak listy własne w Banking i Casino, a detal niesie inkrementy taryfy, więc klient nie lustrzy już tabeli taryf.
 - Odpowiedzi Wallets są dopasowywane do uczestnika po `EntryRequestId` (`EventId` prośby, odbite jako domyślnie puste `RequestId`) od 2026-11-01, magazynowe lustro korelacji pending bida z aukcji. Wcześniej odpowiedź z poprzedniego dołączenia mogła potwierdzić ponownie dołączonego uczestnika, którego wpisowe nigdy się nie zablokowało, albo przeterminowana odmowa mogła usunąć uczestnika, którego nowa blokada się powiodła, więżąc wpisowe na zawsze. Niedopasowane potwierdzenie wraca zwrotem, niedopasowana odmowa zapisuje tylko wiersz inboxa, a stare payloady deserializują się do `Guid.Empty`, które zgadza się z uzupełnionym domyślnym, więc sagi w locie przetrwały wdrożenie.
 
 Znajomych można zaprosić do wojny przez Profiles (`POST /api/profiles/warehouse-invites`): zaproszenie to rekord wskaźnikowy w tamtym module, nie rezerwuje miejsca, nigdy nie dotyka tego modułu, a zaproszony dołącza zwykłym `POST /api/warehouses/{id}/join`. Zobacz [profiles.md](profiles.md).
