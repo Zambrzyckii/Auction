@@ -41,6 +41,23 @@
       </button>
     }
   }
+  @if (war.status === 'Bidding' && knownTier(war)) {
+    <p class="raises">
+      @for (inc of increments(war); track inc) {
+        <button
+          type="button"
+          class="raise"
+          (click)="raise(inc)"
+          [disabled]="actionPending() || raiseProblem(war, inc) !== null"
+        >
+          +{{ inc | number }}
+        </button>
+      }
+    </p>
+    @if (raiseProblem(war, increments(war)[0]); as problem) {
+      <p class="raise-problem">{{ problem }}</p>
+    }
+  }
   @if (rejectedEntry()) {
     <p class="entry-rejected">Your entry was not confirmed, most likely not enough funds</p>
   }

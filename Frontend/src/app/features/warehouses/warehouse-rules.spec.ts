@@ -4,6 +4,7 @@ import {
   canLeave,
   entryRejected,
   joinBlockReason,
+  raiseBlockReason,
   warehousePollMs,
 } from './warehouse-rules';
 
@@ -93,6 +94,42 @@ describe('entryRejected', () => {
     expect(entryRejected(null, war({}))).toBe(false);
     expect(entryRejected(NOW - 5000, war({ isParticipant: true }))).toBe(false);
     expect(entryRejected(NOW - 5000, war({ status: 'Settled' }))).toBe(false);
+  });
+});
+
+describe('raiseBlockReason', () => {
+  function bidding(overrides: Partial<WarehouseDetails>): WarehouseDetails {
+    return war({
+      status: 'Bidding',
+      isParticipant: true,
+      participantState: 'Active',
+      currentPrice: 100,
+      biddingEndsOn: new Date(NOW + 8000).toISOString(),
+      ...overrides,
+    });
+  }
+
+  it('allows a raise inside the window and the budget', () => {
+    expect(raiseBlockReason(bidding({}), 10, NOW)).toBeNull();
+    expect(raiseBlockReason(bidding({ currentPrice: 400 }), 100, NOW)).toBeNull();
+  });
+
+  it('mirrors the server refusals in the server order', () => {
+    expect(raiseBlockReason(war({}), 10, NOW)).toBe(
+      'Warehouse war is not in bidding, current status: Open',
+    );
+    const closed = bidding({ biddingEndsOn: new Date(NOW - 1).toISOString() });
+    expect(raiseBlockReason(closed, 10, NOW)).toBe('Raise window has already closed');
+    expect(raiseBlockReason(bidding({ participantState: 'PendingLock' }), 10, NOW)).toBe(
+      'Entry fee is not confirmed yet',
+    );
+    expect(raiseBlockReason(bidding({ isLeader: true }), 10, NOW)).toBe(
+      'Current leader cannot raise own bid',
+    );
+    expect(raiseBlockReason(bidding({}), 7, NOW)).toBe('Increment is not allowed for this tier');
+    expect(raiseBlockReason(bidding({ currentPrice: 450 }), 100, NOW)).toBe(
+      'Raise would exceed the entry fee budget',
+    );
   });
 });
 

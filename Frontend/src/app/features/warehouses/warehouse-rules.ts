@@ -44,6 +44,32 @@ export function entryRejected(joinedAt: number | null, war: WarehouseDetails): b
   return joinedAt !== null && war.status === 'Open' && !war.isParticipant;
 }
 
+export function raiseBlockReason(
+  war: WarehouseDetails,
+  increment: number,
+  now: number,
+): string | null {
+  if (war.status !== 'Bidding') {
+    return `Warehouse war is not in bidding, current status: ${war.status}`;
+  }
+  if (war.biddingEndsOn !== null && Date.parse(war.biddingEndsOn) < now) {
+    return 'Raise window has already closed';
+  }
+  if (war.participantState !== 'Active') {
+    return 'Entry fee is not confirmed yet';
+  }
+  if (war.isLeader) {
+    return 'Current leader cannot raise own bid';
+  }
+  if (!(WAREHOUSE_TIERS.get(war.tier)?.increments.includes(increment) ?? false)) {
+    return 'Increment is not allowed for this tier';
+  }
+  if (war.currentPrice + increment > war.entryFee) {
+    return 'Raise would exceed the entry fee budget';
+  }
+  return null;
+}
+
 export function warehousePollMs(war: Pick<WarehouseSummary, 'status' | 'biddingStartsOn'> | null): number {
   if (war === null) {
     return 5000;

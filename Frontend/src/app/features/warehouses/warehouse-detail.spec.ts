@@ -223,6 +223,68 @@ describe('WarehouseDetail', () => {
     );
   });
 
+  it('raises by a tier increment during the bidding', () => {
+    flushAll(
+      war({
+        status: 'Bidding',
+        isParticipant: true,
+        participantState: 'Active',
+        currentPrice: 100,
+        biddingEndsOn: new Date(Date.now() + 8000).toISOString(),
+      }),
+    );
+    const buttons = el().querySelectorAll<HTMLButtonElement>('button.raise');
+    expect(buttons.length).toBe(3);
+    buttons[0].click();
+
+    const post = http.expectOne('/api/warehouses/war-1/bids');
+    expect(post.request.body).toEqual({ increment: 10 });
+    post.flush(null);
+    fixture.detectChanges();
+    http.expectOne(WAR_URL).flush(
+      war({
+        status: 'Bidding',
+        isParticipant: true,
+        participantState: 'Active',
+        currentPrice: 110,
+        isLeader: true,
+        biddingEndsOn: new Date(Date.now() + 9000).toISOString(),
+      }),
+    );
+    http.expectOne(WALLET_URL).flush(wallet({}));
+    fixture.detectChanges();
+    expect(el().querySelector('.leading')).not.toBeNull();
+  });
+
+  it('disables the raise for the current leader and shows the reason', () => {
+    flushAll(
+      war({
+        status: 'Bidding',
+        isParticipant: true,
+        participantState: 'Active',
+        isLeader: true,
+        currentPrice: 100,
+        biddingEndsOn: new Date(Date.now() + 8000).toISOString(),
+      }),
+    );
+    const button = el().querySelector<HTMLButtonElement>('button.raise');
+    expect(button?.disabled).toBe(true);
+    expect(el().querySelector('.raise-problem')?.textContent).toContain(
+      'Current leader cannot raise own bid',
+    );
+  });
+
+  it('hides the raise buttons for an unknown tier', () => {
+    flushAll(
+      war({
+        status: 'Bidding',
+        tier: 'Haunted',
+        biddingEndsOn: new Date(Date.now() + 8000).toISOString(),
+      }),
+    );
+    expect(el().querySelectorAll('button.raise').length).toBe(0);
+  });
+
   it('tells a losing participant about the refund and shows a cancellation', () => {
     flushAll(
       war({ status: 'Settled', isParticipant: true, participantState: 'Active', currentPrice: 110, manifest: [] }),

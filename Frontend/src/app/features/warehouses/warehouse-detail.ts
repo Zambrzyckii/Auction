@@ -13,6 +13,7 @@ import {
   canLeave,
   entryRejected,
   joinBlockReason,
+  raiseBlockReason,
   warehousePollMs,
 } from './warehouse-rules';
 
@@ -64,11 +65,19 @@ export class WarehouseDetail {
     return WAREHOUSE_TIERS.has(war.tier);
   }
 
+  increments(war: WarehouseDetails): readonly number[] {
+    return WAREHOUSE_TIERS.get(war.tier)?.increments ?? [];
+  }
+
+  raiseProblem(war: WarehouseDetails, increment: number): string | null {
+    return raiseBlockReason(war, increment, this.now());
+  }
+
   join(): void {
     if (this.actionPending() || this.joinProblem() !== null) {
       return;
     }
-    this.act(`/api/warehouses/${this.id}/join`, () => this.joinedAt.set(Date.now()));
+    this.act(`/api/warehouses/${this.id}/join`, null, () => this.joinedAt.set(Date.now()));
   }
 
   leave(): void {
@@ -76,16 +85,24 @@ export class WarehouseDetail {
     if (this.actionPending() || war === null || !canLeave(war, this.now())) {
       return;
     }
-    this.act(`/api/warehouses/${this.id}/leave`, () => this.joinedAt.set(null));
+    this.act(`/api/warehouses/${this.id}/leave`, null, () => this.joinedAt.set(null));
   }
 
-  private act(url: string, onSuccess: () => void): void {
+  raise(increment: number): void {
+    const war = this.warPoller.value();
+    if (this.actionPending() || war === null || raiseBlockReason(war, increment, this.now()) !== null) {
+      return;
+    }
+    this.act(`/api/warehouses/${this.id}/bids`, { increment });
+  }
+
+  private act(url: string, body: unknown, onSuccess?: () => void): void {
     this.actionPending.set(true);
     this.warNotice.set(null);
-    this.http.post(url, null).subscribe({
+    this.http.post(url, body).subscribe({
       next: () => {
         this.actionPending.set(false);
-        onSuccess();
+        onSuccess?.();
         this.warPoller.refresh();
         this.walletPoller.refresh();
       },
