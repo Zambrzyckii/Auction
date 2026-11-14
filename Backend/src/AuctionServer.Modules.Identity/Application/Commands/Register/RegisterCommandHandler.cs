@@ -15,6 +15,9 @@ public class RegisterCommandHandler(IAuthRepository repository) : IRequestHandle
         var isEmailTaken = await repository.DoesUserWithThisEmailExists(request.Email, cancellationToken);
         if (isEmailTaken) throw new IdentityException.EmailAlreadyTakenException();
 
+        var isUsernameTaken = await repository.DoesUserWithThisUsernameExists(request.Username, cancellationToken);
+        if (isUsernameTaken) throw new IdentityException.UsernameAlreadyTakenException();
+
         var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.Password);
         var newUser = new User(request.Email, hashedPassword, request.Username, request.Name, request.Surname, request.Birthday);
 

@@ -9,6 +9,7 @@ internal sealed class IdentityConfiguration : IEntityTypeConfiguration<User>
     {
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => x.Email).IsUnique();
+        builder.HasIndex(x => x.Username).IsUnique();
         builder.Property(x => x.Email).HasMaxLength(64);
         builder.Property(x => x.Name).HasMaxLength(32);
         builder.Property(x => x.Surname).HasMaxLength(32);

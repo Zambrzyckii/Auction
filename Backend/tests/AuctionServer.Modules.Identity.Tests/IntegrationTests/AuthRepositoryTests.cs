@@ -9,8 +9,14 @@ namespace AuctionServer.Modules.Identity.Tests.IntegrationTests;
 [Collection(IdentityIntegrationCollection.Name)]
 public class AuthRepositoryTests(IdentityPostgresFixture fixture)
 {
-    private static User CreateUser(string email) =>
-        new(email, "hash", "username", "Jan", "Kowalski", new DateOnly(2000, 1, 1));
+    private static User CreateUser(string email, string? username = null) =>
+        new(
+            email,
+            "hash",
+            username ?? IdentityPostgresFixture.UniqueUsername(),
+            "Jan",
+            "Kowalski",
+            new DateOnly(2000, 1, 1));
 
     private static OutboxMessage CreateOutboxMessage() =>
         new() { Id = Guid.NewGuid(), Type = "UserRegisteredEvent", Content = "{}" };
@@ -48,6 +54,26 @@ public class AuthRepositoryTests(IdentityPostgresFixture fixture)
 
         await using var verifyContext = fixture.CreateContext();
         Assert.Equal(1, await verifyContext.Users.CountAsync(u => u.Email == email));
+        Assert.False(await verifyContext.OutboxMessages.AnyAsync(m => m.Id == message.Id));
+    }
+
+    [Fact]
+    public async Task AddUserWithOutboxAsync_WhenUsernameIsTaken_ShouldThrowAndPersistNothing()
+    {
+        var username = IdentityPostgresFixture.UniqueUsername();
+        await fixture.SeedUserAsync(IdentityPostgresFixture.UniqueEmail(), username);
+        var email = IdentityPostgresFixture.UniqueEmail();
+        var message = CreateOutboxMessage();
+
+        await using (var context = fixture.CreateContext())
+        {
+            var repository = new AuthRepository(context);
+            await Assert.ThrowsAsync<IdentityException.UsernameAlreadyTakenException>(
+                () => repository.AddUserWithOutboxAsync(CreateUser(email, username), message, CancellationToken.None));
+        }
+
+        await using var verifyContext = fixture.CreateContext();
+        Assert.Equal(0, await verifyContext.Users.CountAsync(u => u.Email == email));
         Assert.False(await verifyContext.OutboxMessages.AnyAsync(m => m.Id == message.Id));
     }
 

@@ -20,6 +20,9 @@ public class LoginCommandHandlerTests
         public Task<bool> DoesUserWithThisEmailExists(string email, CancellationToken token) =>
             Task.FromResult(user?.Email == email);
 
+        public Task<bool> DoesUserWithThisUsernameExists(string username, CancellationToken token) =>
+            Task.FromResult(user?.Username == username);
+
         public Task AddUserWithOutboxAsync(User newUser, OutboxMessage message, CancellationToken token) =>
             Task.CompletedTask;
     }

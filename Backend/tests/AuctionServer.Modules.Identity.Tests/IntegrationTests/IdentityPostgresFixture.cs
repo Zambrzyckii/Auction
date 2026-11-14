@@ -37,14 +37,17 @@ public sealed class IdentityPostgresFixture : IAsyncLifetime
         return new IdentityDbContext(options);
     }
 
-    public async Task<User> SeedUserAsync(string email)
+    public async Task<User> SeedUserAsync(string email, string? username = null)
     {
         await using var context = CreateContext();
-        var user = new User(email, "hash", "username", "Jan", "Kowalski", new DateOnly(2000, 1, 1));
+        var user = new User(
+            email, "hash", username ?? UniqueUsername(), "Jan", "Kowalski", new DateOnly(2000, 1, 1));
         context.Users.Add(user);
         await context.SaveChangesAsync();
         return user;
     }
 
     public static string UniqueEmail() => $"{Guid.NewGuid():N}@test.com";
+
+    public static string UniqueUsername() => $"u{Guid.NewGuid():N}"[..16];
 }

@@ -8,5 +8,6 @@ public interface IAuthRepository
 {
     public Task<User?> GetUserByEmailAsync(string email, CancellationToken token);
     public Task<bool> DoesUserWithThisEmailExists(string email, CancellationToken token);
+    public Task<bool> DoesUserWithThisUsernameExists(string username, CancellationToken token);
     public Task AddUserWithOutboxAsync(User user, OutboxMessage message, CancellationToken token);
 }

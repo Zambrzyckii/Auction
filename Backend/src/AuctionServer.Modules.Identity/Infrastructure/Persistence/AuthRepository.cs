@@ -19,6 +19,11 @@ public class AuthRepository(IdentityDbContext context) : IAuthRepository
         return await context.Users.AnyAsync(u => u.Email == email, token);
     }
 
+    public async Task<bool> DoesUserWithThisUsernameExists(string username, CancellationToken token)
+    {
+        return await context.Users.AnyAsync(u => u.Username == username, token);
+    }
+
     public async Task AddUserWithOutboxAsync(User user, OutboxMessage message, CancellationToken token)
     {
         context.Users.Add(user);
@@ -28,8 +33,10 @@ public class AuthRepository(IdentityDbContext context) : IAuthRepository
             await context.SaveChangesAsync(token);
         }
         catch (DbUpdateException e)
-            when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } violation)
         {
+            if (violation.ConstraintName?.Contains("Username", StringComparison.Ordinal) == true)
+                throw new IdentityException.UsernameAlreadyTakenException();
             throw new IdentityException.EmailAlreadyTakenException();
         }
     }

@@ -13,8 +13,8 @@ public class RegisterCommandHandlerTests(IdentityPostgresFixture fixture)
 {
     private const string Password = "Password123!";
 
-    private static RegisterCommand CreateCommand(string email) =>
-        new(email, Password, "player-one", "Jan", "Kowalski", new DateOnly(2000, 1, 1));
+    private static RegisterCommand CreateCommand(string email, string username = "player-one") =>
+        new(email, Password, username, "Jan", "Kowalski", new DateOnly(2000, 1, 1));
 
     private async Task HandleAsync(RegisterCommand command)
     {
@@ -54,5 +54,19 @@ public class RegisterCommandHandlerTests(IdentityPostgresFixture fixture)
 
         await using var context = fixture.CreateContext();
         Assert.Equal(1, await context.Users.CountAsync(u => u.Email == email));
+    }
+
+    [Fact]
+    public async Task Handle_WhenUsernameIsTaken_ShouldThrowUsernameAlreadyTakenAndPersistNothing()
+    {
+        var username = IdentityPostgresFixture.UniqueUsername();
+        await fixture.SeedUserAsync(IdentityPostgresFixture.UniqueEmail(), username);
+        var email = IdentityPostgresFixture.UniqueEmail();
+
+        await Assert.ThrowsAsync<IdentityException.UsernameAlreadyTakenException>(
+            () => HandleAsync(CreateCommand(email, username)));
+
+        await using var context = fixture.CreateContext();
+        Assert.Equal(0, await context.Users.CountAsync(u => u.Email == email));
     }
 }

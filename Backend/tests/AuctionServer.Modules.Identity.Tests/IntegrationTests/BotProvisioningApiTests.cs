@@ -22,7 +22,7 @@ public class BotProvisioningApiTests(CustomApi factory) : IClassFixture<CustomAp
     {
         email = email ?? IdentityPostgresFixture.UniqueEmail(),
         password = "Password123!",
-        username = "bot-one",
+        username = IdentityPostgresFixture.UniqueUsername(),
         name = "Bot",
         surname = "One",
         birthday = "2000-01-01"
