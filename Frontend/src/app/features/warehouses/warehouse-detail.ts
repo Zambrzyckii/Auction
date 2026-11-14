@@ -3,7 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { toApiError } from '../../core/api/api-error';
+import { tap } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import {
   FriendSummary,
   OwnProfile,
@@ -35,8 +36,13 @@ export class WarehouseDetail {
   protected readonly session = inject(Session);
   readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
 
+  private readonly warLoadedAt = signal(0);
+
   readonly warPoller = startPolling(
-    () => this.http.get<WarehouseDetails>(`/api/warehouses/${this.id}`),
+    () =>
+      this.http
+        .get<WarehouseDetails>(`/api/warehouses/${this.id}`)
+        .pipe(tap(() => this.warLoadedAt.set(Date.now()))),
     (latest) => warehousePollMs(latest),
   );
 
@@ -50,8 +56,7 @@ export class WarehouseDetail {
   readonly canLeave = canLeave;
 
   readonly joinedAt = signal<number | null>(null);
-  readonly actionPending = signal(false);
-  readonly warNotice = signal<string | null>(null);
+  readonly action = actionState();
   readonly friends = signal<readonly FriendSummary[]>([]);
   readonly inviteModel = signal({ friendUserId: '' });
   protected readonly inviteForm = form(this.inviteModel);
@@ -67,7 +72,10 @@ export class WarehouseDetail {
 
   readonly rejectedEntry = computed<boolean>(() => {
     const war = this.warPoller.value();
-    return war !== null && entryRejected(this.joinedAt(), war);
+    const joined = this.joinedAt();
+    return (
+      war !== null && joined !== null && this.warLoadedAt() > joined && entryRejected(joined, war)
+    );
   });
 
   knownTier(war: WarehouseDetails): boolean {
@@ -83,53 +91,56 @@ export class WarehouseDetail {
   }
 
   join(): void {
-    if (this.actionPending() || this.joinProblem() !== null) {
+    if (this.joinProblem() !== null) {
       return;
     }
-    this.act(`/api/warehouses/${this.id}/join`, null, () => this.joinedAt.set(Date.now()));
+    this.action.run(this.http.post(`/api/warehouses/${this.id}/join`, null), () => {
+      this.joinedAt.set(Date.now());
+      this.refreshBoth();
+    });
   }
 
   leave(): void {
     const war = this.warPoller.value();
-    if (this.actionPending() || war === null || !canLeave(war, this.now())) {
+    if (war === null || !canLeave(war, this.now())) {
       return;
     }
-    this.act(`/api/warehouses/${this.id}/leave`, null, () => this.joinedAt.set(null));
+    this.action.run(this.http.post(`/api/warehouses/${this.id}/leave`, null), () => {
+      this.joinedAt.set(null);
+      this.refreshBoth();
+    });
   }
 
   invite(): void {
     const friendUserId = this.inviteModel().friendUserId;
-    if (this.actionPending() || friendUserId === '') {
+    if (friendUserId === '') {
       return;
     }
-    this.act('/api/profiles/warehouse-invites', { friendUserId, publicWarehouseId: this.id }, () =>
-      this.warNotice.set('Invite sent'),
+    this.action.run(
+      this.http.post('/api/profiles/warehouse-invites', {
+        friendUserId,
+        publicWarehouseId: this.id,
+      }),
+      () => {
+        this.action.notice.set('Invite sent');
+        this.refreshBoth();
+      },
     );
   }
 
   raise(increment: number): void {
     const war = this.warPoller.value();
-    if (this.actionPending() || war === null || raiseBlockReason(war, increment, this.now()) !== null) {
+    if (war === null || raiseBlockReason(war, increment, this.now()) !== null) {
       return;
     }
-    this.act(`/api/warehouses/${this.id}/bids`, { increment });
+    this.action.run(this.http.post(`/api/warehouses/${this.id}/bids`, { increment }), () =>
+      this.refreshBoth(),
+    );
   }
 
-  private act(url: string, body: unknown, onSuccess?: () => void): void {
-    this.actionPending.set(true);
-    this.warNotice.set(null);
-    this.http.post(url, body).subscribe({
-      next: () => {
-        this.actionPending.set(false);
-        onSuccess?.();
-        this.warPoller.refresh();
-        this.walletPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.warNotice.set(toApiError(err).message);
-        this.actionPending.set(false);
-      },
-    });
+  private refreshBoth(): void {
+    this.warPoller.refresh();
+    this.walletPoller.refresh();
   }
 
   constructor() {

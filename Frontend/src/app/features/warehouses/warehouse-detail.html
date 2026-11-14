@@ -27,7 +27,7 @@
         type="button"
         class="join"
         (click)="join()"
-        [disabled]="actionPending() || joinProblem() !== null"
+        [disabled]="action.pending() || joinProblem() !== null"
       >
         Join
       </button>
@@ -36,7 +36,7 @@
       }
     }
     @if (canLeave(war, now())) {
-      <button type="button" class="leave" (click)="leave()" [disabled]="actionPending()">
+      <button type="button" class="leave" (click)="leave()" [disabled]="action.pending()">
         Leave
       </button>
     }
@@ -52,7 +52,7 @@
           type="button"
           class="invite"
           (click)="invite()"
-          [disabled]="actionPending() || inviteModel().friendUserId === ''"
+          [disabled]="action.pending() || inviteModel().friendUserId === ''"
         >
           Invite
         </button>
@@ -66,7 +66,7 @@
           type="button"
           class="raise"
           (click)="raise(inc)"
-          [disabled]="actionPending() || raiseProblem(war, inc) !== null"
+          [disabled]="action.pending() || raiseProblem(war, inc) !== null"
         >
           +{{ inc | number }}
         </button>
@@ -79,7 +79,7 @@
   @if (rejectedEntry()) {
     <p class="entry-rejected">Your entry was not confirmed, most likely not enough funds</p>
   }
-  @if (warNotice(); as text) {
+  @if (action.notice(); as text) {
     <p class="war-notice">{{ text }}</p>
   }
   @if (war.isParticipant && war.participantState === 'PendingLock') {

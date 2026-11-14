@@ -131,7 +131,7 @@ describe('WarehouseDetail', () => {
       'Bidding starts in 0 min 25 s',
     );
 
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(2500);
     http
       .expectOne(WAR_URL)
       .flush(
@@ -198,10 +198,12 @@ describe('WarehouseDetail', () => {
     expect(post.request.method).toBe('POST');
     post.flush(null);
     fixture.detectChanges();
+    expect(el().querySelector('.entry-rejected')).toBeNull();
 
     http.expectOne(WAR_URL).flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
     http.expectOne(WALLET_URL).flush(wallet({ lockedFunds: 500 }));
     fixture.detectChanges();
+    expect(el().querySelector('.entry-rejected')).toBeNull();
     expect(el().querySelector('.pending-lock')?.textContent).toContain(
       'Confirming your entry fee…',
     );
