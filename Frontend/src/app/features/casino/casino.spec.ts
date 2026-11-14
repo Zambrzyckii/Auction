@@ -63,7 +63,7 @@ describe('purchaseProblem', () => {
     expect(purchaseProblem(300, funds, casino({}))).toBeNull();
   });
 
-  it('rejects zero and fractions with the validator texts', () => {
+  it('rejects zero and fractions with the precheck texts', () => {
     expect(purchaseProblem(0, funds, casino({}))).toBe('Amount must be above zero.');
     expect(purchaseProblem(2.5, funds, casino({}))).toBe('Amount must be a whole number of chips');
   });
@@ -87,7 +87,7 @@ describe('cashOutProblem', () => {
     expect(cashOutProblem(100, chips)).toBeNull();
   });
 
-  it('rejects zero and a third decimal place with the validator texts', () => {
+  it('rejects zero and a third decimal place with the precheck texts', () => {
     expect(cashOutProblem(0, chips)).toBe('Amount must be above zero.');
     expect(cashOutProblem(10.255, chips)).toBe('Amount cannot have more than two decimal places');
   });

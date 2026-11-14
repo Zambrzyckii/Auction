@@ -23,13 +23,13 @@
     Amount
     <input type="number" step="any" [formField]="buyForm.amount" />
   </label>
-  <button type="submit" class="buy-chips" [disabled]="buyPending() || buyProblem() !== null">
+  <button type="submit" class="buy-chips" [disabled]="purchase.pending() || buyProblem() !== null">
     Buy
   </button>
   @if (buyProblem(); as problem) {
     <p class="buy-problem">{{ problem }}</p>
   }
-  @if (buyError(); as text) {
+  @if (purchase.notice(); as text) {
     <p class="buy-error">{{ text }}</p>
   }
 </form>
@@ -43,14 +43,14 @@
   <button
     type="submit"
     class="cash-out"
-    [disabled]="cashOutPending() || cashOutFormProblem() !== null"
+    [disabled]="cashout.pending() || cashOutFormProblem() !== null"
   >
     Cash out
   </button>
   @if (cashOutFormProblem(); as problem) {
     <p class="cash-out-problem">{{ problem }}</p>
   }
-  @if (cashOutNotice(); as text) {
+  @if (cashout.notice(); as text) {
     <p class="cash-out-notice">{{ text }}</p>
   }
 </form>

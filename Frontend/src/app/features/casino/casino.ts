@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
-import { toApiError } from '../../core/api/api-error';
+import { actionState } from '../../core/actions/action-state';
 import { Casino as CasinoDto, ChipPurchase, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
@@ -76,8 +76,7 @@ export class Casino {
 
   private readonly buyModel = signal({ amount: 0 });
   protected readonly buyForm = form(this.buyModel);
-  readonly buyPending = signal(false);
-  readonly buyError = signal<string | null>(null);
+  readonly purchase = actionState();
 
   readonly buyProblem = computed<string | null>(() => {
     const casino = this.casinoPoller.value();
@@ -93,24 +92,14 @@ export class Casino {
       return;
     }
     const { amount } = this.buyModel();
-    this.buyPending.set(true);
-    this.buyError.set(null);
-    this.http.post('/api/casino/chips/purchases', { amount }).subscribe({
-      next: () => {
-        this.buyPending.set(false);
-        this.casinoPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.buyError.set(toApiError(err).message);
-        this.buyPending.set(false);
-      },
-    });
+    this.purchase.run(this.http.post('/api/casino/chips/purchases', { amount }), () =>
+      this.casinoPoller.refresh(),
+    );
   }
 
   private readonly cashOutModel = signal({ amount: 0 });
   protected readonly cashOutForm = form(this.cashOutModel);
-  readonly cashOutPending = signal(false);
-  readonly cashOutNotice = signal<string | null>(null);
+  readonly cashout = actionState();
 
   readonly cashOutFormProblem = computed<string | null>(() => {
     const casino = this.casinoPoller.value();
@@ -125,18 +114,9 @@ export class Casino {
       return;
     }
     const { amount } = this.cashOutModel();
-    this.cashOutPending.set(true);
-    this.cashOutNotice.set(null);
-    this.http.post('/api/casino/chips/cashouts', { amount }).subscribe({
-      next: () => {
-        this.cashOutPending.set(false);
-        this.cashOutNotice.set('Funds reach your wallet in a few seconds');
-        this.casinoPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.cashOutNotice.set(toApiError(err).message);
-        this.cashOutPending.set(false);
-      },
+    this.cashout.run(this.http.post('/api/casino/chips/cashouts', { amount }), () => {
+      this.cashout.notice.set('Funds reach your wallet in a few seconds');
+      this.casinoPoller.refresh();
     });
   }
 }
