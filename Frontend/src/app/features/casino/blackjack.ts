@@ -3,7 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
-import { toApiError } from '../../core/api/api-error';
+import { Observable } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import { timeLeft } from '../../core/format/time-left';
 import { clock } from '../../core/time/clock';
 import {
@@ -37,10 +38,10 @@ export function canDouble(hand: HandView, balance: number): boolean {
 }
 
 export function dealProblem(stake: number, limits: BlackjackLimits, balance: number): string | null {
+  if (!Number.isInteger(stake)) return 'Stake must be a whole number of chips';
   if (stake < limits.minBet || stake > limits.maxBet) {
     return `Stake must be between ${limits.minBet} and ${limits.maxBet}`;
   }
-  if (!Number.isInteger(stake)) return 'Chip amount is not valid';
   if (stake > balance) return 'Not enough chips on account';
   return null;
 }
@@ -82,10 +83,19 @@ export class Blackjack {
   );
 
   readonly hand = signal<HandView | null>(null);
-  readonly actionPending = signal(false);
-  readonly tableNotice = signal<string | null>(null);
+  readonly action = actionState();
+  readonly actionBalance = signal<number | null>(null);
   private lostHandId: string | null = null;
   private staleCasino: CasinoDto | null = null;
+
+  readonly balance = computed<number | null>(() => {
+    const casino = this.casinoPoller.value();
+    if (casino === null) {
+      return null;
+    }
+    const seeded = this.actionBalance();
+    return casino === this.staleCasino && seeded !== null ? seeded : casino.balance;
+  });
 
   readonly cardLabel = cardLabel;
   readonly now = clock();
@@ -95,20 +105,21 @@ export class Blackjack {
 
   readonly dealFormProblem = computed<string | null>(() => {
     const casino = this.casinoPoller.value();
-    if (casino === null) {
+    const balance = this.balance();
+    if (casino === null || balance === null) {
       return 'Loading…';
     }
-    return dealProblem(this.dealModel().stake, casino.blackjack, casino.balance);
+    return dealProblem(this.dealModel().stake, casino.blackjack, balance);
   });
 
   readonly doubleAllowed = computed<boolean>(() => {
     const current = this.hand();
-    const casino = this.casinoPoller.value();
-    return current !== null && casino !== null && canDouble(current, casino.balance);
+    const balance = this.balance();
+    return current !== null && balance !== null && canDouble(current, balance);
   });
 
   deal(): void {
-    if (this.actionPending() || this.dealFormProblem() !== null) {
+    if (this.dealFormProblem() !== null) {
       return;
     }
     const { stake } = this.dealModel();
@@ -117,7 +128,7 @@ export class Blackjack {
 
   act(action: BlackjackAction): void {
     const current = this.hand();
-    if (this.actionPending() || current === null || current.status !== 'InProgress') {
+    if (current === null || current.status !== 'InProgress') {
       return;
     }
     this.request(
@@ -134,13 +145,13 @@ export class Blackjack {
 
   newHand(): void {
     this.hand.set(null);
-    this.tableNotice.set(null);
+    this.action.notice.set(null);
   }
 
   constructor() {
     effect(() => {
       const casino = this.casinoPoller.value();
-      if (casino === null || casino === this.staleCasino || this.actionPending()) {
+      if (casino === null || casino === this.staleCasino || this.action.pending()) {
         return;
       }
       const before = untracked(this.hand);
@@ -166,24 +177,23 @@ export class Blackjack {
     });
   }
 
-  private request(call: ReturnType<typeof this.http.post<BlackjackHand>>): void {
-    this.actionPending.set(true);
-    this.tableNotice.set(null);
-    call.subscribe({
-      next: (dto) => {
+  private request(call: Observable<BlackjackHand>): void {
+    this.action.run(
+      call,
+      (dto) => {
         this.staleCasino = this.casinoPoller.value();
-        this.actionPending.set(false);
+        this.actionBalance.set(dto.balance);
         this.hand.set(fromHand(dto, Date.now()));
         this.casinoPoller.refresh();
         if (dto.status === 'Completed') {
           this.historyPoller.refresh();
         }
       },
-      error: (err: unknown) => {
+      () => {
         this.staleCasino = this.casinoPoller.value();
-        this.tableNotice.set(toApiError(err).message);
-        this.actionPending.set(false);
+        this.actionBalance.set(null);
+        this.casinoPoller.refresh();
       },
-    });
+    );
   }
 }

@@ -145,8 +145,9 @@ describe('dealProblem', () => {
     expect(dealProblem(2001, LIMITS, 100_000)).toBe('Stake must be between 5 and 2000');
   });
 
-  it('rejects a fraction with the domain text', () => {
-    expect(dealProblem(10.5, LIMITS, 100)).toBe('Chip amount is not valid');
+  it('rejects a fraction with the validator text before the range', () => {
+    expect(dealProblem(10.5, LIMITS, 100)).toBe('Stake must be a whole number of chips');
+    expect(dealProblem(2.5, LIMITS, 100)).toBe('Stake must be a whole number of chips');
   });
 
   it('rejects more than the chip balance', () => {
@@ -252,6 +253,7 @@ describe('Blackjack', () => {
     expect(el().querySelector('button.hit')).not.toBeNull();
     expect(el().querySelector('button.stand')).not.toBeNull();
     expect(el().querySelector('button.double')).not.toBeNull();
+    expect(el().textContent).toContain('Chip balance: 90');
     http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
   });
 
@@ -344,6 +346,8 @@ describe('Blackjack', () => {
     expect(el().querySelector('.table-notice')?.textContent).toContain(
       'Not enough chips on account',
     );
+    http.expectOne(CASINO_URL).flush(casino({ balance: 5 }));
+    fixture.detectChanges();
     expect((el().querySelector('button.deal') as HTMLButtonElement).disabled).toBe(false);
   });
 
