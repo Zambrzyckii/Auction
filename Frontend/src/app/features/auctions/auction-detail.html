@@ -33,12 +33,12 @@
       @if (bidBlockReason(); as reason) {
         <p class="error">{{ reason }}</p>
       }
-      <button type="submit" [disabled]="bidBlockReason() !== null || bidPending()">
+      <button type="submit" [disabled]="bidBlockReason() !== null || bid.pending()">
         Place bid
       </button>
     </form>
   }
-  @if (bidNotice(); as notice) {
+  @if (bid.notice(); as notice) {
     <p class="notice">{{ notice }}</p>
   }
   @if (bidConfirmation(); as confirmation) {

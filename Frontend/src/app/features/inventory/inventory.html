@@ -1,5 +1,8 @@
 <h2>Inventory</h2>
-@if (notice(); as text) {
+@if (crafting.notice(); as text) {
+  <p class="notice">{{ text }}</p>
+}
+@if (sale.notice(); as text) {
   <p class="notice">{{ text }}</p>
 }
 @if (poller.value(); as items) {
@@ -33,7 +36,7 @@
               type="button"
               class="sell"
               (click)="sell(item.publicItemId)"
-              [disabled]="item.status !== 'Available' || sellingId() !== null"
+              [disabled]="item.status !== 'Available' || sale.pending()"
             >
               Sell to shop
             </button>

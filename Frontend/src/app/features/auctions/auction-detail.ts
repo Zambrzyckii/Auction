@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { tap } from 'rxjs';
-import { toApiError } from '../../core/api/api-error';
+import { actionState } from '../../core/actions/action-state';
 import { Auction, AuctionBid } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
@@ -43,8 +43,7 @@ export class AuctionDetail {
   readonly timeLeft = timeLeft;
 
   readonly bidAmount = signal(0);
-  readonly bidNotice = signal<string | null>(null);
-  readonly bidPending = signal(false);
+  readonly bid = actionState();
   private readonly pendingBid = signal<{ amount: number; placedAt: number } | null>(null);
 
   readonly bidConfirmation = computed<string | null>(() => {
@@ -86,18 +85,9 @@ export class AuctionDetail {
   }
 
   placeBid(): void {
-    this.bidPending.set(true);
-    this.bidNotice.set(null);
     const amount = this.bidAmount();
-    this.http.post(`/api/auctions/${this.encodedId}/bid`, { amount }).subscribe({
-      next: () => {
-        this.pendingBid.set({ amount, placedAt: Date.now() });
-        this.bidPending.set(false);
-      },
-      error: (err: unknown) => {
-        this.bidNotice.set(toApiError(err).message);
-        this.bidPending.set(false);
-      },
+    this.bid.run(this.http.post(`/api/auctions/${this.encodedId}/bid`, { amount }), () => {
+      this.pendingBid.set({ amount, placedAt: Date.now() });
     });
   }
 
