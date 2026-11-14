@@ -65,9 +65,9 @@ describe('addFriendProblem', () => {
 
   it('rejects an existing relation with the server text', () => {
     const existing = 'Friendship or a pending request already exists';
-    expect(addFriendProblem(PLAYER_ID, me({ friends: [{ userId: PLAYER_ID, username: 'x' }] }))).toBe(
-      existing,
-    );
+    expect(
+      addFriendProblem(PLAYER_ID, me({ friends: [{ userId: PLAYER_ID, username: 'x' }] })),
+    ).toBe(existing);
     expect(
       addFriendProblem(
         PLAYER_ID,

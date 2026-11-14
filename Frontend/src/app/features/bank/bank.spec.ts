@@ -48,7 +48,6 @@ function wallet(overrides: Partial<Wallet>): Wallet {
   return { availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0, ...overrides };
 }
 
-
 describe('Bank', () => {
   let fixture: ComponentFixture<Bank>;
   let http: HttpTestingController;

@@ -64,7 +64,12 @@ describe('spinProblem', () => {
   it('needs between one bet and the table maximum', () => {
     const text = 'A spin takes between 1 and 20 bets';
     expect(spinProblem([], casino({}))).toBe(text);
-    expect(spinProblem(Array.from({ length: 21 }, () => bet({ stake: 1 })), casino({}))).toBe(text);
+    expect(
+      spinProblem(
+        Array.from({ length: 21 }, () => bet({ stake: 1 })),
+        casino({}),
+      ),
+    ).toBe(text);
   });
 
   it('rejects a total stake above the chip balance with the domain text', () => {

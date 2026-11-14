@@ -8,7 +8,6 @@ import {
   Casino as CasinoDto,
   RouletteBet,
   RouletteBetType,
-  RouletteLimits,
   RouletteSpin,
   RouletteSpinResult,
 } from '../../core/api/models';

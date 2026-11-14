@@ -9,7 +9,6 @@ import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
-
 import { isBidConfirmed } from './auction-rules';
 
 const POLL_MS = 2500;
@@ -43,7 +42,7 @@ export class AuctionDetail {
   readonly timeLeft = timeLeft;
 
   readonly bidAmount = signal(0);
-  readonly bid = actionState();
+  readonly bidding = actionState();
   private readonly pendingBid = signal<{ amount: number; placedAt: number } | null>(null);
 
   readonly bidConfirmation = computed<string | null>(() => {
@@ -86,7 +85,7 @@ export class AuctionDetail {
 
   placeBid(): void {
     const amount = this.bidAmount();
-    this.bid.run(this.http.post(`/api/auctions/${this.encodedId}/bid`, { amount }), () => {
+    this.bidding.run(this.http.post(`/api/auctions/${this.encodedId}/bid`, { amount }), () => {
       this.pendingBid.set({ amount, placedAt: Date.now() });
     });
   }

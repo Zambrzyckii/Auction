@@ -44,7 +44,6 @@ function wallet(overrides: Partial<Wallet>): Wallet {
 
 const pending = (): ChipPurchase => purchase({ status: 'Pending', resolvedOn: null });
 
-
 describe('Casino', () => {
   let fixture: ComponentFixture<Casino>;
   let http: HttpTestingController;

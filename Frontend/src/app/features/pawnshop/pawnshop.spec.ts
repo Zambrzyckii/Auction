@@ -4,7 +4,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import {
-  BotTier,
   Pawnshop as PawnshopDto,
   PawnshopOffers,
   StockItem,

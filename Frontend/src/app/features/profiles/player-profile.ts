@@ -12,7 +12,6 @@ import {
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
 import { ProfileAvatar } from './avatar';
-
 import { Relation, relationTo } from './profile-rules';
 
 const POLL_MS = 10_000;

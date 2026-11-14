@@ -19,7 +19,11 @@ export function canDouble(hand: HandView, balance: number): boolean {
   );
 }
 
-export function dealProblem(stake: number, limits: BlackjackLimits, balance: number): string | null {
+export function dealProblem(
+  stake: number,
+  limits: BlackjackLimits,
+  balance: number,
+): string | null {
   if (!Number.isInteger(stake)) return 'Stake must be a whole number of chips';
   if (stake < limits.minBet || stake > limits.maxBet) {
     return `Stake must be between ${limits.minBet} and ${limits.maxBet}`;

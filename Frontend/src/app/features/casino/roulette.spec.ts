@@ -18,7 +18,6 @@ const CASINO_URL = '/api/casino';
 const SPINS_URL = '/api/casino/roulette/spins';
 const LIMITS = { minBet: 1, maxBet: 1000, maxBetsPerSpin: 20 };
 const SELECTION = 'Bet selection does not match its type';
-const STAKE = 'Each stake must be a whole number of chips within the table limits';
 
 function casino(overrides: Partial<CasinoDto>): CasinoDto {
   return {

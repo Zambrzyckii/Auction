@@ -19,8 +19,20 @@ function offers(overrides: Partial<PawnshopOffers>): PawnshopOffers {
     premisesRequiredTurnover: 1_000_000,
     stockSellDelay: '00:05:00',
     botTiers: [
-      { name: 'Pawn Clerk', rarity: 'Common', price: 50_000, spawnInterval: '00:00:30', payoutRate: 0.5 },
-      { name: 'Appraiser', rarity: 'Rare', price: 300_000, spawnInterval: '00:01:00', payoutRate: 0.5 },
+      {
+        name: 'Pawn Clerk',
+        rarity: 'Common',
+        price: 50_000,
+        spawnInterval: '00:00:30',
+        payoutRate: 0.5,
+      },
+      {
+        name: 'Appraiser',
+        rarity: 'Rare',
+        price: 300_000,
+        spawnInterval: '00:01:00',
+        payoutRate: 0.5,
+      },
     ],
     ...overrides,
   };
@@ -99,9 +111,27 @@ describe('premisesProblem', () => {
 
 describe('upgradeOptions', () => {
   const TIERS: readonly BotTier[] = [
-    { name: 'Pawn Clerk', rarity: 'Common', price: 50_000, spawnInterval: '00:00:30', payoutRate: 0.5 },
-    { name: 'Appraiser', rarity: 'Rare', price: 300_000, spawnInterval: '00:01:00', payoutRate: 0.5 },
-    { name: 'Dealer', rarity: 'Epic', price: 1_500_000, spawnInterval: '00:02:00', payoutRate: 0.5 },
+    {
+      name: 'Pawn Clerk',
+      rarity: 'Common',
+      price: 50_000,
+      spawnInterval: '00:00:30',
+      payoutRate: 0.5,
+    },
+    {
+      name: 'Appraiser',
+      rarity: 'Rare',
+      price: 300_000,
+      spawnInterval: '00:01:00',
+      payoutRate: 0.5,
+    },
+    {
+      name: 'Dealer',
+      rarity: 'Epic',
+      price: 1_500_000,
+      spawnInterval: '00:02:00',
+      payoutRate: 0.5,
+    },
   ];
 
   it('offers every affordable tier to an active shop without a bot', () => {
