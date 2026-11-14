@@ -335,7 +335,7 @@ describe('WarehouseDetail', () => {
 
     http
       .expectOne('/api/profiles/warehouse-invites')
-      .flush({ error: 'Players are not friends' }, { status: 400, statusText: 'Bad Request' });
+      .flush({ error: 'Players are not friends' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
     expect(el().querySelector('.war-notice')?.textContent).toContain('Players are not friends');
   });
