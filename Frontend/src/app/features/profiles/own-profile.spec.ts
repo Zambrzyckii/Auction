@@ -232,6 +232,19 @@ describe('OwnProfile', () => {
 
       http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
     });
+
+    it('shows the save error inside the social section', () => {
+      http.expectOne(ME_URL).flush(ownProfile({ socialLinks: [GITHUB_LINK] }));
+      fixture.detectChanges();
+      (el().querySelector('button.save-links') as HTMLButtonElement).click();
+
+      http
+        .expectOne('/api/profiles/me/socials')
+        .flush({ error: 'Too many requests.' }, { status: 429, statusText: 'Too Many Requests' });
+      fixture.detectChanges();
+      expect(el().querySelector('.social-notice')?.textContent).toContain('Too many requests.');
+      expect(el().querySelector('.notice')).toBeNull();
+    });
   });
 
   describe('friend actions', () => {
@@ -368,6 +381,20 @@ describe('OwnProfile', () => {
       );
       expect(el().textContent).toContain('exceeds the limit');
       http.expectNone('/api/profiles/me/avatar');
+    });
+
+    it('shows the upload error inside the avatar section', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      chooseFile(new File([new Uint8Array(16)], 'a.png', { type: 'image/png' }));
+      (el().querySelector('button.upload-avatar') as HTMLButtonElement).click();
+
+      http
+        .expectOne('/api/profiles/me/avatar')
+        .flush({ error: 'Too many requests.' }, { status: 429, statusText: 'Too Many Requests' });
+      fixture.detectChanges();
+      expect(el().querySelector('.avatar-notice')?.textContent).toContain('Too many requests.');
+      expect(el().querySelector('.notice')).toBeNull();
     });
 
     it('deletes the avatar and refreshes', () => {
