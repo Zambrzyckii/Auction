@@ -118,6 +118,7 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-11-12 | The dev-mode vault reboot trap (empty vault after a host reboot, api in a restart loop) is tracked as issue #24 and not fixed now | owner | the remedy is known (`docker compose up -d` and an api restart), and small items live as issues per the 2026-11-07 decision |
 | 2026-11-12 | Verification scripts may create a bot account with the key from `Infrastructure/secrets/bots-api-key.secret` and mint funds through `POST /api/wallets/funds` (variant B) | owner | minted funds count toward lifetime turnover, which unlocks short live scenarios for the bank, the pawnshop and the warehouse wars, and the key lives only in process memory, never in logs or files |
 | 2026-11-14 | View prechecks mirror the server's guard order and exact refusal texts through named helpers with early returns, and nested ternaries are banned from view logic | owner | a nested ternary in the roulette precheck proved unreadable in review, and named helpers keep the mapping to the backend rules visible |
+| 2026-11-14 | Usernames are unique, enforced by a unique index in Identity with pre-checks in both register handlers | owner | transfers show recipients by username, and duplicate names would let a player impersonate another in the recipient preview |
 
 ## Related documents
 
