@@ -1,13 +1,20 @@
 import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { toApiError } from '../../core/api/api-error';
 import { WarehouseDetails, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
 import { clock } from '../../core/time/clock';
-import { WAREHOUSE_TIERS, warehousePollMs } from './warehouse-rules';
+import {
+  WAREHOUSE_TIERS,
+  canLeave,
+  entryRejected,
+  joinBlockReason,
+  warehousePollMs,
+} from './warehouse-rules';
 
 const WALLET_POLL_MS = 5000;
 
@@ -33,9 +40,60 @@ export class WarehouseDetail {
 
   readonly now = clock();
   readonly timeLeft = timeLeft;
+  readonly canLeave = canLeave;
+
+  readonly joinedAt = signal<number | null>(null);
+  readonly actionPending = signal(false);
+  readonly warNotice = signal<string | null>(null);
+
+  readonly joinProblem = computed<string | null>(() => {
+    const war = this.warPoller.value();
+    const funds = this.walletPoller.value();
+    if (war === null || funds === null) {
+      return 'Loading…';
+    }
+    return joinBlockReason(war, funds, this.now());
+  });
+
+  readonly rejectedEntry = computed<boolean>(() => {
+    const war = this.warPoller.value();
+    return war !== null && entryRejected(this.joinedAt(), war);
+  });
 
   knownTier(war: WarehouseDetails): boolean {
     return WAREHOUSE_TIERS.has(war.tier);
+  }
+
+  join(): void {
+    if (this.actionPending() || this.joinProblem() !== null) {
+      return;
+    }
+    this.act(`/api/warehouses/${this.id}/join`, () => this.joinedAt.set(Date.now()));
+  }
+
+  leave(): void {
+    const war = this.warPoller.value();
+    if (this.actionPending() || war === null || !canLeave(war, this.now())) {
+      return;
+    }
+    this.act(`/api/warehouses/${this.id}/leave`, () => this.joinedAt.set(null));
+  }
+
+  private act(url: string, onSuccess: () => void): void {
+    this.actionPending.set(true);
+    this.warNotice.set(null);
+    this.http.post(url, null).subscribe({
+      next: () => {
+        this.actionPending.set(false);
+        onSuccess();
+        this.warPoller.refresh();
+        this.walletPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.warNotice.set(toApiError(err).message);
+        this.actionPending.set(false);
+      },
+    });
   }
 
   constructor() {

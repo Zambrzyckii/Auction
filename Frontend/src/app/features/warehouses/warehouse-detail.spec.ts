@@ -165,6 +165,64 @@ describe('WarehouseDetail', () => {
     http.expectNone(WALLET_URL);
   });
 
+  it('joins the war, confirms the fee and offers the leave', () => {
+    flushAll(war({}));
+    (el().querySelector('button.join') as HTMLButtonElement).click();
+
+    const post = http.expectOne('/api/warehouses/war-1/join');
+    expect(post.request.method).toBe('POST');
+    post.flush(null);
+    fixture.detectChanges();
+
+    http.expectOne(WAR_URL).flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
+    http.expectOne(WALLET_URL).flush(wallet({ lockedFunds: 500 }));
+    fixture.detectChanges();
+    expect(el().querySelector('.pending-lock')?.textContent).toContain(
+      'Confirming your entry fee…',
+    );
+    expect(el().querySelector('button.join')).toBeNull();
+    expect(el().querySelector('button.leave')).not.toBeNull();
+  });
+
+  it('blocks the join without the entry fee', () => {
+    flushAll(war({}), wallet({ availableFunds: 300 }));
+    expect((el().querySelector('button.join') as HTMLButtonElement).disabled).toBe(true);
+    expect(el().querySelector('.join-problem')?.textContent).toContain(
+      'Not enough funds on account',
+    );
+  });
+
+  it('leaves the war and clears the join marker', () => {
+    flushAll(war({ isParticipant: true, participantState: 'Active', players: 1 }));
+    (el().querySelector('button.leave') as HTMLButtonElement).click();
+
+    http.expectOne('/api/warehouses/war-1/leave').flush(null);
+    fixture.detectChanges();
+    http.expectOne(WAR_URL).flush(war({}));
+    http.expectOne(WALLET_URL).flush(wallet({}));
+    fixture.detectChanges();
+    expect(el().querySelector('button.leave')).toBeNull();
+    expect(el().querySelector('.entry-rejected')).toBeNull();
+  });
+
+  it('reports a silently rejected entry fee', () => {
+    flushAll(war({}));
+    (el().querySelector('button.join') as HTMLButtonElement).click();
+    http.expectOne('/api/warehouses/war-1/join').flush(null);
+    fixture.detectChanges();
+    http.expectOne(WAR_URL).flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
+    http.expectOne(WALLET_URL).flush(wallet({}));
+    fixture.detectChanges();
+
+    vi.advanceTimersByTime(5000);
+    http.expectOne(WAR_URL).flush(war({ players: 0 }));
+    http.expectOne(WALLET_URL).flush(wallet({}));
+    fixture.detectChanges();
+    expect(el().querySelector('.entry-rejected')?.textContent).toContain(
+      'Your entry was not confirmed, most likely not enough funds',
+    );
+  });
+
   it('tells a losing participant about the refund and shows a cancellation', () => {
     flushAll(
       war({ status: 'Settled', isParticipant: true, participantState: 'Active', currentPrice: 110, manifest: [] }),

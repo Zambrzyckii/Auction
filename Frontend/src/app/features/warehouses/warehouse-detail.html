@@ -21,6 +21,32 @@
   @if (war.status === 'Bidding' && war.biddingEndsOn !== null) {
     <p class="closes-in">Raise window closes in {{ timeLeft(war.biddingEndsOn, now()) }}</p>
   }
+  @if (war.status === 'Open') {
+    @if (!war.isParticipant) {
+      <button
+        type="button"
+        class="join"
+        (click)="join()"
+        [disabled]="actionPending() || joinProblem() !== null"
+      >
+        Join
+      </button>
+      @if (joinProblem(); as problem) {
+        <p class="join-problem">{{ problem }}</p>
+      }
+    }
+    @if (canLeave(war, now())) {
+      <button type="button" class="leave" (click)="leave()" [disabled]="actionPending()">
+        Leave
+      </button>
+    }
+  }
+  @if (rejectedEntry()) {
+    <p class="entry-rejected">Your entry was not confirmed, most likely not enough funds</p>
+  }
+  @if (warNotice(); as text) {
+    <p class="war-notice">{{ text }}</p>
+  }
   @if (war.isParticipant && war.participantState === 'PendingLock') {
     <p class="pending-lock">Confirming your entry fee…</p>
   }
