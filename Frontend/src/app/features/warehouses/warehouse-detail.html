@@ -1,0 +1,64 @@
+<p><a routerLink="/warehouses">Back to the wars</a></p>
+@if (warPoller.value(); as war) {
+  <h2>{{ war.tier }} warehouse war</h2>
+  @if (!knownTier(war)) {
+    <p class="unknown-tier">Unknown tier</p>
+  }
+  <p class="war-status">Status: {{ war.status }}</p>
+  <p>
+    Estimated value: {{ war.estimateMin | number }}–{{ war.estimateMax | number }} across
+    {{ war.itemCount }} items
+  </p>
+  <p>
+    Current price: <span class="current-price">{{ war.currentPrice | number }}</span
+    >, budget: {{ war.entryFee | number }}
+  </p>
+  <p>{{ war.players }}/{{ war.maxPlayers }} players including unconfirmed</p>
+
+  @if (war.status === 'Open' && war.biddingStartsOn !== null) {
+    <p class="starts-in">Bidding starts in {{ timeLeft(war.biddingStartsOn, now()) }}</p>
+  }
+  @if (war.status === 'Bidding' && war.biddingEndsOn !== null) {
+    <p class="closes-in">Raise window closes in {{ timeLeft(war.biddingEndsOn, now()) }}</p>
+  }
+  @if (war.isParticipant && war.participantState === 'PendingLock') {
+    <p class="pending-lock">Confirming your entry fee…</p>
+  }
+  @if (war.isLeader) {
+    <p class="leading">You are leading</p>
+  } @else if (war.currentPrice > 0 && war.status === 'Bidding') {
+    <p class="someone-leads">Someone else leads</p>
+  }
+  @if (war.cancellationReason !== null) {
+    <p class="cancellation">{{ war.cancellationReason }}</p>
+  }
+
+  @if (war.status === 'Settled') {
+    @if (war.isLeader) {
+      <p class="won">You won, the items reach your inventory in a few seconds</p>
+    } @else if (war.isParticipant) {
+      <p class="refund">Your entry fee is being refunded</p>
+    }
+    @if (war.manifest !== null) {
+      <h3>Manifest</h3>
+      <table class="manifest">
+        <tr>
+          <th>Item</th>
+          <th>Rarity</th>
+          <th>Price</th>
+        </tr>
+        @for (item of war.manifest; track $index) {
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.rarity }}</td>
+            <td>{{ item.price | number }}</td>
+          </tr>
+        }
+      </table>
+    }
+  }
+} @else if (warPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the war…</p>
+}

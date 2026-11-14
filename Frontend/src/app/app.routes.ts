@@ -71,6 +71,12 @@ export const routes: Routes = [
       import('./features/warehouses/warehouse-list').then((m) => m.WarehouseList),
   },
   {
+    path: 'warehouses/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/warehouses/warehouse-detail').then((m) => m.WarehouseDetail),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),
