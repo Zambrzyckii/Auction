@@ -24,20 +24,18 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 | aukcje i ekwipunek za bearer tokenem | `POST /api/auctions`, `POST /api/auctions/{id}/bid`, `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | pieniądze | `GET /api/wallets/{id}`, `GET /api/wallets/{id}/transfers`, `POST /api/wallets/transfers` |
 | pożyczki bankowe | `GET /api/bank/offers`, `GET /api/bank/loans`, `POST /api/bank/loans`, `POST /api/bank/loans/{id}/repayments` |
-| kasyno | `GET /api/casino`, `POST /api/casino/chips/purchases`, `POST /api/casino/chips/cashouts`, `GET` i `POST /api/casino/roulette/spins`, `POST /api/casino/blackjack/hands`, `POST /api/casino/blackjack/hands/{id}/actions` |
+| kasyno | `GET /api/casino`, `POST /api/casino/chips/purchases`, `POST /api/casino/chips/cashouts`, `GET` i `POST /api/casino/roulette/spins`, `POST /api/casino/blackjack/hands`, `POST /api/casino/blackjack/hands/{id}/actions` (każdy kształt ręki niesie `autoStandOn`) |
 | lombard | `GET /api/pawnshop` (404 przed kupnem lokalu), `GET /api/pawnshop/offers`, `POST /api/pawnshop`, `POST /api/pawnshop/bot`, `POST /api/pawnshop/stock/{id}/withdraw` |
 | wojny magazynowe | `GET /api/warehouses?limit=N`, `GET /api/warehouses/{id}` (z `increments` taryfy), `POST /api/warehouses/{id}/join`, `POST /api/warehouses/{id}/leave`, `POST /api/warehouses/{id}/bids` |
 | historia wojen magazynowych | `GET /api/warehouses/mine` (każda wojna, do której wołający dołączył, dowolny status, od najnowszych, najwyżej 50) |
-| profile, znajomi i zaproszenia | `GET /api/profiles/me`, `GET /api/profiles/{id}`, `GET /api/profiles/{id}/avatar`, zapisy własnego profilu pod `/api/profiles/me/...` (prywatność, sociale, awatar), cykl życia znajomości pod `/api/profiles/friends/...`, `GET` i `POST /api/profiles/warehouse-invites` |
+| profile, znajomi i zaproszenia | `GET /api/profiles/me`, `GET /api/profiles/{id}`, `GET /api/profiles/{id}/avatar`, zapisy własnego profilu pod `/api/profiles/me/...` (prywatność, sociale, awatar), cykl życia znajomości pod `/api/profiles/friends/...`, `GET` i `POST /api/profiles/warehouse-invites`, `POST /api/profiles/warehouse-invites/{publicInviteId}/decline` |
 | odpowiedzi czytelne maszynowo | nazwy pól camelCase, enumy serializowane jako stringi, odpowiedzi `201` z nowym id i nagłówkiem `Location`, jeden kształt błędu `{ "error": "..." }` dla błędów domenowych, walidacyjnych i bindowania (błędy bindowania dołączyły 2026-11-14 przez `RouteHandlerOptions.ThrowOnBadRequest`) |
 
 ## Czego brakuje
 
 - Brak kanału push: wszystko powyżej to polling, a świeżo utworzona aukcja pozostaje `Pending` do dwóch cykli pollingu outboxa, zanim pojawi się na liście.
 - Brak wyszukiwarki profili i endpointu batch: widoki rozwiązują nazwy użytkowników pojedynczymi `GET /api/profiles/{id}` i cache'ują je po stronie klienta na czas sesji.
-- Zaproszenia magazynowe nie mają id ani akcji przyjęcia lub odrzucenia: klient może tylko przejść po linku albo pozwolić zaproszeniu wygasnąć.
 - Endpoint awatara wymaga JWT, więc publiczna strona nie pokaże awatarów bez zalogowanej sesji.
-- Timeout ręki blackjacka żyje tylko w konfiguracji backendu: klient lustrzy go jako stałą.
 
 ## Widoki (trasy)
 
@@ -62,13 +60,11 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 
 ## Reguły po stronie klienta i lustrzane stałe
 
-Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, profile) trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed; walidatory rejestracji i czas życia zaproszenia magazynowego wciąż mieszkają w plikach komponentów. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
+Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, profile) trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed; walidatory rejestracji wciąż mieszkają w pliku komponentu. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
 
 | Stała klienta (moduł) | Lustrzy |
 |---|---|
 | `PASSWORD_REQUIREMENTS` i limity 30 znaków (`register.ts`) | walidator rejestracji: regułę siły hasła oraz limity długości username, imienia i nazwiska |
-| `INVITE_TTL_MS` (`warehouse-list.ts`) | czas życia zaproszenia magazynowego (15 minut) |
-| `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | timeout auto-stand blackjacka (5 minut) |
 | `CARD_RANKS`, `CARD_SUITS` (`blackjack-rules.ts`) | kodowanie kart talii kasyna (figura z `code % 13`, kolor z `code / 13`) |
 | `MIN_LEAD_MS`, `MAX_LEAD_MS` (`auction-rules.ts`) | okno czasu zakończenia aukcji (od minuty do trzydziestu dni) |
 | `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | statusy, które bank liczy jako otwartą pożyczkę |

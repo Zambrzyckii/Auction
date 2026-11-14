@@ -609,12 +609,13 @@ endpoint filters run after `IFormFile` binding has already read the body, which 
 413 belonged — and `AvatarImage.Sniff` decides the type by magic bytes (jpeg/png/webp, SVG rejected). Social links
 are capped at 6 and validated by `SocialLinkPolicy` (https, no user info, host equal to or a subdomain of the
 platform's domain). Friends use request/accept with auto-accept on a cross request; warehouse invites are pointer
-records with read-time expiry (`Profiles:Invites:Lifetime`) and an opportunistic purge before insert. The
+records with read-time expiry (`Profiles:Invites:Lifetime`, exposed as `expiresOn` since 2026-11-14), an opportunistic
+purge before insert and, since 2026-11-14, an invitee-only `decline` route (404 for anyone else). The
 private-profile option followed the same day: `UserProfile.IsPrivate` (migration `Add_Profiles_Privacy`) is flipped
 by `PUT /api/profiles/me/privacy`, and `GetProfileQueryHandler` applies the rule at read time — the owner and
 accepted friends (checked through the canonical pair lookup) see the full profile, a stranger gets only the
-username, the `isPrivate` flag and the `avatarUrl`, and the avatar route stays open. Thirteen
-endpoints under `/api/profiles` (53 total), event registry at 37, tables at 38. The chain was probed live against a
+username, the `isPrivate` flag and the `avatarUrl`, and the avatar route stays open. Fourteen
+endpoints under `/api/profiles` (54 total), event registry at 37, tables at 38. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`

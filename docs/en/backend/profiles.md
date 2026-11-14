@@ -2,14 +2,14 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/profiles.md](../../pl/backend/profiles.md)
 
-`AuctionServer.Modules.Profiles` is the ninth module and the social layer of the game: a public profile per player with a username snapshot, a level earned from wallet turnover, an avatar stored in SeaweedFS, up to six social links, friends with requests and acceptance, warehouse-war invites for friends, and a privacy toggle that hides everything except the username and the avatar from strangers. It is the first **consume-only** module: it publishes no events, so it has no outbox table, no `OutboxProcessor` and no keeper, only the inbox `ProfilesProcessedMessages`. Thirteen endpoints live under `/api/profiles`, all behind JWT.
+`AuctionServer.Modules.Profiles` is the ninth module and the social layer of the game: a public profile per player with a username snapshot, a level earned from wallet turnover, an avatar stored in SeaweedFS, up to six social links, friends with requests and acceptance, warehouse-war invites for friends, and a privacy toggle that hides everything except the username and the avatar from strangers. It is the first **consume-only** module: it publishes no events, so it has no outbox table, no `OutboxProcessor` and no keeper, only the inbox `ProfilesProcessedMessages`. Fourteen endpoints live under `/api/profiles`, all behind JWT.
 
 ## Overview
 
 | Area | Files |
 |---|---|
 | Endpoints | [`Presentation/ProfilesEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Presentation/ProfilesEndpoints.cs), request records `ReplaceSocialLinksRequest`, `FriendRequestRequest`, `WarehouseInviteRequest` |
-| Commands and queries | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/` and `CreateWarehouseInvite/` (command, handler, validator each), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/` and `GetWarehouseInvites/` (query, handler, DTOs each) |
+| Commands and queries | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/`, `CreateWarehouseInvite/` and `DeclineWarehouseInvite/` (command, handler, validator each), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/` and `GetWarehouseInvites/` (query, handler, DTOs each) |
 | Options | `Application/Options/ProfilesOptions.cs` (`ProfilesOptions`, `AvatarOptions`, `InviteOptions`, `StorageOptions`) |
 | Event handlers | `Application/Handlers/UserRegisteredEventHandler.cs`, `PlayerLevelledUpEventHandler.cs` |
 | Storage seam | [`Application/Interfaces/IAvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Application/Interfaces/IAvatarStorage.cs), [`Infrastructure/Storage/S3AvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Storage/S3AvatarStorage.cs) |
@@ -79,7 +79,7 @@ The whole `Profiles` section of `appsettings.json` binds to `ProfilesOptions`, a
 
 ## API
 
-All thirteen routes require a JWT.
+All fourteen routes require a JWT.
 
 | Method and route | Request | Response | Handler |
 |---|---|---|---|
@@ -94,8 +94,9 @@ All thirteen routes require a JWT.
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/accept` | none | 200; only the addressee can accept, anyone else gets 404 so the route leaks nothing | `AcceptFriendRequestCommandHandler` |
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/decline` | none | 200; deletes the row, so a later re-request works. Only the addressee, others get 404 | `DeclineFriendRequestCommandHandler` |
 | `DELETE /api/profiles/friends/{userId}` | none | 204; removes an accepted friendship or cancels a pending one and deletes the pair's warehouse invites in the same save. 404 when no relation exists | `RemoveFriendCommandHandler` |
-| `POST /api/profiles/warehouse-invites` | `{ friendUserId, publicWarehouseId }` | 201; requires an accepted friendship (409 otherwise), purges expired invites first and answers 409 for a live duplicate | `CreateWarehouseInviteCommandHandler` |
-| `GET /api/profiles/warehouse-invites` | none | 200 with the non-expired invites addressed to the caller, inviter username included, newest first | `GetWarehouseInvitesQueryHandler` |
+| `POST /api/profiles/warehouse-invites` | `{ friendUserId, publicWarehouseId }` | 201 with `publicInviteId` and a `Location` of the invite list; requires an accepted friendship (409 otherwise), purges expired invites first and answers 409 for a live duplicate | `CreateWarehouseInviteCommandHandler` |
+| `GET /api/profiles/warehouse-invites` | none | 200 with the non-expired invites addressed to the caller, newest first, each with `publicInviteId`, the inviter's id and username, `createdOn` and `expiresOn` (`createdOn` plus `Profiles:Invites:Lifetime`, computed at read time) | `GetWarehouseInvitesQueryHandler` |
+| `POST /api/profiles/warehouse-invites/{publicInviteId}/decline` | none | 200; deletes the row, so the same war can be offered again. Only the invitee, the inviter and strangers get 404 like a missing id | `DeclineWarehouseInviteCommandHandler` |
 
 ## Avatars and SeaweedFS
 
@@ -115,7 +116,7 @@ Levels are computed in Wallets, where the money lives, and only displayed here. 
 
 A friendship is one row for one pair. `FriendshipPair.Normalize` orders the two ids canonically into `UserLowId` and `UserHighId`, and the unique index on that pair makes (A, B) and (B, A) the same relation, whichever side asked. A request starts `Pending`; the addressee accepts (anyone else gets 404, so the route does not reveal whether the id exists) or declines, and decline deletes the row. When B requests A while A's request to B is still pending, the handler accepts the existing relation instead of throwing: both sides have expressed the intent, so the extra click would be ritual. A player can hold `Friendship.MaxFriends = 100` accepted friendships; the gate is checked for both sides at request time. Cash gifts between friends are the existing open `POST /api/wallets/transfers`, fee-free and turnover-free, so Profiles adds no money code.
 
-A warehouse invite is a pointer, not a reservation: creating one checks the accepted friendship and the unique triple but never talks to Warehouses, reserves no lobby seat and does not verify the war still exists. The invitee reads the invites, opens the warehouse and joins through the normal `POST /api/warehouses/{id}/join`. Expiry is read-time, the list shows rows younger than `Profiles:Invites:Lifetime`, and the create handler opportunistically `ExecuteDeleteAsync`-purges expired rows before inserting, which keeps the unique triple from rejecting a re-invite blocked only by a dead row. Removing a friend deletes the pair's invites in the same save.
+A warehouse invite is a pointer, not a reservation: creating one checks the accepted friendship and the unique triple but never talks to Warehouses, reserves no lobby seat and does not verify the war still exists. The invitee reads the invites, opens the warehouse and joins through the normal `POST /api/warehouses/{id}/join`. Expiry is read-time, the list shows rows younger than `Profiles:Invites:Lifetime`, and the create handler opportunistically `ExecuteDeleteAsync`-purges expired rows before inserting, which keeps the unique triple from rejecting a re-invite blocked only by a dead row. Removing a friend deletes the pair's invites in the same save. The invitee can decline through `POST .../{publicInviteId}/decline`, which deletes the row exactly like a declined friend request, and the inviter or a stranger gets the same 404 as for an unknown id, so the route reveals nothing. `publicInviteId` on the wire is the entity's `Id` (the table has no separate surrogate key), named `Public*Id` like every other exposed identifier, and `expiresOn` is `createdOn` plus the configured lifetime, so the client never mirrors the TTL.
 
 ## Privacy
 

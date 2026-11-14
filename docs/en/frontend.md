@@ -24,20 +24,18 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 | auctions and inventory behind a bearer token | `POST /api/auctions`, `POST /api/auctions/{id}/bid`, `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | money | `GET /api/wallets/{id}`, `GET /api/wallets/{id}/transfers`, `POST /api/wallets/transfers` |
 | bank loans | `GET /api/bank/offers`, `GET /api/bank/loans`, `POST /api/bank/loans`, `POST /api/bank/loans/{id}/repayments` |
-| casino | `GET /api/casino`, `POST /api/casino/chips/purchases`, `POST /api/casino/chips/cashouts`, `GET` and `POST /api/casino/roulette/spins`, `POST /api/casino/blackjack/hands`, `POST /api/casino/blackjack/hands/{id}/actions` |
+| casino | `GET /api/casino`, `POST /api/casino/chips/purchases`, `POST /api/casino/chips/cashouts`, `GET` and `POST /api/casino/roulette/spins`, `POST /api/casino/blackjack/hands`, `POST /api/casino/blackjack/hands/{id}/actions` (every hand shape carries `autoStandOn`) |
 | pawnshop | `GET /api/pawnshop` (404 before the premises are bought), `GET /api/pawnshop/offers`, `POST /api/pawnshop`, `POST /api/pawnshop/bot`, `POST /api/pawnshop/stock/{id}/withdraw` |
 | warehouse wars | `GET /api/warehouses?limit=N`, `GET /api/warehouses/{id}` (with the tier's `increments`), `POST /api/warehouses/{id}/join`, `POST /api/warehouses/{id}/leave`, `POST /api/warehouses/{id}/bids` |
 | warehouse war history | `GET /api/warehouses/mine` (every war the caller joined, any status, newest first, at most 50) |
-| profiles, friends and invites | `GET /api/profiles/me`, `GET /api/profiles/{id}`, `GET /api/profiles/{id}/avatar`, the own-profile writes under `/api/profiles/me/...` (privacy, socials, avatar), the friend lifecycle under `/api/profiles/friends/...`, `GET` and `POST /api/profiles/warehouse-invites` |
+| profiles, friends and invites | `GET /api/profiles/me`, `GET /api/profiles/{id}`, `GET /api/profiles/{id}/avatar`, the own-profile writes under `/api/profiles/me/...` (privacy, socials, avatar), the friend lifecycle under `/api/profiles/friends/...`, `GET` and `POST /api/profiles/warehouse-invites`, `POST /api/profiles/warehouse-invites/{publicInviteId}/decline` |
 | machine-readable responses | camelCase property names, enums serialized as strings, `201` responses with the new id and a `Location` header, one error shape `{ "error": "..." }` for domain, validation and binding errors (binding failures joined on 2026-11-14 through `RouteHandlerOptions.ThrowOnBadRequest`) |
 
 ## What is missing
 
 - No push channel: everything above is polling, and a freshly created auction stays `Pending` for up to two outbox polling cycles before it appears in the list.
 - No profile search and no batch profile endpoint: views resolve usernames one `GET /api/profiles/{id}` at a time and cache them client-side for the session.
-- Warehouse invites carry no id and no accept or decline action: the client can only follow the link or let the invite expire.
 - The avatar endpoint requires a JWT, so a public page cannot show avatars without a signed-in session.
-- The blackjack hand timeout lives only in the backend configuration: the client mirrors it as a constant.
 
 ## Views (routes)
 
@@ -62,13 +60,11 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 
 ## Client-side rules and mirrored constants
 
-Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions, profiles) keep their prechecks, poll rhythms and mirrored constants in a pure `<feature>-rules.ts` module next to their components (`social-links.ts` plays that role for the social links), tested without TestBed; the register validators and the warehouse invite lifetime still live in their component files. The constants below mirror backend configuration or validators and must follow any backend change:
+Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions, profiles) keep their prechecks, poll rhythms and mirrored constants in a pure `<feature>-rules.ts` module next to their components (`social-links.ts` plays that role for the social links), tested without TestBed; the register validators still live in their component file. The constants below mirror backend configuration or validators and must follow any backend change:
 
 | Client constant (module) | Mirrors |
 |---|---|
 | `PASSWORD_REQUIREMENTS` and the 30-character caps (`register.ts`) | the register validator: the password-strength rule and the username, name and surname length limits |
-| `INVITE_TTL_MS` (`warehouse-list.ts`) | the warehouse invite lifetime (15 minutes) |
-| `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | the blackjack auto-stand timeout (5 minutes) |
 | `CARD_RANKS`, `CARD_SUITS` (`blackjack-rules.ts`) | the card encoding of the casino deck (rank from `code % 13`, suit from `code / 13`) |
 | `MIN_LEAD_MS`, `MAX_LEAD_MS` (`auction-rules.ts`) | the auction end-time window (one minute to thirty days) |
 | `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | the statuses the bank counts as an open loan |

@@ -2,14 +2,14 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/profiles.md](../../en/backend/profiles.md)
 
-`AuctionServer.Modules.Profiles` to dziewiąty moduł i warstwa społecznościowa gry: publiczny profil gracza ze snapshotem nazwy, poziom zdobywany z obrotu portfela, awatar przechowywany w SeaweedFS, do sześciu kont społecznościowych, znajomi z zaproszeniami i akceptacją, zaproszenia znajomych do wojen magazynowych oraz przełącznik prywatności, który ukrywa przed obcymi wszystko poza nazwą i awatarem. To pierwszy moduł **wyłącznie konsumujący**: nie publikuje żadnych zdarzeń, więc nie ma tabeli outboxa, nie ma `OutboxProcessor`a ani keepera, jedynie inbox `ProfilesProcessedMessages`. Trzynaście endpointów żyje pod `/api/profiles`, wszystkie za JWT.
+`AuctionServer.Modules.Profiles` to dziewiąty moduł i warstwa społecznościowa gry: publiczny profil gracza ze snapshotem nazwy, poziom zdobywany z obrotu portfela, awatar przechowywany w SeaweedFS, do sześciu kont społecznościowych, znajomi z zaproszeniami i akceptacją, zaproszenia znajomych do wojen magazynowych oraz przełącznik prywatności, który ukrywa przed obcymi wszystko poza nazwą i awatarem. To pierwszy moduł **wyłącznie konsumujący**: nie publikuje żadnych zdarzeń, więc nie ma tabeli outboxa, nie ma `OutboxProcessor`a ani keepera, jedynie inbox `ProfilesProcessedMessages`. Czternaście endpointów żyje pod `/api/profiles`, wszystkie za JWT.
 
 ## Przegląd
 
 | Obszar | Pliki |
 |---|---|
 | Endpointy | [`Presentation/ProfilesEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Presentation/ProfilesEndpoints.cs), rekordy żądań `ReplaceSocialLinksRequest`, `FriendRequestRequest`, `WarehouseInviteRequest` |
-| Komendy i zapytania | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/` i `CreateWarehouseInvite/` (komenda, handler, walidator w każdym), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/` i `GetWarehouseInvites/` (zapytanie, handler, DTO w każdym) |
+| Komendy i zapytania | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/`, `CreateWarehouseInvite/` i `DeclineWarehouseInvite/` (komenda, handler, walidator w każdym), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/` i `GetWarehouseInvites/` (zapytanie, handler, DTO w każdym) |
 | Opcje | `Application/Options/ProfilesOptions.cs` (`ProfilesOptions`, `AvatarOptions`, `InviteOptions`, `StorageOptions`) |
 | Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `PlayerLevelledUpEventHandler.cs` |
 | Szew storage | [`Application/Interfaces/IAvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Application/Interfaces/IAvatarStorage.cs), [`Infrastructure/Storage/S3AvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Storage/S3AvatarStorage.cs) |
@@ -79,7 +79,7 @@ Cała sekcja `Profiles` z `appsettings.json` binduje się do `ProfilesOptions`, 
 
 ## API
 
-Wszystkie trzynaście tras wymaga JWT.
+Wszystkie czternaście tras wymaga JWT.
 
 | Metoda i trasa | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|
@@ -94,8 +94,9 @@ Wszystkie trzynaście tras wymaga JWT.
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/accept` | brak | 200; akceptować może tylko adresat, każdy inny dostaje 404, więc trasa niczego nie zdradza | `AcceptFriendRequestCommandHandler` |
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/decline` | brak | 200; kasuje wiersz, więc późniejsze ponowne zaproszenie działa. Tylko adresat, inni dostają 404 | `DeclineFriendRequestCommandHandler` |
 | `DELETE /api/profiles/friends/{userId}` | brak | 204; usuwa zaakceptowaną znajomość albo anuluje oczekującą i kasuje zaproszenia magazynowe pary w tym samym zapisie. 404 gdy relacji nie ma | `RemoveFriendCommandHandler` |
-| `POST /api/profiles/warehouse-invites` | `{ friendUserId, publicWarehouseId }` | 201; wymaga zaakceptowanej znajomości (inaczej 409), najpierw czyści wygasłe zaproszenia i odpowiada 409 za żywy duplikat | `CreateWarehouseInviteCommandHandler` |
-| `GET /api/profiles/warehouse-invites` | brak | 200 z niewygasłymi zaproszeniami adresowanymi do wołającego, z nazwą zapraszającego, najnowsze pierwsze | `GetWarehouseInvitesQueryHandler` |
+| `POST /api/profiles/warehouse-invites` | `{ friendUserId, publicWarehouseId }` | 201 z `publicInviteId` i `Location` listy zaproszeń; wymaga zaakceptowanej znajomości (inaczej 409), najpierw czyści wygasłe zaproszenia i odpowiada 409 za żywy duplikat | `CreateWarehouseInviteCommandHandler` |
+| `GET /api/profiles/warehouse-invites` | brak | 200 z niewygasłymi zaproszeniami adresowanymi do wołającego, najnowsze pierwsze, każde z `publicInviteId`, id i nazwą zapraszającego, `createdOn` oraz `expiresOn` (`createdOn` plus `Profiles:Invites:Lifetime`, liczone przy odczycie) | `GetWarehouseInvitesQueryHandler` |
+| `POST /api/profiles/warehouse-invites/{publicInviteId}/decline` | brak | 200; kasuje wiersz, więc tę samą wojnę można zaproponować ponownie. Tylko zaproszony, zapraszający i obcy dostają 404 jak za nieznane id | `DeclineWarehouseInviteCommandHandler` |
 
 ## Awatary i SeaweedFS
 
@@ -115,7 +116,7 @@ Poziomy są liczone w Wallets, tam gdzie żyją pieniądze, a tutaj tylko wyświ
 
 Znajomość to jeden wiersz na jedną parę. `FriendshipPair.Normalize` porządkuje oba id kanonicznie w `UserLowId` i `UserHighId`, a unikalny indeks na tej parze czyni (A, B) i (B, A) tą samą relacją, niezależnie kto pytał. Zaproszenie zaczyna jako `Pending`; adresat akceptuje (każdy inny dostaje 404, więc trasa nie zdradza, czy id istnieje) albo odrzuca, a odrzucenie kasuje wiersz. Gdy B zaprasza A, podczas gdy zaproszenie A do B wciąż wisi, handler akceptuje istniejącą relację zamiast rzucać: obie strony wyraziły intencję, więc dodatkowy klik byłby rytuałem. Gracz może mieć `Friendship.MaxFriends = 100` zaakceptowanych znajomości; brama jest sprawdzana dla obu stron przy zaproszeniu. Prezenty gotówkowe między znajomymi to istniejący otwarty `POST /api/wallets/transfers`, bez opłat i bez obrotu, więc Profiles nie dodaje żadnego kodu pieniędzy.
 
-Zaproszenie magazynowe to wskaźnik, nie rezerwacja: utworzenie sprawdza zaakceptowaną znajomość i unikalną trójkę, ale nigdy nie rozmawia z Warehouses, nie rezerwuje miejsca w lobby i nie weryfikuje, czy wojna wciąż istnieje. Zaproszony czyta zaproszenia, otwiera magazyn i dołącza zwykłym `POST /api/warehouses/{id}/join`. Wygasanie jest odczytowe, lista pokazuje wiersze młodsze niż `Profiles:Invites:Lifetime`, a handler tworzenia oportunistycznie czyści wygasłe wiersze `ExecuteDeleteAsync` przed insertem, co chroni unikalną trójkę przed odrzuceniem ponownego zaproszenia zablokowanego wyłącznie przez martwy wiersz. Usunięcie znajomego kasuje zaproszenia pary w tym samym zapisie.
+Zaproszenie magazynowe to wskaźnik, nie rezerwacja: utworzenie sprawdza zaakceptowaną znajomość i unikalną trójkę, ale nigdy nie rozmawia z Warehouses, nie rezerwuje miejsca w lobby i nie weryfikuje, czy wojna wciąż istnieje. Zaproszony czyta zaproszenia, otwiera magazyn i dołącza zwykłym `POST /api/warehouses/{id}/join`. Wygasanie jest odczytowe, lista pokazuje wiersze młodsze niż `Profiles:Invites:Lifetime`, a handler tworzenia oportunistycznie czyści wygasłe wiersze `ExecuteDeleteAsync` przed insertem, co chroni unikalną trójkę przed odrzuceniem ponownego zaproszenia zablokowanego wyłącznie przez martwy wiersz. Usunięcie znajomego kasuje zaproszenia pary w tym samym zapisie. Zaproszony może odrzucić przez `POST .../{publicInviteId}/decline`, które kasuje wiersz dokładnie jak odrzucone zaproszenie do znajomych, a zapraszający albo obcy dostaje to samo 404 co za nieznane id, więc trasa niczego nie zdradza. `publicInviteId` na drucie to `Id` encji (tabela nie ma osobnego klucza zastępczego), nazwane `Public*Id` jak każdy inny eksponowany identyfikator, a `expiresOn` to `createdOn` plus skonfigurowany czas życia, więc klient nigdy nie lustrzy TTL.
 
 ## Prywatność
 

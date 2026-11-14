@@ -149,11 +149,11 @@ Each module test project has an offline part (`Application/`, `Domain/`, `Infras
 |---|---|---|---|
 | `AuctionServer.Modules.Auctions.Tests` | 100 | 60 | 40 |
 | `AuctionServer.Modules.Banking.Tests` | 55 | 37 | 18 |
-| `AuctionServer.Modules.Casino.Tests` | 104 | 75 | 29 |
+| `AuctionServer.Modules.Casino.Tests` | 107 | 75 | 32 |
 | `AuctionServer.Modules.Identity.Tests` | 37 | 22 | 15 |
 | `AuctionServer.Modules.Inventory.Tests` | 90 | 43 | 47 |
 | `AuctionServer.Modules.Pawnshop.Tests` | 89 | 62 | 27 |
-| `AuctionServer.Modules.Profiles.Tests` | 95 | 34 | 61 |
+| `AuctionServer.Modules.Profiles.Tests` | 105 | 34 | 71 |
 | `AuctionServer.Modules.Wallets.Tests` | 153 | 65 | 88 |
 | `AuctionServer.Modules.Warehouses.Tests` | 74 | 44 | 30 |
 | `AuctionServer.Shared.Infrastructure.Tests` | 21 | 5 | 16 |
