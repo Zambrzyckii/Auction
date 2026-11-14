@@ -137,4 +137,9 @@ describe('WarehouseList', () => {
     expect(el().textContent).toContain('No warehouse wars right now.');
     expect(el().querySelector('.invites')).toBeNull();
   });
+
+  it('links to the war history', () => {
+    flushAll([]);
+    expect(el().querySelector('a[href="/warehouses/mine"]')).not.toBeNull();
+  });
 });

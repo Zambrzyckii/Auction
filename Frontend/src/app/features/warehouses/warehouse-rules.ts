@@ -1,4 +1,16 @@
-import { Wallet, WarehouseDetails, WarehouseSummary } from '../../core/api/models';
+import { MyWarehouse, Wallet, WarehouseDetails, WarehouseSummary } from '../../core/api/models';
+
+export type WarOutcome = 'running' | 'won' | 'lost' | 'cancelled';
+
+export function warOutcome(war: Pick<MyWarehouse, 'status' | 'isLeader'>): WarOutcome {
+  if (war.status === 'Settled') {
+    return war.isLeader ? 'won' : 'lost';
+  }
+  if (war.status === 'Cancelled') {
+    return 'cancelled';
+  }
+  return 'running';
+}
 
 export function joinBlockReason(war: WarehouseDetails, wallet: Wallet, now: number): string | null {
   if (war.status !== 'Open') {

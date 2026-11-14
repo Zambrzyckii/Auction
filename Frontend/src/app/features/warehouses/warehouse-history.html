@@ -1,0 +1,38 @@
+<h2>My wars</h2>
+<p><a routerLink="/warehouses">Back to the wars</a></p>
+@if (poller.value(); as wars) {
+  @if (wars.length === 0) {
+    <p>You have not joined any warehouse war yet.</p>
+  } @else {
+    <table class="history">
+      <tr>
+        <th>Tier</th>
+        <th>Status</th>
+        <th>Outcome</th>
+        <th>Price</th>
+        <th>Entry fee</th>
+        <th>Items</th>
+        <th>Players</th>
+        <th>Reason</th>
+        <th></th>
+      </tr>
+      @for (war of wars; track war.publicWarehouseId) {
+        <tr>
+          <td>{{ war.tier }}</td>
+          <td>{{ war.status }}</td>
+          <td class="outcome">{{ warOutcome(war) }}</td>
+          <td>{{ war.currentPrice | number }}</td>
+          <td>{{ war.entryFee | number }}</td>
+          <td>{{ war.itemCount }}</td>
+          <td>{{ war.players }}</td>
+          <td>{{ war.cancellationReason }}</td>
+          <td><a [routerLink]="['/warehouses', war.publicWarehouseId]">Detail</a></td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (poller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading your wars…</p>
+}

@@ -1,9 +1,10 @@
-import { Wallet, WarehouseDetails } from '../../core/api/models';
+import { MyWarehouse, Wallet, WarehouseDetails } from '../../core/api/models';
 import {
   canLeave,
   entryRejected,
   joinBlockReason,
   raiseBlockReason,
+  warOutcome,
   warehousePollMs,
 } from './warehouse-rules';
 
@@ -135,6 +136,36 @@ describe('raiseBlockReason', () => {
     expect(raiseBlockReason(bidding({ increments: [] }), 10, NOW)).toBe(
       'Increment is not allowed for this tier',
     );
+  });
+});
+
+describe('warOutcome', () => {
+  function mine(overrides: Partial<MyWarehouse>): MyWarehouse {
+    return {
+      publicWarehouseId: 'war-1',
+      tier: 'Small',
+      status: 'Bidding',
+      entryFee: 500,
+      currentPrice: 60,
+      itemCount: 4,
+      players: 3,
+      biddingEndsOn: null,
+      isLeader: false,
+      participantState: 'Active',
+      cancellationReason: null,
+      ...overrides,
+    };
+  }
+
+  it('reads the win from the leader flag of a settled war', () => {
+    expect(warOutcome(mine({ status: 'Settled', isLeader: true }))).toBe('won');
+    expect(warOutcome(mine({ status: 'Settled', isLeader: false }))).toBe('lost');
+  });
+
+  it('keeps every unsettled status running except a cancellation', () => {
+    expect(warOutcome(mine({ status: 'Open' }))).toBe('running');
+    expect(warOutcome(mine({ status: 'Bidding', isLeader: true }))).toBe('running');
+    expect(warOutcome(mine({ status: 'Cancelled' }))).toBe('cancelled');
   });
 });
 

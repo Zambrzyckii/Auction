@@ -319,6 +319,20 @@ export interface WarehouseDetails extends WarehouseSummary {
   readonly increments: readonly number[];
 }
 
+export interface MyWarehouse {
+  readonly publicWarehouseId: string;
+  readonly tier: string;
+  readonly status: WarehouseWarStatus;
+  readonly entryFee: number;
+  readonly currentPrice: number;
+  readonly itemCount: number;
+  readonly players: number;
+  readonly biddingEndsOn: string | null;
+  readonly isLeader: boolean;
+  readonly participantState: ParticipantState;
+  readonly cancellationReason: string | null;
+}
+
 export interface WarehouseInvite {
   readonly publicWarehouseId: string;
   readonly inviterUserId: string;
