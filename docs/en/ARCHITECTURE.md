@@ -24,7 +24,7 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 | A GitHub Actions CI pipeline | exists | [Build and CI](#build-and-ci) |
 | Angular frontend | exists (module views, dev server outside Compose) | [frontend.md](frontend.md) |
 | nginx API gateway | exists (Compose service, the only published entry point) | [infrastructure.md](infrastructure.md#gateway) |
-| RabbitMQ | planned | [infrastructure.md](infrastructure.md) |
+| RabbitMQ | exists (Compose service carrying the integration events since 2026-11-04) | [infrastructure.md](infrastructure.md) |
 | AI bots (Python) | planned | [bots.md](bots.md) |
 
 ## Modules and layering

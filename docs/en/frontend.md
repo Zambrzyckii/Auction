@@ -59,6 +59,22 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 | public player profile (`/profiles/:id`, guarded) | `GET /api/profiles/{id}`, `GET /api/profiles/me`, `POST /api/profiles/friends/requests`, the friend-request accept for a crossed request, `DELETE /api/profiles/friends/{userId}` |
 | register and login (`/register`, `/login`) | `POST /api/users/register` with an auto-login after the 201, `POST /api/users/login` |
 
+## Client-side rules and mirrored constants
+
+Each feature keeps its prechecks, poll rhythms and mirrored constants in a pure `<feature>-rules.ts` module next to its components (`social-links.ts` plays that role for the social links), tested without TestBed. The constants below mirror backend configuration or validators and must follow any backend change:
+
+| Client constant (module) | Mirrors |
+|---|---|
+| `WAREHOUSE_TIERS`, `MIN_PLAYERS` (`warehouse-rules.ts`) | the warehouse tier table: entry fees, raise increments and the minimum player count |
+| `INVITE_TTL_MS` (`warehouse-list.ts`) | the warehouse invite lifetime (15 minutes) |
+| `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | the blackjack auto-stand timeout (5 minutes) |
+| `MIN_LEAD_MS`, `MAX_LEAD_MS` (`auction-rules.ts`) | the auction end-time window (one minute to thirty days) |
+| `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | the statuses the bank counts as an open loan |
+| `RARITY_ORDER` (`pawnshop-rules.ts`) | the rarity ladder bot upgrades must climb strictly upward |
+| `AVATAR_MAX_BYTES`, `AVATAR_TYPES`, `MAX_FRIENDS` (`profile-rules.ts`) | the avatar size and format limits and the 100-friends cap |
+| `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | the social-link validator: at most six links, one per known platform, on its domain |
+| `ROULETTE_BET_TYPES` and the selection ranges (`roulette-rules.ts`) | the roulette bet types with their selection ranges |
+
 ## Decisions
 
 - Angular 22 with the CLI defaults, plain SCSS and Signal Forms, decided 2026-11-08; see [ADR-015](adr/015-angular-frontend-stack.md).

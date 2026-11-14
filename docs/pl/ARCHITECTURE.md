@@ -24,7 +24,7 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 | Pipeline CI na GitHub Actions | istnieje | [Build i CI](#build-i-ci) |
 | Frontend Angular | istnieje (widoki modułów, dev-server poza Compose) | [frontend.md](frontend.md) |
 | API gateway nginx | istnieje (usługa Compose, jedyne publikowane wejście) | [infrastructure.md](infrastructure.md#gateway) |
-| RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
+| RabbitMQ | istnieje (usługa Compose niosąca zdarzenia integracyjne od 2026-11-04) | [infrastructure.md](infrastructure.md) |
 | Boty AI (Python) | planowane | [bots.md](bots.md) |
 
 ## Moduły i warstwy

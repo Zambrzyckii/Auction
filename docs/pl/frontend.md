@@ -59,6 +59,22 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 | publiczny profil gracza (`/profiles/:id`, za guardem) | `GET /api/profiles/{id}`, `GET /api/profiles/me`, `POST /api/profiles/friends/requests`, przyjęcie zaproszenia przy skrzyżowanych zaproszeniach, `DELETE /api/profiles/friends/{userId}` |
 | rejestracja i logowanie (`/register`, `/login`) | `POST /api/users/register` z automatycznym logowaniem po 201, `POST /api/users/login` |
 
+## Reguły po stronie klienta i lustrzane stałe
+
+Każdy feature trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
+
+| Stała klienta (moduł) | Lustrzy |
+|---|---|
+| `WAREHOUSE_TIERS`, `MIN_PLAYERS` (`warehouse-rules.ts`) | tabelę taryf magazynów: wpisowe, inkrementy podbić i minimalną liczbę graczy |
+| `INVITE_TTL_MS` (`warehouse-list.ts`) | czas życia zaproszenia magazynowego (15 minut) |
+| `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | timeout auto-stand blackjacka (5 minut) |
+| `MIN_LEAD_MS`, `MAX_LEAD_MS` (`auction-rules.ts`) | okno czasu zakończenia aukcji (od minuty do trzydziestu dni) |
+| `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | statusy, które bank liczy jako otwartą pożyczkę |
+| `RARITY_ORDER` (`pawnshop-rules.ts`) | drabinę rzadkości, po której ulepszenia bota idą wyłącznie w górę |
+| `AVATAR_MAX_BYTES`, `AVATAR_TYPES`, `MAX_FRIENDS` (`profile-rules.ts`) | limity rozmiaru i formatu awatara oraz limit 100 znajomych |
+| `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | walidator kont społecznościowych: najwyżej sześć linków, po jednym na znaną platformę, na jej domenie |
+| `ROULETTE_BET_TYPES` i zakresy selekcji (`roulette-rules.ts`) | typy zakładów ruletki z ich zakresami selekcji |
+
 ## Decyzje
 
 - Angular 22 z domyślnymi ustawieniami CLI, czysty SCSS i Signal Forms, zdecydowane 2026-11-08; zob. [ADR-015](adr/015-angular-frontend-stack.md).
