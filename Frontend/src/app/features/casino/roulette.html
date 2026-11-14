@@ -1,8 +1,8 @@
 <h2>Roulette</h2>
 <p><a routerLink="/casino">Back to the casino</a></p>
 @if (casinoPoller.value(); as casino) {
-  <p>Chip balance: {{ casino.balance | number }}</p>
-  @if (casino.balance === 0) {
+  <p>Chip balance: {{ balance() | number }}</p>
+  @if (balance() === 0) {
     <p class="buy-first">Buy chips first. <a routerLink="/casino">Go to the casino</a></p>
   } @else {
     <form class="bet-form" (submit)="$event.preventDefault(); addBet()">
@@ -55,14 +55,14 @@
       type="button"
       class="spin"
       (click)="spin()"
-      [disabled]="spinPending() || spinFormProblem() !== null"
+      [disabled]="action.pending() || spinFormProblem() !== null"
     >
       Spin
     </button>
     @if (spinFormProblem(); as problem) {
       <p class="spin-problem">{{ problem }}</p>
     }
-    @if (spinError(); as text) {
+    @if (action.notice(); as text) {
       <p class="spin-error">{{ text }}</p>
     }
   }

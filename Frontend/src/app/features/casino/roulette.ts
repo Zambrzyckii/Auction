@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
-import { toApiError } from '../../core/api/api-error';
+import { actionState } from '../../core/actions/action-state';
 import {
   Casino as CasinoDto,
   RouletteBet,
@@ -34,10 +34,10 @@ const SELECTION_TYPES: readonly RouletteBetType[] = ['Straight', 'Dozen', 'Colum
 function hasValidSelection({ type, selection }: RouletteBet): boolean {
   switch (type) {
     case 'Straight':
-      return selection !== null && selection >= 0 && selection <= 36;
+      return selection !== null && Number.isInteger(selection) && selection >= 0 && selection <= 36;
     case 'Dozen':
     case 'Column':
-      return selection !== null && selection >= 1 && selection <= 3;
+      return selection !== null && Number.isInteger(selection) && selection >= 1 && selection <= 3;
     default:
       return selection === null;
   }
@@ -85,8 +85,18 @@ export class Roulette {
   readonly bets = signal<readonly RouletteBet[]>([]);
   readonly totalStake = computed(() => this.bets().reduce((sum, bet) => sum + bet.stake, 0));
   readonly lastSpin = signal<RouletteSpinResult | null>(null);
-  readonly spinPending = signal(false);
-  readonly spinError = signal<string | null>(null);
+  readonly action = actionState();
+  readonly actionBalance = signal<number | null>(null);
+  private staleCasino: CasinoDto | null = null;
+
+  readonly balance = computed<number | null>(() => {
+    const casino = this.casinoPoller.value();
+    if (casino === null) {
+      return null;
+    }
+    const seeded = this.actionBalance();
+    return casino === this.staleCasino && seeded !== null ? seeded : casino.balance;
+  });
 
   private readonly betModel = signal({
     type: 'Red' as RouletteBetType,
@@ -109,7 +119,11 @@ export class Roulette {
 
   readonly spinFormProblem = computed<string | null>(() => {
     const casino = this.casinoPoller.value();
-    return casino === null ? 'Loading…' : spinProblem(this.bets(), casino);
+    const balance = this.balance();
+    if (casino === null || balance === null) {
+      return 'Loading…';
+    }
+    return spinProblem(this.bets(), { ...casino, balance });
   });
 
   addBet(): void {
@@ -125,24 +139,18 @@ export class Roulette {
   }
 
   spin(): void {
-    if (this.spinPending() || this.spinFormProblem() !== null) {
+    if (this.spinFormProblem() !== null) {
       return;
     }
-    this.spinPending.set(true);
-    this.spinError.set(null);
-    this.http
-      .post<RouletteSpinResult>('/api/casino/roulette/spins', { bets: this.bets() })
-      .subscribe({
-        next: (result) => {
-          this.spinPending.set(false);
-          this.lastSpin.set(result);
-          this.casinoPoller.refresh();
-          this.historyPoller.refresh();
-        },
-        error: (err: unknown) => {
-          this.spinError.set(toApiError(err).message);
-          this.spinPending.set(false);
-        },
-      });
+    this.action.run(
+      this.http.post<RouletteSpinResult>('/api/casino/roulette/spins', { bets: this.bets() }),
+      (result) => {
+        this.staleCasino = this.casinoPoller.value();
+        this.actionBalance.set(result.balance);
+        this.lastSpin.set(result);
+        this.casinoPoller.refresh();
+        this.historyPoller.refresh();
+      },
+    );
   }
 }

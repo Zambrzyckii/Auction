@@ -71,6 +71,7 @@ describe('betProblem', () => {
     for (const invalid of [
       bet({ type: 'Straight', selection: 37 }),
       bet({ type: 'Straight', selection: null }),
+      bet({ type: 'Straight', selection: 17.5 }),
       bet({ type: 'Dozen', selection: 4 }),
       bet({ type: 'Column', selection: 0 }),
       bet({ type: 'Red', selection: 5 }),
@@ -191,6 +192,7 @@ describe('Roulette', () => {
     expect(lastSpin).toContain('Black');
     expect(lastSpin).toContain('180');
     expect(el().querySelector('.last-spin .net')?.textContent).toContain('165');
+    expect(el().textContent).toContain('Chip balance: 265');
 
     http.expectOne(CASINO_URL).flush(casino({ balance: 265 }));
     http.expectOne({ method: 'GET', url: SPINS_URL }).flush([spin({})]);
