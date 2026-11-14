@@ -44,6 +44,44 @@
   }
   @if (shop !== 'none' && shop.status === 'Active') {
     <p class="shop-active">Your pawnshop is active</p>
+    <h4>Bot</h4>
+    @if (shop.rejectionReason !== null) {
+      <p class="bot-rejection">{{ shop.rejectionReason }}</p>
+    }
+    @if (shop.pendingBotTierName !== null) {
+      <p class="bot-pending">Buying {{ shop.pendingBotTierName }}…</p>
+    }
+    @if (shop.botTierName !== null) {
+      <p class="bot-current">
+        {{ shop.botTierName }} ({{ shop.botRarity }}), spawns every {{ shop.botSpawnInterval }},
+        payout rate {{ shop.botPayoutRate | number }}
+        @if (shop.nextSpawnOn !== null) {
+          <span class="next-spawn">— next spawn in {{ timeLeft(shop.nextSpawnOn, now()) }}</span>
+        }
+      </p>
+    } @else {
+      <p class="bot-none">No bot yet</p>
+    }
+    @if (upgrades().length > 0) {
+      <ul class="upgrades">
+        @for (tier of upgrades(); track tier.name) {
+          <li>
+            {{ tier.name }} ({{ tier.rarity }}, {{ tier.price | number }})
+            <button
+              type="button"
+              class="buy-bot"
+              (click)="buyBot(tier)"
+              [disabled]="botPending()"
+            >
+              Buy
+            </button>
+          </li>
+        }
+      </ul>
+    }
+    @if (botNotice(); as text) {
+      <p class="bot-notice">{{ text }}</p>
+    }
   }
   @if (showsBuy(shop)) {
     <button

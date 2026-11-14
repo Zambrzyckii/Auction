@@ -4,12 +4,16 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { catchError, of, throwError } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import {
+  BotTier,
   Pawnshop as PawnshopDto,
   PawnshopOffers,
+  PawnshopRarity,
   Wallet as WalletDto,
 } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
+import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
+import { clock } from '../../core/time/clock';
 
 const WALLET_POLL_MS = 5000;
 
@@ -22,6 +26,22 @@ export function pawnshopPollMs(state: PawnshopState | null): number {
     }
   }
   return 5000;
+}
+
+const RARITY_ORDER: readonly PawnshopRarity[] = ['Common', 'Rare', 'Epic', 'Legendary'];
+
+export function upgradeOptions(
+  tiers: readonly BotTier[],
+  shop: PawnshopState,
+  wallet: WalletDto,
+): readonly BotTier[] {
+  if (shop === 'none' || shop.status !== 'Active' || shop.pendingBotTierName !== null) {
+    return [];
+  }
+  const current = shop.botRarity === null ? -1 : RARITY_ORDER.indexOf(shop.botRarity);
+  return tiers.filter(
+    (tier) => RARITY_ORDER.indexOf(tier.rarity) > current && tier.price <= wallet.availableFunds,
+  );
 }
 
 export function premisesProblem(offers: PawnshopOffers, wallet: WalletDto): string | null {
@@ -63,6 +83,20 @@ export class Pawnshop {
 
   readonly buyPending = signal(false);
   readonly shopNotice = signal<string | null>(null);
+  readonly botPending = signal(false);
+  readonly botNotice = signal<string | null>(null);
+  readonly now = clock();
+  readonly timeLeft = timeLeft;
+
+  readonly upgrades = computed<readonly BotTier[]>(() => {
+    const catalog = this.offers();
+    const state = this.shopPoller.value();
+    const funds = this.walletPoller.value();
+    if (catalog === null || state === null || funds === null) {
+      return [];
+    }
+    return upgradeOptions(catalog.botTiers, state, funds);
+  });
 
   readonly buyProblem = computed<string | null>(() => {
     const catalog = this.offers();
@@ -92,6 +126,25 @@ export class Pawnshop {
       error: (err: unknown) => {
         this.shopNotice.set(toApiError(err).message);
         this.buyPending.set(false);
+      },
+    });
+  }
+
+  buyBot(tier: BotTier): void {
+    if (this.botPending()) {
+      return;
+    }
+    this.botPending.set(true);
+    this.botNotice.set(null);
+    this.http.post('/api/pawnshop/bot', { tierName: tier.name }).subscribe({
+      next: () => {
+        this.botPending.set(false);
+        this.botNotice.set(`Buying ${tier.name}…`);
+        this.shopPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.botNotice.set(toApiError(err).message);
+        this.botPending.set(false);
       },
     });
   }

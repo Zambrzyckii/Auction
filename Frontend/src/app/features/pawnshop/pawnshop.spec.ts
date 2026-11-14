@@ -3,9 +3,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
-import { Pawnshop as PawnshopDto, PawnshopOffers, Wallet } from '../../core/api/models';
+import { BotTier, Pawnshop as PawnshopDto, PawnshopOffers, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
-import { Pawnshop, pawnshopPollMs, premisesProblem } from './pawnshop';
+import { Pawnshop, pawnshopPollMs, premisesProblem, upgradeOptions } from './pawnshop';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const OFFERS_URL = '/api/pawnshop/offers';
@@ -77,6 +77,41 @@ describe('premisesProblem', () => {
     expect(premisesProblem(offers({}), wallet({ availableFunds: 99_999 }))).toBe(
       'Not enough funds on account',
     );
+  });
+});
+
+describe('upgradeOptions', () => {
+  const TIERS: readonly BotTier[] = [
+    { name: 'Pawn Clerk', rarity: 'Common', price: 50_000, spawnInterval: '00:00:30', payoutRate: 0.5 },
+    { name: 'Appraiser', rarity: 'Rare', price: 300_000, spawnInterval: '00:01:00', payoutRate: 0.5 },
+    { name: 'Dealer', rarity: 'Epic', price: 1_500_000, spawnInterval: '00:02:00', payoutRate: 0.5 },
+  ];
+
+  it('offers every affordable tier to an active shop without a bot', () => {
+    const names = upgradeOptions(TIERS, shop({}), wallet({ availableFunds: 400_000 })).map(
+      (tier) => tier.name,
+    );
+    expect(names).toEqual(['Pawn Clerk', 'Appraiser']);
+  });
+
+  it('offers only strictly higher rarities, with skipping allowed', () => {
+    const current = shop({ botTierName: 'Pawn Clerk', botRarity: 'Common' });
+    const names = upgradeOptions(TIERS, current, wallet({ availableFunds: 2_000_000 })).map(
+      (tier) => tier.name,
+    );
+    expect(names).toEqual(['Appraiser', 'Dealer']);
+  });
+
+  it('caps the price at the available funds, not at the rarity', () => {
+    const current = shop({ botTierName: 'Pawn Clerk', botRarity: 'Common' });
+    expect(upgradeOptions(TIERS, current, wallet({ availableFunds: 299_999 }))).toEqual([]);
+  });
+
+  it('offers nothing while a purchase is in flight or the shop is not active', () => {
+    const funds = wallet({ availableFunds: 2_000_000 });
+    expect(upgradeOptions(TIERS, shop({ pendingBotTierName: 'Appraiser' }), funds)).toEqual([]);
+    expect(upgradeOptions(TIERS, shop({ status: 'PendingPayment' }), funds)).toEqual([]);
+    expect(upgradeOptions(TIERS, 'none', funds)).toEqual([]);
   });
 });
 
@@ -180,6 +215,56 @@ describe('Pawnshop', () => {
     flushAll(shop({}));
     expect(el().querySelector('.shop-active')?.textContent).toContain('Your pawnshop is active');
     expect(el().querySelector('button.buy-premises')).toBeNull();
+  });
+
+  it('shows the current bot with a spawn countdown and the pending purchase', () => {
+    flushAll(
+      shop({
+        botTierName: 'Pawn Clerk',
+        botRarity: 'Common',
+        botSpawnInterval: '00:00:30',
+        botPayoutRate: 0.5,
+        nextSpawnOn: new Date(Date.now() + 25_000).toISOString(),
+        pendingBotTierName: 'Appraiser',
+      }),
+    );
+    expect(el().querySelector('.bot-current')?.textContent).toContain('Pawn Clerk (Common)');
+    expect(el().querySelector('.next-spawn')?.textContent).toContain('0 min 25 s');
+    expect(el().querySelector('.bot-pending')?.textContent).toContain('Buying Appraiser…');
+  });
+
+  it('buys an upgrade with the exact tier name and refreshes', () => {
+    flushAll(shop({}), wallet({ availableFunds: 400_000 }));
+    const buttons = el().querySelectorAll('button.buy-bot');
+    expect(buttons.length).toBe(2);
+    (buttons[1] as HTMLButtonElement).click();
+
+    const post = http.expectOne('/api/pawnshop/bot');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ tierName: 'Appraiser' });
+    post.flush(null, { status: 202, statusText: 'Accepted' });
+    fixture.detectChanges();
+    expect(el().querySelector('.bot-notice')?.textContent).toContain('Buying Appraiser…');
+
+    http.expectOne(SHOP_URL).flush(shop({ pendingBotTierName: 'Appraiser' }));
+    fixture.detectChanges();
+    expect(el().querySelector('.bot-pending')).not.toBeNull();
+  });
+
+  it('shows the server text when the upgrade is refused', () => {
+    flushAll(shop({ botTierName: 'Pawn Clerk', botRarity: 'Common' }), wallet({ availableFunds: 2_000_000 }));
+    const button = el().querySelector('button.buy-bot') as HTMLButtonElement;
+    button.click();
+    http
+      .expectOne('/api/pawnshop/bot')
+      .flush(
+        { error: 'A new bot must be of a higher tier than the current one' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    fixture.detectChanges();
+    expect(el().querySelector('.bot-notice')?.textContent).toContain(
+      'A new bot must be of a higher tier than the current one',
+    );
   });
 
   it('polls the shop every 2 seconds while the payment is pending', () => {
