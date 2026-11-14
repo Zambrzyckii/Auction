@@ -1,4 +1,4 @@
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { catchError, of, throwError } from 'rxjs';
@@ -8,6 +8,7 @@ import {
   Pawnshop as PawnshopDto,
   PawnshopOffers,
   PawnshopRarity,
+  StockItem,
   Wallet as WalletDto,
 } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
@@ -29,6 +30,22 @@ export function pawnshopPollMs(state: PawnshopState | null): number {
 }
 
 const RARITY_ORDER: readonly PawnshopRarity[] = ['Common', 'Rare', 'Epic', 'Legendary'];
+
+export function stockPayout(item: StockItem): number {
+  return Math.round(item.price * item.payoutRate * 100) / 100;
+}
+
+export const WITHDRAW_MARGIN_MS = 2000;
+
+export function withdrawBlockReason(item: StockItem, now: number): string | null {
+  if (item.status !== 'InStock') {
+    return 'Stock item is no longer in stock';
+  }
+  if (now >= Date.parse(item.sellAfter) - WITHDRAW_MARGIN_MS) {
+    return 'The withdrawal window for this stock item has closed';
+  }
+  return null;
+}
 
 export function upgradeOptions(
   tiers: readonly BotTier[],
@@ -56,7 +73,7 @@ export function premisesProblem(offers: PawnshopOffers, wallet: WalletDto): stri
 
 @Component({
   selector: 'app-pawnshop',
-  imports: [DecimalPipe],
+  imports: [DatePipe, DecimalPipe],
   templateUrl: './pawnshop.html',
 })
 export class Pawnshop {
@@ -87,6 +104,10 @@ export class Pawnshop {
   readonly botNotice = signal<string | null>(null);
   readonly now = clock();
   readonly timeLeft = timeLeft;
+  readonly stockPayout = stockPayout;
+  readonly withdrawBlockReason = withdrawBlockReason;
+  readonly withdrawPending = signal(false);
+  readonly stockNotice = signal<string | null>(null);
 
   readonly upgrades = computed<readonly BotTier[]>(() => {
     const catalog = this.offers();
@@ -145,6 +166,25 @@ export class Pawnshop {
       error: (err: unknown) => {
         this.botNotice.set(toApiError(err).message);
         this.botPending.set(false);
+      },
+    });
+  }
+
+  withdraw(item: StockItem): void {
+    if (this.withdrawPending() || withdrawBlockReason(item, this.now()) !== null) {
+      return;
+    }
+    this.withdrawPending.set(true);
+    this.stockNotice.set(null);
+    this.http.post(`/api/pawnshop/stock/${item.publicStockItemId}/withdraw`, null).subscribe({
+      next: () => {
+        this.withdrawPending.set(false);
+        this.stockNotice.set('The item reaches your inventory in a few seconds');
+        this.shopPoller.refresh();
+      },
+      error: (err: unknown) => {
+        this.stockNotice.set(toApiError(err).message);
+        this.withdrawPending.set(false);
       },
     });
   }

@@ -82,6 +82,56 @@
     @if (botNotice(); as text) {
       <p class="bot-notice">{{ text }}</p>
     }
+    <h4>Stock</h4>
+    @if (shop.stock.length === 0) {
+      <p>No stock yet.</p>
+    } @else {
+      <table class="stock">
+        <tr>
+          <th>Item</th>
+          <th>Rarity</th>
+          <th>Price</th>
+          <th>Payout</th>
+          <th>Status</th>
+          <th>Sells</th>
+          <th></th>
+        </tr>
+        @for (item of shop.stock; track item.publicStockItemId) {
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.rarity }}</td>
+            <td>{{ item.price | number }}</td>
+            <td>{{ stockPayout(item) | number }}</td>
+            <td>{{ item.status }}</td>
+            <td>
+              @if (item.status === 'InStock') {
+                in {{ timeLeft(item.sellAfter, now()) }}
+              } @else if (item.resolvedOn !== null) {
+                {{ item.resolvedOn | date: 'medium' }}
+              }
+            </td>
+            <td>
+              @if (item.status === 'InStock') {
+                <button
+                  type="button"
+                  class="withdraw"
+                  (click)="withdraw(item)"
+                  [disabled]="withdrawPending() || withdrawBlockReason(item, now()) !== null"
+                >
+                  Withdraw
+                </button>
+                @if (withdrawBlockReason(item, now()); as problem) {
+                  <span class="withdraw-problem">{{ problem }}</span>
+                }
+              }
+            </td>
+          </tr>
+        }
+      </table>
+    }
+    @if (stockNotice(); as text) {
+      <p class="stock-notice">{{ text }}</p>
+    }
   }
   @if (showsBuy(shop)) {
     <button

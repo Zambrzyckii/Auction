@@ -3,9 +3,22 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
-import { BotTier, Pawnshop as PawnshopDto, PawnshopOffers, Wallet } from '../../core/api/models';
+import {
+  BotTier,
+  Pawnshop as PawnshopDto,
+  PawnshopOffers,
+  StockItem,
+  Wallet,
+} from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
-import { Pawnshop, pawnshopPollMs, premisesProblem, upgradeOptions } from './pawnshop';
+import {
+  Pawnshop,
+  pawnshopPollMs,
+  premisesProblem,
+  stockPayout,
+  upgradeOptions,
+  withdrawBlockReason,
+} from './pawnshop';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const OFFERS_URL = '/api/pawnshop/offers';
@@ -46,6 +59,22 @@ function shop(overrides: Partial<PawnshopDto>): PawnshopDto {
 
 function wallet(overrides: Partial<Wallet>): Wallet {
   return { availableFunds: 200_000, lockedFunds: 0, lifetimeTurnover: 1_200_000, ...overrides };
+}
+
+function stockItem(overrides: Partial<StockItem>): StockItem {
+  return {
+    publicStockItemId: 'stock-1',
+    name: 'Rusty Kettle',
+    rarity: 'Common',
+    price: 101,
+    payoutRate: 0.5,
+    status: 'InStock',
+    spawnedOn: '2026-11-14T10:00:00Z',
+    sellAfter: new Date(Date.now() + 120_000).toISOString(),
+    resolvedOn: null,
+    payoutAmount: null,
+    ...overrides,
+  };
 }
 
 describe('pawnshopPollMs', () => {
@@ -112,6 +141,42 @@ describe('upgradeOptions', () => {
     expect(upgradeOptions(TIERS, shop({ pendingBotTierName: 'Appraiser' }), funds)).toEqual([]);
     expect(upgradeOptions(TIERS, shop({ status: 'PendingPayment' }), funds)).toEqual([]);
     expect(upgradeOptions(TIERS, 'none', funds)).toEqual([]);
+  });
+});
+
+describe('stockPayout', () => {
+  it('rounds the price times the payout rate to two decimals', () => {
+    expect(stockPayout(stockItem({ price: 101, payoutRate: 0.5 }))).toBe(50.5);
+    expect(stockPayout(stockItem({ price: 33.33, payoutRate: 0.5 }))).toBe(16.67);
+  });
+});
+
+describe('withdrawBlockReason', () => {
+  const soon = Date.parse('2026-11-14T12:00:00Z');
+
+  it('allows a withdrawal well before the sale', () => {
+    const item = stockItem({ sellAfter: new Date(soon + 60_000).toISOString() });
+    expect(withdrawBlockReason(item, soon)).toBeNull();
+  });
+
+  it('blocks an item that already left the stock with the server text', () => {
+    const gone = new Date(soon + 60_000).toISOString();
+    for (const status of ['Withdrawn', 'Sold'] as const) {
+      expect(withdrawBlockReason(stockItem({ status, sellAfter: gone }), soon)).toBe(
+        'Stock item is no longer in stock',
+      );
+    }
+  });
+
+  it('blocks the margin before the sale and anything after it', () => {
+    const item = stockItem({ sellAfter: new Date(soon + 1000).toISOString() });
+    expect(withdrawBlockReason(item, soon)).toBe(
+      'The withdrawal window for this stock item has closed',
+    );
+    const past = stockItem({ sellAfter: new Date(soon - 1).toISOString() });
+    expect(withdrawBlockReason(past, soon)).toBe(
+      'The withdrawal window for this stock item has closed',
+    );
   });
 });
 
@@ -264,6 +329,56 @@ describe('Pawnshop', () => {
     fixture.detectChanges();
     expect(el().querySelector('.bot-notice')?.textContent).toContain(
       'A new bot must be of a higher tier than the current one',
+    );
+  });
+
+  it('lists the stock with the payout and a sale countdown', () => {
+    flushAll(
+      shop({
+        stock: [
+          stockItem({}),
+          stockItem({
+            publicStockItemId: 'stock-2',
+            status: 'Sold',
+            resolvedOn: '2026-11-14T10:06:00Z',
+            payoutAmount: 50.5,
+          }),
+        ],
+      }),
+    );
+    const rows = el().querySelectorAll('table.stock tr');
+    expect(rows.length).toBe(3);
+    expect(rows[1].textContent).toContain('Rusty Kettle');
+    expect(rows[1].textContent).toContain('50.5');
+    expect(rows[1].textContent).toContain('in 2 min 0 s');
+    expect(rows[2].textContent).toContain('Sold');
+    expect(rows[2].querySelector('button.withdraw')).toBeNull();
+  });
+
+  it('withdraws an item and says when it arrives', () => {
+    flushAll(shop({ stock: [stockItem({})] }));
+    (el().querySelector('button.withdraw') as HTMLButtonElement).click();
+
+    const post = http.expectOne('/api/pawnshop/stock/stock-1/withdraw');
+    expect(post.request.method).toBe('POST');
+    post.flush(null, { status: 202, statusText: 'Accepted' });
+    fixture.detectChanges();
+    expect(el().querySelector('.stock-notice')?.textContent).toContain(
+      'The item reaches your inventory in a few seconds',
+    );
+
+    http.expectOne(SHOP_URL).flush(shop({ stock: [stockItem({ status: 'Withdrawn' })] }));
+    fixture.detectChanges();
+    expect(el().querySelector('button.withdraw')).toBeNull();
+  });
+
+  it('disables the withdrawal once the window is closing', () => {
+    flushAll(
+      shop({ stock: [stockItem({ sellAfter: new Date(Date.now() + 1000).toISOString() })] }),
+    );
+    expect((el().querySelector('button.withdraw') as HTMLButtonElement).disabled).toBe(true);
+    expect(el().querySelector('.withdraw-problem')?.textContent).toContain(
+      'The withdrawal window for this stock item has closed',
     );
   });
 
