@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { catchError, of, throwError } from 'rxjs';
@@ -8,27 +8,19 @@ import {
   BotTier,
   Pawnshop as PawnshopDto,
   PawnshopOffers,
-  StockItem,
   Wallet as WalletDto,
 } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
-import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
-import { clock } from '../../core/time/clock';
-import {
-  PawnshopState,
-  pawnshopPollMs,
-  premisesProblem,
-  stockPayout,
-  upgradeOptions,
-  withdrawBlockReason,
-} from './pawnshop-rules';
+import { BotSection } from './bot-section';
+import { PawnshopState, pawnshopPollMs, premisesProblem, upgradeOptions } from './pawnshop-rules';
+import { StockSection } from './stock-section';
 
 const WALLET_POLL_MS = 5000;
 
 @Component({
   selector: 'app-pawnshop',
-  imports: [DatePipe, DecimalPipe],
+  imports: [BotSection, DecimalPipe, StockSection],
   templateUrl: './pawnshop.html',
 })
 export class Pawnshop {
@@ -54,12 +46,6 @@ export class Pawnshop {
   readonly offersError = signal<string | null>(null);
 
   readonly buy = actionState();
-  readonly bot = actionState();
-  readonly stock = actionState();
-  readonly now = clock();
-  readonly timeLeft = timeLeft;
-  readonly stockPayout = stockPayout;
-  readonly withdrawBlockReason = withdrawBlockReason;
 
   readonly upgrades = computed<readonly BotTier[]>(() => {
     const catalog = this.offers();
@@ -89,25 +75,6 @@ export class Pawnshop {
       return;
     }
     this.buy.run(this.http.post('/api/pawnshop', null), () => this.shopPoller.refresh());
-  }
-
-  buyBot(tier: BotTier): void {
-    this.bot.run(this.http.post('/api/pawnshop/bot', { tierName: tier.name }), () =>
-      this.shopPoller.refresh(),
-    );
-  }
-
-  withdraw(item: StockItem): void {
-    if (withdrawBlockReason(item, this.now()) !== null) {
-      return;
-    }
-    this.stock.run(
-      this.http.post(`/api/pawnshop/stock/${item.publicStockItemId}/withdraw`, null),
-      () => {
-        this.stock.notice.set('The item reaches your inventory in a few seconds');
-        this.shopPoller.refresh();
-      },
-    );
   }
 
   constructor() {
