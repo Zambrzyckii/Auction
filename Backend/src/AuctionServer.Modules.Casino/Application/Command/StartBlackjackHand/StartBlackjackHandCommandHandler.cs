@@ -23,6 +23,6 @@ public class StartBlackjackHandCommandHandler(ICasinoRepository repository, ICar
         if (hand.Payout > 0) account.Credit(hand.Payout.Value);
 
         await repository.SaveNewHandAsync(hand, token);
-        return BlackjackHandDto.From(hand, account.Balance);
+        return BlackjackHandDto.From(hand, account.Balance, options.Blackjack.HandTimeout);
     }
 }

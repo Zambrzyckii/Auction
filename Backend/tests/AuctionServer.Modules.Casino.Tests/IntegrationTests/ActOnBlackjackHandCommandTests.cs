@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Casino.Application.Command.ActOnBlackjackHand;
 using AuctionServer.Modules.Casino.Application.Command.StartBlackjackHand;
+using AuctionServer.Modules.Casino.Application.Options;
 using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Domain.Exceptions;
 using AuctionServer.Modules.Casino.Infrastructure.Persistence;
@@ -10,11 +11,30 @@ namespace AuctionServer.Modules.Casino.Tests.IntegrationTests;
 [Collection(CasinoIntegrationCollection.Name)]
 public class ActOnBlackjackHandCommandTests(CasinoPostgresFixture fixture)
 {
+    private static readonly CasinoOptions Options = new(TimeSpan.FromMinutes(15),
+        new RouletteOptions(1m, 1000m, 20),
+        new BlackjackOptions(5m, 2000m, TimeSpan.FromMinutes(5)));
+
     private async Task<BlackjackHandDto> HandleAsync(ActOnBlackjackHandCommand command, ScriptedCardSource source)
     {
         await using var context = fixture.CreateContext();
-        var handler = new ActOnBlackjackHandCommandHandler(new CasinoRepository(context), source);
+        var handler = new ActOnBlackjackHandCommandHandler(new CasinoRepository(context), source, Options);
         return await handler.Handle(command, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Handle_Hit_ShouldMoveAutoStandDeadlineToTheAction()
+    {
+        var account = await fixture.SeedAccountAsync(400m);
+        var hand = await fixture.SeedHandAsync(account.UserId, DateTime.UtcNow.AddMinutes(-3));
+        var before = DateTime.UtcNow;
+
+        var dto = await HandleAsync(
+            new ActOnBlackjackHandCommand(account.UserId, hand.PublicHandId, BlackjackAction.Hit),
+            new ScriptedCardSource("2D"));
+
+        Assert.InRange(dto.AutoStandOn,
+            before + Options.Blackjack.HandTimeout, DateTime.UtcNow + Options.Blackjack.HandTimeout);
     }
 
     [Fact]

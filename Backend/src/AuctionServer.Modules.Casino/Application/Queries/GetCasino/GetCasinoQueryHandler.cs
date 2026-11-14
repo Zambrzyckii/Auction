@@ -21,7 +21,8 @@ public class GetCasinoQueryHandler(ICasinoRepository repository, CasinoOptions o
             ? null
             : new ActiveBlackjackHandDto(activeHand.PublicHandId, activeHand.Stake, activeHand.Doubled,
                 activeHand.PlayerCards, activeHand.PlayerValue.Total, activeHand.PlayerValue.IsSoft,
-                activeHand.VisibleDealerCards, activeHand.StartedOn, activeHand.LastActionOn);
+                activeHand.VisibleDealerCards, activeHand.StartedOn, activeHand.LastActionOn,
+                activeHand.LastActionOn + options.Blackjack.HandTimeout);
 
         return new CasinoDto(
             account?.Balance ?? 0m,

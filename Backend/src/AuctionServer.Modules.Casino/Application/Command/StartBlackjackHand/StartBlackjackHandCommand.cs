@@ -21,11 +21,13 @@ public record BlackjackHandDto(
     bool AutoStood,
     decimal Balance,
     DateTime StartedOn,
+    DateTime AutoStandOn,
     DateTime? CompletedOn)
 {
-    public static BlackjackHandDto From(BlackjackHand hand, decimal balance) =>
+    public static BlackjackHandDto From(BlackjackHand hand, decimal balance, TimeSpan handTimeout) =>
         new(hand.PublicHandId, hand.Status, hand.Stake, hand.Doubled, hand.PlayerCards,
             hand.PlayerValue.Total, hand.PlayerValue.IsSoft, hand.VisibleDealerCards,
             hand.Status == BlackjackHandStatus.Completed ? hand.DealerValue.Total : null,
-            hand.Outcome, hand.Payout, hand.AutoStood, balance, hand.StartedOn, hand.CompletedOn);
+            hand.Outcome, hand.Payout, hand.AutoStood, balance, hand.StartedOn,
+            hand.LastActionOn + handTimeout, hand.CompletedOn);
 }

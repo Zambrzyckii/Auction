@@ -1,5 +1,6 @@
 using AuctionServer.Modules.Casino.Application.Command.StartBlackjackHand;
 using AuctionServer.Modules.Casino.Application.Interfaces;
+using AuctionServer.Modules.Casino.Application.Options;
 using AuctionServer.Modules.Casino.Domain.Cards;
 using AuctionServer.Modules.Casino.Domain.Enums;
 using AuctionServer.Modules.Casino.Domain.Exceptions;
@@ -7,7 +8,7 @@ using MediatR;
 
 namespace AuctionServer.Modules.Casino.Application.Command.ActOnBlackjackHand;
 
-public class ActOnBlackjackHandCommandHandler(ICasinoRepository repository, ICardSource cardSource)
+public class ActOnBlackjackHandCommandHandler(ICasinoRepository repository, ICardSource cardSource, CasinoOptions options)
     : IRequestHandler<ActOnBlackjackHandCommand, BlackjackHandDto>
 {
     public async Task<BlackjackHandDto> Handle(ActOnBlackjackHandCommand request, CancellationToken token)
@@ -37,6 +38,6 @@ public class ActOnBlackjackHandCommandHandler(ICasinoRepository repository, ICar
         if (hand.Payout > 0) account.Credit(hand.Payout.Value);
 
         await repository.SaveChangesAsync(token);
-        return BlackjackHandDto.From(hand, account.Balance);
+        return BlackjackHandDto.From(hand, account.Balance, options.Blackjack.HandTimeout);
     }
 }

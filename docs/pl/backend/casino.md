@@ -78,13 +78,13 @@ Wszystkie osiem tras wymaga JWT.
 
 | Metoda i trasa | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|
-| `GET /api/casino` | brak | 200 z saldem żetonów, oboma licznikami lifetime, ostatnim zakupem ze statusem i powodem, aktywnym rozdaniem blackjacka (zakryta karta ukryta) i limitami obu stołów. Gracz, który nigdy nie kupił żetonów, dostaje saldo 0, nie 404, bo wejście jest darmowe | `GetCasinoQueryHandler` |
+| `GET /api/casino` | brak | 200 z saldem żetonów, oboma licznikami lifetime, ostatnim zakupem ze statusem i powodem, aktywnym rozdaniem blackjacka (zakryta karta ukryta, `autoStandOn` liczone jako `lastActionOn` plus `Casino:Blackjack:HandTimeout`, więc klient odlicza do terminu keepera, nie znając timeoutu) i limitami obu stołów. Gracz, który nigdy nie kupił żetonów, dostaje saldo 0, nie 404, bo wejście jest darmowe | `GetCasinoQueryHandler` |
 | `POST /api/casino/chips/purchases` | `{ amount }`, całkowite | 201 z `PublicPurchaseId` natychmiast; obciążenie portfela jest asynchroniczne, odrzucenie pojawia się w GET po dwóch odpytaniach outboxa. Drugi zakup w locie odpowiada 409 przez filtrowany unikalny indeks | `PurchaseChipsCommandHandler` |
 | `POST /api/casino/chips/cashouts` | `{ amount }`, do 2 miejsc | 202; żetony schodzą z konta natychmiast, uznanie portfela jest asynchroniczne. 400 ponad saldo, 404 bez konta | `CashOutChipsCommandHandler` |
 | `POST /api/casino/roulette/spins` | `{ bets: [{ type, selection?, stake }] }` | 200 z kieszenią, jej kolorem, wypłatami per zakład i nowym saldem; cały spin jest synchroniczny. 400 za zakłady poza limitami albo sumę stawek ponad saldo | `SpinRouletteCommandHandler` |
 | `GET /api/casino/roulette/spins` | brak | 200 z 20 ostatnimi spinami razem z zakładami | `GetRouletteSpinsQueryHandler` |
-| `POST /api/casino/blackjack/hands` | `{ stake }`, całkowita | 201 z rozdanym rozdaniem; natural rozlicza się natychmiast z już uznaną wypłatą. 409 za drugie aktywne rozdanie przez filtrowany unikalny indeks | `StartBlackjackHandCommandHandler` |
-| `POST /api/casino/blackjack/hands/{publicHandId}/actions` | `{ action }`: `Hit`, `Stand` albo `Double` | 200 z rozdaniem po akcji; id rozdania siedzi w trasie, więc kliknięcie ze starej karty przeglądarki trafia w stare rozdanie i dostaje 409, zamiast zagrać w nowym. Cudze rozdanie odpowiada 404 dokładnie jak brakujące | `ActOnBlackjackHandCommandHandler` |
+| `POST /api/casino/blackjack/hands` | `{ stake }`, całkowita | 201 z rozdanym rozdaniem i jego `autoStandOn`; natural rozlicza się natychmiast z już uznaną wypłatą. 409 za drugie aktywne rozdanie przez filtrowany unikalny indeks | `StartBlackjackHandCommandHandler` |
+| `POST /api/casino/blackjack/hands/{publicHandId}/actions` | `{ action }`: `Hit`, `Stand` albo `Double` | 200 z rozdaniem po akcji i `autoStandOn` przesuniętym na tę akcję; id rozdania siedzi w trasie, więc kliknięcie ze starej karty przeglądarki trafia w stare rozdanie i dostaje 409, zamiast zagrać w nowym. Cudze rozdanie odpowiada 404 dokładnie jak brakujące | `ActOnBlackjackHandCommandHandler` |
 | `GET /api/casino/blackjack/hands` | brak | 200 z 20 ostatnimi zakończonymi rozdaniami, oba pełne układy odkryte | `GetBlackjackHandsQueryHandler` |
 
 ## Gry i przewaga kasyna

@@ -62,11 +62,14 @@ public sealed class CasinoPostgresFixture : IAsyncLifetime
         return purchase;
     }
 
-    public async Task<BlackjackHand> SeedHandAsync(Guid userId, params string[] cards)
+    public Task<BlackjackHand> SeedHandAsync(Guid userId, params string[] cards) =>
+        SeedHandAsync(userId, DateTime.UtcNow, cards);
+
+    public async Task<BlackjackHand> SeedHandAsync(Guid userId, DateTime startedOn, params string[] cards)
     {
         await using var context = CreateContext();
         var script = cards.Length == 0 ? ["5H", "10S", "6D", "7C"] : cards;
-        var hand = BlackjackHand.Start(userId, 100m, new ScriptedCardSource(script), DateTime.UtcNow);
+        var hand = BlackjackHand.Start(userId, 100m, new ScriptedCardSource(script), startedOn);
         context.BlackjackHands.Add(hand);
         await context.SaveChangesAsync();
         return hand;

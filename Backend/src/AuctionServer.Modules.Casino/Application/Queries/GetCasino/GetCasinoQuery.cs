@@ -23,7 +23,8 @@ public record ActiveBlackjackHandDto(
     bool PlayerIsSoft,
     IReadOnlyList<int> VisibleDealerCards,
     DateTime StartedOn,
-    DateTime LastActionOn);
+    DateTime LastActionOn,
+    DateTime AutoStandOn);
 
 public record ChipPurchaseDto(
     Guid PublicPurchaseId,

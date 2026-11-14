@@ -41,6 +41,17 @@ public class StartBlackjackHandCommandTests(CasinoPostgresFixture fixture)
     }
 
     [Fact]
+    public async Task Handle_ShouldExposeAutoStandDeadlineAfterTheDeal()
+    {
+        var account = await fixture.SeedAccountAsync(500m);
+
+        var dto = await HandleAsync(new StartBlackjackHandCommand(account.UserId, 100m),
+            new ScriptedCardSource("5H", "10S", "6D", "7C"));
+
+        Assert.Equal(dto.StartedOn + Options.Blackjack.HandTimeout, dto.AutoStandOn);
+    }
+
+    [Fact]
     public async Task Handle_PlayerNatural_ShouldCreditPayoutImmediately()
     {
         var account = await fixture.SeedAccountAsync(500m);

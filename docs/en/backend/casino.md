@@ -78,13 +78,13 @@ All eight routes require a JWT.
 
 | Method and route | Request | Response | Handler |
 |---|---|---|---|
-| `GET /api/casino` | none | 200 with the chip balance, both lifetime counters, the latest purchase with status and reason, the active blackjack hand (hole card hidden) and both tables' limits. A player who never bought chips gets balance 0, not 404, because entry is free | `GetCasinoQueryHandler` |
+| `GET /api/casino` | none | 200 with the chip balance, both lifetime counters, the latest purchase with status and reason, the active blackjack hand (hole card hidden, `autoStandOn` computed as `lastActionOn` plus `Casino:Blackjack:HandTimeout`, so the client counts down to the keeper's deadline without knowing the timeout) and both tables' limits. A player who never bought chips gets balance 0, not 404, because entry is free | `GetCasinoQueryHandler` |
 | `POST /api/casino/chips/purchases` | `{ amount }`, whole | 201 with `PublicPurchaseId` at once; the wallet debit is asynchronous, a rejection shows up in GET after two outbox polls. A second purchase in flight answers 409 through the filtered unique index | `PurchaseChipsCommandHandler` |
 | `POST /api/casino/chips/cashouts` | `{ amount }`, up to 2 decimals | 202; chips leave the account at once, the wallet credit is asynchronous. 400 over the balance, 404 without an account | `CashOutChipsCommandHandler` |
 | `POST /api/casino/roulette/spins` | `{ bets: [{ type, selection?, stake }] }` | 200 with the pocket, its color, per-bet payouts and the new balance; the whole spin is synchronous. 400 for bets outside the limits or a stake sum over the balance | `SpinRouletteCommandHandler` |
 | `GET /api/casino/roulette/spins` | none | 200 with the 20 latest spins, bets included | `GetRouletteSpinsQueryHandler` |
-| `POST /api/casino/blackjack/hands` | `{ stake }`, whole | 201 with the dealt hand; a natural settles immediately with the payout already credited. 409 for a second active hand through the filtered unique index | `StartBlackjackHandCommandHandler` |
-| `POST /api/casino/blackjack/hands/{publicHandId}/actions` | `{ action }`: `Hit`, `Stand` or `Double` | 200 with the hand after the action; the hand id sits in the route, so a click from a stale browser tab hits the old hand and gets 409 instead of acting on a new one. A foreign hand answers 404 exactly like a missing one | `ActOnBlackjackHandCommandHandler` |
+| `POST /api/casino/blackjack/hands` | `{ stake }`, whole | 201 with the dealt hand and its `autoStandOn`; a natural settles immediately with the payout already credited. 409 for a second active hand through the filtered unique index | `StartBlackjackHandCommandHandler` |
+| `POST /api/casino/blackjack/hands/{publicHandId}/actions` | `{ action }`: `Hit`, `Stand` or `Double` | 200 with the hand after the action and `autoStandOn` moved to that action; the hand id sits in the route, so a click from a stale browser tab hits the old hand and gets 409 instead of acting on a new one. A foreign hand answers 404 exactly like a missing one | `ActOnBlackjackHandCommandHandler` |
 | `GET /api/casino/blackjack/hands` | none | 200 with the 20 latest completed hands, both full hands revealed | `GetBlackjackHandsQueryHandler` |
 
 ## Games and the house edge
