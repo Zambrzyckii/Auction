@@ -8,6 +8,7 @@ using AuctionServer.Modules.Auctions.Application.Commands.PlaceBid;
 using AuctionServer.Modules.Auctions.Application.Queries.GetActiveAuctions;
 using AuctionServer.Modules.Auctions.Application.Queries.GetAuctionBids;
 using AuctionServer.Modules.Auctions.Application.Queries.GetAuctionById;
+using AuctionServer.Modules.Auctions.Application.Queries.GetMyAuctions;
 using AuctionServer.Modules.Auctions.Presentation.Request;
 
 namespace AuctionServer.Modules.Auctions.Presentation;
@@ -24,6 +25,13 @@ public static class AuctionEndpoints
             var result = await sender.Send(new GetActiveAuctionsQuery(limit));
             return Results.Ok(result);
         });
+
+        group.MapGet("/mine", async (ClaimsPrincipal user, ISender sender) =>
+        {
+            var sellerId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new GetMyAuctionsQuery(sellerId));
+            return Results.Ok(result);
+        }).RequireAuthorization();
 
         group.MapPost("/{id:guid}/bid", async (Guid id, PlaceBidRequest request, ClaimsPrincipal user, ISender sender) =>
         {

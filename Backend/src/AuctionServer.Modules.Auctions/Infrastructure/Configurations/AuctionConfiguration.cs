@@ -13,6 +13,7 @@ internal sealed class AuctionConfiguration : IEntityTypeConfiguration<Auction>
         builder.Property(x => x.CurrentPrice).IsRequired().HasPrecision(18, 2);
         builder.Property(x => x.Version).IsConcurrencyToken();
         builder.HasIndex(x => x.ItemId).IsUnique().HasFilter("\"Status\" IN (0, 1)");
+        builder.HasIndex(x => x.SellerUserId);
         builder.Property(x => x.ItemOfficialPrice).HasPrecision(18, 2);
     }
 }

@@ -94,6 +94,8 @@ namespace AuctionServer.Modules.Auctions.Migrations
                     b.HasIndex("PublicAuctionId")
                         .IsUnique();
 
+                    b.HasIndex("SellerUserId");
+
                     b.ToTable("Auctions");
                 });
 

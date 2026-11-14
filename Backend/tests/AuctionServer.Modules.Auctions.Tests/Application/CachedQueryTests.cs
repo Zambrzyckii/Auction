@@ -1,7 +1,9 @@
+using AuctionServer.Modules.Auctions.Application.Caching;
 using AuctionServer.Modules.Auctions.Application.Options;
 using AuctionServer.Modules.Auctions.Application.Queries.GetActiveAuctions;
 using AuctionServer.Modules.Auctions.Application.Queries.GetAuctionBids;
 using AuctionServer.Modules.Auctions.Application.Queries.GetAuctionById;
+using AuctionServer.Modules.Auctions.Application.Queries.GetMyAuctions;
 
 namespace AuctionServer.Modules.Auctions.Tests.Application;
 
@@ -62,5 +64,13 @@ public class CachedQueryTests
         var query = new GetAuctionBidsQuery(Guid.NewGuid());
 
         Assert.Equal(TimeSpan.FromSeconds(5), query.GetTtl(Options));
+    }
+
+    [Fact]
+    public void GetMyAuctionsQuery_ShouldNotBeCached()
+    {
+        var query = new GetMyAuctionsQuery(Guid.NewGuid());
+
+        Assert.IsNotAssignableFrom<ICachedQuery>(query);
     }
 }
