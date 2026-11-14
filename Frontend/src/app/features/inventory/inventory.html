@@ -47,7 +47,14 @@
     <p>
       Craft three available items of one rarity into one of the next.
       Selected: {{ selection().length }}/3
-      <button type="button" class="craft" [disabled]="!canCraft()" (click)="craft()">Craft</button>
+      <button
+        type="button"
+        class="craft"
+        [disabled]="crafting.pending() || !canCraft()"
+        (click)="craft()"
+      >
+        Craft
+      </button>
     </p>
   }
 } @else if (poller.error(); as error) {

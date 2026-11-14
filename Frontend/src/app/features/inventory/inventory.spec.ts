@@ -144,5 +144,21 @@ describe('Inventory', () => {
       expect(fixture.componentInstance.selection()).toEqual([]);
       expect(el().querySelector('.notice')?.textContent).toContain('Crafted');
     });
+
+    it('disables the craft button while the craft is pending', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c']);
+      fixture.detectChanges();
+      const button = el().querySelector('button.craft') as HTMLButtonElement;
+      expect(button.disabled).toBe(false);
+
+      button.click();
+      fixture.detectChanges();
+      expect(button.disabled).toBe(true);
+
+      http
+        .expectOne('/api/inventory/craft')
+        .flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
+    });
   });
 });
