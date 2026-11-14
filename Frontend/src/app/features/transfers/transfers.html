@@ -28,6 +28,9 @@
   @if (recipientPreview(); as name) {
     <p class="recipient-preview">Recipient: {{ name }}</p>
   }
+  @if (recipientWarning(); as warning) {
+    <p class="recipient-warning">{{ warning }}</p>
+  }
   @if (sendProblem(); as problem) {
     <p class="send-problem">{{ problem }}</p>
   }
@@ -51,7 +54,7 @@
       @for (row of rows; track row.sentOn + row.senderUserId) {
         <tr>
           <td>{{ row.senderUserId === session.userId() ? 'Sent to' : 'Received from' }}</td>
-          <td>{{ directory.label(otherParty(row)) }}</td>
+          <td>{{ directory.labelWithId(otherParty(row)) }}</td>
           <td>{{ row.amount | number }}</td>
           <td>{{ row.sentOn | date: 'medium' }}</td>
         </tr>

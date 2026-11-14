@@ -31,6 +31,17 @@ describe('shortId', () => {
   });
 });
 
+describe('labelWithId', () => {
+  it('appends the short id to a known name and falls back to the short id alone', () => {
+    const directory = TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    }).inject(ProfileDirectory);
+    directory.remember(A, 'alice');
+    expect(directory.labelWithId(A)).toBe('alice (aaaaaaaa)');
+    expect(directory.labelWithId(B)).toBe('bbbbbbbb');
+  });
+});
+
 describe('ProfileDirectory', () => {
   let http: HttpTestingController;
 

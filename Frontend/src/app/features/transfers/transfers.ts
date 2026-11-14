@@ -80,7 +80,18 @@ export class Transfers {
 
   readonly recipientPreview = computed<string | null>(() => {
     const id = this.sendModel().recipientUserId;
-    return GUID_RE.test(id) ? this.directory.label(id) : null;
+    return GUID_RE.test(id) ? this.directory.labelWithId(id) : null;
+  });
+
+  readonly recipientWarning = computed<string | null>(() => {
+    const id = this.sendModel().recipientUserId;
+    const friends = this.friends();
+    if (!GUID_RE.test(id) || id === this.session.userId() || friends === null) {
+      return null;
+    }
+    return friends.some((friend) => friend.userId === id)
+      ? null
+      : 'This player is not on your friends list, double-check the id';
   });
 
   send(): void {

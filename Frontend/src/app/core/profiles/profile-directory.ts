@@ -23,6 +23,11 @@ export class ProfileDirectory {
     return this.names().get(userId) ?? shortId(userId);
   }
 
+  labelWithId(userId: string): string {
+    const name = this.names().get(userId);
+    return name === undefined ? shortId(userId) : `${name} (${shortId(userId)})`;
+  }
+
   remember(userId: string, username: string): void {
     const next = new Map(this.names());
     next.set(userId, username);

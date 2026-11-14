@@ -98,6 +98,10 @@ describe('Transfers', () => {
             ensure,
             remember,
             label: (userId: string) => directoryNames().get(userId) ?? shortId(userId),
+            labelWithId: (userId: string) => {
+              const name = directoryNames().get(userId);
+              return name === undefined ? shortId(userId) : `${name} (${shortId(userId)})`;
+            },
           },
         },
         {
@@ -142,7 +146,7 @@ describe('Transfers', () => {
     const text = el().textContent ?? '';
     expect(text).toContain('Sent to');
     expect(text).toContain('Received from');
-    expect(text).toContain('alice');
+    expect(text).toContain('alice (deadbeef)');
     expect(text).toContain('25.5');
   });
 
@@ -198,12 +202,29 @@ describe('Transfers', () => {
       http.expectOne(HISTORY_URL).flush([transfer({})]);
     });
 
-    it('shows the recipient preview for a valid guid', () => {
+    it('shows the recipient preview with the short id', () => {
       directoryNames.set(new Map([[OTHER_ID, 'alice']]));
       flushAll([]);
       fillForm(OTHER_ID, '10');
-      expect(el().querySelector('.recipient-preview')?.textContent).toContain('alice');
+      expect(el().querySelector('.recipient-preview')?.textContent).toContain('alice (deadbeef)');
       expect(ensure).toHaveBeenCalledWith([OTHER_ID]);
+    });
+
+    it('warns about a recipient outside the friends list', () => {
+      flushAll([]);
+      fillForm(OTHER_ID, '10');
+      expect(el().querySelector('.recipient-warning')?.textContent).toContain(
+        'not on your friends list',
+      );
+    });
+
+    it('stays quiet about a friend recipient', () => {
+      http.expectOne(WALLET_URL).flush(wallet({}));
+      http.expectOne(HISTORY_URL).flush([]);
+      http.expectOne(ME_URL).flush(me({ friends: [{ userId: OTHER_ID, username: 'alice' }] }));
+      fixture.detectChanges();
+      fillForm(OTHER_ID, '10');
+      expect(el().querySelector('.recipient-warning')).toBeNull();
     });
 
     it('blocks sending to myself with the validator text', () => {
@@ -244,7 +265,7 @@ describe('Transfers with ?to=', () => {
         provideHttpClientTesting(),
         {
           provide: ProfileDirectory,
-          useValue: { ensure: vi.fn(), remember: vi.fn(), label: shortId },
+          useValue: { ensure: vi.fn(), remember: vi.fn(), label: shortId, labelWithId: shortId },
         },
         {
           provide: ActivatedRoute,
