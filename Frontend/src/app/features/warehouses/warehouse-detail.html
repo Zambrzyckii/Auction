@@ -40,6 +40,24 @@
         Leave
       </button>
     }
+    @if (friends().length > 0) {
+      <p class="invites">
+        <select class="invite-friend" [formField]="inviteForm.friendUserId">
+          <option value="">Choose a friend</option>
+          @for (friend of friends(); track friend.userId) {
+            <option [value]="friend.userId">{{ friend.username }}</option>
+          }
+        </select>
+        <button
+          type="button"
+          class="invite"
+          (click)="invite()"
+          [disabled]="actionPending() || inviteModel().friendUserId === ''"
+        >
+          Invite
+        </button>
+      </p>
+    }
   }
   @if (war.status === 'Bidding' && knownTier(war)) {
     <p class="raises">

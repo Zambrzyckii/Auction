@@ -1,9 +1,15 @@
 import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { FormField, form } from '@angular/forms/signals';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
-import { WarehouseDetails, Wallet as WalletDto } from '../../core/api/models';
+import {
+  FriendSummary,
+  OwnProfile,
+  WarehouseDetails,
+  Wallet as WalletDto,
+} from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
@@ -21,7 +27,7 @@ const WALLET_POLL_MS = 5000;
 
 @Component({
   selector: 'app-warehouse-detail',
-  imports: [DecimalPipe, RouterLink],
+  imports: [DecimalPipe, FormField, RouterLink],
   templateUrl: './warehouse-detail.html',
 })
 export class WarehouseDetail {
@@ -46,6 +52,9 @@ export class WarehouseDetail {
   readonly joinedAt = signal<number | null>(null);
   readonly actionPending = signal(false);
   readonly warNotice = signal<string | null>(null);
+  readonly friends = signal<readonly FriendSummary[]>([]);
+  readonly inviteModel = signal({ friendUserId: '' });
+  protected readonly inviteForm = form(this.inviteModel);
 
   readonly joinProblem = computed<string | null>(() => {
     const war = this.warPoller.value();
@@ -88,6 +97,16 @@ export class WarehouseDetail {
     this.act(`/api/warehouses/${this.id}/leave`, null, () => this.joinedAt.set(null));
   }
 
+  invite(): void {
+    const friendUserId = this.inviteModel().friendUserId;
+    if (this.actionPending() || friendUserId === '') {
+      return;
+    }
+    this.act('/api/profiles/warehouse-invites', { friendUserId, publicWarehouseId: this.id }, () =>
+      this.warNotice.set('Invite sent'),
+    );
+  }
+
   raise(increment: number): void {
     const war = this.warPoller.value();
     if (this.actionPending() || war === null || raiseBlockReason(war, increment, this.now()) !== null) {
@@ -114,6 +133,10 @@ export class WarehouseDetail {
   }
 
   constructor() {
+    this.http.get<OwnProfile>('/api/profiles/me').subscribe({
+      next: (profile) => this.friends.set(profile.friends),
+      error: () => this.friends.set([]),
+    });
     effect(() => {
       const status = this.warPoller.value()?.status;
       if (status === 'Settled' || status === 'Cancelled') {

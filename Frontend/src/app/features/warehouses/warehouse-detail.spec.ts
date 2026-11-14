@@ -4,13 +4,30 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
-import { Wallet, WarehouseDetails } from '../../core/api/models';
+import { FriendSummary, OwnProfile, Wallet, WarehouseDetails } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { WarehouseDetail } from './warehouse-detail';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
+const FRIEND_ID = '81f3b24e-9c05-47c6-9f3a-1d2f6f0a7b11';
 const WAR_URL = '/api/warehouses/war-1';
 const WALLET_URL = `/api/wallets/${MY_ID}`;
+const ME_URL = '/api/profiles/me';
+
+function me(friends: FriendSummary[]): OwnProfile {
+  return {
+    userId: MY_ID,
+    username: 'probe',
+    isPrivate: false,
+    level: 1,
+    memberSince: '2026-11-01T00:00:00Z',
+    avatarUrl: null,
+    friends,
+    incomingFriendRequests: [],
+    outgoingFriendRequests: [],
+    socialLinks: [],
+  };
+}
 
 function war(overrides: Partial<WarehouseDetails>): WarehouseDetails {
   return {
@@ -79,6 +96,14 @@ describe('WarehouseDetail', () => {
   function flushAll(state: WarehouseDetails, funds: Wallet = wallet({})): void {
     http.expectOne(WAR_URL).flush(state);
     http.expectOne(WALLET_URL).flush(funds);
+    http.expectOne(ME_URL).flush(me([{ userId: FRIEND_ID, username: 'Ann' }]));
+    fixture.detectChanges();
+  }
+
+  function pickFriend(): void {
+    const select = el().querySelector('select.invite-friend') as HTMLSelectElement;
+    select.value = FRIEND_ID;
+    select.dispatchEvent(new Event('input'));
     fixture.detectChanges();
   }
 
@@ -283,6 +308,46 @@ describe('WarehouseDetail', () => {
       }),
     );
     expect(el().querySelectorAll('button.raise').length).toBe(0);
+  });
+
+  it('invites a friend to an open war', () => {
+    flushAll(war({}));
+    expect((el().querySelector('button.invite') as HTMLButtonElement).disabled).toBe(true);
+    pickFriend();
+    (el().querySelector('button.invite') as HTMLButtonElement).click();
+
+    const post = http.expectOne('/api/profiles/warehouse-invites');
+    expect(post.request.body).toEqual({ friendUserId: FRIEND_ID, publicWarehouseId: 'war-1' });
+    post.flush(null, { status: 201, statusText: 'Created' });
+    fixture.detectChanges();
+    http.expectOne(WAR_URL).flush(war({}));
+    http.expectOne(WALLET_URL).flush(wallet({}));
+    fixture.detectChanges();
+    expect(el().querySelector('.war-notice')?.textContent).toContain('Invite sent');
+  });
+
+  it('shows the not-friends refusal as text', () => {
+    flushAll(war({}));
+    pickFriend();
+    (el().querySelector('button.invite') as HTMLButtonElement).click();
+
+    http
+      .expectOne('/api/profiles/warehouse-invites')
+      .flush({ error: 'Players are not friends' }, { status: 400, statusText: 'Bad Request' });
+    fixture.detectChanges();
+    expect(el().querySelector('.war-notice')?.textContent).toContain('Players are not friends');
+  });
+
+  it('hides the invite outside an open war', () => {
+    flushAll(
+      war({
+        status: 'Bidding',
+        isParticipant: true,
+        participantState: 'Active',
+        biddingEndsOn: new Date(Date.now() + 8000).toISOString(),
+      }),
+    );
+    expect(el().querySelector('select.invite-friend')).toBeNull();
   });
 
   it('tells a losing participant about the refund and shows a cancellation', () => {
