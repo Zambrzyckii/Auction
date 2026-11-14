@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormField, form } from '@angular/forms/signals';
 import { Observable, retry, tap, throwError, timer } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import { toApiError } from '../../core/api/api-error';
 import {
   FriendRequestResult,
@@ -27,7 +28,6 @@ export function addFriendProblem(userId: string, me: OwnProfileDto): string | nu
   if (userId === me.userId) return 'You cannot befriend yourself';
   const known =
     me.friends.some((f) => f.userId === userId) ||
-    me.incomingFriendRequests.some((r) => r.userId === userId) ||
     me.outgoingFriendRequests.some((r) => r.userId === userId);
   if (known) return 'Friendship or a pending request already exists';
   if (me.friends.length >= MAX_FRIENDS) return `You already have ${MAX_FRIENDS} friends.`;
@@ -46,30 +46,20 @@ export class OwnProfile {
 
   readonly poller = startPolling(() => this.loadProfile(), POLL_MS);
 
-  readonly privacyPending = signal(false);
-  readonly notice = signal<string | null>(null);
+  readonly privacy = actionState();
 
   togglePrivacy(): void {
     const profile = this.poller.value();
     if (profile === null) {
       return;
     }
-    this.privacyPending.set(true);
-    this.notice.set(null);
-    this.http.put('/api/profiles/me/privacy', { isPrivate: !profile.isPrivate }).subscribe({
-      next: () => {
-        this.privacyPending.set(false);
-        this.poller.refresh();
-      },
-      error: (err: unknown) => {
-        this.notice.set(toApiError(err).message);
-        this.privacyPending.set(false);
-      },
-    });
+    this.privacy.run(
+      this.http.put('/api/profiles/me/privacy', { isPrivate: !profile.isPrivate }),
+      () => this.poller.refresh(),
+    );
   }
 
-  readonly friendPending = signal(false);
-  readonly friendNotice = signal<string | null>(null);
+  readonly friendship = actionState();
   private readonly friendModel = signal({ userId: '' });
   protected readonly friendForm = form(this.friendModel);
 
@@ -85,26 +75,18 @@ export class OwnProfile {
     if (this.friendProblem() !== null) {
       return;
     }
-    this.friendPending.set(true);
-    this.friendNotice.set(null);
-    this.http
-      .post<FriendRequestResult>('/api/profiles/friends/requests', {
+    this.friendship.run(
+      this.http.post<FriendRequestResult>('/api/profiles/friends/requests', {
         userId: this.friendModel().userId,
-      })
-      .subscribe({
-        next: (result) => {
-          this.friendPending.set(false);
-          this.friendNotice.set(
-            result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
-          );
-          this.friendModel.set({ userId: '' });
-          this.poller.refresh();
-        },
-        error: (err: unknown) => {
-          this.friendNotice.set(toApiError(err).message);
-          this.friendPending.set(false);
-        },
-      });
+      }),
+      (result) => {
+        this.friendship.notice.set(
+          result.status === 'Accepted' ? 'You are now friends.' : 'Request sent.',
+        );
+        this.friendModel.set({ userId: '' });
+        this.poller.refresh();
+      },
+    );
   }
 
   acceptRequest(publicFriendshipId: string): void {
@@ -124,22 +106,11 @@ export class OwnProfile {
   }
 
   private friendAction(request: Observable<unknown>): void {
-    this.friendPending.set(true);
-    this.friendNotice.set(null);
-    request.subscribe({
-      next: () => {
-        this.friendPending.set(false);
-        this.poller.refresh();
-      },
-      error: (err: unknown) => {
-        this.friendNotice.set(toApiError(err).message);
-        this.friendPending.set(false);
-      },
-    });
+    this.friendship.run(request, () => this.poller.refresh());
   }
 
   protected readonly avatarFile = signal<File | null>(null);
-  readonly avatarPending = signal(false);
+  readonly avatar = actionState();
 
   readonly avatarProblem = computed<string | null>(() => {
     const file = this.avatarFile();
@@ -161,39 +132,19 @@ export class OwnProfile {
     }
     const data = new FormData();
     data.append('file', file);
-    this.avatarPending.set(true);
-    this.notice.set(null);
-    this.http.put('/api/profiles/me/avatar', data).subscribe({
-      next: () => {
-        this.avatarPending.set(false);
-        this.avatarFile.set(null);
-        this.poller.refresh();
-      },
-      error: (err: unknown) => {
-        this.notice.set(toApiError(err).message);
-        this.avatarPending.set(false);
-      },
+    this.avatar.run(this.http.put('/api/profiles/me/avatar', data), () => {
+      this.avatarFile.set(null);
+      this.poller.refresh();
     });
   }
 
   deleteAvatar(): void {
-    this.avatarPending.set(true);
-    this.notice.set(null);
-    this.http.delete('/api/profiles/me/avatar').subscribe({
-      next: () => {
-        this.avatarPending.set(false);
-        this.poller.refresh();
-      },
-      error: (err: unknown) => {
-        this.notice.set(toApiError(err).message);
-        this.avatarPending.set(false);
-      },
-    });
+    this.avatar.run(this.http.delete('/api/profiles/me/avatar'), () => this.poller.refresh());
   }
 
   protected readonly platforms = SOCIAL_PLATFORMS;
   readonly workingLinks = signal<readonly SocialLink[] | null>(null);
-  readonly linksPending = signal(false);
+  readonly social = actionState();
   private linksDirty = false;
 
   private readonly linkModel = signal<{ platform: SocialPlatform; url: string }>({
@@ -245,18 +196,9 @@ export class OwnProfile {
     if (links === null) {
       return;
     }
-    this.linksPending.set(true);
-    this.notice.set(null);
-    this.http.put('/api/profiles/me/socials', { links }).subscribe({
-      next: () => {
-        this.linksPending.set(false);
-        this.linksDirty = false;
-        this.poller.refresh();
-      },
-      error: (err: unknown) => {
-        this.notice.set(toApiError(err).message);
-        this.linksPending.set(false);
-      },
+    this.social.run(this.http.put('/api/profiles/me/socials', { links }), () => {
+      this.linksDirty = false;
+      this.poller.refresh();
     });
   }
 

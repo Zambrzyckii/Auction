@@ -64,15 +64,18 @@ describe('addFriendProblem', () => {
     expect(
       addFriendProblem(
         GUID,
-        me({ incomingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
-      ),
-    ).toBe(existing);
-    expect(
-      addFriendProblem(
-        GUID,
         me({ outgoingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
       ),
     ).toBe(existing);
+  });
+
+  it('lets a crossed incoming request through for the auto-accept', () => {
+    expect(
+      addFriendProblem(
+        GUID,
+        me({ incomingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
+      ),
+    ).toBeNull();
   });
 
   it('rejects the 101st friend', () => {
