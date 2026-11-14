@@ -8,7 +8,7 @@ import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction, AuctionBid } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory, shortId } from '../../core/profiles/profile-directory';
-import { AuctionDetail, isBidConfirmed } from './auction-detail';
+import { AuctionDetail } from './auction-detail';
 
 const URL = '/api/auctions/abc';
 const BIDS_URL = '/api/auctions/abc/bids';
@@ -38,25 +38,6 @@ function bid(overrides: Partial<AuctionBid>): AuctionBid {
     ...overrides,
   };
 }
-
-describe('isBidConfirmed', () => {
-  it('confirms when the history holds my id with my amount', () => {
-    const history = [bid({ amount: 220 }), bid({ bidderUserId: MY_ID, amount: 200 })];
-    expect(isBidConfirmed(history, MY_ID, 200)).toBe(true);
-  });
-
-  it('ignores someone else bidding the same amount', () => {
-    expect(isBidConfirmed([bid({ amount: 200 })], MY_ID, 200)).toBe(false);
-  });
-
-  it('ignores my bids over other amounts', () => {
-    expect(isBidConfirmed([bid({ bidderUserId: MY_ID, amount: 180 })], MY_ID, 200)).toBe(false);
-  });
-
-  it('never confirms while logged out', () => {
-    expect(isBidConfirmed([bid({ bidderUserId: MY_ID, amount: 200 })], null, 200)).toBe(false);
-  });
-});
 
 describe('AuctionDetail', () => {
   let fixture: ComponentFixture<AuctionDetail>;

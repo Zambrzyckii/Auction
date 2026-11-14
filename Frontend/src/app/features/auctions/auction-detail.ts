@@ -10,18 +10,10 @@ import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
 
+import { isBidConfirmed } from './auction-rules';
+
 const POLL_MS = 2500;
 const CONFIRM_WAIT_MS = 20_000;
-
-export function isBidConfirmed(
-  bids: readonly AuctionBid[],
-  userId: string | null,
-  amount: number,
-): boolean {
-  if (!bids.some((b) => b.bidderUserId === userId && amount === b.amount)) return false;
-
-  return true;
-}
 
 @Component({
   selector: 'app-auction-detail',

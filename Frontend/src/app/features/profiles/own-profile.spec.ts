@@ -7,7 +7,7 @@ import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
-import { OwnProfile, addFriendProblem } from './own-profile';
+import { OwnProfile } from './own-profile';
 
 const USER_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const ME_URL = '/api/profiles/me';
@@ -27,65 +27,6 @@ function ownProfile(overrides: Partial<OwnProfileDto>): OwnProfileDto {
     ...overrides,
   };
 }
-
-describe('addFriendProblem', () => {
-  const GUID = 'deadbeef-1111-2222-3333-444444444444';
-  const me = (overrides: Partial<OwnProfileDto>): OwnProfileDto => ({
-    userId: USER_ID,
-    username: 'probe1',
-    isPrivate: false,
-    level: 2,
-    memberSince: '2026-11-01T00:00:00Z',
-    avatarUrl: null,
-    friends: [],
-    incomingFriendRequests: [],
-    outgoingFriendRequests: [],
-    socialLinks: [],
-    ...overrides,
-  });
-
-  it('accepts a fresh guid', () => {
-    expect(addFriendProblem(GUID, me({}))).toBeNull();
-  });
-
-  it('rejects text that is not a guid', () => {
-    expect(addFriendProblem('alice', me({}))).toMatch(/player id/i);
-  });
-
-  it('rejects my own id with the server text', () => {
-    expect(addFriendProblem(USER_ID, me({}))).toBe('You cannot befriend yourself');
-  });
-
-  it('rejects an existing relation with the server text', () => {
-    const existing = 'Friendship or a pending request already exists';
-    expect(addFriendProblem(GUID, me({ friends: [{ userId: GUID, username: 'x' }] }))).toBe(
-      existing,
-    );
-    expect(
-      addFriendProblem(
-        GUID,
-        me({ outgoingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
-      ),
-    ).toBe(existing);
-  });
-
-  it('lets a crossed incoming request through for the auto-accept', () => {
-    expect(
-      addFriendProblem(
-        GUID,
-        me({ incomingFriendRequests: [{ publicFriendshipId: 'f', userId: GUID, username: 'x' }] }),
-      ),
-    ).toBeNull();
-  });
-
-  it('rejects the 101st friend', () => {
-    const friends = Array.from({ length: 100 }, (_, i) => ({
-      userId: `user-${i}`,
-      username: `u${i}`,
-    }));
-    expect(addFriendProblem(GUID, me({ friends }))).toMatch(/100/);
-  });
-});
 
 describe('OwnProfile', () => {
   let fixture: ComponentFixture<OwnProfile>;

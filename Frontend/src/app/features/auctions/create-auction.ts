@@ -13,21 +13,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { InventoryItem } from '../../core/api/models';
-
-export const MIN_LEAD_MS = 60_000;
-export const MAX_LEAD_MS = 30 * 24 * 60 * 60 * 1000;
-
-export function endsOnUtc(local: string): string | null {
-  const date = new Date(local);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-  const lead = date.getTime() - Date.now();
-  if (lead < MIN_LEAD_MS || lead > MAX_LEAD_MS) {
-    return null;
-  }
-  return date.toISOString();
-}
+import { endsOnUtc } from './auction-rules';
 
 @Component({
   selector: 'app-create-auction',

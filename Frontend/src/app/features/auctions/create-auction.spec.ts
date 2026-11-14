@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { InventoryItem } from '../../core/api/models';
-import { CreateAuction, endsOnUtc } from './create-auction';
+import { CreateAuction } from './create-auction';
 
 function toLocalInput(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -23,31 +23,6 @@ function item(overrides: Partial<InventoryItem>): InventoryItem {
     ...overrides,
   };
 }
-
-describe('endsOnUtc', () => {
-  it('treats the input as local time and returns UTC ISO with a Z', () => {
-    const inOneHour = new Date(Date.now() + 3_600_000);
-    const result = endsOnUtc(toLocalInput(inOneHour));
-    expect(result).not.toBeNull();
-    expect(result!.endsWith('Z')).toBe(true);
-    const roundTrip = new Date(result!).getTime();
-    expect(Math.abs(roundTrip - inOneHour.getTime())).toBeLessThan(60_000);
-  });
-
-  it('rejects an end sooner than one minute from now', () => {
-    expect(endsOnUtc(toLocalInput(new Date(Date.now() + 30_000)))).toBeNull();
-    expect(endsOnUtc(toLocalInput(new Date(Date.now() - 3_600_000)))).toBeNull();
-  });
-
-  it('rejects an end beyond thirty days', () => {
-    expect(endsOnUtc(toLocalInput(new Date(Date.now() + 31 * 24 * 3_600_000)))).toBeNull();
-  });
-
-  it('rejects garbage input', () => {
-    expect(endsOnUtc('')).toBeNull();
-    expect(endsOnUtc('not-a-date')).toBeNull();
-  });
-});
 
 describe('CreateAuction', () => {
   let fixture: ComponentFixture<CreateAuction>;

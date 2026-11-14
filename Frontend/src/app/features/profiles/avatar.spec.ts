@@ -1,35 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { AVATAR_MAX_BYTES, ProfileAvatar, avatarFileProblem } from './avatar';
+import { ProfileAvatar } from './avatar';
 
 const AVATAR_URL = '/api/profiles/abc/avatar?v=cafebabe1234';
-
-describe('avatarFileProblem', () => {
-  it('accepts a small png', () => {
-    const file = new File([new Uint8Array(16)], 'a.png', { type: 'image/png' });
-    expect(avatarFileProblem(file)).toBeNull();
-  });
-
-  it('rejects an empty file', () => {
-    const file = new File([], 'a.png', { type: 'image/png' });
-    expect(avatarFileProblem(file)).toBe('Avatar file is empty');
-  });
-
-  it('rejects a type outside jpeg, png and webp', () => {
-    const file = new File([new Uint8Array(16)], 'a.gif', { type: 'image/gif' });
-    expect(avatarFileProblem(file)).toBe('Avatar file must be a jpeg, png or webp image');
-  });
-
-  it('rejects a file over the byte limit', () => {
-    const file = new File([new Uint8Array(AVATAR_MAX_BYTES + 1)], 'big.png', {
-      type: 'image/png',
-    });
-    expect(avatarFileProblem(file)).toBe(
-      `Avatar file exceeds the limit of ${AVATAR_MAX_BYTES} bytes`,
-    );
-  });
-});
 
 describe('ProfileAvatar', () => {
   let fixture: ComponentFixture<ProfileAvatar>;

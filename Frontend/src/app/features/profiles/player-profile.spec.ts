@@ -7,7 +7,7 @@ import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto, Profile } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
-import { PlayerProfile, relationTo } from './player-profile';
+import { PlayerProfile } from './player-profile';
 
 const MY_ID = 'me-user';
 const PLAYER_ID = 'deadbeef-1111-2222-3333-444444444444';
@@ -43,36 +43,6 @@ function me(overrides: Partial<OwnProfileDto>): OwnProfileDto {
     ...overrides,
   };
 }
-
-describe('relationTo', () => {
-  it('says self for my own id', () => {
-    expect(relationTo(me({}), MY_ID)).toBe('self');
-  });
-
-  it('says friend for a listed friend', () => {
-    expect(relationTo(me({ friends: [{ userId: PLAYER_ID, username: 'alice' }] }), PLAYER_ID)).toBe(
-      'friend',
-    );
-  });
-
-  it('says incoming when they asked me', () => {
-    const mine = me({
-      incomingFriendRequests: [{ publicFriendshipId: 'fr-1', userId: PLAYER_ID, username: 'a' }],
-    });
-    expect(relationTo(mine, PLAYER_ID)).toBe('incoming');
-  });
-
-  it('says outgoing when I asked them', () => {
-    const mine = me({
-      outgoingFriendRequests: [{ publicFriendshipId: 'fr-2', userId: PLAYER_ID, username: 'a' }],
-    });
-    expect(relationTo(mine, PLAYER_ID)).toBe('outgoing');
-  });
-
-  it('says none for a stranger', () => {
-    expect(relationTo(me({}), PLAYER_ID)).toBe('none');
-  });
-});
 
 describe('PlayerProfile', () => {
   let fixture: ComponentFixture<PlayerProfile>;

@@ -14,25 +14,13 @@ import {
 } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
-import { ProfileAvatar, avatarFileProblem } from './avatar';
+import { ProfileAvatar } from './avatar';
+import { addFriendProblem, avatarFileProblem } from './profile-rules';
 import { MAX_SOCIAL_LINKS, SOCIAL_PLATFORMS, socialLinkProblem } from './social-links';
 
 const POLL_MS = 5000;
 const PROVISIONING_RETRY_MS = 1500;
 const PROVISIONING_WINDOW_MS = 30_000;
-const MAX_FRIENDS = 100;
-const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function addFriendProblem(userId: string, me: OwnProfileDto): string | null {
-  if (!GUID_RE.test(userId)) return 'Enter a player id (a GUID).';
-  if (userId === me.userId) return 'You cannot befriend yourself';
-  const known =
-    me.friends.some((f) => f.userId === userId) ||
-    me.outgoingFriendRequests.some((r) => r.userId === userId);
-  if (known) return 'Friendship or a pending request already exists';
-  if (me.friends.length >= MAX_FRIENDS) return `You already have ${MAX_FRIENDS} friends.`;
-  return null;
-}
 
 @Component({
   selector: 'app-own-profile',
