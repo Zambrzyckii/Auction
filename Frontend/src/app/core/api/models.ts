@@ -15,6 +15,10 @@ export interface Auction {
   readonly cancellationReason: string | null;
 }
 
+export interface MyAuction extends Auction {
+  readonly createdOn: string;
+}
+
 export interface AuctionBid {
   readonly bidderUserId: string;
   readonly amount: number;

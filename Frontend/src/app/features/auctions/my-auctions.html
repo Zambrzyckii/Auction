@@ -1,0 +1,58 @@
+<h2>My auctions</h2>
+<p><a routerLink="/auctions">All auctions</a> · <a routerLink="/auctions/new">List an item</a></p>
+@if (poller.value(); as auctions) {
+  @if (auctions.length === 0) {
+    <p>You have not listed anything yet.</p>
+  } @else {
+    <h3>Running</h3>
+    @if (groups().running.length === 0) {
+      <p>No running auctions.</p>
+    } @else {
+      <table class="running">
+        <tr>
+          <th>Item</th>
+          <th>Status</th>
+          <th>Current price</th>
+          <th>Ends in</th>
+          <th></th>
+        </tr>
+        @for (auction of groups().running; track auction.publicAuctionId) {
+          <tr>
+            <td>{{ auction.itemName }}</td>
+            <td>{{ auction.status }}</td>
+            <td>{{ auction.currentPrice | number }}</td>
+            <td>{{ timeLeft(auction.endsOn) }}</td>
+            <td><a [routerLink]="['/auctions', auction.publicAuctionId]">View</a></td>
+          </tr>
+        }
+      </table>
+    }
+    <h3>Finished</h3>
+    @if (groups().finished.length === 0) {
+      <p>No finished auctions.</p>
+    } @else {
+      <table class="finished">
+        <tr>
+          <th>Item</th>
+          <th>Status</th>
+          <th>Price</th>
+          <th>Reason</th>
+          <th></th>
+        </tr>
+        @for (auction of groups().finished; track auction.publicAuctionId) {
+          <tr>
+            <td>{{ auction.itemName }}</td>
+            <td>{{ auction.status }}</td>
+            <td>{{ auction.currentPrice | number }}</td>
+            <td>{{ auction.cancellationReason }}</td>
+            <td><a [routerLink]="['/auctions', auction.publicAuctionId]">View</a></td>
+          </tr>
+        }
+      </table>
+    }
+  }
+} @else if (poller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading…</p>
+}

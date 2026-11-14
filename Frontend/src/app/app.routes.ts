@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auctions/create-auction').then((m) => m.CreateAuction),
   },
   {
+    path: 'auctions/mine',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/auctions/my-auctions').then((m) => m.MyAuctions),
+  },
+  {
     path: 'auctions/:id',
     loadComponent: () => import('./features/auctions/auction-detail').then((m) => m.AuctionDetail),
   },

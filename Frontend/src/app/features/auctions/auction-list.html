@@ -1,5 +1,10 @@
 <h2>Auctions</h2>
-<p><a routerLink="/auctions/new">List an item</a></p>
+<p>
+  <a routerLink="/auctions/new">List an item</a>
+  @if (session.isLoggedIn()) {
+    · <a routerLink="/auctions/mine">My auctions</a>
+  }
+</p>
 @if (poller.value(); as auctions) {
   @if (auctions.length === 0) {
     <p>No active auctions right now.</p>

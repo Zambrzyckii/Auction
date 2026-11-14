@@ -1,5 +1,5 @@
-import { AuctionBid } from '../../core/api/models';
-import { endsOnUtc, isBidConfirmed } from './auction-rules';
+import { AuctionBid, MyAuction } from '../../core/api/models';
+import { auctionGroups, endsOnUtc, isBidConfirmed } from './auction-rules';
 
 const MY_ID = 'me-user';
 
@@ -8,6 +8,23 @@ function bid(overrides: Partial<AuctionBid>): AuctionBid {
     bidderUserId: 'cafebabe-0000-0000-0000-000000000000',
     amount: 200,
     placedOn: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+function mine(overrides: Partial<MyAuction>): MyAuction {
+  return {
+    publicAuctionId: 'auction-1',
+    sellerUserId: MY_ID,
+    currentWinningUserId: null,
+    status: 'Active',
+    currentPrice: 150,
+    endsOn: new Date(Date.now() + 600_000).toISOString(),
+    itemName: 'Rusty Sword',
+    itemRarity: 'Common',
+    itemOfficialPrice: 42,
+    cancellationReason: null,
+    createdOn: new Date(Date.now() - 60_000).toISOString(),
     ...overrides,
   };
 }
@@ -61,5 +78,22 @@ describe('endsOnUtc', () => {
   it('rejects garbage input', () => {
     expect(endsOnUtc('')).toBeNull();
     expect(endsOnUtc('not-a-date')).toBeNull();
+  });
+});
+
+describe('auctionGroups', () => {
+  it('keeps pending and active auctions running, the rest finished, in server order', () => {
+    const groups = auctionGroups([
+      mine({ publicAuctionId: 'closed-new', status: 'Closed' }),
+      mine({ publicAuctionId: 'pending', status: 'Pending' }),
+      mine({ publicAuctionId: 'cancelled', status: 'Cancelled' }),
+      mine({ publicAuctionId: 'active', status: 'Active' }),
+    ]);
+    expect(groups.running.map((a) => a.publicAuctionId)).toEqual(['pending', 'active']);
+    expect(groups.finished.map((a) => a.publicAuctionId)).toEqual(['closed-new', 'cancelled']);
+  });
+
+  it('returns two empty groups for an empty list', () => {
+    expect(auctionGroups([])).toEqual({ running: [], finished: [] });
   });
 });

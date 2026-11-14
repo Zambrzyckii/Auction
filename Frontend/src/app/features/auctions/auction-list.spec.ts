@@ -2,7 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { installStorageStub } from '../../../testing/storage-stub';
+import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction } from '../../core/api/models';
+import { Session } from '../../core/auth/session';
+import { TokenStorage } from '../../core/auth/token-storage';
 import { AuctionList } from './auction-list';
 
 function auction(overrides: Partial<Auction>): Auction {
@@ -26,6 +30,7 @@ describe('AuctionList', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    installStorageStub();
     await TestBed.configureTestingModule({
       imports: [AuctionList],
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
@@ -60,6 +65,18 @@ describe('AuctionList', () => {
     http.expectOne('/api/auctions?limit=50').flush([]);
     fixture.detectChanges();
     expect(el().textContent).toContain('No active auctions');
+  });
+
+  it('links to my auctions only once logged in', () => {
+    http.expectOne('/api/auctions?limit=50').flush([]);
+    fixture.detectChanges();
+    expect(el().querySelector('a[href="/auctions/mine"]')).toBeNull();
+    new TokenStorage().set(
+      tokenWithClaims({ nameid: 'me-user', exp: Math.floor(Date.now() / 1000) + 600 }),
+    );
+    TestBed.inject(Session).syncFromStorage();
+    fixture.detectChanges();
+    expect(el().querySelector('a[href="/auctions/mine"]')).not.toBeNull();
   });
 
   it('shows the normalized error on a gateway failure', () => {

@@ -1,4 +1,18 @@
-import { AuctionBid } from '../../core/api/models';
+import { AuctionBid, AuctionStatus, MyAuction } from '../../core/api/models';
+
+export interface AuctionGroups {
+  readonly running: readonly MyAuction[];
+  readonly finished: readonly MyAuction[];
+}
+
+const RUNNING_STATUSES: ReadonlySet<AuctionStatus> = new Set(['Pending', 'Active']);
+
+export function auctionGroups(auctions: readonly MyAuction[]): AuctionGroups {
+  return {
+    running: auctions.filter((a) => RUNNING_STATUSES.has(a.status)),
+    finished: auctions.filter((a) => !RUNNING_STATUSES.has(a.status)),
+  };
+}
 
 export function isBidConfirmed(
   bids: readonly AuctionBid[],
