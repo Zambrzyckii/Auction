@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { tap } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import { WarehouseInvite, WarehouseSummary } from '../../core/api/models';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
@@ -40,6 +41,7 @@ export class WarehouseList {
 
   readonly now = clock();
   readonly timeLeft = timeLeft;
+  readonly declines = actionState();
 
   readonly activeInvites = computed<readonly WarehouseInvite[]>(() => {
     const rows = this.invitesPoller.value() ?? [];
@@ -48,5 +50,15 @@ export class WarehouseList {
 
   expiresIn(invite: WarehouseInvite): string {
     return timeLeft(invite.expiresOn, this.now());
+  }
+
+  decline(invite: WarehouseInvite): void {
+    this.declines.run(
+      this.http.post<void>(
+        `/api/profiles/warehouse-invites/${invite.publicInviteId}/decline`,
+        null,
+      ),
+      () => this.invitesPoller.refresh(),
+    );
   }
 }

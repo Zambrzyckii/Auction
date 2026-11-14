@@ -5,14 +5,25 @@
   <section class="invites">
     <h3>Invites</h3>
     <ul>
-      @for (invite of activeInvites(); track invite.publicWarehouseId + invite.inviterUserId) {
+      @for (invite of activeInvites(); track invite.publicInviteId) {
         <li>
           {{ invite.inviterUsername }} invites you —
           <a [routerLink]="['/warehouses', invite.publicWarehouseId]">open the war</a>
           <span class="invite-expiry">expires in {{ expiresIn(invite) }}</span>
+          <button
+            type="button"
+            class="decline"
+            (click)="decline(invite)"
+            [disabled]="declines.pending()"
+          >
+            Decline
+          </button>
         </li>
       }
     </ul>
+    @if (declines.notice(); as text) {
+      <p class="invite-notice">{{ text }}</p>
+    }
   </section>
 }
 

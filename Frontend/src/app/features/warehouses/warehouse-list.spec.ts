@@ -135,6 +135,29 @@ describe('WarehouseList', () => {
     expect(el().textContent).not.toContain('inviter-b');
   });
 
+  it('declines an invite and refreshes the list at once', () => {
+    flushAll([], [invite({})]);
+    (el().querySelector('.invites button.decline') as HTMLButtonElement).click();
+    const post = http.expectOne({ method: 'POST', url: `${INVITES_URL}/inv-1/decline` });
+    expect(post.request.body).toBeNull();
+    post.flush(null);
+    http.expectOne(INVITES_URL).flush([]);
+    fixture.detectChanges();
+    expect(el().querySelector('.invites')).toBeNull();
+  });
+
+  it('shows the server text when the decline is refused', () => {
+    flushAll([], [invite({})]);
+    (el().querySelector('.invites button.decline') as HTMLButtonElement).click();
+    http
+      .expectOne({ method: 'POST', url: `${INVITES_URL}/inv-1/decline` })
+      .flush({ error: 'Warehouse invite was not found' }, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+    expect(el().querySelector('.invite-notice')?.textContent).toContain(
+      'Warehouse invite was not found',
+    );
+  });
+
   it('shows the empty state', () => {
     flushAll([]);
     expect(el().textContent).toContain('No warehouse wars right now.');
