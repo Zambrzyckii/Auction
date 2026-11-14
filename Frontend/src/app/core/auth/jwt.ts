@@ -23,13 +23,12 @@ export function decodeJwtClaims(token: string): JwtClaims | null {
 
 function decodeBase64Url(segment: string): string | null {
   const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '='); 
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
   try {
     const bin = atob(padded);
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     return new TextDecoder().decode(bytes);
-  } 
-  catch {
-    return null
-  }         
+  } catch {
+    return null;
+  }
 }

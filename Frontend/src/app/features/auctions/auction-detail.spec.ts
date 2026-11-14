@@ -117,9 +117,9 @@ describe('AuctionDetail', () => {
   });
 
   it('shows the cancellation reason and stops polling', () => {
-    http.expectOne(URL).flush(
-      auction({ status: 'Cancelled', cancellationReason: 'Item could not be locked' }),
-    );
+    http
+      .expectOne(URL)
+      .flush(auction({ status: 'Cancelled', cancellationReason: 'Item could not be locked' }));
     flushBids([]);
     fixture.detectChanges();
     expect(el().textContent).toContain('Item could not be locked');

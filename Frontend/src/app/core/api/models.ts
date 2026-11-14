@@ -40,14 +40,7 @@ export interface LoginResponse {
 }
 
 export type SocialPlatform =
-  | 'Twitch'
-  | 'YouTube'
-  | 'X'
-  | 'Instagram'
-  | 'GitHub'
-  | 'Steam'
-  | 'Discord'
-  | 'Website';
+  'Twitch' | 'YouTube' | 'X' | 'Instagram' | 'GitHub' | 'Steam' | 'Discord' | 'Website';
 
 export interface FriendSummary {
   readonly userId: string;
@@ -86,12 +79,7 @@ export interface Transfer {
 }
 
 export type LoanStatus =
-  | 'PendingApproval'
-  | 'Active'
-  | 'CollectionPending'
-  | 'Overdue'
-  | 'Repaid'
-  | 'Rejected';
+  'PendingApproval' | 'Active' | 'CollectionPending' | 'Overdue' | 'Repaid' | 'Rejected';
 
 export interface LoanOffer {
   readonly name: string;
@@ -165,15 +153,7 @@ export interface Casino {
 }
 
 export type RouletteBetType =
-  | 'Straight'
-  | 'Red'
-  | 'Black'
-  | 'Odd'
-  | 'Even'
-  | 'Low'
-  | 'High'
-  | 'Dozen'
-  | 'Column';
+  'Straight' | 'Red' | 'Black' | 'Odd' | 'Even' | 'Low' | 'High' | 'Dozen' | 'Column';
 
 export interface RouletteBet {
   readonly type: RouletteBetType;

@@ -39,10 +39,12 @@ describe('Inventory', () => {
   }
 
   it('lists the items returned by the API', () => {
-    http.expectOne('/api/inventory').flush([
-      item({ publicItemId: 'a', name: 'Rusty Sword' }),
-      item({ publicItemId: 'b', name: 'Old Shield', status: 'LockedForAuction' }),
-    ]);
+    http
+      .expectOne('/api/inventory')
+      .flush([
+        item({ publicItemId: 'a', name: 'Rusty Sword' }),
+        item({ publicItemId: 'b', name: 'Old Shield', status: 'LockedForAuction' }),
+      ]);
     fixture.detectChanges();
     expect(el().textContent).toContain('Rusty Sword');
     expect(el().textContent).toContain('Old Shield');
@@ -79,7 +81,10 @@ describe('Inventory', () => {
 
     http
       .expectOne('/api/inventory/a/sell')
-      .flush({ error: 'Item is not available (LockedForAuction)' }, { status: 400, statusText: 'Bad Request' });
+      .flush(
+        { error: 'Item is not available (LockedForAuction)' },
+        { status: 400, statusText: 'Bad Request' },
+      );
     fixture.detectChanges();
     expect(el().querySelector('.notice')?.textContent).toContain('not available');
   });

@@ -1,9 +1,9 @@
-import { HttpInterceptorFn, HttpErrorResponse } from "@angular/common/http";
-import { inject } from "@angular/core";
-import { Router } from "@angular/router";
-import { catchError, throwError } from "rxjs";
-import { ProfileDirectory } from "../profiles/profile-directory";
-import { TokenStorage } from "./token-storage";
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
+import { ProfileDirectory } from '../profiles/profile-directory';
+import { TokenStorage } from './token-storage';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const storage = inject(TokenStorage);
@@ -12,7 +12,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const token = storage.get();
   const request =
-    token !== null && req.url.startsWith("/api/")
+    token !== null && req.url.startsWith('/api/')
       ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
       : req;
 
@@ -33,10 +33,10 @@ function handleUnauthorized(
   if (!(err instanceof HttpErrorResponse) || err.status !== 401) {
     return;
   }
-  if (router.url.startsWith("/login")) {
+  if (router.url.startsWith('/login')) {
     return;
   }
   storage.clear();
   directory.clear();
-  router.navigate(["/login"], { queryParams: { returnUrl: router.url } });
+  router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
 }

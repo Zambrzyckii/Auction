@@ -104,12 +104,8 @@ describe('OwnProfile', () => {
     http.expectOne(ME_URL).flush(
       ownProfile({
         friends: [{ userId: 'friend-1', username: 'alice' }],
-        incomingFriendRequests: [
-          { publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' },
-        ],
-        outgoingFriendRequests: [
-          { publicFriendshipId: 'fr-2', userId: 'u-3', username: 'carol' },
-        ],
+        incomingFriendRequests: [{ publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' }],
+        outgoingFriendRequests: [{ publicFriendshipId: 'fr-2', userId: 'u-3', username: 'carol' }],
       }),
     );
     fixture.detectChanges();
@@ -260,9 +256,7 @@ describe('OwnProfile', () => {
     it('accepts an incoming request and refreshes', () => {
       http.expectOne(ME_URL).flush(
         ownProfile({
-          incomingFriendRequests: [
-            { publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' },
-          ],
+          incomingFriendRequests: [{ publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' }],
         }),
       );
       fixture.detectChanges();
@@ -280,9 +274,7 @@ describe('OwnProfile', () => {
     it('declines an incoming request', () => {
       http.expectOne(ME_URL).flush(
         ownProfile({
-          incomingFriendRequests: [
-            { publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' },
-          ],
+          incomingFriendRequests: [{ publicFriendshipId: 'fr-1', userId: 'u-2', username: 'bob' }],
         }),
       );
       fixture.detectChanges();
@@ -293,9 +285,9 @@ describe('OwnProfile', () => {
     });
 
     it('removes a friend with the delete endpoint', () => {
-      http.expectOne(ME_URL).flush(
-        ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }),
-      );
+      http
+        .expectOne(ME_URL)
+        .flush(ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }));
       fixture.detectChanges();
       (el().querySelector('button.remove-friend') as HTMLButtonElement).click();
 
@@ -330,10 +322,15 @@ describe('OwnProfile', () => {
 
       const post = http.expectOne('/api/profiles/friends/requests');
       expect(post.request.body).toEqual({ userId: FRIEND_ID });
-      post.flush({ publicFriendshipId: 'fr-9', status: 'Accepted' }, { status: 201, statusText: 'Created' });
+      post.flush(
+        { publicFriendshipId: 'fr-9', status: 'Accepted' },
+        { status: 201, statusText: 'Created' },
+      );
       fixture.detectChanges();
       expect(el().textContent).toContain('You are now friends.');
-      http.expectOne(ME_URL).flush(ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }));
+      http
+        .expectOne(ME_URL)
+        .flush(ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }));
     });
 
     it('blocks my own id with the server text', () => {
@@ -376,9 +373,7 @@ describe('OwnProfile', () => {
       fixture.detectChanges();
       chooseFile(new File([new Uint8Array(2_097_153)], 'big.png', { type: 'image/png' }));
 
-      expect((el().querySelector('button.upload-avatar') as HTMLButtonElement).disabled).toBe(
-        true,
-      );
+      expect((el().querySelector('button.upload-avatar') as HTMLButtonElement).disabled).toBe(true);
       expect(el().textContent).toContain('exceeds the limit');
       http.expectNone('/api/profiles/me/avatar');
     });

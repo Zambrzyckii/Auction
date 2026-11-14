@@ -30,7 +30,7 @@ function parseRetryAfter(header: string | null): number | undefined {
 }
 
 function fallbackMessage(status: number): string {
-  switch(status){
+  switch (status) {
     case 0:
       return "Can't connect to the server";
     case 400:
@@ -38,16 +38,16 @@ function fallbackMessage(status: number): string {
     case 401:
       return 'Token expired, relogin please';
     case 403:
-      return "Access denied";
+      return 'Access denied';
     case 404:
       return "Doesn't exist";
     case 429:
-      return "Too many requests";
+      return 'Too many requests';
     case 502:
-      return "Server is down";
+      return 'Server is down';
     case 503:
-      return "Server is down";
+      return 'Server is down';
     default:
-      return "Something went wrong";
+      return 'Something went wrong';
   }
 }

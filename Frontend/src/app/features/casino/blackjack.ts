@@ -7,13 +7,15 @@ import { Observable } from 'rxjs';
 import { actionState } from '../../core/actions/action-state';
 import { timeLeft } from '../../core/format/time-left';
 import { clock } from '../../core/time/clock';
-import {
-  BlackjackHand,
-  BlackjackHandHistory,
-  Casino as CasinoDto,
-} from '../../core/api/models';
+import { BlackjackHand, BlackjackHandHistory, Casino as CasinoDto } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
-import { HAND_TIMEOUT_MS, canDouble, cardLabel, dealProblem, reconcileHand } from './blackjack-rules';
+import {
+  HAND_TIMEOUT_MS,
+  canDouble,
+  cardLabel,
+  dealProblem,
+  reconcileHand,
+} from './blackjack-rules';
 import { casinoPollMs } from './casino-rules';
 import { HandView, fromHand, fromHistory } from './hand-view';
 
@@ -89,10 +91,9 @@ export class Blackjack {
       return;
     }
     this.request(
-      this.http.post<BlackjackHand>(
-        `/api/casino/blackjack/hands/${current.publicHandId}/actions`,
-        { action },
-      ),
+      this.http.post<BlackjackHand>(`/api/casino/blackjack/hands/${current.publicHandId}/actions`, {
+        action,
+      }),
     );
   }
 

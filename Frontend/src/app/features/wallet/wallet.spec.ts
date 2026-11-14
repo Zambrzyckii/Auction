@@ -35,9 +35,7 @@ describe('Wallet', () => {
   });
 
   it('requests the wallet of the logged-in user by GUID and shows the funds', () => {
-    http
-      .expectOne(WALLET_URL)
-      .flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
+    http.expectOne(WALLET_URL).flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
     fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('300');
@@ -50,9 +48,7 @@ describe('Wallet', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Setting up');
 
     vi.advanceTimersByTime(1500);
-    http
-      .expectOne(WALLET_URL)
-      .flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
+    http.expectOne(WALLET_URL).flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('300');
   });
@@ -71,13 +67,9 @@ describe('Wallet', () => {
   });
 
   it('keeps polling after a success', () => {
-    http
-      .expectOne(WALLET_URL)
-      .flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
+    http.expectOne(WALLET_URL).flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
     vi.advanceTimersByTime(5000);
-    http
-      .expectOne(WALLET_URL)
-      .flush({ availableFunds: 280, lockedFunds: 20, lifetimeTurnover: 0 });
+    http.expectOne(WALLET_URL).flush({ availableFunds: 280, lockedFunds: 20, lifetimeTurnover: 0 });
     fixture.detectChanges();
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('280');

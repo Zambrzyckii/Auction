@@ -124,19 +124,17 @@ describe('WarehouseDetail', () => {
   });
 
   it('counts down to the bidding start and the window close', () => {
-    flushAll(
-      war({ biddingStartsOn: new Date(Date.now() + 25_000).toISOString(), players: 3 }),
-    );
-    expect(el().querySelector('.starts-in')?.textContent).toContain(
-      'Bidding starts in 0 min 25 s',
-    );
+    flushAll(war({ biddingStartsOn: new Date(Date.now() + 25_000).toISOString(), players: 3 }));
+    expect(el().querySelector('.starts-in')?.textContent).toContain('Bidding starts in 0 min 25 s');
 
     vi.advanceTimersByTime(2500);
-    http
-      .expectOne(WAR_URL)
-      .flush(
-        war({ status: 'Bidding', currentPrice: 10, biddingEndsOn: new Date(Date.now() + 9000).toISOString() }),
-      );
+    http.expectOne(WAR_URL).flush(
+      war({
+        status: 'Bidding',
+        currentPrice: 10,
+        biddingEndsOn: new Date(Date.now() + 9000).toISOString(),
+      }),
+    );
     fixture.detectChanges();
     expect(el().querySelector('.closes-in')?.textContent).toContain(
       'Raise window closes in 0 min 9 s',
@@ -152,18 +150,16 @@ describe('WarehouseDetail', () => {
 
     vi.advanceTimersByTime(5000);
     http.expectOne(WALLET_URL).flush(wallet({}));
-    http
-      .expectOne(WAR_URL)
-      .flush(
-        war({
-          status: 'Bidding',
-          isParticipant: true,
-          participantState: 'Active',
-          isLeader: true,
-          currentPrice: 10,
-          biddingEndsOn: new Date(Date.now() + 9000).toISOString(),
-        }),
-      );
+    http.expectOne(WAR_URL).flush(
+      war({
+        status: 'Bidding',
+        isParticipant: true,
+        participantState: 'Active',
+        isLeader: true,
+        currentPrice: 10,
+        biddingEndsOn: new Date(Date.now() + 9000).toISOString(),
+      }),
+    );
     fixture.detectChanges();
     expect(el().querySelector('.leading')?.textContent).toContain('You are leading');
     expect(el().querySelector('.someone-leads')).toBeNull();
@@ -200,7 +196,9 @@ describe('WarehouseDetail', () => {
     fixture.detectChanges();
     expect(el().querySelector('.entry-rejected')).toBeNull();
 
-    http.expectOne(WAR_URL).flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
+    http
+      .expectOne(WAR_URL)
+      .flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
     http.expectOne(WALLET_URL).flush(wallet({ lockedFunds: 500 }));
     fixture.detectChanges();
     expect(el().querySelector('.entry-rejected')).toBeNull();
@@ -237,7 +235,9 @@ describe('WarehouseDetail', () => {
     (el().querySelector('button.join') as HTMLButtonElement).click();
     http.expectOne('/api/warehouses/war-1/join').flush(null);
     fixture.detectChanges();
-    http.expectOne(WAR_URL).flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
+    http
+      .expectOne(WAR_URL)
+      .flush(war({ isParticipant: true, participantState: 'PendingLock', players: 1 }));
     http.expectOne(WALLET_URL).flush(wallet({}));
     fixture.detectChanges();
 
@@ -354,13 +354,21 @@ describe('WarehouseDetail', () => {
 
   it('tells a losing participant about the refund and shows a cancellation', () => {
     flushAll(
-      war({ status: 'Settled', isParticipant: true, participantState: 'Active', currentPrice: 110, manifest: [] }),
+      war({
+        status: 'Settled',
+        isParticipant: true,
+        participantState: 'Active',
+        currentPrice: 110,
+        manifest: [],
+      }),
     );
     expect(el().textContent).toContain('Your entry fee is being refunded');
   });
 
   it('shows the cancellation reason', () => {
-    flushAll(war({ status: 'Cancelled', cancellationReason: 'Lobby timed out below the player minimum' }));
+    flushAll(
+      war({ status: 'Cancelled', cancellationReason: 'Lobby timed out below the player minimum' }),
+    );
     expect(el().querySelector('.cancellation')?.textContent).toContain(
       'Lobby timed out below the player minimum',
     );

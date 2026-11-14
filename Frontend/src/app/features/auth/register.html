@@ -33,7 +33,9 @@
     <input type="password" [formField]="registerForm.password" />
   </label>
   @if (registerForm.password().touched() && registerForm.password().invalid()) {
-    <p class="error">Min 8 characters with a lowercase, an uppercase, a digit and a special character.</p>
+    <p class="error">
+      Min 8 characters with a lowercase, an uppercase, a digit and a special character.
+    </p>
   }
   <label>
     Birthday

@@ -12,8 +12,12 @@ describe('toApiError', () => {
   });
 
   it('keeps the gateway JSON bodies for 429 and 413', () => {
-    expect(toApiError(httpError(429, { error: 'Too many requests' })).message).toBe('Too many requests');
-    expect(toApiError(httpError(413, { error: 'Request body too large' })).message).toBe('Request body too large');
+    expect(toApiError(httpError(429, { error: 'Too many requests' })).message).toBe(
+      'Too many requests',
+    );
+    expect(toApiError(httpError(413, { error: 'Request body too large' })).message).toBe(
+      'Request body too large',
+    );
   });
 
   it('falls back on the empty 400 of a binding failure', () => {

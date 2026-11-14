@@ -157,9 +157,7 @@ describe('startPolling', () => {
   it('keeps the backoff on top of a function interval', () => {
     let fail = false;
     const load = () =>
-      fail
-        ? throwError(() => new HttpErrorResponse({ status: 502, error: null }))
-        : of('fresh');
+      fail ? throwError(() => new HttpErrorResponse({ status: 502, error: null })) : of('fresh');
     const poller = start(load, () => 1000);
     fail = true;
     vi.advanceTimersByTime(1000);

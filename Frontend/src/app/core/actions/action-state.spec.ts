@@ -19,7 +19,11 @@ describe('actionState', () => {
   it('stores the server text on failure and calls the error hook', () => {
     const state = actionState();
     let hooked = false;
-    state.run(throwError(() => serverError('Nope')), undefined, () => (hooked = true));
+    state.run(
+      throwError(() => serverError('Nope')),
+      undefined,
+      () => (hooked = true),
+    );
     expect(state.notice()).toBe('Nope');
     expect(state.pending()).toBe(false);
     expect(hooked).toBe(true);

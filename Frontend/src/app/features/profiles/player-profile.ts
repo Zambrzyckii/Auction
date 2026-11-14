@@ -72,7 +72,10 @@ export class PlayerProfile {
         return;
       }
       this.run(
-        this.http.post(`/api/profiles/friends/requests/${incoming.publicFriendshipId}/accept`, null),
+        this.http.post(
+          `/api/profiles/friends/requests/${incoming.publicFriendshipId}/accept`,
+          null,
+        ),
       );
       return;
     }

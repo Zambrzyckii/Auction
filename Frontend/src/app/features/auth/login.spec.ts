@@ -88,7 +88,9 @@ describe('Login', () => {
   it('does not call the API while the form is invalid', async () => {
     const fixture = TestBed.createComponent(Login);
     await fixture.whenStable();
-    (fixture.nativeElement as HTMLElement).querySelector('form')!.dispatchEvent(new Event('submit'));
+    (fixture.nativeElement as HTMLElement)
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit'));
     await fixture.whenStable();
     TestBed.inject(HttpTestingController).expectNone('/api/users/login');
   });

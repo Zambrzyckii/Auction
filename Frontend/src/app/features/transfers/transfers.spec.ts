@@ -126,10 +126,7 @@ describe('Transfers', () => {
   });
 
   it('passes the other parties to the directory', () => {
-    flushAll([
-      transfer({}),
-      transfer({ senderUserId: OTHER_ID, recipientUserId: MY_ID }),
-    ]);
+    flushAll([transfer({}), transfer({ senderUserId: OTHER_ID, recipientUserId: MY_ID })]);
     expect(ensure).toHaveBeenCalledWith([OTHER_ID, OTHER_ID]);
   });
 

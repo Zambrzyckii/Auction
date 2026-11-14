@@ -48,6 +48,9 @@ export class WarehouseList {
   });
 
   expiresIn(invite: WarehouseInvite): string {
-    return timeLeft(new Date(Date.parse(invite.createdOn) + INVITE_TTL_MS).toISOString(), this.now());
+    return timeLeft(
+      new Date(Date.parse(invite.createdOn) + INVITE_TTL_MS).toISOString(),
+      this.now(),
+    );
   }
 }

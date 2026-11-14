@@ -26,18 +26,16 @@ export class Inventory {
   });
   readonly canCraft = computed(() => {
     const items = this.selectedItems();
-    
+
     if (items.length !== 3) return false;
     if (!(items[0].rarity === items[1].rarity && items[0].rarity === items[2].rarity)) return false;
-    if (!(items.every((i) => i.status === 'Available' && i.rarity !== 'Legendary'))) return false;
-    
+    if (!items.every((i) => i.status === 'Available' && i.rarity !== 'Legendary')) return false;
+
     return true;
   });
 
   toggle(id: string): void {
-    this.selection.update((ids) =>
-      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
-    );
+    this.selection.update((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
   }
 
   craft(): void {

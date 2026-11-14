@@ -48,10 +48,12 @@ describe('CreateAuction', () => {
   }
 
   it('offers only the available items', async () => {
-    http.expectOne('/api/inventory').flush([
-      item({ publicItemId: 'a', name: 'Rusty Sword' }),
-      item({ publicItemId: 'b', name: 'Old Shield', status: 'LockedForAuction' }),
-    ]);
+    http
+      .expectOne('/api/inventory')
+      .flush([
+        item({ publicItemId: 'a', name: 'Rusty Sword' }),
+        item({ publicItemId: 'b', name: 'Old Shield', status: 'LockedForAuction' }),
+      ]);
     await fixture.whenStable();
     const options = [...el().querySelectorAll('option')].map((o) => o.textContent);
     expect(options.some((t) => t?.includes('Rusty Sword'))).toBe(true);
@@ -67,9 +69,7 @@ describe('CreateAuction', () => {
   });
 
   it('posts UTC and navigates to the new auction', async () => {
-    const navigate = vi
-      .spyOn(TestBed.inject(Router), 'navigate')
-      .mockResolvedValue(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     http.expectOne('/api/inventory').flush([item({ publicItemId: 'a' })]);
     await fixture.whenStable();
 

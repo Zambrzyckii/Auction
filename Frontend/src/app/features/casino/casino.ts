@@ -30,7 +30,9 @@ export class Casino {
     WALLET_POLL_MS,
   );
 
-  readonly notice = computed(() => purchaseNotice(this.casinoPoller.value()?.latestPurchase ?? null));
+  readonly notice = computed(() =>
+    purchaseNotice(this.casinoPoller.value()?.latestPurchase ?? null),
+  );
 
   private readonly buyModel = signal({ amount: 0 });
   protected readonly buyForm = form(this.buyModel);

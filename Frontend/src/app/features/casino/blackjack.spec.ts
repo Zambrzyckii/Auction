@@ -168,9 +168,7 @@ describe('Blackjack', () => {
     expect((el().querySelector('button.double') as HTMLButtonElement).disabled).toBe(true);
     http
       .expectOne(CASINO_URL)
-      .flush(
-        casino({ balance: 90, activeBlackjackHand: activeDto({ playerCards: [0, 14, 2] }) }),
-      );
+      .flush(casino({ balance: 90, activeBlackjackHand: activeDto({ playerCards: [0, 14, 2] }) }));
   });
 
   it('shows a natural as completed at once', () => {
@@ -259,9 +257,7 @@ describe('Blackjack', () => {
   it('swaps a vanished hand for its auto-stood history entry', () => {
     flushAll(casino({}));
     dealWith(handDto({}));
-    http
-      .expectOne(CASINO_URL)
-      .flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
+    http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
     fixture.detectChanges();
 
     vi.advanceTimersByTime(5000);

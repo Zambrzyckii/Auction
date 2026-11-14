@@ -101,9 +101,7 @@ describe('PlayerProfile', () => {
 
   it('shows only the username and a note for a private profile', () => {
     flushMe({});
-    http
-      .expectOne(PROFILE_URL)
-      .flush(profile({ isPrivate: true, level: null, memberSince: null }));
+    http.expectOne(PROFILE_URL).flush(profile({ isPrivate: true, level: null, memberSince: null }));
     fixture.detectChanges();
     const text = el().textContent ?? '';
     expect(text).toContain('alice');

@@ -158,7 +158,9 @@ describe('Roulette', () => {
     addBet('Red', '10');
     addBet('Black', '10');
     expect(spinButton().disabled).toBe(true);
-    expect(el().querySelector('.spin-problem')?.textContent).toContain('Not enough chips on account');
+    expect(el().querySelector('.spin-problem')?.textContent).toContain(
+      'Not enough chips on account',
+    );
     (el().querySelectorAll('button.remove-bet')[1] as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(el().querySelectorAll('table.bets tr').length).toBe(2);

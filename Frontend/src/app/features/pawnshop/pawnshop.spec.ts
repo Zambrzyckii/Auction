@@ -3,12 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
-import {
-  Pawnshop as PawnshopDto,
-  PawnshopOffers,
-  StockItem,
-  Wallet,
-} from '../../core/api/models';
+import { Pawnshop as PawnshopDto, PawnshopOffers, StockItem, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { Pawnshop } from './pawnshop';
 
@@ -23,8 +18,20 @@ function offers(overrides: Partial<PawnshopOffers>): PawnshopOffers {
     premisesRequiredTurnover: 1_000_000,
     stockSellDelay: '00:05:00',
     botTiers: [
-      { name: 'Pawn Clerk', rarity: 'Common', price: 50_000, spawnInterval: '00:00:30', payoutRate: 0.5 },
-      { name: 'Appraiser', rarity: 'Rare', price: 300_000, spawnInterval: '00:01:00', payoutRate: 0.5 },
+      {
+        name: 'Pawn Clerk',
+        rarity: 'Common',
+        price: 50_000,
+        spawnInterval: '00:00:30',
+        payoutRate: 0.5,
+      },
+      {
+        name: 'Appraiser',
+        rarity: 'Rare',
+        price: 300_000,
+        spawnInterval: '00:01:00',
+        payoutRate: 0.5,
+      },
     ],
     ...overrides,
   };
@@ -102,7 +109,10 @@ describe('Pawnshop', () => {
     http.expectOne(OFFERS_URL).flush(offers({}));
     const shopRequest = http.expectOne(SHOP_URL);
     if (state === 'none') {
-      shopRequest.flush({ error: 'Pawnshop was not found' }, { status: 404, statusText: 'Not Found' });
+      shopRequest.flush(
+        { error: 'Pawnshop was not found' },
+        { status: 404, statusText: 'Not Found' },
+      );
     } else {
       shopRequest.flush(state);
     }
@@ -156,7 +166,10 @@ describe('Pawnshop', () => {
 
   it('shows the rejection reason and lets the player retry', () => {
     flushAll(
-      shop({ status: 'Rejected', rejectionReason: 'Lifetime turnover 0.00 is below the required 1000000.00' }),
+      shop({
+        status: 'Rejected',
+        rejectionReason: 'Lifetime turnover 0.00 is below the required 1000000.00',
+      }),
     );
     expect(el().querySelector('.shop-rejection')?.textContent).toContain('below the required');
     expect(el().querySelector('button.buy-premises')).not.toBeNull();
@@ -169,7 +182,9 @@ describe('Pawnshop', () => {
       .expectOne(SHOP_URL)
       .flush({ error: 'User already owns a pawnshop' }, { status: 409, statusText: 'Conflict' });
     fixture.detectChanges();
-    expect(el().querySelector('.shop-notice')?.textContent).toContain('User already owns a pawnshop');
+    expect(el().querySelector('.shop-notice')?.textContent).toContain(
+      'User already owns a pawnshop',
+    );
     expect((el().querySelector('button.buy-premises') as HTMLButtonElement).disabled).toBe(false);
   });
 
@@ -220,7 +235,10 @@ describe('Pawnshop', () => {
   });
 
   it('shows the server text when the upgrade is refused', () => {
-    flushAll(shop({ botTierName: 'Pawn Clerk', botRarity: 'Common' }), wallet({ availableFunds: 2_000_000 }));
+    flushAll(
+      shop({ botTierName: 'Pawn Clerk', botRarity: 'Common' }),
+      wallet({ availableFunds: 2_000_000 }),
+    );
     const button = el().querySelector('button.buy-bot') as HTMLButtonElement;
     button.click();
     http

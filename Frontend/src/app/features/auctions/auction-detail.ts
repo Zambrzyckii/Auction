@@ -101,6 +101,8 @@ export class AuctionDetail {
   }
 
   bidderLabel(bid: AuctionBid): string {
-    return bid.bidderUserId === this.session.userId() ? 'You' : this.directory.label(bid.bidderUserId);
+    return bid.bidderUserId === this.session.userId()
+      ? 'You'
+      : this.directory.label(bid.bidderUserId);
   }
 }

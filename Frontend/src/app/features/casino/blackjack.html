@@ -62,7 +62,11 @@
         Stake
         <input type="number" step="any" [formField]="dealForm.stake" />
       </label>
-      <button type="submit" class="deal" [disabled]="action.pending() || dealFormProblem() !== null">
+      <button
+        type="submit"
+        class="deal"
+        [disabled]="action.pending() || dealFormProblem() !== null"
+      >
         Deal
       </button>
       @if (dealFormProblem(); as problem) {

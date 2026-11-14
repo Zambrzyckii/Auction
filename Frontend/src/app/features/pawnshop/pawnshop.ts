@@ -29,11 +29,13 @@ export class Pawnshop {
 
   readonly shopPoller = startPolling<PawnshopState>(
     () =>
-      this.http.get<PawnshopDto>('/api/pawnshop').pipe(
-        catchError((err: unknown) =>
-          toApiError(err).status === 404 ? of('none' as const) : throwError(() => err),
+      this.http
+        .get<PawnshopDto>('/api/pawnshop')
+        .pipe(
+          catchError((err: unknown) =>
+            toApiError(err).status === 404 ? of('none' as const) : throwError(() => err),
+          ),
         ),
-      ),
     (latest) => pawnshopPollMs(latest),
   );
 

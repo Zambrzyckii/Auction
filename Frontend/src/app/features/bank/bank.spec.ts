@@ -164,9 +164,7 @@ describe('Bank', () => {
     expect((el().querySelector('button.repay') as HTMLButtonElement).disabled).toBe(true);
 
     vi.advanceTimersByTime(2000);
-    http
-      .expectOne(LOANS_URL)
-      .flush([loan({ status: 'Repaid', repaidOn: '2026-11-14T10:00:00Z' })]);
+    http.expectOne(LOANS_URL).flush([loan({ status: 'Repaid', repaidOn: '2026-11-14T10:00:00Z' })]);
     fixture.detectChanges();
     expect(el().textContent).not.toContain('Collection requested…');
     expect(el().querySelector('button.repay')).toBeNull();

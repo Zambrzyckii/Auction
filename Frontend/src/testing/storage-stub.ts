@@ -21,5 +21,8 @@ class MemoryStorage {
 // jsdom under the unit-test builder exposes no Web Storage (opaque origin)
 export function installStorageStub(): void {
   Object.defineProperty(window, 'localStorage', { value: new MemoryStorage(), configurable: true });
-  Object.defineProperty(window, 'sessionStorage', { value: new MemoryStorage(), configurable: true });
+  Object.defineProperty(window, 'sessionStorage', {
+    value: new MemoryStorage(),
+    configurable: true,
+  });
 }
