@@ -26,7 +26,7 @@
           type="button"
           class="privacy"
           (click)="togglePrivacy()"
-          [disabled]="privacyPending()"
+          [disabled]="privacy.pending()"
         >
           {{ profile.isPrivate ? 'Make public' : 'Make private' }}
         </button>
@@ -34,7 +34,7 @@
     </tr>
   </table>
 
-  @if (notice(); as text) {
+  @if (privacy.notice() ?? avatar.notice() ?? social.notice(); as text) {
     <p class="notice">{{ text }}</p>
   }
 
@@ -44,7 +44,7 @@
     type="button"
     class="upload-avatar"
     (click)="uploadAvatar()"
-    [disabled]="avatarPending() || avatarProblem() !== null"
+    [disabled]="avatar.pending() || avatarProblem() !== null"
   >
     Upload avatar
   </button>
@@ -56,7 +56,7 @@
       type="button"
       class="delete-avatar"
       (click)="deleteAvatar()"
-      [disabled]="avatarPending()"
+      [disabled]="avatar.pending()"
     >
       Delete avatar
     </button>
@@ -75,7 +75,7 @@
             type="button"
             class="remove-friend"
             (click)="removeFriend(friend.userId)"
-            [disabled]="friendPending()"
+            [disabled]="friendship.pending()"
           >
             Remove
           </button>
@@ -96,7 +96,7 @@
             type="button"
             class="accept"
             (click)="acceptRequest(request.publicFriendshipId)"
-            [disabled]="friendPending()"
+            [disabled]="friendship.pending()"
           >
             Accept
           </button>
@@ -104,7 +104,7 @@
             type="button"
             class="decline"
             (click)="declineRequest(request.publicFriendshipId)"
-            [disabled]="friendPending()"
+            [disabled]="friendship.pending()"
           >
             Decline
           </button>
@@ -117,7 +117,7 @@
             type="button"
             class="cancel-request"
             (click)="removeFriend(request.userId)"
-            [disabled]="friendPending()"
+            [disabled]="friendship.pending()"
           >
             Cancel
           </button>
@@ -134,7 +134,7 @@
     <button
       type="submit"
       class="add-friend"
-      [disabled]="friendPending() || friendProblem() !== null"
+      [disabled]="friendship.pending() || friendProblem() !== null"
     >
       Add friend
     </button>
@@ -142,7 +142,7 @@
       <p class="friend-problem">{{ problem }}</p>
     }
   </form>
-  @if (friendNotice(); as text) {
+  @if (friendship.notice(); as text) {
     <p class="friend-notice">{{ text }}</p>
   }
 
@@ -180,7 +180,7 @@
         <p class="link-problem">{{ problem }}</p>
       }
     </form>
-    <button type="button" class="save-links" (click)="saveLinks()" [disabled]="linksPending()">
+    <button type="button" class="save-links" (click)="saveLinks()" [disabled]="social.pending()">
       Save links
     </button>
   }

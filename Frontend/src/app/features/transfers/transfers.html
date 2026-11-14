@@ -22,7 +22,7 @@
     Amount
     <input type="number" step="any" [formField]="sendForm.amount" />
   </label>
-  <button type="submit" class="send" [disabled]="sendPending() || sendProblem() !== null">
+  <button type="submit" class="send" [disabled]="transfer.pending() || sendProblem() !== null">
     Send
   </button>
   @if (recipientPreview(); as name) {
@@ -31,7 +31,7 @@
   @if (sendProblem(); as problem) {
     <p class="send-problem">{{ problem }}</p>
   }
-  @if (sendNotice(); as text) {
+  @if (transfer.notice(); as text) {
     <p class="send-notice">{{ text }}</p>
   }
 </form>

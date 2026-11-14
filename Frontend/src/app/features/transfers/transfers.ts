@@ -4,6 +4,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FormField, form } from '@angular/forms/signals';
 import { tap } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import { toApiError } from '../../core/api/api-error';
 import {
   FriendSummary,
@@ -63,8 +64,7 @@ export class Transfers {
     amount: 0,
   });
   protected readonly sendForm = form(this.sendModel);
-  readonly sendPending = signal(false);
-  readonly sendNotice = signal<string | null>(null);
+  readonly transfer = actionState();
 
   readonly sendProblem = computed<string | null>(() => {
     const funds = this.walletPoller.value();
@@ -88,19 +88,10 @@ export class Transfers {
       return;
     }
     const { recipientUserId, amount } = this.sendModel();
-    this.sendPending.set(true);
-    this.sendNotice.set(null);
-    this.http.post('/api/wallets/transfers', { recipientUserId, amount }).subscribe({
-      next: () => {
-        this.sendPending.set(false);
-        this.sendNotice.set('Sent.');
-        this.walletPoller.refresh();
-        this.historyPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.sendNotice.set(toApiError(err).message);
-        this.sendPending.set(false);
-      },
+    this.transfer.run(this.http.post('/api/wallets/transfers', { recipientUserId, amount }), () => {
+      this.transfer.notice.set('Sent.');
+      this.walletPoller.refresh();
+      this.historyPoller.refresh();
     });
   }
 
