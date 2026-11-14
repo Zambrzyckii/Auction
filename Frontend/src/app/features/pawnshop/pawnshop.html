@@ -71,7 +71,7 @@
               type="button"
               class="buy-bot"
               (click)="buyBot(tier)"
-              [disabled]="botPending()"
+              [disabled]="bot.pending()"
             >
               Buy
             </button>
@@ -79,7 +79,7 @@
         }
       </ul>
     }
-    @if (botNotice(); as text) {
+    @if (bot.notice(); as text) {
       <p class="bot-notice">{{ text }}</p>
     }
     <h4>Stock</h4>
@@ -116,7 +116,7 @@
                   type="button"
                   class="withdraw"
                   (click)="withdraw(item)"
-                  [disabled]="withdrawPending() || withdrawBlockReason(item, now()) !== null"
+                  [disabled]="stock.pending() || withdrawBlockReason(item, now()) !== null"
                 >
                   Withdraw
                 </button>
@@ -129,7 +129,7 @@
         }
       </table>
     }
-    @if (stockNotice(); as text) {
+    @if (stock.notice(); as text) {
       <p class="stock-notice">{{ text }}</p>
     }
   }
@@ -138,7 +138,7 @@
       type="button"
       class="buy-premises"
       (click)="buyPremises()"
-      [disabled]="buyPending() || buyProblem() !== null"
+      [disabled]="buy.pending() || buyProblem() !== null"
     >
       Buy premises
     </button>
@@ -146,7 +146,7 @@
       <p class="premises-problem">{{ problem }}</p>
     }
   }
-  @if (shopNotice(); as text) {
+  @if (buy.notice(); as text) {
     <p class="shop-notice">{{ text }}</p>
   }
 } @else if (shopPoller.error(); as error) {

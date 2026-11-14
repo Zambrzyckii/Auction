@@ -2,6 +2,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { catchError, of, throwError } from 'rxjs';
+import { actionState } from '../../core/actions/action-state';
 import { toApiError } from '../../core/api/api-error';
 import {
   BotTier,
@@ -98,16 +99,13 @@ export class Pawnshop {
   readonly offers = signal<PawnshopOffers | null>(null);
   readonly offersError = signal<string | null>(null);
 
-  readonly buyPending = signal(false);
-  readonly shopNotice = signal<string | null>(null);
-  readonly botPending = signal(false);
-  readonly botNotice = signal<string | null>(null);
+  readonly buy = actionState();
+  readonly bot = actionState();
+  readonly stock = actionState();
   readonly now = clock();
   readonly timeLeft = timeLeft;
   readonly stockPayout = stockPayout;
   readonly withdrawBlockReason = withdrawBlockReason;
-  readonly withdrawPending = signal(false);
-  readonly stockNotice = signal<string | null>(null);
 
   readonly upgrades = computed<readonly BotTier[]>(() => {
     const catalog = this.offers();
@@ -133,60 +131,29 @@ export class Pawnshop {
   }
 
   buyPremises(): void {
-    if (this.buyPending() || this.buyProblem() !== null) {
+    if (this.buyProblem() !== null) {
       return;
     }
-    this.buyPending.set(true);
-    this.shopNotice.set(null);
-    this.http.post('/api/pawnshop', null).subscribe({
-      next: () => {
-        this.buyPending.set(false);
-        this.shopNotice.set('Payment pending…');
-        this.shopPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.shopNotice.set(toApiError(err).message);
-        this.buyPending.set(false);
-      },
-    });
+    this.buy.run(this.http.post('/api/pawnshop', null), () => this.shopPoller.refresh());
   }
 
   buyBot(tier: BotTier): void {
-    if (this.botPending()) {
-      return;
-    }
-    this.botPending.set(true);
-    this.botNotice.set(null);
-    this.http.post('/api/pawnshop/bot', { tierName: tier.name }).subscribe({
-      next: () => {
-        this.botPending.set(false);
-        this.botNotice.set(`Buying ${tier.name}…`);
-        this.shopPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.botNotice.set(toApiError(err).message);
-        this.botPending.set(false);
-      },
-    });
+    this.bot.run(this.http.post('/api/pawnshop/bot', { tierName: tier.name }), () =>
+      this.shopPoller.refresh(),
+    );
   }
 
   withdraw(item: StockItem): void {
-    if (this.withdrawPending() || withdrawBlockReason(item, this.now()) !== null) {
+    if (withdrawBlockReason(item, this.now()) !== null) {
       return;
     }
-    this.withdrawPending.set(true);
-    this.stockNotice.set(null);
-    this.http.post(`/api/pawnshop/stock/${item.publicStockItemId}/withdraw`, null).subscribe({
-      next: () => {
-        this.withdrawPending.set(false);
-        this.stockNotice.set('The item reaches your inventory in a few seconds');
+    this.stock.run(
+      this.http.post(`/api/pawnshop/stock/${item.publicStockItemId}/withdraw`, null),
+      () => {
+        this.stock.notice.set('The item reaches your inventory in a few seconds');
         this.shopPoller.refresh();
       },
-      error: (err: unknown) => {
-        this.stockNotice.set(toApiError(err).message);
-        this.withdrawPending.set(false);
-      },
-    });
+    );
   }
 
   constructor() {

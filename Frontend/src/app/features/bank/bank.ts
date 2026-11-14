@@ -1,6 +1,7 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { actionState } from '../../core/actions/action-state';
 import { toApiError } from '../../core/api/api-error';
 import { Loan, LoanOffer, LoanStatus, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
@@ -77,10 +78,20 @@ export class Bank {
   readonly now = clock();
   readonly timeLeft = timeLeft;
 
-  readonly requestPending = signal(false);
-  readonly bankNotice = signal<string | null>(null);
-  readonly repayPending = signal(false);
-  readonly loanNotice = signal<string | null>(null);
+  readonly request = actionState();
+  readonly collection = actionState();
+
+  readonly requestedNotice = computed<string | null>(() =>
+    (this.loansPoller.value() ?? []).some((loan) => loan.status === 'PendingApproval')
+      ? 'Loan requested, waiting for approval…'
+      : null,
+  );
+
+  readonly collectionNotice = computed<string | null>(() =>
+    (this.loansPoller.value() ?? []).some((loan) => loan.status === 'CollectionPending')
+      ? 'Collection requested…'
+      : null,
+  );
 
   offerProblem(offer: LoanOffer): string | null {
     const funds = this.walletPoller.value();
@@ -95,19 +106,9 @@ export class Bank {
     if (this.offerProblem(offer) !== null) {
       return;
     }
-    this.requestPending.set(true);
-    this.bankNotice.set(null);
-    this.http.post('/api/bank/loans', { offerName: offer.name }).subscribe({
-      next: () => {
-        this.requestPending.set(false);
-        this.bankNotice.set('Loan requested, waiting for approval…');
-        this.loansPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.bankNotice.set(toApiError(err).message);
-        this.requestPending.set(false);
-      },
-    });
+    this.request.run(this.http.post('/api/bank/loans', { offerName: offer.name }), () =>
+      this.loansPoller.refresh(),
+    );
   }
 
   showsRepay(loan: Loan): boolean {
@@ -122,22 +123,13 @@ export class Bank {
   }
 
   repay(loan: Loan): void {
-    if (this.repayPending() || (loan.status !== 'Active' && loan.status !== 'Overdue')) {
+    if (loan.status !== 'Active' && loan.status !== 'Overdue') {
       return;
     }
-    this.repayPending.set(true);
-    this.loanNotice.set(null);
-    this.http.post(`/api/bank/loans/${loan.publicLoanId}/repayments`, null).subscribe({
-      next: () => {
-        this.repayPending.set(false);
-        this.loanNotice.set('Collection requested…');
-        this.loansPoller.refresh();
-      },
-      error: (err: unknown) => {
-        this.loanNotice.set(toApiError(err).message);
-        this.repayPending.set(false);
-      },
-    });
+    this.collection.run(
+      this.http.post(`/api/bank/loans/${loan.publicLoanId}/repayments`, null),
+      () => this.loansPoller.refresh(),
+    );
   }
 
   constructor() {

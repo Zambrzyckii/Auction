@@ -250,11 +250,19 @@ describe('Pawnshop', () => {
     expect(post.request.body).toBeNull();
     post.flush({ publicPawnshopId: 'shop-9' }, { status: 201, statusText: 'Created' });
     fixture.detectChanges();
+    expect(el().querySelector('.shop-notice')).toBeNull();
 
     http.expectOne(SHOP_URL).flush(shop({ status: 'PendingPayment' }));
     fixture.detectChanges();
     expect(el().querySelector('.payment-pending')?.textContent).toContain('Payment pending…');
     expect(el().querySelector('button.buy-premises')).toBeNull();
+
+    vi.advanceTimersByTime(2000);
+    http.expectOne(SHOP_URL).flush(shop({}));
+    fixture.detectChanges();
+    expect(el().querySelector('.payment-pending')).toBeNull();
+    expect(el().querySelector('.shop-notice')).toBeNull();
+    expect(el().querySelector('.shop-active')).not.toBeNull();
   });
 
   it('shows the rejection reason and lets the player retry', () => {
@@ -309,11 +317,17 @@ describe('Pawnshop', () => {
     expect(post.request.body).toEqual({ tierName: 'Appraiser' });
     post.flush(null, { status: 202, statusText: 'Accepted' });
     fixture.detectChanges();
-    expect(el().querySelector('.bot-notice')?.textContent).toContain('Buying Appraiser…');
+    expect(el().querySelector('.bot-notice')).toBeNull();
 
     http.expectOne(SHOP_URL).flush(shop({ pendingBotTierName: 'Appraiser' }));
     fixture.detectChanges();
     expect(el().querySelector('.bot-pending')).not.toBeNull();
+
+    vi.advanceTimersByTime(2000);
+    http.expectOne(SHOP_URL).flush(shop({ botTierName: 'Appraiser', botRarity: 'Rare' }));
+    fixture.detectChanges();
+    expect(el().querySelector('.bot-pending')).toBeNull();
+    expect(el().querySelector('.bot-notice')).toBeNull();
   });
 
   it('shows the server text when the upgrade is refused', () => {

@@ -31,7 +31,7 @@
             type="button"
             class="request-loan"
             (click)="requestLoan(offer)"
-            [disabled]="requestPending() || offerProblem(offer) !== null"
+            [disabled]="request.pending() || offerProblem(offer) !== null"
           >
             Request
           </button>
@@ -42,7 +42,7 @@
       </tr>
     }
   </table>
-  @if (bankNotice(); as text) {
+  @if (request.notice() ?? requestedNotice(); as text) {
     <p class="bank-notice">{{ text }}</p>
   }
 } @else if (offersError(); as error) {
@@ -90,7 +90,7 @@
                 type="button"
                 class="repay"
                 (click)="repay(loan)"
-                [disabled]="repayPending() || loan.status === 'CollectionPending'"
+                [disabled]="collection.pending() || loan.status === 'CollectionPending'"
               >
                 Repay
               </button>
@@ -112,7 +112,7 @@
         }
       }
     </table>
-    @if (loanNotice(); as text) {
+    @if (collection.notice() ?? collectionNotice(); as text) {
       <p class="loan-notice">{{ text }}</p>
     }
   }

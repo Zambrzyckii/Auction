@@ -195,11 +195,17 @@ describe('Bank', () => {
     expect(post.request.body).toEqual({ offerName: 'Quick' });
     post.flush({ publicLoanId: 'loan-9' }, { status: 201, statusText: 'Created' });
     fixture.detectChanges();
-    expect(el().textContent).toContain('Loan requested, waiting for approval…');
+    expect(el().querySelector('.bank-notice')).toBeNull();
 
     http.expectOne(LOANS_URL).flush([loan({ status: 'PendingApproval', dueOn: null })]);
     fixture.detectChanges();
+    expect(el().textContent).toContain('Loan requested, waiting for approval…');
     expect(el().textContent).toContain('PendingApproval');
+
+    vi.advanceTimersByTime(2000);
+    http.expectOne(LOANS_URL).flush([loan({})]);
+    fixture.detectChanges();
+    expect(el().textContent).not.toContain('Loan requested, waiting for approval…');
   });
 
   it('blocks the offer while a loan is open', () => {
@@ -220,11 +226,20 @@ describe('Bank', () => {
     expect(post.request.body).toBeNull();
     post.flush(null, { status: 202, statusText: 'Accepted' });
     fixture.detectChanges();
-    expect(el().textContent).toContain('Collection requested…');
+    expect(el().textContent).not.toContain('Collection requested…');
 
     http.expectOne(LOANS_URL).flush([loan({ status: 'CollectionPending' })]);
     fixture.detectChanges();
+    expect(el().textContent).toContain('Collection requested…');
     expect((el().querySelector('button.repay') as HTMLButtonElement).disabled).toBe(true);
+
+    vi.advanceTimersByTime(2000);
+    http
+      .expectOne(LOANS_URL)
+      .flush([loan({ status: 'Repaid', repaidOn: '2026-11-14T10:00:00Z' })]);
+    fixture.detectChanges();
+    expect(el().textContent).not.toContain('Collection requested…');
+    expect(el().querySelector('button.repay')).toBeNull();
   });
 
   it('offers no repay button for a loan that is not running', () => {
