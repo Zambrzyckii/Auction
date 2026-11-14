@@ -161,3 +161,38 @@ export interface Casino {
   readonly latestPurchase: ChipPurchase | null;
   readonly roulette: RouletteLimits;
 }
+
+export type RouletteBetType =
+  | 'Straight'
+  | 'Red'
+  | 'Black'
+  | 'Odd'
+  | 'Even'
+  | 'Low'
+  | 'High'
+  | 'Dozen'
+  | 'Column';
+
+export interface RouletteBet {
+  readonly type: RouletteBetType;
+  readonly selection: number | null;
+  readonly stake: number;
+}
+
+export interface RouletteBetResult extends RouletteBet {
+  readonly payout: number;
+}
+
+export interface RouletteSpin {
+  readonly publicSpinId: string;
+  readonly pocket: number;
+  readonly color: 'Green' | 'Red' | 'Black';
+  readonly totalStake: number;
+  readonly totalPayout: number;
+  readonly placedOn: string;
+  readonly bets: readonly RouletteBetResult[];
+}
+
+export interface RouletteSpinResult extends RouletteSpin {
+  readonly balance: number;
+}

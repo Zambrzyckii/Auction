@@ -1,0 +1,127 @@
+<h2>Roulette</h2>
+<p><a routerLink="/casino">Back to the casino</a></p>
+@if (casinoPoller.value(); as casino) {
+  <p>Chip balance: {{ casino.balance | number }}</p>
+  @if (casino.balance === 0) {
+    <p class="buy-first">Buy chips first. <a routerLink="/casino">Go to the casino</a></p>
+  } @else {
+    <form class="bet-form" (submit)="$event.preventDefault(); addBet()">
+      <label>
+        Bet
+        <select [formField]="betForm.type">
+          @for (type of betTypes; track type) {
+            <option [value]="type">{{ type }}</option>
+          }
+        </select>
+      </label>
+      @if (needsSelection()) {
+        <label>
+          Selection
+          <input class="selection" type="number" step="any" [formField]="betForm.selection" />
+        </label>
+      }
+      <label>
+        Stake
+        <input class="stake" type="number" step="any" [formField]="betForm.stake" />
+      </label>
+      <button type="submit" class="add-bet" [disabled]="addBetProblem() !== null">Add bet</button>
+      @if (addBetProblem(); as problem) {
+        <p class="bet-problem">{{ problem }}</p>
+      }
+    </form>
+
+    @if (bets().length > 0) {
+      <table class="bets">
+        <tr>
+          <th>Bet</th>
+          <th>Selection</th>
+          <th>Stake</th>
+          <th></th>
+        </tr>
+        @for (bet of bets(); track $index) {
+          <tr>
+            <td>{{ bet.type }}</td>
+            <td>{{ bet.selection }}</td>
+            <td>{{ bet.stake | number }}</td>
+            <td>
+              <button type="button" class="remove-bet" (click)="removeBet($index)">Remove</button>
+            </td>
+          </tr>
+        }
+      </table>
+      <p>Total stake: {{ totalStake() | number }}</p>
+    }
+    <button
+      type="button"
+      class="spin"
+      (click)="spin()"
+      [disabled]="spinPending() || spinFormProblem() !== null"
+    >
+      Spin
+    </button>
+    @if (spinFormProblem(); as problem) {
+      <p class="spin-problem">{{ problem }}</p>
+    }
+    @if (spinError(); as text) {
+      <p class="spin-error">{{ text }}</p>
+    }
+  }
+} @else if (casinoPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the table…</p>
+}
+
+@if (lastSpin(); as result) {
+  <section class="last-spin">
+    <h3>Last spin</h3>
+    <p class="pocket">Pocket {{ result.pocket }} ({{ result.color }})</p>
+    <table>
+      <tr>
+        <th>Bet</th>
+        <th>Selection</th>
+        <th>Stake</th>
+        <th>Payout</th>
+      </tr>
+      @for (bet of result.bets; track $index) {
+        <tr>
+          <td>{{ bet.type }}</td>
+          <td>{{ bet.selection }}</td>
+          <td>{{ bet.stake | number }}</td>
+          <td>{{ bet.payout | number }}</td>
+        </tr>
+      }
+    </table>
+    <p class="net">Net {{ result.totalPayout - result.totalStake | number }}</p>
+  </section>
+}
+
+<h3>History</h3>
+@if (historyPoller.value(); as spins) {
+  @if (spins.length === 0) {
+    <p>No spins yet.</p>
+  } @else {
+    <table class="history">
+      <tr>
+        <th>Placed on</th>
+        <th>Pocket</th>
+        <th>Color</th>
+        <th>Stake</th>
+        <th>Payout</th>
+      </tr>
+      @for (row of spins; track row.publicSpinId) {
+        <tr>
+          <td>{{ row.placedOn | date: 'medium' }}</td>
+          <td>{{ row.pocket }}</td>
+          <td>{{ row.color }}</td>
+          <td>{{ row.totalStake | number }}</td>
+          <td>{{ row.totalPayout | number }}</td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (historyPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the history…</p>
+}

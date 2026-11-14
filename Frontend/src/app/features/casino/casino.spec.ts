@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Casino as CasinoDto, ChipPurchase, Wallet } from '../../core/api/models';
@@ -135,7 +136,7 @@ describe('Casino', () => {
     );
     await TestBed.configureTestingModule({
       imports: [Casino],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Casino);
@@ -176,6 +177,13 @@ describe('Casino', () => {
     expect(text).toContain('Bought in total: 100');
     expect(text).toContain('cashed out in total:');
     expect(text).toContain('15');
+  });
+
+  it('links to the roulette table', () => {
+    flushAll(casino({}));
+    expect(el().querySelector('.games a[href="/casino/roulette"]')?.textContent).toContain(
+      'Roulette',
+    );
   });
 
   it('buys chips and shows the pending purchase after the refresh', () => {

@@ -2,6 +2,7 @@ import { DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import { Casino as CasinoDto, ChipPurchase, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
@@ -54,7 +55,7 @@ export function purchaseNotice(latest: ChipPurchase | null): string | null {
 
 @Component({
   selector: 'app-casino',
-  imports: [DecimalPipe, FormField],
+  imports: [DecimalPipe, FormField, RouterLink],
   templateUrl: './casino.html',
 })
 export class Casino {
