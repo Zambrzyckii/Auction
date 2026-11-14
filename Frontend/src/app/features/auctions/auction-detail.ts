@@ -31,18 +31,19 @@ export function isBidConfirmed(
 export class AuctionDetail {
   private readonly http = inject(HttpClient);
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id');
+  private readonly encodedId = encodeURIComponent(this.id ?? '');
   protected readonly session = inject(Session);
   private readonly directory = inject(ProfileDirectory);
 
   readonly poller = startPolling(
-    () => this.http.get<Auction>(`/api/auctions/${this.id}`),
+    () => this.http.get<Auction>(`/api/auctions/${this.encodedId}`),
     POLL_MS,
   );
 
   readonly bidsPoller = startPolling(
     () =>
       this.http
-        .get<AuctionBid[]>(`/api/auctions/${this.id}/bids`)
+        .get<AuctionBid[]>(`/api/auctions/${this.encodedId}/bids`)
         .pipe(tap((bids) => this.directory.ensure(bids.map((b) => b.bidderUserId)))),
     POLL_MS,
   );
@@ -96,7 +97,7 @@ export class AuctionDetail {
     this.bidPending.set(true);
     this.bidNotice.set(null);
     const amount = this.bidAmount();
-    this.http.post(`/api/auctions/${this.id}/bid`, { amount }).subscribe({
+    this.http.post(`/api/auctions/${this.encodedId}/bid`, { amount }).subscribe({
       next: () => {
         this.pendingBid.set({ amount, placedAt: Date.now() });
         this.bidPending.set(false);

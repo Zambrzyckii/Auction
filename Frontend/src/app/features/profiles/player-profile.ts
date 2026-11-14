@@ -35,10 +35,11 @@ export class PlayerProfile {
   private readonly http = inject(HttpClient);
   private readonly directory = inject(ProfileDirectory);
   private readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id');
+  private readonly encodedId = encodeURIComponent(this.id ?? '');
 
   readonly poller = startPolling(
     () =>
-      this.http.get<ProfileDto>(`/api/profiles/${this.id}`).pipe(
+      this.http.get<ProfileDto>(`/api/profiles/${this.encodedId}`).pipe(
         tap((profile) => {
           this.directory.remember(profile.userId, profile.username);
           for (const friend of profile.friends) {
@@ -84,7 +85,7 @@ export class PlayerProfile {
       );
       return;
     }
-    this.run(this.http.delete(`/api/profiles/friends/${this.id}`));
+    this.run(this.http.delete(`/api/profiles/friends/${this.encodedId}`));
   }
 
   private sendRequest(): void {

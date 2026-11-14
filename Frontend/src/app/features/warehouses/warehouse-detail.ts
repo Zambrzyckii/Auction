@@ -35,13 +35,14 @@ export class WarehouseDetail {
   private readonly http = inject(HttpClient);
   protected readonly session = inject(Session);
   readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
+  private readonly encodedId = encodeURIComponent(this.id);
 
   private readonly warLoadedAt = signal(0);
 
   readonly warPoller = startPolling(
     () =>
       this.http
-        .get<WarehouseDetails>(`/api/warehouses/${this.id}`)
+        .get<WarehouseDetails>(`/api/warehouses/${this.encodedId}`)
         .pipe(tap(() => this.warLoadedAt.set(Date.now()))),
     (latest) => warehousePollMs(latest),
   );
@@ -94,7 +95,7 @@ export class WarehouseDetail {
     if (this.joinProblem() !== null) {
       return;
     }
-    this.action.run(this.http.post(`/api/warehouses/${this.id}/join`, null), () => {
+    this.action.run(this.http.post(`/api/warehouses/${this.encodedId}/join`, null), () => {
       this.joinedAt.set(Date.now());
       this.refreshBoth();
     });
@@ -105,7 +106,7 @@ export class WarehouseDetail {
     if (war === null || !canLeave(war, this.now())) {
       return;
     }
-    this.action.run(this.http.post(`/api/warehouses/${this.id}/leave`, null), () => {
+    this.action.run(this.http.post(`/api/warehouses/${this.encodedId}/leave`, null), () => {
       this.joinedAt.set(null);
       this.refreshBoth();
     });
@@ -133,7 +134,7 @@ export class WarehouseDetail {
     if (war === null || raiseBlockReason(war, increment, this.now()) !== null) {
       return;
     }
-    this.action.run(this.http.post(`/api/warehouses/${this.id}/bids`, { increment }), () =>
+    this.action.run(this.http.post(`/api/warehouses/${this.encodedId}/bids`, { increment }), () =>
       this.refreshBoth(),
     );
   }

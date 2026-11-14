@@ -235,3 +235,33 @@ describe('PlayerProfile', () => {
     expect(el().textContent).toContain('Level');
   });
 });
+
+describe('PlayerProfile with a crafted route id', () => {
+  it('encodes the id in the request url', async () => {
+    vi.useFakeTimers();
+    installStorageStub();
+    new TokenStorage().set(
+      tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
+    );
+    await TestBed.configureTestingModule({
+      imports: [PlayerProfile],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ProfileDirectory, useValue: { remember: vi.fn() } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { paramMap: convertToParamMap({ id: 'abc/../evil' }) } },
+        },
+      ],
+    }).compileComponents();
+    const http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(PlayerProfile);
+    fixture.detectChanges();
+    http.expectOne(ME_URL).flush(me({}));
+    http.expectOne('/api/profiles/abc%2F..%2Fevil').flush(profile({}));
+    fixture.destroy();
+    http.verify();
+    vi.useRealTimers();
+  });
+});
