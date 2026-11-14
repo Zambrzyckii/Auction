@@ -466,7 +466,10 @@ Domain exceptions derive from `AppException(message, statusCode)` (`Shared.Integ
 and are grouped as nested classes in a per-module static container (`WalletExceptions`, `AuctionExceptions`,
 `IdentityException`). `GlobalExceptionHandler` (`AuctionServer.Api/Infrastructure/GlobalExceptionHandler.cs:9`)
 maps `AppException` → its own status code, `DbUpdateConcurrencyException` → 409, everything else → 500, and always
-writes `{ "error": "..." }` (camelCase on the wire). Endpoints therefore contain no try/catch. The handler only runs because
+writes `{ "error": "..." }` (camelCase on the wire). Binding failures (a missing or unparsable handler parameter, a
+malformed JSON body) reach the same handler as `BadHttpRequestException` in every environment, because `Program.cs`
+sets `RouteHandlerOptions.ThrowOnBadRequest`. Without it Production answered an empty 400 (issue #13, fixed
+2026-11-14). Endpoints therefore contain no try/catch. The handler only runs because
 `app.UseExceptionHandler()` is called in `Program.cs` — `AddExceptionHandler` alone registers it in DI but does
 not put the middleware in the pipeline (this was once missing and every `AppException` surfaced as 500).
 
