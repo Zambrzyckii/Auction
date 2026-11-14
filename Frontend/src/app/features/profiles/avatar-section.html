@@ -1,0 +1,26 @@
+<h3>Avatar</h3>
+<input type="file" (change)="onAvatarChange($event)" />
+<button
+  type="button"
+  class="upload-avatar"
+  (click)="uploadAvatar()"
+  [disabled]="avatar.pending() || avatarProblem() !== null"
+>
+  Upload avatar
+</button>
+@if (avatarFile() !== null && avatarProblem() !== null) {
+  <p class="avatar-problem">{{ avatarProblem() }}</p>
+}
+@if (avatarUrl() !== null) {
+  <button
+    type="button"
+    class="delete-avatar"
+    (click)="deleteAvatar()"
+    [disabled]="avatar.pending()"
+  >
+    Delete avatar
+  </button>
+}
+@if (avatar.notice(); as text) {
+  <p class="avatar-notice">{{ text }}</p>
+}

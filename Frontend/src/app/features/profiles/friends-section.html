@@ -1,0 +1,85 @@
+<h3>Friends</h3>
+@if (profile().friends.length === 0) {
+  <p>No friends yet.</p>
+} @else {
+  <ul class="friends">
+    @for (friend of profile().friends; track friend.userId) {
+      <li>
+        {{ friend.username }}
+        <a [routerLink]="['/transfers']" [queryParams]="{ to: friend.userId }">Send funds</a>
+        <button
+          type="button"
+          class="remove-friend"
+          (click)="removeFriend(friend.userId)"
+          [disabled]="friendship.pending()"
+        >
+          Remove
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+<h3>Friend requests</h3>
+@if (
+  profile().incomingFriendRequests.length === 0 && profile().outgoingFriendRequests.length === 0
+) {
+  <p>No pending requests.</p>
+} @else {
+  <ul class="requests">
+    @for (request of profile().incomingFriendRequests; track request.publicFriendshipId) {
+      <li>
+        Incoming from {{ request.username }}
+        <button
+          type="button"
+          class="accept"
+          (click)="acceptRequest(request.publicFriendshipId)"
+          [disabled]="friendship.pending()"
+        >
+          Accept
+        </button>
+        <button
+          type="button"
+          class="decline"
+          (click)="declineRequest(request.publicFriendshipId)"
+          [disabled]="friendship.pending()"
+        >
+          Decline
+        </button>
+      </li>
+    }
+    @for (request of profile().outgoingFriendRequests; track request.publicFriendshipId) {
+      <li>
+        Sent to {{ request.username }}
+        <button
+          type="button"
+          class="cancel-request"
+          (click)="removeFriend(request.userId)"
+          [disabled]="friendship.pending()"
+        >
+          Cancel
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+<form class="friend-form" (submit)="$event.preventDefault(); addFriend()">
+  <label>
+    Add a friend by player id
+    <input [formField]="friendForm.userId" />
+  </label>
+  <button
+    type="submit"
+    class="add-friend"
+    [disabled]="friendship.pending() || friendProblem() !== null"
+  >
+    Add friend
+  </button>
+  @if (friendProblem(); as problem) {
+    <p class="friend-problem">{{ problem }}</p>
+  }
+</form>
+@if (friendship.notice(); as text) {
+  <p class="friend-notice">{{ text }}</p>
+}

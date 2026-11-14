@@ -1,0 +1,41 @@
+<h3>Social links</h3>
+@if (workingLinks(); as links) {
+  @if (links.length === 0) {
+    <p>No links yet.</p>
+  } @else {
+    <ul class="social-links">
+      @for (link of links; track link.platform) {
+        <li>
+          {{ link.platform }}: {{ link.url }}
+          <button type="button" class="remove-link" (click)="removeLink(link.platform)">
+            Remove
+          </button>
+        </li>
+      }
+    </ul>
+  }
+  <form class="link-form" (submit)="$event.preventDefault(); addLink()">
+    <label>
+      Platform
+      <select [formField]="linkForm.platform">
+        @for (platform of platforms; track platform) {
+          <option [value]="platform">{{ platform }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Url
+      <input [formField]="linkForm.url" />
+    </label>
+    <button type="submit" class="add-link" [disabled]="addProblem() !== null">Add link</button>
+    @if (addProblem(); as problem) {
+      <p class="link-problem">{{ problem }}</p>
+    }
+  </form>
+  <button type="button" class="save-links" (click)="saveLinks()" [disabled]="social.pending()">
+    Save links
+  </button>
+  @if (social.notice(); as text) {
+    <p class="social-notice">{{ text }}</p>
+  }
+}
