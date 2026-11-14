@@ -5,13 +5,14 @@ import { provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import {
+  ActiveBlackjackHand,
   BlackjackHand,
   BlackjackHandHistory,
   Casino as CasinoDto,
 } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { fromHand } from './hand-view';
-import { Blackjack, canDouble, cardLabel, dealProblem } from './blackjack';
+import { Blackjack, canDouble, cardLabel, dealProblem, reconcileHand } from './blackjack';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const CASINO_URL = '/api/casino';
@@ -48,6 +49,21 @@ function handDto(overrides: Partial<BlackjackHand>): BlackjackHand {
     balance: 90,
     startedOn: '2026-11-14T10:00:00Z',
     completedOn: null,
+    ...overrides,
+  };
+}
+
+function activeDto(overrides: Partial<ActiveBlackjackHand>): ActiveBlackjackHand {
+  return {
+    publicHandId: 'hand-1',
+    stake: 10,
+    doubled: false,
+    playerCards: [0, 14],
+    playerTotal: 13,
+    playerIsSoft: true,
+    visibleDealerCards: [5],
+    startedOn: '2026-11-14T10:00:00Z',
+    lastActionOn: '2026-11-14T10:00:00Z',
     ...overrides,
   };
 }
@@ -138,6 +154,40 @@ describe('dealProblem', () => {
   });
 });
 
+describe('reconcileHand', () => {
+  it('resumes the server hand when nothing is shown locally', () => {
+    const view = reconcileHand(null, activeDto({}));
+    expect(view?.publicHandId).toBe('hand-1');
+    expect(view?.status).toBe('InProgress');
+    expect(view?.dealerHidden).toBe(true);
+  });
+
+  it('switches to a hand started elsewhere', () => {
+    const local = fromHand(handDto({ publicHandId: 'hand-old' }), 0);
+    expect(reconcileHand(local, activeDto({}))?.publicHandId).toBe('hand-1');
+  });
+
+  it('drops an in-progress hand the server no longer has', () => {
+    const local = fromHand(handDto({}), 0);
+    expect(reconcileHand(local, null)).toBeNull();
+  });
+
+  it('keeps a completed hand on screen until New hand', () => {
+    const local = fromHand(handDto({ status: 'Completed', outcome: 'Win', payout: 20 }), 0);
+    expect(reconcileHand(local, null)).toBe(local);
+  });
+
+  it('never regresses a completed hand to in progress for the same id', () => {
+    const local = fromHand(handDto({ status: 'Completed', outcome: 'Win', payout: 20 }), 0);
+    expect(reconcileHand(local, activeDto({}))).toBe(local);
+  });
+
+  it('keeps the local in-progress hand for the same id', () => {
+    const local = fromHand(handDto({}), 0);
+    expect(reconcileHand(local, activeDto({}))).toBe(local);
+  });
+});
+
 describe('Blackjack', () => {
   let fixture: ComponentFixture<Blackjack>;
   let http: HttpTestingController;
@@ -202,13 +252,13 @@ describe('Blackjack', () => {
     expect(el().querySelector('button.hit')).not.toBeNull();
     expect(el().querySelector('button.stand')).not.toBeNull();
     expect(el().querySelector('button.double')).not.toBeNull();
-    http.expectOne(CASINO_URL).flush(casino({ balance: 90 }));
+    http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
   });
 
   it('enables the double on the first two cards and disables it after a hit', () => {
     flushAll(casino({}));
     dealWith(handDto({ stake: 10 }));
-    http.expectOne(CASINO_URL).flush(casino({ balance: 90 }));
+    http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
     fixture.detectChanges();
     expect((el().querySelector('button.double') as HTMLButtonElement).disabled).toBe(false);
 
@@ -218,7 +268,11 @@ describe('Blackjack', () => {
       .flush(handDto({ playerCards: [0, 14, 2], playerTotal: 16 }));
     fixture.detectChanges();
     expect((el().querySelector('button.double') as HTMLButtonElement).disabled).toBe(true);
-    http.expectOne(CASINO_URL).flush(casino({ balance: 90 }));
+    http
+      .expectOne(CASINO_URL)
+      .flush(
+        casino({ balance: 90, activeBlackjackHand: activeDto({ playerCards: [0, 14, 2] }) }),
+      );
   });
 
   it('shows a natural as completed at once', () => {
@@ -250,7 +304,7 @@ describe('Blackjack', () => {
   it('stands and reveals the dealer with the outcome', () => {
     flushAll(casino({}));
     dealWith(handDto({}));
-    http.expectOne(CASINO_URL).flush(casino({ balance: 90 }));
+    http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
 
     (el().querySelector('button.stand') as HTMLButtonElement).click();
     const post = http.expectOne({ method: 'POST', url: `${HANDS_URL}/hand-1/actions` });
@@ -291,6 +345,36 @@ describe('Blackjack', () => {
       'Not enough chips on account',
     );
     expect((el().querySelector('button.deal') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('resumes the active hand after a reload', () => {
+    flushAll(casino({ activeBlackjackHand: activeDto({}) }));
+    fixture.detectChanges();
+    expect(el().querySelector('.deal-form')).toBeNull();
+    expect(el().querySelectorAll('.player .card').length).toBe(2);
+    expect(el().querySelector('.hidden-card')).not.toBeNull();
+    expect(el().querySelector('button.stand')).not.toBeNull();
+  });
+
+  it('swaps a vanished hand for its auto-stood history entry', () => {
+    flushAll(casino({}));
+    dealWith(handDto({}));
+    http
+      .expectOne(CASINO_URL)
+      .flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
+    fixture.detectChanges();
+
+    vi.advanceTimersByTime(5000);
+    http.expectOne(CASINO_URL).flush(casino({ balance: 110 }));
+    fixture.detectChanges();
+    http
+      .expectOne({ method: 'GET', url: HANDS_URL })
+      .flush([historyDto({ publicHandId: 'hand-1', outcome: 'Lose', payout: 0, autoStood: true })]);
+    fixture.detectChanges();
+
+    expect(el().querySelector('.auto-stood')).not.toBeNull();
+    expect(el().querySelector('.outcome')?.textContent).toContain('Lose');
+    expect(el().querySelector('button.new-hand')).not.toBeNull();
   });
 
   it('lists the finished hands', () => {

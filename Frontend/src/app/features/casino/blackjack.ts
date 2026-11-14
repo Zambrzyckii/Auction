@@ -1,10 +1,11 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormField, form } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { toApiError } from '../../core/api/api-error';
 import {
+  ActiveBlackjackHand,
   BlackjackHand,
   BlackjackHandHistory,
   BlackjackLimits,
@@ -12,7 +13,7 @@ import {
 } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { casinoPollMs } from './casino';
-import { HandView, fromHand } from './hand-view';
+import { HandView, fromActive, fromHand, fromHistory } from './hand-view';
 
 const HISTORY_POLL_MS = 10_000;
 
@@ -41,6 +42,22 @@ export function dealProblem(stake: number, limits: BlackjackLimits, balance: num
   return null;
 }
 
+export function reconcileHand(
+  local: HandView | null,
+  active: ActiveBlackjackHand | null,
+): HandView | null {
+  if (active !== null) {
+    if (local === null || local.publicHandId !== active.publicHandId) {
+      return fromActive(active);
+    }
+    return local;
+  }
+  if (local !== null && local.status === 'InProgress') {
+    return null;
+  }
+  return local;
+}
+
 type BlackjackAction = 'Hit' | 'Stand' | 'Double';
 
 @Component({
@@ -64,6 +81,8 @@ export class Blackjack {
   readonly hand = signal<HandView | null>(null);
   readonly actionPending = signal(false);
   readonly tableNotice = signal<string | null>(null);
+  private lostHandId: string | null = null;
+  private staleCasino: CasinoDto | null = null;
 
   readonly cardLabel = cardLabel;
 
@@ -110,11 +129,41 @@ export class Blackjack {
     this.tableNotice.set(null);
   }
 
+  constructor() {
+    effect(() => {
+      const casino = this.casinoPoller.value();
+      if (casino === null || casino === this.staleCasino || this.actionPending()) {
+        return;
+      }
+      const before = untracked(this.hand);
+      const next = reconcileHand(before, casino.activeBlackjackHand);
+      if (next !== before) {
+        this.hand.set(next);
+      }
+      if (before !== null && before.status === 'InProgress' && next === null) {
+        this.lostHandId = before.publicHandId;
+        this.historyPoller.refresh();
+      }
+    });
+    effect(() => {
+      const rows = this.historyPoller.value();
+      if (rows === null || this.lostHandId === null) {
+        return;
+      }
+      const lost = rows.find((row) => row.publicHandId === this.lostHandId);
+      if (lost !== undefined) {
+        this.lostHandId = null;
+        this.hand.set(fromHistory(lost));
+      }
+    });
+  }
+
   private request(call: ReturnType<typeof this.http.post<BlackjackHand>>): void {
     this.actionPending.set(true);
     this.tableNotice.set(null);
     call.subscribe({
       next: (dto) => {
+        this.staleCasino = this.casinoPoller.value();
         this.actionPending.set(false);
         this.hand.set(fromHand(dto, Date.now()));
         this.casinoPoller.refresh();
@@ -123,6 +172,7 @@ export class Blackjack {
         }
       },
       error: (err: unknown) => {
+        this.staleCasino = this.casinoPoller.value();
         this.tableNotice.set(toApiError(err).message);
         this.actionPending.set(false);
       },
