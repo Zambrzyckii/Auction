@@ -1,6 +1,5 @@
 import { Wallet, WarehouseDetails } from '../../core/api/models';
 import {
-  WAREHOUSE_TIERS,
   canLeave,
   entryRejected,
   joinBlockReason,
@@ -27,6 +26,7 @@ function war(overrides: Partial<WarehouseDetails>): WarehouseDetails {
     isLeader: false,
     cancellationReason: null,
     manifest: null,
+    increments: [10, 50, 100],
     ...overrides,
   };
 }
@@ -36,14 +36,6 @@ function wallet(overrides: Partial<Wallet>): Wallet {
 }
 
 const NOW = Date.parse('2026-11-14T12:00:00Z');
-
-describe('WAREHOUSE_TIERS', () => {
-  it('keeps each tier entry fee next to its increments', () => {
-    expect(WAREHOUSE_TIERS.get('Small')).toEqual({ entryFee: 500, increments: [10, 50, 100] });
-    expect(WAREHOUSE_TIERS.get('Large')?.increments).toEqual([100, 250, 500, 1000]);
-    expect(WAREHOUSE_TIERS.has('Haunted')).toBe(false);
-  });
-});
 
 describe('joinBlockReason', () => {
   it('allows a join into an open lobby with the fee covered', () => {
@@ -132,6 +124,16 @@ describe('raiseBlockReason', () => {
     expect(raiseBlockReason(bidding({}), 7, NOW)).toBe('Increment is not allowed for this tier');
     expect(raiseBlockReason(bidding({ currentPrice: 450 }), 100, NOW)).toBe(
       'Raise would exceed the entry fee budget',
+    );
+  });
+
+  it('takes the allowed increments from the war itself', () => {
+    expect(raiseBlockReason(bidding({ increments: [25] }), 25, NOW)).toBeNull();
+    expect(raiseBlockReason(bidding({ increments: [25] }), 10, NOW)).toBe(
+      'Increment is not allowed for this tier',
+    );
+    expect(raiseBlockReason(bidding({ increments: [] }), 10, NOW)).toBe(
+      'Increment is not allowed for this tier',
     );
   });
 });

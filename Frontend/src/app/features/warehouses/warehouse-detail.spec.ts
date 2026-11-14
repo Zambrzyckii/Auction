@@ -48,6 +48,7 @@ function war(overrides: Partial<WarehouseDetails>): WarehouseDetails {
     isLeader: false,
     cancellationReason: null,
     manifest: null,
+    increments: [10, 50, 100],
     ...overrides,
   };
 }
@@ -115,12 +116,19 @@ describe('WarehouseDetail', () => {
     expect(text).toContain('400–900 across 4 items');
     expect(el().querySelector('.current-price')?.textContent).toBe('60');
     expect(text).toContain('budget: 500');
-    expect(el().querySelector('.unknown-tier')).toBeNull();
   });
 
-  it('marks a tier missing from the client table', () => {
-    flushAll(war({ tier: 'Haunted' }));
-    expect(el().querySelector('.unknown-tier')?.textContent).toContain('Unknown tier');
+  it('renders one raise button per increment sent by the API', () => {
+    flushAll(
+      war({
+        status: 'Bidding',
+        tier: 'Haunted',
+        increments: [25, 75],
+        biddingEndsOn: new Date(Date.now() + 8000).toISOString(),
+      }),
+    );
+    const buttons = el().querySelectorAll<HTMLButtonElement>('button.raise');
+    expect(Array.from(buttons).map((b) => b.textContent?.trim())).toEqual(['+25', '+75']);
   });
 
   it('counts down to the bidding start and the window close', () => {
@@ -301,15 +309,16 @@ describe('WarehouseDetail', () => {
     );
   });
 
-  it('hides the raise buttons for an unknown tier', () => {
+  it('hides the raise buttons when the API sends no increments', () => {
     flushAll(
       war({
         status: 'Bidding',
-        tier: 'Haunted',
+        increments: [],
         biddingEndsOn: new Date(Date.now() + 8000).toISOString(),
       }),
     );
     expect(el().querySelectorAll('button.raise').length).toBe(0);
+    expect(el().querySelector('.raise-problem')).toBeNull();
   });
 
   it('invites a friend to an open war', () => {

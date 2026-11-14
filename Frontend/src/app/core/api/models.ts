@@ -316,6 +316,7 @@ export interface WarehouseDetails extends WarehouseSummary {
   readonly isLeader: boolean;
   readonly cancellationReason: string | null;
   readonly manifest: readonly ManifestItem[] | null;
+  readonly increments: readonly number[];
 }
 
 export interface WarehouseInvite {

@@ -1,18 +1,5 @@
 import { Wallet, WarehouseDetails, WarehouseSummary } from '../../core/api/models';
 
-export interface WarehouseTier {
-  readonly entryFee: number;
-  readonly increments: readonly number[];
-}
-
-export const WAREHOUSE_TIERS: ReadonlyMap<string, WarehouseTier> = new Map([
-  ['Small', { entryFee: 500, increments: [10, 50, 100] }],
-  ['Medium', { entryFee: 2500, increments: [50, 100, 250, 500] }],
-  ['Large', { entryFee: 15_000, increments: [100, 250, 500, 1000] }],
-]);
-
-export const MIN_PLAYERS = 3;
-
 export function joinBlockReason(war: WarehouseDetails, wallet: Wallet, now: number): string | null {
   if (war.status !== 'Open') {
     return `Warehouse war is not open, current status: ${war.status}`;
@@ -64,7 +51,7 @@ export function raiseBlockReason(
   if (war.isLeader) {
     return 'Current leader cannot raise own bid';
   }
-  if (!(WAREHOUSE_TIERS.get(war.tier)?.increments.includes(increment) ?? false)) {
+  if (!war.increments.includes(increment)) {
     return 'Increment is not allowed for this tier';
   }
   if (war.currentPrice + increment > war.entryFee) {

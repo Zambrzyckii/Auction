@@ -16,7 +16,6 @@ import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
 import { clock } from '../../core/time/clock';
 import {
-  WAREHOUSE_TIERS,
   canLeave,
   entryRejected,
   joinBlockReason,
@@ -78,14 +77,6 @@ export class WarehouseDetail {
       war !== null && joined !== null && this.warLoadedAt() > joined && entryRejected(joined, war)
     );
   });
-
-  knownTier(war: WarehouseDetails): boolean {
-    return WAREHOUSE_TIERS.has(war.tier);
-  }
-
-  increments(war: WarehouseDetails): readonly number[] {
-    return WAREHOUSE_TIERS.get(war.tier)?.increments ?? [];
-  }
 
   raiseProblem(war: WarehouseDetails, increment: number): string | null {
     return raiseBlockReason(war, increment, this.now());

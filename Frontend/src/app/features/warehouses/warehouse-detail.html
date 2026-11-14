@@ -1,9 +1,6 @@
 <p><a routerLink="/warehouses">Back to the wars</a></p>
 @if (warPoller.value(); as war) {
   <h2>{{ war.tier }} warehouse war</h2>
-  @if (!knownTier(war)) {
-    <p class="unknown-tier">Unknown tier</p>
-  }
   <p class="war-status">Status: {{ war.status }}</p>
   <p>
     Estimated value: {{ war.estimateMin | number }}–{{ war.estimateMax | number }} across
@@ -59,9 +56,9 @@
       </p>
     }
   }
-  @if (war.status === 'Bidding' && knownTier(war)) {
+  @if (war.status === 'Bidding' && war.increments.length > 0) {
     <p class="raises">
-      @for (inc of increments(war); track inc) {
+      @for (inc of war.increments; track inc) {
         <button
           type="button"
           class="raise"
@@ -72,7 +69,7 @@
         </button>
       }
     </p>
-    @if (raiseProblem(war, increments(war)[0]); as problem) {
+    @if (raiseProblem(war, war.increments[0]); as problem) {
       <p class="raise-problem">{{ problem }}</p>
     }
   }
