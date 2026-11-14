@@ -19,6 +19,7 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 | Potrzeba | Dostępne dziś |
 |---|---|
 | publiczne przeglądanie bez logowania | `GET /api/auctions?limit=N` (aktywne aukcje po `EndsOn`), `GET /api/auctions/{id}` (dowolny status, z `CancellationReason`), `GET /api/auctions/{id}/bids` (potwierdzone oferty, od najnowszych) |
+| własne aukcje | `GET /api/auctions/mine` (aukcje wołającego w każdym statusie, od najnowszych, najwyżej 50) |
 | konta | `POST /api/users/register`, `POST /api/users/login` zwracający `{ token }` z claimem roli w środku |
 | aukcje i ekwipunek za bearer tokenem | `POST /api/auctions`, `POST /api/auctions/{id}/bid`, `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | pieniądze | `GET /api/wallets/{id}`, `GET /api/wallets/{id}/transfers`, `POST /api/wallets/transfers` |
@@ -32,7 +33,7 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 ## Czego brakuje
 
 - Brak kanału push: wszystko powyżej to polling, a świeżo utworzona aukcja pozostaje `Pending` do dwóch cykli pollingu outboxa, zanim pojawi się na liście.
-- Żaden endpoint nie listuje własnych aukcji użytkownika ani jego minionych wojen magazynowych: rozstrzygnięta lub anulowana wojna wypada z publicznej listy, więc klient nie pokaże historii wojen.
+- Żaden endpoint nie listuje minionych wojen magazynowych użytkownika: rozstrzygnięta lub anulowana wojna wypada z publicznej listy, więc klient nie pokaże historii wojen.
 - Brak wyszukiwarki profili i endpointu batch: widoki rozwiązują nazwy użytkowników pojedynczymi `GET /api/profiles/{id}` i cache'ują je po stronie klienta na czas sesji.
 - Zaproszenia magazynowe nie mają id ani akcji przyjęcia lub odrzucenia: klient może tylko przejść po linku albo pozwolić zaproszeniu wygasnąć.
 - Endpoint awatara wymaga JWT, więc publiczna strona nie pokaże awatarów bez zalogowanej sesji.

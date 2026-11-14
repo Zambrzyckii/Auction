@@ -100,7 +100,7 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Profiles \
 `--output-dir` matters for Auctions: the module has **two** migration folders. `Migrations/` holds the initial
 migration plus `AppDbContextModelSnapshot.cs` (legacy name — it is annotated `[DbContext(typeof(AuctionDbContext))]`),
 while `Infrastructure/Migrations/` holds every later migration (`Sync_Auctions_Fix` … `Add_Auction_Status_And_Item_Snapshot`,
-`Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid`) and has no snapshot. EF finds both because it
+`Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid`, `Add_Auction_Seller_Index`) and has no snapshot. EF finds both because it
 scans the whole assembly, but the default output dir is `Migrations/`, so new migrations land in the old folder
 unless you pass `--output-dir`. Wallets is consistent: everything under `Infrastructure/Persistence/Migrations/`
 (`Initial_Wallets`, `Add_Wallets_Inbox`, `Add_Wallets_Outbox`, `Add_Wallets_Funds_Locks`).
@@ -420,17 +420,17 @@ readability — moving an event never touches stored rows.
 
 Queries bypass EF Core: `ISqlConnectionFactory` (a singleton wrapping the connection string,
 `Infrastructure/Persistence/SqlConnectionFactory.cs:7`) hands out an `NpgsqlConnection`, and the handlers run raw
-SQL through Dapper into flat DTOs. Three queries: `GetActiveAuctions` (`WHERE "Status" = @Active ORDER BY "EndsOn"
+SQL through Dapper into flat DTOs. Four queries: `GetActiveAuctions` (`WHERE "Status" = @Active ORDER BY "EndsOn"
 LIMIT @Limit`, `GetActiveAuctionsQueryHandler.cs:11`), `GetAuctionById` (`QuerySingleOrDefaultAsync`, `null` →
 `AuctionNotFoundException` 404, any status — the seller sees `Pending` / `Cancelled` + `CancellationReason`,
-`GetAuctionByIdQueryHandler.cs:11`) and `GetAuctionBids` (the confirmed bid history of one auction, newest first). Each query owns its DTO in its own folder (`ActiveAuctionQueryDto`,
-`AuctionByIdQueryDto`) — identical ten fields today, kept separate on purpose so they can diverge. Dapper matches the
+`GetAuctionByIdQueryHandler.cs:11`), `GetAuctionBids` (the confirmed bid history of one auction, newest first) and `GetMyAuctions` (JWT only, `WHERE "SellerUserId" = @SellerUserId ORDER BY "CreatedOn" DESC LIMIT @MaxRows` with a constant 50, every status, the one uncached query). Each query owns its DTO in its own folder (`ActiveAuctionQueryDto`,
+`AuctionByIdQueryDto`, `MyAuctionQueryDto` with `CreatedOn` as an eleventh field) — the first two identical ten fields today, kept separate on purpose so they can diverge. Dapper matches the
 record constructor **by column name**, so a DTO parameter must be spelled exactly like the column; `Status` is an
 `integer` column that Dapper maps to `AuctionStatus` and the host serializes as a string (`Program.cs:166-167`).
 Writes go through `IAuctionRepository` + EF Core. Wallets does not do this — it reads through EF with `AsNoTracking()`
 (`Infrastructure/Persistence/WalletRepository.cs:24`).
 
-Since phase four (2026-11-01) the three queries run behind the module's TTL read cache. Each query record implements
+Since phase four (2026-11-01) the three anonymous queries run behind the module's TTL read cache, while `GetMyAuctionsQuery` (per user) stays uncached. Each query record implements
 `ICachedQuery` (`Application/Caching/`) with its key (`auctions:list:v1:{limit}`, `auctions:detail:v1:{id}`,
 `auctions:bids:v1:{id}`) and TTL pick, the open-generic `CachingBehavior` intercepts them in the MediatR pipeline, and
 `HybridAuctionReadCache` (`Infrastructure/Caching/`) wraps `HybridCache` fail-open: a cache failure logs, counts on the
@@ -614,7 +614,7 @@ private-profile option followed the same day: `UserProfile.IsPrivate` (migration
 by `PUT /api/profiles/me/privacy`, and `GetProfileQueryHandler` applies the rule at read time — the owner and
 accepted friends (checked through the canonical pair lookup) see the full profile, a stranger gets only the
 username, the `isPrivate` flag and the `avatarUrl`, and the avatar route stays open. Thirteen
-endpoints under `/api/profiles` (51 total), event registry at 37, tables at 38. The chain was probed live against a
+endpoints under `/api/profiles` (52 total), event registry at 37, tables at 38. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`

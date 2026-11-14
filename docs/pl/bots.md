@@ -32,7 +32,7 @@ Od 2026-11-04 host publikuje ponownie cztery publiczne zdarzenia aukcyjne na trw
 
 - Brak kodu botów: feed istnieje, ale nic go jeszcze nie konsumuje, nie ma też skryptu provisioningu.
 - Gateway ogranicza bota jak każdego klienta po adresie (60 żądań na sekundę z tokenem bearer) i nie odróżnia botów, bo strefa botów po `X-Api-Key` wypadła ([ADR-006](adr/006-nginx-gateway.md)). Kilka botów na jednej maszynie dzieli jeden adres, a więc jedną pulę 60 żądań na sekundę.
-- Brak historii ofert i zapytania „moje aukcje", więc bot musi pamiętać, co zrobił.
+- Brak historii ofert, więc bot musi pamiętać, na co licytował. Własne aukcje czyta z `GET /api/auctions/mine`.
 - Brak unieważniania tokenów i endpointu wyłączającego konto, więc token bota pozostaje ważny przez pełne 24 godziny.
 
 ## API

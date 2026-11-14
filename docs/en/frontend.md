@@ -19,6 +19,7 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 | Need | Available today |
 |---|---|
 | public browsing without login | `GET /api/auctions?limit=N` (active auctions ordered by `EndsOn`), `GET /api/auctions/{id}` (any status, with `CancellationReason`), `GET /api/auctions/{id}/bids` (confirmed bids, newest first) |
+| own auctions | `GET /api/auctions/mine` (the caller's auctions in every status, newest first, at most 50) |
 | accounts | `POST /api/users/register`, `POST /api/users/login` returning `{ token }` with the role claim inside |
 | auctions and inventory behind a bearer token | `POST /api/auctions`, `POST /api/auctions/{id}/bid`, `GET /api/inventory`, `POST /api/inventory/craft`, `POST /api/inventory/{id}/sell` |
 | money | `GET /api/wallets/{id}`, `GET /api/wallets/{id}/transfers`, `POST /api/wallets/transfers` |
@@ -32,7 +33,7 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 ## What is missing
 
 - No push channel: everything above is polling, and a freshly created auction stays `Pending` for up to two outbox polling cycles before it appears in the list.
-- No endpoint lists a user's own auctions, and none lists their past warehouse wars: a settled or cancelled war drops out of the public list, so the client cannot show a war history.
+- No endpoint lists a user's past warehouse wars: a settled or cancelled war drops out of the public list, so the client cannot show a war history.
 - No profile search and no batch profile endpoint: views resolve usernames one `GET /api/profiles/{id}` at a time and cache them client-side for the session.
 - Warehouse invites carry no id and no accept or decline action: the client can only follow the link or let the invite expire.
 - The avatar endpoint requires a JWT, so a public page cannot show avatars without a signed-in session.

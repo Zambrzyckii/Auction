@@ -147,7 +147,7 @@ Each module test project has an offline part (`Application/`, `Domain/`, `Infras
 
 | Project | Test methods | Offline | Integration |
 |---|---|---|---|
-| `AuctionServer.Modules.Auctions.Tests` | 94 | 59 | 35 |
+| `AuctionServer.Modules.Auctions.Tests` | 100 | 60 | 40 |
 | `AuctionServer.Modules.Banking.Tests` | 55 | 37 | 18 |
 | `AuctionServer.Modules.Casino.Tests` | 104 | 75 | 29 |
 | `AuctionServer.Modules.Identity.Tests` | 37 | 22 | 15 |

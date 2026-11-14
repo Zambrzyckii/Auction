@@ -32,7 +32,7 @@ Since 2026-11-04 the host re-publishes the four public auction events on the dur
 
 - No bot code: the feed exists, but nothing consumes it yet, and no provisioning script exists either.
 - The gateway limits a bot like any other client by its address (60 requests per second with a bearer token) and does not tell bots apart, because the bot zone keyed on `X-Api-Key` was left out ([ADR-006](adr/006-nginx-gateway.md)). Several bots on one machine share one address and therefore one bucket of 60 requests per second.
-- No bid history and no "my auctions" query, so a bot has to remember what it did.
+- No bid history, so a bot has to remember what it bid on. Its own listings come from `GET /api/auctions/mine`.
 - No token revocation and no endpoint to disable an account, so a bot token stays valid for its full 24 hours.
 
 ## API

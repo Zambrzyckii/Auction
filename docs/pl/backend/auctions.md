@@ -2,7 +2,7 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/auctions.md](../../en/backend/auctions.md)
 
-`AuctionServer.Modules.Auctions` odpowiada za aukcje i oferty: tworzy aukcję jako `Pending`, prosi Inventory o blokadę przedmiotu, przyjmuje oferty z oknem anty-snajperskim, zamyka wygasłe aukcje z serwisu tła i ogłasza wynik do Wallets i Inventory. Zapisy idą przez EF Core, odczyty przez Dapper, a moduł wystawia pięć endpointów pod `/api/auctions`.
+`AuctionServer.Modules.Auctions` odpowiada za aukcje i oferty: tworzy aukcję jako `Pending`, prosi Inventory o blokadę przedmiotu, przyjmuje oferty z oknem anty-snajperskim, zamyka wygasłe aukcje z serwisu tła i ogłasza wynik do Wallets i Inventory. Zapisy idą przez EF Core, odczyty przez Dapper, a moduł wystawia sześć endpointów pod `/api/auctions`.
 
 ## Przegląd
 
@@ -10,7 +10,7 @@
 |---|---|
 | Endpointy | [`Presentation/AuctionEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Presentation/AuctionEndpoints.cs), rekordy żądań `CreateAuctionRequest`, `PlaceBidRequest` |
 | Komendy | `Application/Commands/CreateAuction/` i `Application/Commands/PlaceBid/` (komenda, handler, walidator w każdym) |
-| Zapytania | `Application/Queries/GetActiveAuctions/`, `GetAuctionById/` i `GetAuctionBids/` (zapytanie, handler Dappera, DTO w każdym); wszystkie trzy implementują `ICachedQuery` |
+| Zapytania | `Application/Queries/GetActiveAuctions/`, `GetAuctionById/`, `GetAuctionBids/` i `GetMyAuctions/` (zapytanie, handler Dappera, DTO w każdym); trzy anonimowe zapytania implementują `ICachedQuery`, lista własna nie |
 | Cache odczytów | `Application/Caching/` (`IAuctionReadCache`, `ICachedQuery`, `CachingBehavior`), `Infrastructure/Caching/` (`HybridAuctionReadCache`, `PassThroughAuctionReadCache`, `AuctionCacheMetrics`) |
 | Handlery zdarzeń | `Application/Handlers/ItemLockedEventHandler.cs`, `Application/Handlers/ItemLockRejectedEventHandler.cs` |
 | Domena | [`Domain/Entities/Auction.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Entities/Auction.cs), `Domain/Enums/AuctionStatus.cs`, [`Domain/Exceptions/AuctionExceptions.cs`](../../../Backend/src/AuctionServer.Modules.Auctions/Domain/Exceptions/AuctionExceptions.cs) |
@@ -28,7 +28,7 @@ dotnet test tests/AuctionServer.Modules.Auctions.Tests                          
 dotnet test tests/AuctionServer.Modules.Auctions.Tests --filter "FullyQualifiedName!~IntegrationTests"   # tylko offline, jak w jobie CI unit-tests
 ```
 
-Migracje są rozdzielone między dwa foldery: [`Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Migrations) zawiera `20260707073128_InitialAuctions` i snapshot modelu `AppDbContextModelSnapshot.cs`, a [`Infrastructure/Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) dziesięć późniejszych: `Sync_Auctions_Fix`, `Align_Auctions_With_Configuration`, `Add_EndsOn_And_ItemId_Index`, `Add_Auction_Version`, `Add_Outbox_DeadLetter_And_Backoff`, `Add_Auction_Status_And_Item_Snapshot` (edytowana ręcznie, zawiera wywołanie `migrationBuilder.Sql`) , `Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid` i `Add_Auction_Pending_Bid_Request`. Nowe migracje trzeba tworzyć z `--output-dir Infrastructure/Migrations`, żeby trafiły obok pozostałych.
+Migracje są rozdzielone między dwa foldery: [`Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Migrations) zawiera `20260707073128_InitialAuctions` i snapshot modelu `AppDbContextModelSnapshot.cs`, a [`Infrastructure/Migrations/`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Migrations) jedenaście późniejszych: `Sync_Auctions_Fix`, `Align_Auctions_With_Configuration`, `Add_EndsOn_And_ItemId_Index`, `Add_Auction_Version`, `Add_Outbox_DeadLetter_And_Backoff`, `Add_Auction_Status_And_Item_Snapshot` (edytowana ręcznie, zawiera wywołanie `migrationBuilder.Sql`) , `Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid`, `Add_Auction_Pending_Bid_Request` i `Add_Auction_Seller_Index`. Nowe migracje trzeba tworzyć z `--output-dir Infrastructure/Migrations`, żeby trafiły obok pozostałych.
 
 ## Konfiguracja
 
@@ -44,6 +44,7 @@ Moduł dostaje z `AddAuctionModule` connection string, TTL cache odczytów i prz
 | `EndsOn` akceptowane przez encję | co najmniej teraz + 1 minuta | `Auction.Create` |
 | `StartingPrice` i `Amount` oferty | większe od zera | walidatory i `Auction` |
 | `limit` w `GET /api/auctions` | od 1 do 100 | `AuctionEndpoints` |
+| wiersze `GET /api/auctions/mine` | najwyżej 50 (`MaxRows`) | `GetMyAuctionsQueryHandler` |
 | TTL cache odczytów (`ListTtl`, `DetailTtl`, `BidsTtl`) | domyślnie po 2 s, walidowane 1 do 60 s przy starcie | `Auctions:ReadCache` bindowane w hoście, `ValidateReadCacheOptions` |
 | cache wyłączony, samo L1 albo L1 plus Redis L2 | domyślnie wyłączony; Compose ustawia `Cache:Enabled=true` i `Cache:Redis:ConnectionString=redis:6379` | sekcja `Cache` hosta (`CacheOptions.Load`), przekazywana do `AddAuctionModule` |
 
@@ -62,7 +63,7 @@ Każda metoda przejścia najpierw woła `EnsureStatus`, więc nieoczekiwany stat
 |---|---|---|
 | `AuctionId` | `integer` | klucz główny, kolumna identity, nigdy nie opuszcza modułu |
 | `PublicAuctionId` | `uuid` | unikalny; generowany przez `Guid.NewGuid()` w encji; id używane w trasach i zdarzeniach |
-| `SellerUserId` | `uuid` | `PublicUserId` z Identity wzięty z tokenu |
+| `SellerUserId` | `uuid` | `PublicUserId` z Identity wzięty z tokenu, indeksowany (`IX_Auctions_SellerUserId`) pod listę własną |
 | `ItemId` | `uuid` | `PublicItemId` z Inventory; unikalny dopóki `Status IN (0, 1)` |
 | `CurrentWinningUserId` | `uuid`, nullowalna | null do pierwszej oferty |
 | `CurrentPrice` | `numeric(18,2)` | zaczyna jako `StartingPrice`, potem najwyższa oferta |
@@ -81,12 +82,13 @@ Moduł posiada też `AuctionsBids` — append-only historię ofert (`Id`, `Publi
 | Metoda i trasa | Auth | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|---|
 | `GET /api/auctions?limit=N` | anonimowy | parametr zapytania `limit`, wymagany, od 1 do 100 | 200 z listą `ActiveAuctionQueryDto`, tylko aukcje `Active`, uporządkowane po `EndsOn` | `GetActiveAuctionsQueryHandler` |
+| `GET /api/auctions/mine` | JWT | — | 200 z listą `MyAuctionQueryDto`, aukcje wołającego w każdym statusie, najnowsze po `CreatedOn` najpierw, najwyżej 50 wierszy | `GetMyAuctionsQueryHandler` |
 | `GET /api/auctions/{id}` | anonimowy | — | 200 z `AuctionByIdQueryDto` dla dowolnego statusu, 404 gdy nieznana | `GetAuctionByIdQueryHandler` |
 | `GET /api/auctions/{id}/bids` | anonimowy | — | 200 z listą `AuctionBidQueryDto` (`bidderUserId`, `amount`, `placedOn`), tylko potwierdzone oferty, najnowsze najpierw; 404 gdy aukcja nieznana | `GetAuctionBidsQueryHandler` |
 | `POST /api/auctions` | JWT | `{ itemId, startingPrice, endsOn }` (`EndsOn` to `DateTimeOffset`) | 201 `{ publicAuctionId }` z `Location: /api/auctions/{id}` | `CreateAuctionCommandHandler` |
 | `POST /api/auctions/{id}/bid` | JWT | `{ amount }` | 200 z pustym ciałem | `PlaceBidCommandHandler` |
 
-Oba DTO niosą te same dziesięć pól, `PublicAuctionId`, `SellerUserId`, `CurrentWinningUserId`, `Status`, `CurrentPrice`, `EndsOn`, `ItemName`, `ItemRarity`, `ItemOfficialPrice` i `CancellationReason`, jako dwa osobne rekordy; `Status` jest zwracany po nazwie, bo enumy są serializowane jako stringi, a każda nazwa pola jest w JSON-ie w camelCase (`publicAuctionId`, `currentPrice`). Sprzedawca i licytujący nigdy nie są brani z ciała, tylko z claimu `NameIdentifier`.
+Oba anonimowe DTO niosą te same dziesięć pól, `PublicAuctionId`, `SellerUserId`, `CurrentWinningUserId`, `Status`, `CurrentPrice`, `EndsOn`, `ItemName`, `ItemRarity`, `ItemOfficialPrice` i `CancellationReason`, jako dwa osobne rekordy, a `MyAuctionQueryDto` dodaje `CreatedOn` jako jedenaste pole; `Status` jest zwracany po nazwie, bo enumy są serializowane jako stringi, a każda nazwa pola jest w JSON-ie w camelCase (`publicAuctionId`, `currentPrice`). Sprzedawca i licytujący nigdy nie są brani z ciała, tylko z claimu `NameIdentifier`.
 
 | Wyjątek | Status | Komunikat |
 |---|---|---|
@@ -103,9 +105,9 @@ Oba DTO niosą te same dziesięć pól, `PublicAuctionId`, `SellerUserId`, `Curr
 
 ## Ścieżka odczytu
 
-Odczyty omijają EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/SqlConnectionFactory.cs) tworzy `NpgsqlConnection` z connection stringa modułu, a dwa handlery zapytań wykonują surowy SQL Dapperem: [`GetActiveAuctionsQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs) wybiera dziesięć kolumn DTO `FROM "Auctions" WHERE "Status" = @Active ORDER BY "EndsOn" LIMIT @Limit`, a [`GetAuctionByIdQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetAuctionById/GetAuctionByIdQueryHandler.cs) wybiera te same kolumny `WHERE "PublicAuctionId" = @PublicAuctionId` przez `QuerySingleOrDefaultAsync`, rzucając `AuctionNotFoundException` przy null. Identyfikatory są w cudzysłowach, bo EF Core utworzył je w PascalCase; Dapper mapuje kolumny na konstruktor DTO po nazwie, a całkowitoliczbowy `Status` staje się enumem `AuctionStatus`.
+Odczyty omijają EF Core. [`SqlConnectionFactory`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Persistence/SqlConnectionFactory.cs) tworzy `NpgsqlConnection` z connection stringa modułu, a handlery zapytań wykonują surowy SQL Dapperem: [`GetActiveAuctionsQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetActiveAuctions/GetActiveAuctionsQueryHandler.cs) wybiera dziesięć kolumn DTO `FROM "Auctions" WHERE "Status" = @Active ORDER BY "EndsOn" LIMIT @Limit`, [`GetAuctionByIdQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetAuctionById/GetAuctionByIdQueryHandler.cs) wybiera te same kolumny `WHERE "PublicAuctionId" = @PublicAuctionId` przez `QuerySingleOrDefaultAsync`, rzucając `AuctionNotFoundException` przy null, a [`GetMyAuctionsQueryHandler`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Queries/GetMyAuctions/GetMyAuctionsQueryHandler.cs) wybiera dziesięć kolumn plus `"CreatedOn"` `WHERE "SellerUserId" = @SellerUserId ORDER BY "CreatedOn" DESC LIMIT @MaxRows` ze stałą 50. Identyfikatory są w cudzysłowach, bo EF Core utworzył je w PascalCase; Dapper mapuje kolumny na konstruktor DTO po nazwie, a całkowitoliczbowy `Status` staje się enumem `AuctionStatus`.
 
-Od fazy czwartej trzy zapytania przechodzą przez cache z TTL, zanim ruszy Dapper. Każdy rekord zapytania implementuje [`ICachedQuery`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Caching/ICachedQuery.cs) ze swoim kluczem (`auctions:list:v1:{limit}`, `auctions:detail:v1:{id}`, `auctions:bids:v1:{id}`; `v1` podbijamy, gdy DTO zmienia kształt) i wyborem TTL, otwarty generyk [`CachingBehavior`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Caching/CachingBehavior.cs) przechwytuje je w pipeline MediatR za walidacją, a [`HybridAuctionReadCache`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Caching/HybridAuctionReadCache.cs) owija `HybridCache` (procesowe L1, Redis L2 gdy host je skonfiguruje, `Expiration == LocalCacheExpiration`, wbudowana ochrona przed stampede). Wrapper jest fail-open: awaria cache jest logowana, liczona na meterze `AuctionServer.Auctions.Cache` (`auctions.cache.hits`, `.misses`, `.errors`) i obsługiwana z bazy; wyjątek z factory propaguje bez cache'owania, więc 404 nigdy nie jest zapisywane; anulowane żądanie rzuca dalej bez dotykania bazy. Przy `Cache:Enabled=false` (domyślne poza Compose) szew rozwiązuje się do `PassThroughAuctionReadCache` i każdy odczyt idzie prosto do Dappera.
+Od fazy czwartej trzy zapytania przechodzą przez cache z TTL, zanim ruszy Dapper. Każdy rekord zapytania implementuje [`ICachedQuery`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Caching/ICachedQuery.cs) ze swoim kluczem (`auctions:list:v1:{limit}`, `auctions:detail:v1:{id}`, `auctions:bids:v1:{id}`; `v1` podbijamy, gdy DTO zmienia kształt) i wyborem TTL, otwarty generyk [`CachingBehavior`](../../../Backend/src/AuctionServer.Modules.Auctions/Application/Caching/CachingBehavior.cs) przechwytuje je w pipeline MediatR za walidacją, a [`HybridAuctionReadCache`](../../../Backend/src/AuctionServer.Modules.Auctions/Infrastructure/Caching/HybridAuctionReadCache.cs) owija `HybridCache` (procesowe L1, Redis L2 gdy host je skonfiguruje, `Expiration == LocalCacheExpiration`, wbudowana ochrona przed stampede). Wrapper jest fail-open: awaria cache jest logowana, liczona na meterze `AuctionServer.Auctions.Cache` (`auctions.cache.hits`, `.misses`, `.errors`) i obsługiwana z bazy; wyjątek z factory propaguje bez cache'owania, więc 404 nigdy nie jest zapisywane; anulowane żądanie rzuca dalej bez dotykania bazy. Przy `Cache:Enabled=false` (domyślne poza Compose) szew rozwiązuje się do `PassThroughAuctionReadCache` i każdy odczyt idzie prosto do Dappera. Lista własna celowo zostaje poza cache, bo jej klucz musiałby nieść id wołającego, a lista per użytkownik pollowana co 10 s nic nie zyskuje na TTL 2 s, więc `GetMyAuctionsQuery` nie implementuje `ICachedQuery`, co przypina `CachedQueryTests`.
 
 Obietnica spójności, którą to kupuje: trzy anonimowe odczyty mogą być do jednego TTL (2 s) za bazą, ponad lag outboxa 3-9 s, który i tak opóźnia widoczność oferty; zapisy nigdy nie czytają cache, odpowiedź `POST /bid` pozostaje autorytatywna, a padnięty Redis degraduje opóźnienie odczytów, nigdy poprawność. Żaden inny odczyt w systemie nie jest cache'owany (saldo i blokady Wallets, stan Casino, przedmioty Inventory, pożyczki, lombard, magazyny i profile pozostają bez cache z decyzji), a żadna ścieżka komend nie dotyka `IAuctionReadCache`.
 
