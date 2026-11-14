@@ -31,7 +31,9 @@ function casino(overrides: Partial<CasinoDto>): CasinoDto {
     lifetimeBought: 0,
     lifetimeCashedOut: 0,
     latestPurchase: null,
+    activeBlackjackHand: null,
     roulette: { minBet: 1, maxBet: 1000, maxBetsPerSpin: 20 },
+    blackjack: { minBet: 5, maxBet: 2000 },
     ...overrides,
   };
 }
@@ -179,10 +181,13 @@ describe('Casino', () => {
     expect(text).toContain('15');
   });
 
-  it('links to the roulette table', () => {
+  it('links to the roulette and blackjack tables', () => {
     flushAll(casino({}));
     expect(el().querySelector('.games a[href="/casino/roulette"]')?.textContent).toContain(
       'Roulette',
+    );
+    expect(el().querySelector('.games a[href="/casino/blackjack"]')?.textContent).toContain(
+      'Blackjack',
     );
   });
 

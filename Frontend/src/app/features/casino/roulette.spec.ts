@@ -26,7 +26,9 @@ function casino(overrides: Partial<CasinoDto>): CasinoDto {
     lifetimeBought: 100,
     lifetimeCashedOut: 0,
     latestPurchase: null,
+    activeBlackjackHand: null,
     roulette: LIMITS,
+    blackjack: { minBet: 5, maxBet: 2000 },
     ...overrides,
   };
 }

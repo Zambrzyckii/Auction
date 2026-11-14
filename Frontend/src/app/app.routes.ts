@@ -55,6 +55,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/casino/roulette').then((m) => m.Roulette),
   },
   {
+    path: 'casino/blackjack',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/casino/blackjack').then((m) => m.Blackjack),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),

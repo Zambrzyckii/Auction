@@ -1,0 +1,111 @@
+<h2>Blackjack</h2>
+<p><a routerLink="/casino">Back to the casino</a></p>
+@if (casinoPoller.value(); as casino) {
+  <p>Chip balance: {{ casino.balance | number }}</p>
+  @if (hand(); as current) {
+    <section class="table">
+      <p class="dealer">
+        Dealer:
+        @for (code of current.dealerCards; track $index) {
+          <span class="card">{{ cardLabel(code) }}</span>
+        }
+        @if (current.dealerHidden) {
+          <span class="card hidden-card">??</span>
+        }
+        @if (current.dealerTotal !== null) {
+          <span class="dealer-total">({{ current.dealerTotal }})</span>
+        }
+      </p>
+      <p class="player">
+        You:
+        @for (code of current.playerCards; track $index) {
+          <span class="card">{{ cardLabel(code) }}</span>
+        }
+        <span class="player-total"
+          >({{ current.playerTotal }}{{ current.playerIsSoft ? ' soft' : '' }})</span
+        >
+      </p>
+      <p class="hand-stake">
+        Stake: {{ current.stake | number }}{{ current.doubled ? ' (doubled)' : '' }}
+      </p>
+      @if (current.status === 'InProgress') {
+        <button type="button" class="hit" (click)="act('Hit')" [disabled]="actionPending()">
+          Hit
+        </button>
+        <button type="button" class="stand" (click)="act('Stand')" [disabled]="actionPending()">
+          Stand
+        </button>
+        <button
+          type="button"
+          class="double"
+          (click)="act('Double')"
+          [disabled]="actionPending() || !doubleAllowed()"
+        >
+          Double
+        </button>
+      } @else {
+        <p class="outcome">
+          {{ current.outcome }}{{ current.payout !== null ? ', payout ' + current.payout : '' }}
+        </p>
+        @if (current.autoStood) {
+          <p class="auto-stood">The hand was stood automatically</p>
+        }
+        <button type="button" class="new-hand" (click)="newHand()">New hand</button>
+      }
+    </section>
+  } @else if (casino.balance === 0) {
+    <p class="buy-first">Buy chips first. <a routerLink="/casino">Go to the casino</a></p>
+  } @else {
+    <form class="deal-form" (submit)="$event.preventDefault(); deal()">
+      <label>
+        Stake
+        <input type="number" step="any" [formField]="dealForm.stake" />
+      </label>
+      <button type="submit" class="deal" [disabled]="actionPending() || dealFormProblem() !== null">
+        Deal
+      </button>
+      @if (dealFormProblem(); as problem) {
+        <p class="deal-problem">{{ problem }}</p>
+      }
+    </form>
+  }
+  @if (tableNotice(); as text) {
+    <p class="table-notice">{{ text }}</p>
+  }
+} @else if (casinoPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the table…</p>
+}
+
+<h3>History</h3>
+@if (historyPoller.value(); as hands) {
+  @if (hands.length === 0) {
+    <p>No hands yet.</p>
+  } @else {
+    <table class="history">
+      <tr>
+        <th>Started on</th>
+        <th>Stake</th>
+        <th>Your total</th>
+        <th>Dealer total</th>
+        <th>Outcome</th>
+        <th>Payout</th>
+      </tr>
+      @for (row of hands; track row.publicHandId) {
+        <tr>
+          <td>{{ row.startedOn | date: 'medium' }}</td>
+          <td>{{ row.stake | number }}</td>
+          <td>{{ row.playerTotal }}</td>
+          <td>{{ row.dealerTotal }}</td>
+          <td>{{ row.outcome }}{{ row.autoStood ? ' (auto-stood)' : '' }}</td>
+          <td>{{ row.payout | number }}</td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (historyPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the history…</p>
+}

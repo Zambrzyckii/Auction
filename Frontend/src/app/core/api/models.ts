@@ -159,7 +159,9 @@ export interface Casino {
   readonly lifetimeBought: number;
   readonly lifetimeCashedOut: number;
   readonly latestPurchase: ChipPurchase | null;
+  readonly activeBlackjackHand: ActiveBlackjackHand | null;
   readonly roulette: RouletteLimits;
+  readonly blackjack: BlackjackLimits;
 }
 
 export type RouletteBetType =
@@ -195,4 +197,56 @@ export interface RouletteSpin {
 
 export interface RouletteSpinResult extends RouletteSpin {
   readonly balance: number;
+}
+
+export type BlackjackOutcome = 'Win' | 'Lose' | 'Push' | 'Blackjack';
+
+export interface BlackjackLimits {
+  readonly minBet: number;
+  readonly maxBet: number;
+}
+
+export interface ActiveBlackjackHand {
+  readonly publicHandId: string;
+  readonly stake: number;
+  readonly doubled: boolean;
+  readonly playerCards: readonly number[];
+  readonly playerTotal: number;
+  readonly playerIsSoft: boolean;
+  readonly visibleDealerCards: readonly number[];
+  readonly startedOn: string;
+  readonly lastActionOn: string;
+}
+
+export interface BlackjackHand {
+  readonly publicHandId: string;
+  readonly status: 'InProgress' | 'Completed';
+  readonly stake: number;
+  readonly doubled: boolean;
+  readonly playerCards: readonly number[];
+  readonly playerTotal: number;
+  readonly playerIsSoft: boolean;
+  readonly visibleDealerCards: readonly number[];
+  readonly dealerTotal: number | null;
+  readonly outcome: BlackjackOutcome | null;
+  readonly payout: number | null;
+  readonly autoStood: boolean;
+  readonly balance: number;
+  readonly startedOn: string;
+  readonly completedOn: string | null;
+}
+
+export interface BlackjackHandHistory {
+  readonly publicHandId: string;
+  readonly stake: number;
+  readonly doubled: boolean;
+  readonly outcome: BlackjackOutcome | null;
+  readonly payout: number | null;
+  readonly playerCards: readonly number[];
+  readonly dealerCards: readonly number[];
+  readonly playerTotal: number;
+  readonly dealerTotal: number;
+  readonly autoStood: boolean;
+  readonly startedOn: string;
+  readonly completedOn: string | null;
 }
