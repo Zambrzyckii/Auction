@@ -300,3 +300,43 @@ export interface Pawnshop {
   readonly pendingBotTierName: string | null;
   readonly stock: readonly StockItem[];
 }
+
+export type WarehouseWarStatus = 'Stocking' | 'Open' | 'Bidding' | 'Settled' | 'Cancelled';
+
+export type ParticipantState = 'PendingLock' | 'Active';
+
+export interface WarehouseSummary {
+  readonly publicWarehouseId: string;
+  readonly tier: string;
+  readonly status: WarehouseWarStatus;
+  readonly estimateMin: number;
+  readonly estimateMax: number;
+  readonly entryFee: number;
+  readonly currentPrice: number;
+  readonly itemCount: number;
+  readonly players: number;
+  readonly maxPlayers: number;
+  readonly biddingStartsOn: string | null;
+  readonly biddingEndsOn: string | null;
+}
+
+export interface ManifestItem {
+  readonly name: string;
+  readonly rarity: string;
+  readonly price: number;
+}
+
+export interface WarehouseDetails extends WarehouseSummary {
+  readonly isParticipant: boolean;
+  readonly participantState: ParticipantState | null;
+  readonly isLeader: boolean;
+  readonly cancellationReason: string | null;
+  readonly manifest: readonly ManifestItem[] | null;
+}
+
+export interface WarehouseInvite {
+  readonly publicWarehouseId: string;
+  readonly inviterUserId: string;
+  readonly inviterUsername: string;
+  readonly createdOn: string;
+}

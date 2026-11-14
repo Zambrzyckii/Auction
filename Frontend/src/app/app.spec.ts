@@ -29,6 +29,7 @@ describe('App', () => {
     expect(texts).toContain('Bank');
     expect(texts).toContain('Casino');
     expect(texts).toContain('Pawnshop');
+    expect(texts).toContain('Warehouses');
     expect(texts).toContain('Profile');
     expect(texts).toContain('Log in');
   });

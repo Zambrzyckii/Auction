@@ -1,0 +1,59 @@
+<h2>Warehouse wars</h2>
+
+@if (activeInvites().length > 0) {
+  <section class="invites">
+    <h3>Invites</h3>
+    <ul>
+      @for (invite of activeInvites(); track invite.publicWarehouseId + invite.inviterUserId) {
+        <li>
+          {{ invite.inviterUsername }} invites you —
+          <a [routerLink]="['/warehouses', invite.publicWarehouseId]">open the war</a>
+          <span class="invite-expiry">expires in {{ expiresIn(invite) }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
+@if (listPoller.value(); as wars) {
+  @if (wars.length === 0) {
+    <p>No warehouse wars right now.</p>
+  } @else {
+    <table class="wars">
+      <tr>
+        <th>Tier</th>
+        <th>Status</th>
+        <th>Estimate</th>
+        <th>Entry fee</th>
+        <th>Price</th>
+        <th>Items</th>
+        <th>Players</th>
+        <th>Timing</th>
+        <th></th>
+      </tr>
+      @for (war of wars; track war.publicWarehouseId) {
+        <tr>
+          <td>{{ war.tier }}</td>
+          <td>{{ war.status }}</td>
+          <td>{{ war.estimateMin | number }}–{{ war.estimateMax | number }}</td>
+          <td>{{ war.entryFee | number }}</td>
+          <td>{{ war.currentPrice | number }}</td>
+          <td>{{ war.itemCount }}</td>
+          <td>{{ war.players }}/{{ war.maxPlayers }} including unconfirmed</td>
+          <td>
+            @if (war.status === 'Open' && war.biddingStartsOn !== null) {
+              bidding starts in {{ timeLeft(war.biddingStartsOn, now()) }}
+            } @else if (war.status === 'Bidding' && war.biddingEndsOn !== null) {
+              window closes in {{ timeLeft(war.biddingEndsOn, now()) }}
+            }
+          </td>
+          <td><a [routerLink]="['/warehouses', war.publicWarehouseId]">Detail</a></td>
+        </tr>
+      }
+    </table>
+  }
+} @else if (listPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading the wars…</p>
+}

@@ -65,6 +65,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/pawnshop/pawnshop').then((m) => m.Pawnshop),
   },
   {
+    path: 'warehouses',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/warehouses/warehouse-list').then((m) => m.WarehouseList),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),
