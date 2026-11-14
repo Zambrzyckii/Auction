@@ -12,6 +12,7 @@ function active(overrides: Partial<ActiveBlackjackHand>): ActiveBlackjackHand {
     visibleDealerCards: [5],
     startedOn: '2026-11-14T10:00:00Z',
     lastActionOn: '2026-11-14T10:00:30Z',
+    autoStandOn: '2026-11-14T10:05:30Z',
     ...overrides,
   };
 }
@@ -32,6 +33,7 @@ function hand(overrides: Partial<BlackjackHand>): BlackjackHand {
     autoStood: false,
     balance: 90,
     startedOn: '2026-11-14T10:00:00Z',
+    autoStandOn: '2026-11-14T10:05:00Z',
     completedOn: null,
     ...overrides,
   };
@@ -63,6 +65,7 @@ describe('fromActive', () => {
     expect(view.dealerTotal).toBeNull();
     expect(view.outcome).toBeNull();
     expect(view.lastActionOn).toBe(Date.parse('2026-11-14T10:00:30Z'));
+    expect(view.autoStandOn).toBe('2026-11-14T10:05:30Z');
   });
 });
 
@@ -71,6 +74,11 @@ describe('fromHand', () => {
     const view = fromHand(hand({}), 1_700_000_000_000);
     expect(view.dealerHidden).toBe(true);
     expect(view.lastActionOn).toBe(1_700_000_000_000);
+  });
+
+  it('keeps the server auto-stand deadline', () => {
+    const view = fromHand(hand({}), 1_700_000_000_000);
+    expect(view.autoStandOn).toBe('2026-11-14T10:05:00Z');
   });
 
   it('reveals the dealer once the hand is completed', () => {
@@ -100,5 +108,6 @@ describe('fromHistory', () => {
     expect(view.dealerCards).toEqual([5, 18, 31]);
     expect(view.payout).toBe(20);
     expect(view.lastActionOn).toBe(Date.parse('2026-11-14T10:01:00Z'));
+    expect(view.autoStandOn).toBeNull();
   });
 });

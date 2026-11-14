@@ -47,6 +47,7 @@ function handDto(overrides: Partial<BlackjackHand>): BlackjackHand {
     autoStood: false,
     balance: 90,
     startedOn: '2026-11-14T10:00:00Z',
+    autoStandOn: inMs(300_000),
     completedOn: null,
     ...overrides,
   };
@@ -63,8 +64,13 @@ function activeDto(overrides: Partial<ActiveBlackjackHand>): ActiveBlackjackHand
     visibleDealerCards: [5],
     startedOn: '2026-11-14T10:00:00Z',
     lastActionOn: '2026-11-14T10:00:00Z',
+    autoStandOn: inMs(300_000),
     ...overrides,
   };
+}
+
+function inMs(offset: number): string {
+  return new Date(Date.now() + offset).toISOString();
 }
 
 function historyDto(overrides: Partial<BlackjackHandHistory>): BlackjackHandHistory {
@@ -273,16 +279,39 @@ describe('Blackjack', () => {
     expect(el().querySelector('button.new-hand')).not.toBeNull();
   });
 
-  it('counts down to the auto-stand', () => {
+  it('counts down to the auto-stand deadline sent with the deal', () => {
+    flushAll(casino({}));
+    dealWith(handDto({ autoStandOn: inMs(120_000) }));
+    http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
+    fixture.detectChanges();
+    expect(el().querySelector('.auto-stand')?.textContent).toContain('Auto-stand in 2 min 0 s');
+
+    vi.advanceTimersByTime(2000);
+    fixture.detectChanges();
+    expect(el().querySelector('.auto-stand')?.textContent).toContain('1 min 58 s');
+  });
+
+  it('counts down to the server deadline after a reload', () => {
+    flushAll(casino({ activeBlackjackHand: activeDto({ autoStandOn: inMs(90_000) }) }));
+    fixture.detectChanges();
+    expect(el().querySelector('.auto-stand')?.textContent).toContain('Auto-stand in 1 min 30 s');
+  });
+
+  it('moves the deadline to the one sent after an action', () => {
     flushAll(casino({}));
     dealWith(handDto({}));
     http.expectOne(CASINO_URL).flush(casino({ balance: 90, activeBlackjackHand: activeDto({}) }));
     fixture.detectChanges();
-    expect(el().querySelector('.auto-stand')?.textContent).toContain('Auto-stand in 5 min 0 s');
 
-    vi.advanceTimersByTime(2000);
+    (el().querySelector('button.hit') as HTMLButtonElement).click();
+    http
+      .expectOne({ method: 'POST', url: `${HANDS_URL}/hand-1/actions` })
+      .flush(handDto({ playerCards: [0, 14, 2], playerTotal: 16, autoStandOn: inMs(240_000) }));
     fixture.detectChanges();
-    expect(el().querySelector('.auto-stand')?.textContent).toContain('4 min 58 s');
+    expect(el().querySelector('.auto-stand')?.textContent).toContain('Auto-stand in 4 min 0 s');
+    http
+      .expectOne(CASINO_URL)
+      .flush(casino({ balance: 90, activeBlackjackHand: activeDto({ playerCards: [0, 14, 2] }) }));
   });
 
   it('lists the finished hands', () => {

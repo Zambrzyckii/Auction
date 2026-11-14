@@ -11,7 +11,6 @@ import { clock } from '../../core/time/clock';
 
 const LIST_POLL_MS = 5000;
 const INVITES_POLL_MS = 10_000;
-export const INVITE_TTL_MS = 900_000;
 
 @Component({
   selector: 'app-warehouse-list',
@@ -44,13 +43,10 @@ export class WarehouseList {
 
   readonly activeInvites = computed<readonly WarehouseInvite[]>(() => {
     const rows = this.invitesPoller.value() ?? [];
-    return rows.filter((row) => Date.parse(row.createdOn) + INVITE_TTL_MS > this.now());
+    return rows.filter((row) => Date.parse(row.expiresOn) > this.now());
   });
 
   expiresIn(invite: WarehouseInvite): string {
-    return timeLeft(
-      new Date(Date.parse(invite.createdOn) + INVITE_TTL_MS).toISOString(),
-      this.now(),
-    );
+    return timeLeft(invite.expiresOn, this.now());
   }
 }

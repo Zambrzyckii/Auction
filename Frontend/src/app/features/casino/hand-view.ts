@@ -20,6 +20,7 @@ export interface HandView {
   readonly payout: number | null;
   readonly autoStood: boolean;
   readonly lastActionOn: number;
+  readonly autoStandOn: string | null;
 }
 
 export function fromActive(dto: ActiveBlackjackHand): HandView {
@@ -38,6 +39,7 @@ export function fromActive(dto: ActiveBlackjackHand): HandView {
     payout: null,
     autoStood: false,
     lastActionOn: Date.parse(dto.lastActionOn),
+    autoStandOn: dto.autoStandOn,
   };
 }
 
@@ -57,6 +59,7 @@ export function fromHand(dto: BlackjackHand, receivedAt: number): HandView {
     payout: dto.payout,
     autoStood: dto.autoStood,
     lastActionOn: receivedAt,
+    autoStandOn: dto.autoStandOn,
   };
 }
 
@@ -76,5 +79,6 @@ export function fromHistory(dto: BlackjackHandHistory): HandView {
     payout: dto.payout,
     autoStood: dto.autoStood,
     lastActionOn: Date.parse(dto.completedOn ?? dto.startedOn),
+    autoStandOn: null,
   };
 }

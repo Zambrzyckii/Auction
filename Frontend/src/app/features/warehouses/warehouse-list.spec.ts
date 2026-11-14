@@ -33,10 +33,12 @@ function war(overrides: Partial<WarehouseSummary>): WarehouseSummary {
 
 function invite(overrides: Partial<WarehouseInvite>): WarehouseInvite {
   return {
+    publicInviteId: 'inv-1',
     publicWarehouseId: 'war-1',
     inviterUserId: 'deadbeef-1111-2222-3333-444444444444',
     inviterUsername: 'inviter-a',
     createdOn: new Date(Date.now() - 60_000).toISOString(),
+    expiresOn: new Date(Date.now() + 840_000).toISOString(),
     ...overrides,
   };
 }
@@ -107,24 +109,25 @@ describe('WarehouseList', () => {
     expect(el().textContent).toContain('bidding starts in 0 min 25 s');
   });
 
-  it('lists the invites with the inviter, a link and an expiry', () => {
-    flushAll([], [invite({})]);
+  it('lists the invites with the inviter, a link and the server expiry', () => {
+    flushAll([], [invite({ expiresOn: new Date(Date.now() + 300_000).toISOString() })]);
     const item = el().querySelector('.invites li');
     expect(item?.textContent).toContain('inviter-a invites you');
-    expect(item?.textContent).toContain('expires in 14 min 0 s');
+    expect(item?.textContent).toContain('expires in 5 min 0 s');
     expect(item?.querySelector('a[href="/warehouses/war-1"]')).not.toBeNull();
     expect(remember).toHaveBeenCalledWith('deadbeef-1111-2222-3333-444444444444', 'inviter-a');
   });
 
-  it('filters out an expired invite on the client', () => {
+  it('filters out an invite whose server expiry has passed', () => {
     flushAll(
       [],
       [
         invite({}),
         invite({
+          publicInviteId: 'inv-9',
           publicWarehouseId: 'war-9',
           inviterUsername: 'inviter-b',
-          createdOn: new Date(Date.now() - 900_001).toISOString(),
+          expiresOn: new Date(Date.now() - 1000).toISOString(),
         }),
       ],
     );

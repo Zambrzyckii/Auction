@@ -200,6 +200,7 @@ export interface ActiveBlackjackHand {
   readonly visibleDealerCards: readonly number[];
   readonly startedOn: string;
   readonly lastActionOn: string;
+  readonly autoStandOn: string;
 }
 
 export interface BlackjackHand {
@@ -217,6 +218,7 @@ export interface BlackjackHand {
   readonly autoStood: boolean;
   readonly balance: number;
   readonly startedOn: string;
+  readonly autoStandOn: string;
   readonly completedOn: string | null;
 }
 
@@ -334,8 +336,10 @@ export interface MyWarehouse {
 }
 
 export interface WarehouseInvite {
+  readonly publicInviteId: string;
   readonly publicWarehouseId: string;
   readonly inviterUserId: string;
   readonly inviterUsername: string;
   readonly createdOn: string;
+  readonly expiresOn: string;
 }

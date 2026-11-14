@@ -20,6 +20,7 @@ function handDto(overrides: Partial<BlackjackHand>): BlackjackHand {
     autoStood: false,
     balance: 90,
     startedOn: '2026-11-14T10:00:00Z',
+    autoStandOn: '2026-11-14T10:05:00Z',
     completedOn: null,
     ...overrides,
   };
@@ -36,6 +37,7 @@ function activeDto(overrides: Partial<ActiveBlackjackHand>): ActiveBlackjackHand
     visibleDealerCards: [5],
     startedOn: '2026-11-14T10:00:00Z',
     lastActionOn: '2026-11-14T10:00:00Z',
+    autoStandOn: '2026-11-14T10:05:00Z',
     ...overrides,
   };
 }

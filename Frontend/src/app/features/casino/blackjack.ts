@@ -9,13 +9,7 @@ import { timeLeft } from '../../core/format/time-left';
 import { clock } from '../../core/time/clock';
 import { BlackjackHand, BlackjackHandHistory, Casino as CasinoDto } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
-import {
-  HAND_TIMEOUT_MS,
-  canDouble,
-  cardLabel,
-  dealProblem,
-  reconcileHand,
-} from './blackjack-rules';
+import { canDouble, cardLabel, dealProblem, reconcileHand } from './blackjack-rules';
 import { casinoPollMs } from './casino-rules';
 import { HandView, fromHand, fromHistory } from './hand-view';
 
@@ -98,7 +92,7 @@ export class Blackjack {
   }
 
   autoStandIn(hand: HandView): string {
-    return timeLeft(new Date(hand.lastActionOn + HAND_TIMEOUT_MS).toISOString(), this.now());
+    return hand.autoStandOn === null ? '' : timeLeft(hand.autoStandOn, this.now());
   }
 
   newHand(): void {

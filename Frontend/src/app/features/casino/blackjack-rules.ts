@@ -1,8 +1,6 @@
 import { ActiveBlackjackHand, BlackjackLimits } from '../../core/api/models';
 import { HandView, fromActive } from './hand-view';
 
-export const HAND_TIMEOUT_MS = 300_000;
-
 const CARD_RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'] as const;
 const CARD_SUITS = ['♣', '♦', '♥', '♠'] as const;
 
