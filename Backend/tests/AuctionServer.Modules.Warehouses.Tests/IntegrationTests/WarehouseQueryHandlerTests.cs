@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Warehouses.Application.Options;
+using AuctionServer.Modules.Warehouses.Application.Queries.GetMyWarehouses;
 using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouseById;
 using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouses;
 using AuctionServer.Modules.Warehouses.Domain.Entities;
@@ -124,5 +125,130 @@ public class WarehouseQueryHandlerTests(WarehousesPostgresFixture fixture)
         Assert.False(result.IsParticipant);
         Assert.Null(result.ParticipantState);
         Assert.False(result.IsLeader);
+    }
+
+    [Fact]
+    public async Task GetWarehouseById_ShouldExposeTierIncrements()
+    {
+        var seeded = await fixture.SeedOpenWarAsync(Guid.NewGuid());
+
+        await using var context = fixture.CreateContext();
+        var handler = new GetWarehouseByIdQueryHandler(new WarehouseRepository(context), Options);
+        var result = await handler.Handle(new GetWarehouseByIdQuery(seeded.PublicWarehouseId, Guid.NewGuid()), CancellationToken.None);
+
+        Assert.Equal([10m, 50m], result.Increments);
+    }
+
+    [Fact]
+    public async Task GetWarehouseById_WhenTierIsUnknown_ShouldReturnNoIncrements()
+    {
+        var seeded = await fixture.SeedWarAsync(tier: "Vault");
+
+        await using var context = fixture.CreateContext();
+        var handler = new GetWarehouseByIdQueryHandler(new WarehouseRepository(context), Options);
+        var result = await handler.Handle(new GetWarehouseByIdQuery(seeded.PublicWarehouseId, Guid.NewGuid()), CancellationToken.None);
+
+        Assert.Empty(result.Increments);
+    }
+
+    private async Task<List<MyWarehouseDto>> HandleMineAsync(Guid userId)
+    {
+        await using var context = fixture.CreateContext();
+        var handler = new GetMyWarehousesQueryHandler(new WarehouseRepository(context));
+        return await handler.Handle(new GetMyWarehousesQuery(userId), CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task GetMyWarehouses_ShouldListOnlyWarsOfTheParticipantNewestFirst()
+    {
+        var caller = Guid.NewGuid();
+        var openWar = await fixture.SeedOpenWarAsync(caller);
+        var biddingWar = await fixture.SeedBiddingWarAsync(caller, Guid.NewGuid(), Guid.NewGuid());
+        var foreignWar = await fixture.SeedOpenWarAsync(Guid.NewGuid());
+
+        var result = await HandleMineAsync(caller);
+
+        Assert.Equal([biddingWar.PublicWarehouseId, openWar.PublicWarehouseId], result.Select(w => w.PublicWarehouseId).ToArray());
+        Assert.DoesNotContain(result, w => w.PublicWarehouseId == foreignWar.PublicWarehouseId);
+        var open = Assert.Single(result, w => w.PublicWarehouseId == openWar.PublicWarehouseId);
+        Assert.Equal(WarehouseWarStatus.Open, open.Status);
+        Assert.Equal(ParticipantState.PendingLock, open.ParticipantState);
+        Assert.Equal(1, open.Players);
+        Assert.Equal(500m, open.EntryFee);
+        var bidding = Assert.Single(result, w => w.PublicWarehouseId == biddingWar.PublicWarehouseId);
+        Assert.Equal(WarehouseWarStatus.Bidding, bidding.Status);
+        Assert.Equal(ParticipantState.Active, bidding.ParticipantState);
+        Assert.Equal(3, bidding.Players);
+        Assert.NotNull(bidding.BiddingEndsOn);
+    }
+
+    [Fact]
+    public async Task GetMyWarehouses_WhenSettled_ShouldMarkTheWinnerAsLeader()
+    {
+        var players = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+        var seeded = await fixture.SeedBiddingWarAsync(players);
+        await using (var setupContext = fixture.CreateContext())
+        {
+            var war = await setupContext.Wars.SingleAsync(w => w.PublicWarehouseId == seeded.PublicWarehouseId);
+            war.Raise(players[0], 50m, [10m, 50m], TimeSpan.FromSeconds(10));
+            war.Settle();
+            await setupContext.SaveChangesAsync();
+        }
+
+        var winner = Assert.Single(await HandleMineAsync(players[0]));
+        var loser = Assert.Single(await HandleMineAsync(players[1]));
+
+        Assert.Equal(WarehouseWarStatus.Settled, winner.Status);
+        Assert.True(winner.IsLeader);
+        Assert.Equal(50m, winner.CurrentPrice);
+        Assert.False(loser.IsLeader);
+        Assert.Equal(50m, loser.CurrentPrice);
+    }
+
+    [Fact]
+    public async Task GetMyWarehouses_WhenCancelled_ShouldCarryTheReason()
+    {
+        var caller = Guid.NewGuid();
+        var seeded = await fixture.SeedOpenWarAsync(caller);
+        await using (var setupContext = fixture.CreateContext())
+        {
+            var war = await setupContext.Wars.SingleAsync(w => w.PublicWarehouseId == seeded.PublicWarehouseId);
+            war.Cancel("Lobby timed out");
+            await setupContext.SaveChangesAsync();
+        }
+
+        var row = Assert.Single(await HandleMineAsync(caller));
+
+        Assert.Equal(WarehouseWarStatus.Cancelled, row.Status);
+        Assert.Equal("Lobby timed out", row.CancellationReason);
+        Assert.False(row.IsLeader);
+    }
+
+    [Fact]
+    public async Task GetMyWarehouses_WhenParticipantLeft_ShouldNotListTheWar()
+    {
+        var leaver = Guid.NewGuid();
+        var stayer = Guid.NewGuid();
+        var seeded = await fixture.SeedOpenWarAsync(leaver, stayer);
+        await using (var setupContext = fixture.CreateContext())
+        {
+            var war = await setupContext.Wars.SingleAsync(w => w.PublicWarehouseId == seeded.PublicWarehouseId);
+            war.Leave(leaver);
+            await setupContext.SaveChangesAsync();
+        }
+
+        Assert.Empty(await HandleMineAsync(leaver));
+        Assert.Single(await HandleMineAsync(stayer), w => w.PublicWarehouseId == seeded.PublicWarehouseId);
+    }
+
+    [Fact]
+    public async Task GetMyWarehouses_ShouldCapTheListAtFiftyRows()
+    {
+        var caller = Guid.NewGuid();
+        for (var i = 0; i < 51; i++) await fixture.SeedOpenWarAsync(caller);
+
+        var result = await HandleMineAsync(caller);
+
+        Assert.Equal(50, result.Count);
     }
 }

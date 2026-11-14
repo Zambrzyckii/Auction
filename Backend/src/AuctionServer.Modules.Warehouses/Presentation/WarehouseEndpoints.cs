@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AuctionServer.Modules.Warehouses.Application.Command.JoinWarehouseWar;
 using AuctionServer.Modules.Warehouses.Application.Command.LeaveWarehouseWar;
 using AuctionServer.Modules.Warehouses.Application.Command.PlaceWarehouseBid;
+using AuctionServer.Modules.Warehouses.Application.Queries.GetMyWarehouses;
 using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouseById;
 using AuctionServer.Modules.Warehouses.Application.Queries.GetWarehouses;
 using AuctionServer.Modules.Warehouses.Presentation.Request;
@@ -22,6 +23,13 @@ public static class WarehouseEndpoints
         {
             if (limit is < 1 or > 100) return Results.BadRequest(new { Error = "Limit must be between 1 and 100" });
             var result = await sender.Send(new GetWarehousesQuery(limit));
+            return Results.Ok(result);
+        }).RequireAuthorization();
+
+        group.MapGet("/mine", async (ClaimsPrincipal user, ISender sender) =>
+        {
+            var userId = Guid.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await sender.Send(new GetMyWarehousesQuery(userId));
             return Results.Ok(result);
         }).RequireAuthorization();
 

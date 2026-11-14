@@ -45,6 +45,15 @@ public sealed class WarehouseRepository(WarehouseDbContext context) : IWarehouse
             .ToListAsync(token);
     }
 
+    public async Task<List<WarehouseWar>> GetWarsForParticipantReadOnlyAsync(Guid userId, int limit, CancellationToken token)
+    {
+        return await context.Wars.AsNoTracking()
+            .Where(w => w.Participants.Any(p => p.UserId == userId))
+            .OrderByDescending(w => w.CreatedOn)
+            .Take(limit)
+            .ToListAsync(token);
+    }
+
     public async Task<WarehouseWar> GetWarByPublicIdReadOnlyAsync(Guid publicWarehouseId, CancellationToken token)
     {
         var war = await context.Wars.AsNoTracking()

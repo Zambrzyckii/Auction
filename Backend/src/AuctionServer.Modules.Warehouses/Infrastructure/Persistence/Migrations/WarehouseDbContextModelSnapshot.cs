@@ -204,6 +204,8 @@ namespace AuctionServer.Modules.Warehouses.Infrastructure.Persistence.Migrations
 
                             b1.HasKey("Id");
 
+                            b1.HasIndex("UserId");
+
                             b1.HasIndex("WarehouseWarId", "UserId")
                                 .IsUnique();
 

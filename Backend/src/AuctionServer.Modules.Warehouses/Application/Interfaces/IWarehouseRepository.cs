@@ -12,6 +12,7 @@ public interface IWarehouseRepository
     Task SaveWarWithOutboxAsync(OutboxMessage outboxMessage, CancellationToken token);
     Task SaveWarAsync(CancellationToken token);
     Task<List<WarehouseWar>> GetActiveWarsReadOnlyAsync(int limit, CancellationToken token);
+    Task<List<WarehouseWar>> GetWarsForParticipantReadOnlyAsync(Guid userId, int limit, CancellationToken token);
     Task<WarehouseWar> GetWarByPublicIdReadOnlyAsync(Guid publicWarehouseId, CancellationToken token);
     Task<Dictionary<Guid, int>> GetStockCountsReadOnlyAsync(List<Guid> publicWarehouseIds, CancellationToken token);
     Task<List<StockItem>> GetStockReadOnlyAsync(Guid publicWarehouseId, CancellationToken token);

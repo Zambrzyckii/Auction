@@ -19,6 +19,7 @@ public record WarehouseDetailsDto(
     ParticipantState? ParticipantState,
     bool IsLeader,
     string? CancellationReason,
-    IReadOnlyList<ManifestItemDto>? Manifest);
+    IReadOnlyList<ManifestItemDto>? Manifest,
+    IReadOnlyList<decimal> Increments);
 
 public record ManifestItemDto(string Name, string Rarity, decimal Price);

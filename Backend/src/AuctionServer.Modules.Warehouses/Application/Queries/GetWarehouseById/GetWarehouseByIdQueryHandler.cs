@@ -13,7 +13,8 @@ public class GetWarehouseByIdQueryHandler(IWarehouseRepository repository, Wareh
         var war = await repository.GetWarByPublicIdReadOnlyAsync(request.PublicWarehouseId, token);
         var stockCounts = await repository.GetStockCountsReadOnlyAsync([war.PublicWarehouseId], token);
         var participant = war.Participants.SingleOrDefault(p => p.UserId == request.CallerId);
-        
+        var increments = options.Tiers.SingleOrDefault(t => t.Name == war.Tier)?.Increments ?? [];
+
         IReadOnlyList<ManifestItemDto>? manifest = null;
         if (war.Status == WarehouseWarStatus.Settled)
         {
@@ -38,6 +39,7 @@ public class GetWarehouseByIdQueryHandler(IWarehouseRepository repository, Wareh
             participant?.State,
             war.CurrentLeaderId == request.CallerId,
             war.CancellationReason,
-            manifest);
+            manifest,
+            increments);
     }
 }

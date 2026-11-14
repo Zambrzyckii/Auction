@@ -24,6 +24,7 @@ internal sealed class WarehouseWarConfiguration : IEntityTypeConfiguration<Wareh
             participant.WithOwner().HasForeignKey("WarehouseWarId");
             participant.HasKey(x => x.Id);
             participant.HasIndex("WarehouseWarId", nameof(WarehouseParticipant.UserId)).IsUnique();
+            participant.HasIndex(x => x.UserId);
         });
         builder.Navigation(x => x.Participants).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
