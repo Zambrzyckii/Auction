@@ -46,7 +46,7 @@ The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infras
 - Headers to the api. `Host`, `X-Forwarded-Proto`, `X-Forwarded-For` with the connecting address only and `X-Request-Id` with a fresh 32-character id. Values the client sent for the last two are discarded.
 - Compression. gzip for `application/json` and `text/plain` responses of 1 KB or more, with `Vary: Accept-Encoding`. The OpenAPI document shrinks from 31 KB to under 3 KB.
 - Access log. One JSON object per request on stdout (`docker compose logs gateway`) with `time`, `remote_addr`, `method`, `uri`, `status`, `request_time`, `upstream_response_time` and `request_id`. The `Authorization` header is never logged, and `request_id` equals the `X-Request-Id` the api receives.
-- Finding the api. nginx asks Docker's DNS (`127.0.0.11`) for the api address every 5 seconds, so a recreated api with a new address is found without restarting nginx. The switch costs at most one 5-second window of 502 responses.
+- Finding the api. nginx asks Docker's DNS (`127.0.0.11`) for the api address every 5 seconds, so a recreated api with a new address is found without restarting nginx. The switch costs at most one 5-second window of 502 responses. Such a 502 carries `{"error":"Api unavailable"}` like the other gateway errors.
 - Trust on the host side. The `Gateway` section (`Gateway__Enabled`, `Gateway__TrustedNetworks__0`) makes the host accept `X-Forwarded-For` and `X-Forwarded-Proto` only from the `edge` network. The section is fail-fast. An enabled gateway needs at least one network, and every entry must be a canonical CIDR such as `172.16.80.0/24`, never `172.16.80.1/24`. `UseForwardedHeaders` is the first middleware.
 - Health. `/health/live` runs no checks, `/health/ready` runs the checks tagged `ready` (the database today) and `/health` runs all of them. The api container probes `/health/ready` with bash `/dev/tcp`, because the runtime image has no HTTP client. Compose never restarts an unhealthy container, the status only gates the gateway start and shows in `docker compose ps`.
 - Debugging without nginx. `docker compose -f compose.yaml -f compose.debug.yaml up -d` publishes the api on `127.0.0.1:8081`, reachable from this machine only.
@@ -101,9 +101,7 @@ The `pgbackup` service dumps the database on the `@daily` schedule straight to p
 
 ## What is missing
 
-- **There is no TLS yet, so the stack must not face the internet until it lands.** The owner's target is HTTPS only with an own certificate, renewed automatically or served by a redundant pair so the certificate does not become a single point of failure.
-- nginx answers 502 (api unreachable, for example inside the 5-second re-resolve window) with its default HTML page, unlike the JSON bodies of 413 and 429.
-- nginx forwards `Host` without the port, so the OpenAPI `servers` entry reads `http://localhost/`. The api builds only relative URLs, so nothing else is affected.
+- **There is no TLS yet, so the stack must not face the internet until it lands.** The owner's target is HTTPS only with an own certificate, renewed automatically or served by a redundant pair so the certificate does not become a single point of failure.- nginx forwards `Host` without the port, so the OpenAPI `servers` entry reads `http://localhost/`. The api builds only relative URLs, so nothing else is affected.
 - The CI pipeline has no deploy stage: the `image` job pushes to GHCR from `main`, but nothing consumes that image automatically.
 - Secret zero remains: the generated secret files and the AppRole credentials volume live on the host filesystem, so the trust chain still ends there (named honestly in [ADR-014](adr/014-openbao-secrets.md)).
 

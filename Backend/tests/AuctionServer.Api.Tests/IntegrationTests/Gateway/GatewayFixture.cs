@@ -12,22 +12,25 @@ public class GatewayFixture : IAsyncLifetime
     private const string GatewayAlias = "gateway";
 
     private readonly INetwork _network;
-    private readonly IContainer _upstream;
+    private readonly IContainer? _upstream;
     private readonly IContainer _gateway;
 
     public GatewayFixture() : this(new NetworkBuilder())
     {
     }
 
-    protected GatewayFixture(NetworkBuilder networkBuilder)
+    protected GatewayFixture(NetworkBuilder networkBuilder, bool withUpstream = true)
     {
         _network = networkBuilder.Build();
 
-        _upstream = new ContainerBuilder("traefik/whoami:v1.12.0")
-            .WithNetwork(_network)
-            .WithNetworkAliases("api")
-            .WithCommand("-port", "8080")
-            .Build();
+        if (withUpstream)
+        {
+            _upstream = new ContainerBuilder("traefik/whoami:v1.12.0")
+                .WithNetwork(_network)
+                .WithNetworkAliases("api")
+                .WithCommand("-port", "8080")
+                .Build();
+        }
 
         _gateway = new ContainerBuilder("nginx:1.28.3-alpine")
             .WithNetwork(_network)
@@ -68,14 +71,14 @@ public class GatewayFixture : IAsyncLifetime
     public async Task InitializeAsync()
     {
         await _network.CreateAsync();
-        await _upstream.StartAsync();
+        if (_upstream is not null) await _upstream.StartAsync();
         await _gateway.StartAsync();
     }
 
     public async Task DisposeAsync()
     {
         await _gateway.DisposeAsync();
-        await _upstream.DisposeAsync();
+        if (_upstream is not null) await _upstream.DisposeAsync();
         await _network.DisposeAsync();
     }
 }
