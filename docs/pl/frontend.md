@@ -61,13 +61,15 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 
 ## Reguły po stronie klienta i lustrzane stałe
 
-Każdy feature trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
+Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, profile) trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed; walidatory rejestracji i czas życia zaproszenia magazynowego wciąż mieszkają w plikach komponentów. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
 
 | Stała klienta (moduł) | Lustrzy |
 |---|---|
+| `PASSWORD_REQUIREMENTS` i limity 30 znaków (`register.ts`) | walidator rejestracji: regułę siły hasła oraz limity długości username, imienia i nazwiska |
 | `WAREHOUSE_TIERS`, `MIN_PLAYERS` (`warehouse-rules.ts`) | tabelę taryf magazynów: wpisowe, inkrementy podbić i minimalną liczbę graczy |
 | `INVITE_TTL_MS` (`warehouse-list.ts`) | czas życia zaproszenia magazynowego (15 minut) |
 | `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | timeout auto-stand blackjacka (5 minut) |
+| `CARD_RANKS`, `CARD_SUITS` (`blackjack-rules.ts`) | kodowanie kart talii kasyna (figura z `code % 13`, kolor z `code / 13`) |
 | `MIN_LEAD_MS`, `MAX_LEAD_MS` (`auction-rules.ts`) | okno czasu zakończenia aukcji (od minuty do trzydziestu dni) |
 | `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | statusy, które bank liczy jako otwartą pożyczkę |
 | `RARITY_ORDER` (`pawnshop-rules.ts`) | drabinę rzadkości, po której ulepszenia bota idą wyłącznie w górę |

@@ -61,13 +61,15 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 
 ## Client-side rules and mirrored constants
 
-Each feature keeps its prechecks, poll rhythms and mirrored constants in a pure `<feature>-rules.ts` module next to its components (`social-links.ts` plays that role for the social links), tested without TestBed. The constants below mirror backend configuration or validators and must follow any backend change:
+Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions, profiles) keep their prechecks, poll rhythms and mirrored constants in a pure `<feature>-rules.ts` module next to their components (`social-links.ts` plays that role for the social links), tested without TestBed; the register validators and the warehouse invite lifetime still live in their component files. The constants below mirror backend configuration or validators and must follow any backend change:
 
 | Client constant (module) | Mirrors |
 |---|---|
+| `PASSWORD_REQUIREMENTS` and the 30-character caps (`register.ts`) | the register validator: the password-strength rule and the username, name and surname length limits |
 | `WAREHOUSE_TIERS`, `MIN_PLAYERS` (`warehouse-rules.ts`) | the warehouse tier table: entry fees, raise increments and the minimum player count |
 | `INVITE_TTL_MS` (`warehouse-list.ts`) | the warehouse invite lifetime (15 minutes) |
 | `HAND_TIMEOUT_MS` (`blackjack-rules.ts`) | the blackjack auto-stand timeout (5 minutes) |
+| `CARD_RANKS`, `CARD_SUITS` (`blackjack-rules.ts`) | the card encoding of the casino deck (rank from `code % 13`, suit from `code / 13`) |
 | `MIN_LEAD_MS`, `MAX_LEAD_MS` (`auction-rules.ts`) | the auction end-time window (one minute to thirty days) |
 | `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | the statuses the bank counts as an open loan |
 | `RARITY_ORDER` (`pawnshop-rules.ts`) | the rarity ladder bot upgrades must climb strictly upward |
