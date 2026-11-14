@@ -24,6 +24,15 @@ describe('sanitizeReturnUrl', () => {
   it('rejects a protocol-relative url', () => {
     expect(sanitizeReturnUrl('//evil.example')).toBe('/auctions');
   });
+
+  it('rejects a backslash that browsers treat as a slash', () => {
+    expect(sanitizeReturnUrl('/\\evil.example')).toBe('/auctions');
+  });
+
+  it('rejects control characters', () => {
+    expect(sanitizeReturnUrl('/wal\tlet')).toBe('/auctions');
+    expect(sanitizeReturnUrl('/wallet\u0000')).toBe('/auctions');
+  });
 });
 
 describe('Login', () => {

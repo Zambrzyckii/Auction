@@ -12,10 +12,15 @@ import { toApiError } from "../../core/api/api-error";
 import { Session } from "../../core/auth/session";
 
 export function sanitizeReturnUrl(raw: string | null): string {
-  if (raw !== null && raw.startsWith("/") && raw[1] !== "/") {
-    return raw;
+  if (raw === null || !raw.startsWith("/") || raw[1] === "/") {
+    return "/auctions";
   }
-  return "/auctions";
+  for (const ch of raw) {
+    if (ch === "\\" || ch < " ") {
+      return "/auctions";
+    }
+  }
+  return raw;
 }
 
 @Component({

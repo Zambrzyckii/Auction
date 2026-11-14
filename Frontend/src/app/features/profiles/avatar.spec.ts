@@ -72,6 +72,15 @@ describe('ProfileAvatar', () => {
     expect(el().querySelector('img')?.getAttribute('src')).toBe('blob:fake-1');
   });
 
+  it('ignores a response outside the allowed image types', () => {
+    fixture.componentRef.setInput('avatarUrl', AVATAR_URL);
+    fixture.detectChanges();
+    http.expectOne(AVATAR_URL).flush(new Blob(['<svg/>'], { type: 'image/svg+xml' }));
+    fixture.detectChanges();
+    expect(el().querySelector('img')).toBeNull();
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
   it('revokes the old object url when the input changes', () => {
     fixture.componentRef.setInput('avatarUrl', AVATAR_URL);
     fixture.detectChanges();

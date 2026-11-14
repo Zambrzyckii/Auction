@@ -36,7 +36,8 @@ export class ProfileAvatar {
         return;
       }
       const sub = this.http.get(url, { responseType: 'blob' }).subscribe({
-        next: (blob) => this.objectUrl.set(URL.createObjectURL(blob)),
+        next: (blob) =>
+          this.objectUrl.set(AVATAR_TYPES.includes(blob.type) ? URL.createObjectURL(blob) : null),
         error: () => this.objectUrl.set(null),
       });
       onCleanup(() => {
