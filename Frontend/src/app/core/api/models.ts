@@ -250,3 +250,53 @@ export interface BlackjackHandHistory {
   readonly startedOn: string;
   readonly completedOn: string | null;
 }
+
+export type PawnshopRarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
+
+export type ShopStatus = 'PendingPayment' | 'Active' | 'Rejected';
+
+export type StockItemStatus = 'InStock' | 'Withdrawn' | 'Sold';
+
+export interface BotTier {
+  readonly name: string;
+  readonly rarity: PawnshopRarity;
+  readonly price: number;
+  readonly spawnInterval: string;
+  readonly payoutRate: number;
+}
+
+export interface PawnshopOffers {
+  readonly premisesPrice: number;
+  readonly premisesRequiredTurnover: number;
+  readonly stockSellDelay: string;
+  readonly botTiers: readonly BotTier[];
+}
+
+export interface StockItem {
+  readonly publicStockItemId: string;
+  readonly name: string;
+  readonly rarity: PawnshopRarity;
+  readonly price: number;
+  readonly payoutRate: number;
+  readonly status: StockItemStatus;
+  readonly spawnedOn: string;
+  readonly sellAfter: string;
+  readonly resolvedOn: string | null;
+  readonly payoutAmount: number | null;
+}
+
+export interface Pawnshop {
+  readonly publicPawnshopId: string;
+  readonly status: ShopStatus;
+  readonly requestedOn: string;
+  readonly activatedOn: string | null;
+  readonly rejectionReason: string | null;
+  readonly botTierName: string | null;
+  readonly botRarity: PawnshopRarity | null;
+  readonly botSpawnInterval: string | null;
+  readonly botPayoutRate: number | null;
+  readonly botPurchasedOn: string | null;
+  readonly nextSpawnOn: string | null;
+  readonly pendingBotTierName: string | null;
+  readonly stock: readonly StockItem[];
+}

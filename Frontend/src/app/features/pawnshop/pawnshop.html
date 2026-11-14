@@ -1,0 +1,68 @@
+<h2>Pawnshop</h2>
+@if (offers(); as catalog) {
+  <p>
+    Premises price: {{ catalog.premisesPrice | number }}, required turnover:
+    {{ catalog.premisesRequiredTurnover | number }}
+  </p>
+  <table class="tiers">
+    <tr>
+      <th>Bot</th>
+      <th>Rarity</th>
+      <th>Price</th>
+      <th>Spawn interval</th>
+      <th>Payout rate</th>
+    </tr>
+    @for (tier of catalog.botTiers; track tier.name) {
+      <tr>
+        <td>{{ tier.name }}</td>
+        <td>{{ tier.rarity }}</td>
+        <td>{{ tier.price | number }}</td>
+        <td>{{ tier.spawnInterval }}</td>
+        <td>{{ tier.payoutRate | number }}</td>
+      </tr>
+    }
+  </table>
+} @else if (offersError(); as error) {
+  <p class="error">{{ error }}</p>
+} @else {
+  <p>Loading the offers…</p>
+}
+@if (walletPoller.value(); as wallet) {
+  <p>
+    Available funds: {{ wallet.availableFunds | number }}, lifetime turnover:
+    {{ wallet.lifetimeTurnover | number }}
+  </p>
+}
+
+<h3>Your pawnshop</h3>
+@if (shopPoller.value(); as shop) {
+  @if (shop !== 'none' && shop.status === 'PendingPayment') {
+    <p class="payment-pending">Payment pending…</p>
+  }
+  @if (shop !== 'none' && shop.status === 'Rejected' && shop.rejectionReason !== null) {
+    <p class="shop-rejection">{{ shop.rejectionReason }}</p>
+  }
+  @if (shop !== 'none' && shop.status === 'Active') {
+    <p class="shop-active">Your pawnshop is active</p>
+  }
+  @if (showsBuy(shop)) {
+    <button
+      type="button"
+      class="buy-premises"
+      (click)="buyPremises()"
+      [disabled]="buyPending() || buyProblem() !== null"
+    >
+      Buy premises
+    </button>
+    @if (buyProblem(); as problem) {
+      <p class="premises-problem">{{ problem }}</p>
+    }
+  }
+  @if (shopNotice(); as text) {
+    <p class="shop-notice">{{ text }}</p>
+  }
+} @else if (shopPoller.error(); as error) {
+  <p class="error">{{ error.message }}</p>
+} @else {
+  <p>Loading your pawnshop…</p>
+}

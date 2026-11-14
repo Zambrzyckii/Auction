@@ -60,6 +60,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/casino/blackjack').then((m) => m.Blackjack),
   },
   {
+    path: 'pawnshop',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/pawnshop/pawnshop').then((m) => m.Pawnshop),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/own-profile').then((m) => m.OwnProfile),
