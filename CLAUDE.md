@@ -5,11 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Repository map
 
 Gamified auction system. `Backend/` is a .NET 10 modular monolith backed by PostgreSQL,
-`Frontend/` is its Angular 22 client, scaffolded on 2026-11-08, with the MVP views shipped on 2026-11-10.
+`Frontend/` is its Angular 22 client, scaffolded on 2026-11-08, with the MVP views shipped on 2026-11-10 and the module views on 2026-11-14.
 
 ```
 Backend/          the backend codebase (solution: AuctionServer.slnx)
-Frontend/         Angular 22 client (MVP views shipped), commands in Frontend/CLAUDE.md
+Frontend/         Angular 22 client (module views shipped), commands in Frontend/CLAUDE.md
 Bots/             planned AI market bots, not started
 Infrastructure/   nginx gateway, telemetry configuration, k6 scenarios, PgBouncer configuration, the OpenBao bootstrap (vault/) and the gitignored secret files with their generator (secrets/); Redis and RabbitMQ are defined in the root compose.yaml
 ```

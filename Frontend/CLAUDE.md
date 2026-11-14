@@ -25,5 +25,5 @@ Angular 22 with the CLI defaults: standalone components, signals, zoneless chang
 Vitest, plain SCSS (no component library) and Signal Forms. Under zoneless change detection a
 plain class field mutated in a `subscribe` callback does not refresh the view; state that the
 template reads belongs in a signal. New npm packages beyond the scaffold need the owner's
-consent (ADR-015). The MVP UI is deliberately bare; the UI/UX pass is a separate branch of the
+consent (ADR-015). The UI is deliberately bare; the UI/UX pass is a separate branch of the
 plan at the end of the project, so do not invest in styling.

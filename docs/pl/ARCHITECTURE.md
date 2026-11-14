@@ -22,7 +22,7 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 | Object storage SeaweedFS dla awatarów | istnieje (serwis Compose, bez publikowanych portów) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (gateway nginx, obraz API, PostgreSQL, SeaweedFS i stack telemetrii) | istnieje | [infrastructure.md](infrastructure.md) |
 | Pipeline CI na GitHub Actions | istnieje | [Build i CI](#build-i-ci) |
-| Frontend Angular | istnieje (widoki MVP, dev-server poza Compose) | [frontend.md](frontend.md) |
+| Frontend Angular | istnieje (widoki modułów, dev-server poza Compose) | [frontend.md](frontend.md) |
 | API gateway nginx | istnieje (usługa Compose, jedyne publikowane wejście) | [infrastructure.md](infrastructure.md#gateway) |
 | RabbitMQ | planowane | [infrastructure.md](infrastructure.md) |
 | Boty AI (Python) | planowane | [bots.md](bots.md) |

@@ -80,9 +80,9 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 
 Still planned after these:
 
-- Views for the remaining modules (decided 2026-11-12), then the AI market bots, then the UI/UX pass over the deliberately bare frontend MVP as the final branch of the plan.
+- The AI market bots, then the UI/UX pass over the deliberately bare frontend as the final branch of the plan.
 
-RabbitMQ, listed here until 2026-11-04, shipped that day as the event transport behind `IIntegrationEventPublisher` with the consume-only market exchange for the bots (see [ADR-013](adr/013-rabbitmq-transport.md)). The Angular frontend, listed here until 2026-11-10, shipped that day as the MVP views over the existing API (see [frontend.md](frontend.md)). Its real UI/UX pass stays at the end of the roadmap.
+RabbitMQ, listed here until 2026-11-04, shipped that day as the event transport behind `IIntegrationEventPublisher` with the consume-only market exchange for the bots (see [ADR-013](adr/013-rabbitmq-transport.md)). The Angular frontend, listed here until 2026-11-10, shipped that day as the MVP views over the existing API (see [frontend.md](frontend.md)). The views for the remaining modules, listed here until 2026-11-14, shipped that day on the same API (see [frontend.md](frontend.md)). The real UI/UX pass stays at the end of the roadmap.
 
 ## 7. Ground rules
 

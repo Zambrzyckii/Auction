@@ -117,6 +117,7 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-11-12 | Widoki wszystkich pozostałych modułów backendu (profile, transfery, wojny magazynowe, bank, lombard, kasyno) wchodzą przed botami AI, jako kontynuacja frontendu na istniejącym API bez zmian w backendzie | właściciel | MVP pokrywa około 13 z 51 endpointów, frontend to stack nauki właściciela, a boty dostaną potem klienta, który potrafi pokazać każdy moduł |
 | 2026-11-12 | Pułapka rebootu dev-vaulta (pusty vault po reboocie hosta, api w pętli restartów) jest śledzona jako issue #24 i nie jest teraz naprawiana | właściciel | lekarstwo jest znane (`docker compose up -d` i restart api), a drobiazgi żyją jako issues zgodnie z decyzją z 2026-11-07 |
 | 2026-11-12 | Skrypty weryfikacyjne mogą zakładać konto bota kluczem z `Infrastructure/secrets/bots-api-key.secret` i mintować środki przez `POST /api/wallets/funds` (wariant B) | właściciel | mintowane środki liczą się do obrotu, co daje krótkie scenariusze na żywo dla banku, lombardu i wojen magazynowych, a klucz żyje tylko w pamięci procesu, nigdy w logach ani plikach |
+| 2026-11-14 | Prechecki widoków odwzorowują kolejność guardów serwera i dokładne teksty odmów przez nazwane helpery z wczesnymi returnami, a zagnieżdżone ternary są zakazane w logice widoków | właściciel | zagnieżdżony ternary w prechecku ruletki okazał się w przeglądzie nieczytelny, a nazwane helpery utrzymują widoczne odwzorowanie reguł backendu |
 
 ## Powiązane dokumenty
 
