@@ -6,7 +6,7 @@ Szkielet istnieje od 2026-11-08: `Frontend/` to workspace Angular 22 CLI (kompon
 
 ## Status
 
-Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angular-frontend-stack.md): każdy moduł backendu ma już widok (przelewy, pożyczki bankowe, żetony kasyna z ruletką i blackjackiem, lombard, wojny magazynowe, profil własny i publiczny ze znajomymi i zaproszeniami) obok aukcji, ekwipunku i portfela z MVP. Trasy zalogowane siedzą za guardem tokenu, a 401 czyści sesję i przekierowuje na login z returnUrl (refresh tokeny czekają jako issue #18). Bez kanału push klient polluje, a każdy widok dobiera swój rytm: detal aukcji i jej oferty co 2,5 s, detal wojny magazynowej co sekundę w trakcie licytacji i co 2,5 s poza nią, portfele, ekwipunek i lista magazynów co 5 s, lista aukcji, historie gier i zaproszenia co 10 s, a widoki oparte na sagach (oczekujący zakup żetonów, oczekująca płatność lombardu, oczekująca pożyczka) schodzą do 2 s, póki coś jest w locie; przy 5xx i błędach sieci poller wycofuje się wykładniczo do 30 s, a 429 honoruje `Retry-After`. Przyciski akcji stoją za precheckami, które odwzorowują kolejność guardów serwera i używają jego tekstów odmów tam, gdzie klient je zna, a stałe po stronie klienta (statusy pożyczek, typy zakładów ruletki, etykiety kart, tabela taryf magazynów, czas życia zaproszenia, timeout ręki blackjacka) lustrzą konfigurację backendu, więc dryf configu objawia się widoczną etykietą "Unknown tier" zamiast awarią; autorytetem pozostaje serwer, a prechecki są podpowiedziami. Widoki pamiętają to, czego serwer nie powtórzy: przeładowana ręka blackjacka jest rekoncyliowana zamiast nadpisywana, a wpisowe magazynu odrzucone przez portfel jest wykrywane z własnego stempla dołączenia klienta, bo API nie zostawia po odmowie żadnego śladu. Każda partia była weryfikowana skryptowym przebiegiem Playwright na stacku compose, a przebieg końcowy powtórzył przepływy modułów na stacku zbudowanym od zera. UI pozostaje celowo surowe, czytelne tylko do testów ręcznych; właściwy przebieg UI/UX to osobna gałąź planu na końcu projektu. Od 2026-11-15 widoki rozwiązują nazwy użytkowników hurtem przez `GET /api/profiles?ids=`, wybierają znajomych i odbiorców przelewów przez wyszukiwarkę nazw i ładują awatary zwykłym `<img>` z anonimowej trasy awatara. Host od 2026-11-15 wysyła nudge przez `GET /api/push` ([ADR-016](adr/016-server-sent-events-push.md)); klient polluje, dopóki nie wejdzie klient push.
+Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angular-frontend-stack.md): każdy moduł backendu ma już widok (przelewy, pożyczki bankowe, żetony kasyna z ruletką i blackjackiem, lombard, wojny magazynowe, profil własny i publiczny ze znajomymi i zaproszeniami) obok aukcji, ekwipunku i portfela z MVP. Trasy zalogowane siedzą za guardem tokenu, a 401 czyści sesję i przekierowuje na login z returnUrl (refresh tokeny czekają jako issue #18). Polling jest bazą, a każdy widok dobiera swój rytm: detal aukcji i jej oferty co 2,5 s, detal wojny magazynowej co sekundę w trakcie licytacji i co 2,5 s poza nią, portfele, ekwipunek i lista magazynów co 5 s, lista aukcji, historie gier i zaproszenia co 10 s, a widoki oparte na sagach (oczekujący zakup żetonów, oczekująca płatność lombardu, oczekująca pożyczka) schodzą do 2 s, póki coś jest w locie; przy 5xx i błędach sieci poller wycofuje się wykładniczo do 30 s, a 429 honoruje `Retry-After`. Przyciski akcji stoją za precheckami, które odwzorowują kolejność guardów serwera i używają jego tekstów odmów tam, gdzie klient je zna, a stałe po stronie klienta (statusy pożyczek, typy zakładów ruletki, etykiety kart, tabela taryf magazynów, czas życia zaproszenia, timeout ręki blackjacka) lustrzą konfigurację backendu, więc dryf configu objawia się widoczną etykietą "Unknown tier" zamiast awarią; autorytetem pozostaje serwer, a prechecki są podpowiedziami. Widoki pamiętają to, czego serwer nie powtórzy: przeładowana ręka blackjacka jest rekoncyliowana zamiast nadpisywana, a wpisowe magazynu odrzucone przez portfel jest wykrywane z własnego stempla dołączenia klienta, bo API nie zostawia po odmowie żadnego śladu. Każda partia była weryfikowana skryptowym przebiegiem Playwright na stacku compose, a przebieg końcowy powtórzył przepływy modułów na stacku zbudowanym od zera. UI pozostaje celowo surowe, czytelne tylko do testów ręcznych; właściwy przebieg UI/UX to osobna gałąź planu na końcu projektu. Od 2026-11-15 widoki rozwiązują nazwy użytkowników hurtem przez `GET /api/profiles?ids=`, wybierają znajomych i odbiorców przelewów przez wyszukiwarkę nazw i ładują awatary zwykłym `<img>` z anonimowej trasy awatara. Od 2026-11-15 klient słucha też nudge'ów, które host wysyła przez `GET /api/push` ([ADR-016](adr/016-server-sent-events-push.md)). `App` otwiera jeden strumień na kartę po zalogowaniu, a widok odświeża swój poller w chwili nadejścia swojego tematu, więc wynik trafia na ekran w ciągu sekundy zamiast o jeden poll później (szczegóły w sekcji o kliencie push poniżej).
 
 ## Docelowy kształt
 
@@ -34,7 +34,7 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 
 ## Czego brakuje
 
-- Po stronie API nic od 2026-11-15. Kanał push istnieje w hoście, a klient Angular, który go konsumuje, to następna partia; do tego czasu świeżo utworzona aukcja pojawia się na liście dopiero w kolejnej rundzie pollera.
+- Po stronie API nic od 2026-11-15. Kanał push nudguje siedem tematów mapowanych przez host (aukcje, portfele, wojny magazynowe, pożyczki, kasyno, lombard). Zaproszenia do znajomych, zaproszenia do wojen, historia przelewów i ekwipunek nie dostają nudge'a i nadal pojawiają się dopiero w kolejnej rundzie pollera.
 
 ## Widoki (trasy)
 
@@ -57,6 +57,24 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 | publiczny profil gracza (`/profiles/:id`, za guardem) | `GET /api/profiles/{id}`, `GET /api/profiles/me`, `POST /api/profiles/friends/requests`, przyjęcie zaproszenia przy skrzyżowanych zaproszeniach, `DELETE /api/profiles/friends/{userId}` |
 | rejestracja i logowanie (`/register`, `/login`) | `POST /api/users/register` z automatycznym logowaniem po 201, `POST /api/users/login` |
 
+## Klient push
+
+`PushClient` (`core/push/push-client.ts`) otwiera `GET /api/push` przez `fetch` z tokenem bearer, bo `EventSource` nie wysyła nagłówków, i przepuszcza ciało przez `parseSseChunk` (`core/push/sse.ts`), który dzieli strumień po pustych liniach, łączy wielolinijkowe `data` i zachowuje niedokończony ogon na następny chunk. Startuje go wyłącznie `App`. Efekt na tokenie sesji łączy po zalogowaniu i rozłącza po wylogowaniu, więc karta trzyma jeden strumień, a przeładowanie otwiera dokładnie jeden nowy. Widok nigdy nie dotyka strumienia sam.
+
+Widok dodaje w konstruktorze jedną linię `refreshOn(poller, topic)` na poller (`core/push/refresh-on.ts`), która woła `poller.refresh()`, gdy nadejdzie temat, opcjonalnie tylko gdy dane pasują do id widoku (`idMatches('auctionId', id)`), i opcjonalnie jeszcze raz po `settleMs`. Odświeżenie jest pomijane, gdy poller jest w wycofaniu (status błędu 0, 429 lub 5xx), więc nudge nigdy nie nadpisuje `Retry-After`. Polling pozostaje fallbackiem i nie zmienia się.
+
+Polityka ponawiania siedzi w `shouldReconnect` i `failureOf`. 401 czyści sesję tym samym `handleUnauthorized`, co interceptor, i kończy, wygasły token kończy, 429 czeka na `Retry-After`, błąd sieci lub 5xx wycofuje się wykładniczo do 30 s przez `nextDelay` pollerów, a czysty koniec łączy od razu, chyba że strumień żył krócej niż `PUSH_MIN_STREAM_MS` (5 s), co liczy się jako błąd, żeby piąta karta wyparta przez limit czterech strumieni hosta nie walczyła z pozostałymi. Specy podmieniają `PushClient` na `pushStub()` z `src/testing/push-stub.ts`, a własny spec klienta stubuje `fetch` odpowiedziami z `ReadableStream`.
+
+| Temat | Widoki, które się na nim odświeżają |
+|---|---|
+| `AuctionChanged` z `{"auctionId"}` | detal aukcji (aukcja i jej oferty), gdy id pasuje, jeszcze raz po `AUCTION_SETTLE_MS` |
+| `AuctionListChanged` | lista aukcji (jeszcze raz po `AUCTION_SETTLE_MS`), własne aukcje |
+| `WalletChanged` | portfel, przelewy, bank, żetony kasyna, lombard, detal wojny magazynowej |
+| `LoanChanged` | bank |
+| `CasinoChanged` | żetony kasyna, ruletka, blackjack |
+| `PawnshopChanged` | lombard |
+| `WarehouseChanged` z `{"warehouseId"}` | detal wojny magazynowej, gdy id pasuje, lista wojen, historia wojen |
+
 ## Reguły po stronie klienta i lustrzane stałe
 
 Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, profile) trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed; walidatory rejestracji wciąż mieszkają w pliku komponentu. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
@@ -72,6 +90,8 @@ Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, 
 | `SEARCH_MIN_LENGTH` (`profile-rules.ts`) | dolna granica dwóch znaków z walidatora wyszukiwarki nazw; picker nic nie wysyła poniżej niej i nigdy nie szuka pełnego id gracza |
 | `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | walidator kont społecznościowych: najwyżej sześć linków, po jednym na znaną platformę, na jej domenie |
 | `ROULETTE_BET_TYPES` i zakresy selekcji (`roulette-rules.ts`) | typy zakładów ruletki z ich zakresami selekcji |
+| `PushTopic` (`push-topics.ts`) | siedem nazw tematów z `PushTopics` hosta (`Infrastructure/Push`), jedyne nazwy `event:`, na które klient się zapisuje |
+| `AUCTION_SETTLE_MS` (`push-topics.ts`) | 2 s TTL cache odczytów modułu Auctions (`Auctions:ReadCache`, ADR-009). Nudge może trafić w TTL i odczytać nieświeżą migawkę, więc widoki aukcji odświeżają się jeszcze raz po nim |
 
 ## Decyzje
 

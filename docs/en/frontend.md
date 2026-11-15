@@ -6,7 +6,7 @@ The scaffold exists since 2026-11-08: `Frontend/` holds an Angular 22 CLI worksp
 
 ## Status
 
-The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015-angular-frontend-stack.md): every backend module now has a view (transfers, bank loans, casino chips with roulette and blackjack, the pawnshop, warehouse wars, own and public profiles with friends and invites) next to the MVP auctions, inventory and wallet. Signed-in routes sit behind a token guard, and a 401 clears the session and redirects to login with a returnUrl (refresh tokens wait as issue #18). Without a push channel the client polls, and each view picks its rhythm: the auction detail and its bids every 2.5 s, the warehouse war detail every second during bidding and every 2.5 s otherwise, wallets, the inventory and the warehouse list every 5 s, the auction list, the game histories and the invites every 10 s, and the saga-driven views (a pending chip purchase, a pending pawnshop payment, a pending loan) drop to 2 s while something is in flight; on 5xx and network failures the poller backs off exponentially up to 30 s and a 429 honours `Retry-After`. Action buttons sit behind prechecks that mirror the server's guard order, reusing its refusal texts where the client knows them, and client-side constants (loan statuses, roulette bet types, card labels, the warehouse tier table, the invite lifetime, the blackjack hand timeout) mirror the backend configuration, so config drift surfaces as a visible "Unknown tier" label instead of a crash; the server stays the authority and the prechecks are hints. Views remember what the server will not repeat: a reloaded blackjack hand is reconciled instead of overwritten, and a warehouse entry fee rejected by the wallet is detected from the client's own join timestamp, because the API keeps no trace of the rejection. Every batch was verified by a scripted Playwright run against the compose stack, and the final pass reran the module flows on a stack rebuilt from scratch. The UI stays deliberately bare, readable for manual testing only; the real UI/UX pass is a separate branch of the plan at the end of the project. Since 2026-11-15 the views resolve usernames in batches through `GET /api/profiles?ids=`, pick friends and transfer recipients through a username search and load avatars with a plain `<img>` from the anonymous avatar route. The host streams nudges over `GET /api/push` since 2026-11-15 ([ADR-016](adr/016-server-sent-events-push.md)); the client keeps polling until the push client lands.
+The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015-angular-frontend-stack.md): every backend module now has a view (transfers, bank loans, casino chips with roulette and blackjack, the pawnshop, warehouse wars, own and public profiles with friends and invites) next to the MVP auctions, inventory and wallet. Signed-in routes sit behind a token guard, and a 401 clears the session and redirects to login with a returnUrl (refresh tokens wait as issue #18). Polling is the baseline and each view picks its rhythm: the auction detail and its bids every 2.5 s, the warehouse war detail every second during bidding and every 2.5 s otherwise, wallets, the inventory and the warehouse list every 5 s, the auction list, the game histories and the invites every 10 s, and the saga-driven views (a pending chip purchase, a pending pawnshop payment, a pending loan) drop to 2 s while something is in flight; on 5xx and network failures the poller backs off exponentially up to 30 s and a 429 honours `Retry-After`. Action buttons sit behind prechecks that mirror the server's guard order, reusing its refusal texts where the client knows them, and client-side constants (loan statuses, roulette bet types, card labels, the warehouse tier table, the invite lifetime, the blackjack hand timeout) mirror the backend configuration, so config drift surfaces as a visible "Unknown tier" label instead of a crash; the server stays the authority and the prechecks are hints. Views remember what the server will not repeat: a reloaded blackjack hand is reconciled instead of overwritten, and a warehouse entry fee rejected by the wallet is detected from the client's own join timestamp, because the API keeps no trace of the rejection. Every batch was verified by a scripted Playwright run against the compose stack, and the final pass reran the module flows on a stack rebuilt from scratch. The UI stays deliberately bare, readable for manual testing only; the real UI/UX pass is a separate branch of the plan at the end of the project. Since 2026-11-15 the views resolve usernames in batches through `GET /api/profiles?ids=`, pick friends and transfer recipients through a username search and load avatars with a plain `<img>` from the anonymous avatar route. Since 2026-11-15 the client also listens to the nudges the host streams over `GET /api/push` ([ADR-016](adr/016-server-sent-events-push.md)). `App` opens one stream per tab after login and a view refreshes its poller the moment its topic arrives, so an outcome reaches the screen within a second instead of one poll late (the push client section below has the details).
 
 ## Target design
 
@@ -34,7 +34,7 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 
 ## What is missing
 
-- Nothing on the API side since 2026-11-15. The push channel exists in the host and the Angular client that consumes it is the next batch; until it lands a freshly created auction still appears in the list only on the poller's next round.
+- Nothing on the API side since 2026-11-15. The push channel nudges the seven topics the host maps (auctions, wallets, warehouse wars, loans, casino, pawnshop). Friend requests, warehouse invites, the transfer history and the inventory are not nudged and still appear on the poller's next round.
 
 ## Views (routes)
 
@@ -57,6 +57,24 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 | public player profile (`/profiles/:id`, guarded) | `GET /api/profiles/{id}`, `GET /api/profiles/me`, `POST /api/profiles/friends/requests`, the friend-request accept for a crossed request, `DELETE /api/profiles/friends/{userId}` |
 | register and login (`/register`, `/login`) | `POST /api/users/register` with an auto-login after the 201, `POST /api/users/login` |
 
+## Push client
+
+`PushClient` (`core/push/push-client.ts`) opens `GET /api/push` with `fetch` and the bearer token, because `EventSource` cannot send headers, and feeds the body through `parseSseChunk` (`core/push/sse.ts`), which splits the stream on blank lines, joins multi-line `data` and keeps an unfinished tail for the next chunk. Only `App` starts it. An effect on the session token connects after login and disconnects on logout, so a tab holds one stream and a reload opens exactly one new one. A view never touches the stream itself.
+
+A view adds one `refreshOn(poller, topic)` line per poller in its constructor (`core/push/refresh-on.ts`), which calls `poller.refresh()` when the topic arrives, optionally only when the data matches the view's id (`idMatches('auctionId', id)`), and optionally once more after `settleMs`. The refresh is skipped while the poller is backing off (error status 0, 429 or 5xx), so a nudge never overrides `Retry-After`. Polling stays the fallback and is unchanged.
+
+The reconnect policy sits in `shouldReconnect` and `failureOf`. A 401 clears the session through the same `handleUnauthorized` as the interceptor and stops, an expired token stops, a 429 waits for `Retry-After`, a network failure or a 5xx backs off exponentially up to 30 s through the pollers' `nextDelay`, and a clean end reconnects at once unless the stream lived under `PUSH_MIN_STREAM_MS` (5 s), which counts as a failure so a fifth tab evicted by the host's four-stream cap does not fight the others. Specs replace `PushClient` with `pushStub()` from `src/testing/push-stub.ts`, and the client's own spec stubs `fetch` with `ReadableStream` responses.
+
+| Topic | Views that refresh on it |
+|---|---|
+| `AuctionChanged` with `{"auctionId"}` | the auction detail (the auction and its bids) when the id matches, once more after `AUCTION_SETTLE_MS` |
+| `AuctionListChanged` | the auction list (once more after `AUCTION_SETTLE_MS`), own auctions |
+| `WalletChanged` | wallet, transfers, bank, casino chips, pawnshop, warehouse war detail |
+| `LoanChanged` | bank |
+| `CasinoChanged` | casino chips, roulette, blackjack |
+| `PawnshopChanged` | pawnshop |
+| `WarehouseChanged` with `{"warehouseId"}` | the warehouse war detail when the id matches, the war list, the war history |
+
 ## Client-side rules and mirrored constants
 
 Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions, profiles) keep their prechecks, poll rhythms and mirrored constants in a pure `<feature>-rules.ts` module next to their components (`social-links.ts` plays that role for the social links), tested without TestBed; the register validators still live in their component file. The constants below mirror backend configuration or validators and must follow any backend change:
@@ -72,6 +90,8 @@ Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions
 | `SEARCH_MIN_LENGTH` (`profile-rules.ts`) | the two-character lower bound of the username search validator; the picker sends nothing below it and never searches for a full player id |
 | `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | the social-link validator: at most six links, one per known platform, on its domain |
 | `ROULETTE_BET_TYPES` and the selection ranges (`roulette-rules.ts`) | the roulette bet types with their selection ranges |
+| `PushTopic` (`push-topics.ts`) | the seven topic names of the host's `PushTopics` (`Infrastructure/Push`), the only `event:` names the client subscribes to |
+| `AUCTION_SETTLE_MS` (`push-topics.ts`) | the 2 s read-cache TTL of the Auctions module (`Auctions:ReadCache`, ADR-009). A nudge can land inside the TTL and read a stale snapshot, so the auction views refresh once more after it |
 
 ## Decisions
 
