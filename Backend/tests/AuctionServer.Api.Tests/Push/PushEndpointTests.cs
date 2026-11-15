@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.IO.Pipelines;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
@@ -76,30 +77,38 @@ public class PushEndpointTests
         using var cts = new CancellationTokenSource(timeout);
         string? eventName = null;
         var data = new StringBuilder();
-        while (true)
+        try
         {
-            var line = await reader.ReadLineAsync(cts.Token);
-            if (line is null) return null;
-            if (line.Length == 0)
+            while (true)
             {
-                if (eventName is null && data.Length == 0) continue;
-                return new SseEvent(eventName ?? "message", data.ToString());
+                var line = await reader.ReadLineAsync(cts.Token);
+                if (line is null) return null;
+                if (line.Length == 0)
+                {
+                    if (eventName is null && data.Length == 0) continue;
+                    return new SseEvent(eventName ?? "message", data.ToString());
+                }
+                if (line.StartsWith("event:")) eventName = line[6..].Trim();
+                else if (line.StartsWith("data:")) data.Append(line[5..].TrimStart());
             }
-            if (line.StartsWith("event:")) eventName = line[6..].Trim();
-            else if (line.StartsWith("data:")) data.Append(line[5..].TrimStart());
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
         }
     }
 
     private static async Task<SseEvent?> ReadUntilAsync(StreamReader reader, string eventName, TimeSpan timeout)
     {
         var deadline = DateTime.UtcNow + timeout;
-        while (DateTime.UtcNow < deadline)
+        while (true)
         {
-            var sse = await ReadEventAsync(reader, deadline - DateTime.UtcNow);
+            var remaining = deadline - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero) return null;
+            var sse = await ReadEventAsync(reader, remaining);
             if (sse is null) return null;
             if (sse.Event == eventName) return sse;
         }
-        return null;
     }
 
     [Fact]
@@ -209,12 +218,20 @@ public class PushEndpointTests
 
         var started = DateTime.UtcNow;
         factory.Services.GetRequiredService<IHostApplicationLifetime>().StopApplication();
-        SseEvent? sse;
-        do
-        {
-            sse = await ReadEventAsync(reader, ReadTimeout);
-        } while (sse is not null);
+        using var cts = new CancellationTokenSource(ReadTimeout);
+        await reader.ReadToEndAsync(cts.Token);
 
         Assert.InRange(DateTime.UtcNow - started, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task ReadEventAsync_WhenNothingArrivesBeforeTheTimeout_ShouldReturnNull()
+    {
+        var pipe = new Pipe();
+        using var reader = new StreamReader(pipe.Reader.AsStream());
+
+        var sse = await ReadEventAsync(reader, TimeSpan.FromMilliseconds(200));
+
+        Assert.Null(sse);
     }
 }
