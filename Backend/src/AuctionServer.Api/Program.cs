@@ -23,6 +23,7 @@ using AuctionServer.Api.Infrastructure.Authentication;
 using AuctionServer.Api.Infrastructure.Gateway;
 using AuctionServer.Api.Infrastructure.Health;
 using AuctionServer.Api.Infrastructure.Messaging;
+using AuctionServer.Api.Infrastructure.Push;
 using AuctionServer.Api.Infrastructure.Observability;
 using AuctionServer.Api.Infrastructure.RateLimiting;
 using AuctionServer.Api.Infrastructure.Secrets;
@@ -181,21 +182,22 @@ builder.Services.AddSingleton(IntegrationEventRecipients.Build());
 builder.Services.AddScoped<IIntegrationEventDispatcher, DeliveryDispatcher>();
 builder.Services.AddDeliveryProcessor();
 builder.Services.AddSingleton<MessagingMetrics>();
+builder.Services.AddSingleton(PushOptions.Default);
+builder.Services.AddSingleton<PushConnections>();
+builder.Services.AddSingleton(PushRoutes.Build());
 if (messagingOptions.Transport == MessagingTransport.Rabbit)
 {
     builder.Services.AddSingleton(messagingOptions.Rabbit!);
     builder.Services.AddSingleton<RabbitEventPublisher>();
     builder.Services.AddHostedService<RabbitDeliveryConsumer>();
-    builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
-        provider.GetRequiredService<RabbitEventPublisher>(),
-        provider.GetRequiredService<MessagingMetrics>()));
+    builder.Services.AddScoped<IIntegrationEventPublisher>(provider =>
+        Decorate(provider, provider.GetRequiredService<RabbitEventPublisher>()));
 }
 else
 {
     builder.Services.AddScoped<InProcessEventPublisher>();
-    builder.Services.AddScoped<IIntegrationEventPublisher>(provider => new InstrumentedEventPublisher(
-        provider.GetRequiredService<InProcessEventPublisher>(),
-        provider.GetRequiredService<MessagingMetrics>()));
+    builder.Services.AddScoped<IIntegrationEventPublisher>(provider =>
+        Decorate(provider, provider.GetRequiredService<InProcessEventPublisher>()));
 }
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
@@ -238,6 +240,7 @@ if (rateLimitingOptions.Enabled) app.UseRateLimiter();
 
 app.MapOpenApi();
 app.MapHealthEndpoints();
+app.MapPushEndpoints();
 app.MapInventoryEndpoints();
 app.MapAuctionEndpoints();
 app.MapWalletEndpoints();
@@ -248,6 +251,13 @@ app.MapPawnshopEndpoints();
 app.MapCasinoEndpoints();
 app.MapProfilesEndpoints();
 app.Run();
+
+static IIntegrationEventPublisher Decorate(IServiceProvider provider, IIntegrationEventPublisher transport) =>
+    new PushEventPublisher(
+        new InstrumentedEventPublisher(transport, provider.GetRequiredService<MessagingMetrics>()),
+        provider.GetRequiredService<PushRoutes>(),
+        provider.GetRequiredService<PushConnections>(),
+        provider.GetRequiredService<ILogger<PushEventPublisher>>());
 
 public partial class Program;
 
