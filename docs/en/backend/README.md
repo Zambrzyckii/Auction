@@ -85,7 +85,7 @@ dotnet run --project src/AuctionServer.Api
 dotnet test AuctionServer.slnx
 ```
 
-Besides the business endpoints the host serves `/health/live` (no checks), `/health/ready` and `/health` (both run the `SELECT 1` database check) the OpenAPI document at `/openapi/v1.json`, which the gateway opens to private networks only, and the Server-Sent Events push stream at `GET /api/push` (JWT required, `event: connected` first, `ping` every 15 s, nudges per [ADR-016](../adr/016-server-sent-events-push.md)). The first useful call is `POST /api/users/register`, followed by `POST /api/users/login` to obtain a token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) still contains the project-template request to `/weatherforecast/`, which does not exist.
+Besides the business endpoints the host serves `/health/live` (no checks), `/health/ready` and `/health` (both run the `SELECT 1` database check) the OpenAPI document at `/openapi/v1.json`, which the gateway opens to private networks only, and the Server-Sent Events push stream at `GET /api/push` (JWT required, `event: connected` first, `ping` after 15 s of silence, nudges per [ADR-016](../adr/016-server-sent-events-push.md)). The first useful call is `POST /api/users/register`, followed by `POST /api/users/login` to obtain a token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) still contains the project-template request to `/weatherforecast/`, which does not exist.
 
 ## Configuration
 

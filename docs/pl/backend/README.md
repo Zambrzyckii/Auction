@@ -85,7 +85,7 @@ dotnet run --project src/AuctionServer.Api
 dotnet test AuctionServer.slnx
 ```
 
-Poza endpointami biznesowymi host serwuje `/health/live` (bez checków), `/health/ready` i `/health` (oba wykonują check bazy `SELECT 1`) dokument OpenAPI pod `/openapi/v1.json`, który gateway otwiera tylko dla sieci prywatnych, oraz strumień push Server-Sent Events pod `GET /api/push` (wymaga JWT, najpierw `event: connected`, `ping` co 15 s, nudge według [ADR-016](../adr/016-server-sent-events-push.md)). Pierwsze użyteczne wywołanie to `POST /api/users/register`, a potem `POST /api/users/login`, żeby dostać token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) wciąż zawiera szablonowe żądanie do `/weatherforecast/`, które nie istnieje.
+Poza endpointami biznesowymi host serwuje `/health/live` (bez checków), `/health/ready` i `/health` (oba wykonują check bazy `SELECT 1`) dokument OpenAPI pod `/openapi/v1.json`, który gateway otwiera tylko dla sieci prywatnych, oraz strumień push Server-Sent Events pod `GET /api/push` (wymaga JWT, najpierw `event: connected`, `ping` po 15 s ciszy, nudge według [ADR-016](../adr/016-server-sent-events-push.md)). Pierwsze użyteczne wywołanie to `POST /api/users/register`, a potem `POST /api/users/login`, żeby dostać token. [`AuctionServer.Api.http`](../../../Backend/src/AuctionServer.Api/AuctionServer.Api.http) wciąż zawiera szablonowe żądanie do `/weatherforecast/`, które nie istnieje.
 
 ## Konfiguracja
 
