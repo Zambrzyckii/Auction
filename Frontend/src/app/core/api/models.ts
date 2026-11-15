@@ -67,6 +67,12 @@ export interface Profile {
   readonly socialLinks: readonly SocialLink[];
 }
 
+export interface ProfileSummary {
+  readonly userId: string;
+  readonly username: string;
+  readonly avatarUrl: string | null;
+}
+
 export interface FriendRequest {
   readonly publicFriendshipId: string;
   readonly userId: string;

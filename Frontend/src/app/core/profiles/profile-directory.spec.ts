@@ -3,27 +3,23 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
-import { Profile } from '../api/models';
+import { ProfileSummary } from '../api/models';
 import { Session } from '../auth/session';
 import { TokenStorage } from '../auth/token-storage';
-import { MISS_RETRY_MS, ProfileDirectory, shortId } from './profile-directory';
+import { BATCH_SIZE, MISS_RETRY_MS, ProfileDirectory, shortId } from './profile-directory';
 
 const MY_ID = 'me-user';
 const A = 'aaaaaaaa-1111-2222-3333-444444444444';
 const B = 'bbbbbbbb-1111-2222-3333-444444444444';
+const C = 'cccccccc-1111-2222-3333-444444444444';
+const LOOKUP_URL = '/api/profiles';
 
-function profile(overrides: Partial<Profile>): Profile {
-  return {
-    userId: A,
-    username: 'alice',
-    isPrivate: false,
-    level: 3,
-    memberSince: '2026-11-01T00:00:00Z',
-    avatarUrl: null,
-    friends: [],
-    socialLinks: [],
-    ...overrides,
-  };
+function summary(userId: string, username: string): ProfileSummary {
+  return { userId, username, avatarUrl: null };
+}
+
+function batchUrl(...ids: string[]): string {
+  return `${LOOKUP_URL}?${ids.map((id) => `ids=${id}`).join('&')}`;
 }
 
 describe('shortId', () => {
@@ -61,6 +57,10 @@ describe('ProfileDirectory', () => {
     return TestBed.inject(ProfileDirectory);
   }
 
+  function flushBatch(): void {
+    vi.advanceTimersByTime(0);
+  }
+
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -70,59 +70,88 @@ describe('ProfileDirectory', () => {
     vi.useRealTimers();
   });
 
-  it('fetches each id once, deduplicating repeats and requests in flight', () => {
+  it('sends one batch for the ids ensured within a tick, deduplicated', () => {
     const directory = setup();
     directory.ensure([A, A, B]);
-    directory.ensure([A]);
-    http.expectOne(`/api/profiles/${A}`).flush(profile({ userId: A }));
-    http.expectOne(`/api/profiles/${B}`).flush(profile({ userId: B, username: 'bob' }));
-  });
-
-  it('labels with the short id before the response and after a 404', () => {
-    const directory = setup();
-    directory.ensure([A]);
-    expect(directory.label(A)).toBe('aaaaaaaa');
+    directory.ensure([A, C]);
+    flushBatch();
     http
-      .expectOne(`/api/profiles/${A}`)
-      .flush({ error: 'Player not found' }, { status: 404, statusText: 'Not Found' });
-    expect(directory.label(A)).toBe('aaaaaaaa');
+      .expectOne(batchUrl(A, B, C))
+      .flush([summary(A, 'alice'), summary(B, 'bob'), summary(C, 'carol')]);
+    expect(directory.label(A)).toBe('alice');
+    expect(directory.label(B)).toBe('bob');
+    expect(directory.label(C)).toBe('carol');
   });
 
-  it('labels with the username after a 200', () => {
+  it('does not ask again for an id still in flight', () => {
     const directory = setup();
     directory.ensure([A]);
-    http.expectOne(`/api/profiles/${A}`).flush(profile({ username: 'alice' }));
+    flushBatch();
+    const first = http.expectOne(batchUrl(A));
+    directory.ensure([A]);
+    flushBatch();
+    http.expectNone(batchUrl(A));
+    first.flush([summary(A, 'alice')]);
     expect(directory.label(A)).toBe('alice');
+  });
+
+  it('splits more than BATCH_SIZE ids into several requests', () => {
+    const directory = setup();
+    const ids = Array.from(
+      { length: BATCH_SIZE + 1 },
+      (_, i) => `${i.toString(16).padStart(8, '0')}-1111-2222-3333-444444444444`,
+    );
+    directory.ensure(ids);
+    flushBatch();
+    const requests = http.match((req) => req.url === LOOKUP_URL);
+    expect(requests.map((req) => req.request.params.getAll('ids')?.length)).toEqual([
+      BATCH_SIZE,
+      1,
+    ]);
+    for (const req of requests) req.flush([]);
+  });
+
+  it('labels with the short id before the response and after a miss', () => {
+    const directory = setup();
+    directory.ensure([A, B]);
+    expect(directory.label(A)).toBe('aaaaaaaa');
+    flushBatch();
+    http.expectOne(batchUrl(A, B)).flush([summary(A, 'alice')]);
+    expect(directory.label(A)).toBe('alice');
+    expect(directory.label(B)).toBe('bbbbbbbb');
   });
 
   it('does not refetch a name it already knows', () => {
     const directory = setup();
     directory.remember(A, 'alice');
     directory.ensure([A]);
-    http.expectNone(`/api/profiles/${A}`);
+    flushBatch();
+    http.expectNone(batchUrl(A));
     expect(directory.label(A)).toBe('alice');
   });
 
   it('sends nothing while logged out', () => {
     const directory = setup(false);
     directory.ensure([A]);
-    http.expectNone(`/api/profiles/${A}`);
+    flushBatch();
+    http.expectNone(batchUrl(A));
     expect(directory.label(A)).toBe('aaaaaaaa');
   });
 
-  it('retries after a 404 only once MISS_RETRY_MS has passed', () => {
+  it('retries an id missing from the response only once MISS_RETRY_MS has passed', () => {
     const directory = setup();
     directory.ensure([A]);
-    http
-      .expectOne(`/api/profiles/${A}`)
-      .flush({ error: 'Player not found' }, { status: 404, statusText: 'Not Found' });
+    flushBatch();
+    http.expectOne(batchUrl(A)).flush([]);
 
     directory.ensure([A]);
-    http.expectNone(`/api/profiles/${A}`);
+    flushBatch();
+    http.expectNone(batchUrl(A));
 
     vi.advanceTimersByTime(MISS_RETRY_MS + 1);
     directory.ensure([A]);
-    http.expectOne(`/api/profiles/${A}`).flush(profile({ username: 'alice' }));
+    flushBatch();
+    http.expectOne(batchUrl(A)).flush([summary(A, 'alice')]);
     expect(directory.label(A)).toBe('alice');
   });
 
@@ -137,19 +166,23 @@ describe('ProfileDirectory', () => {
   it('drops a response that lands after logout', () => {
     const directory = setup();
     directory.ensure([A]);
+    flushBatch();
+    const request = http.expectOne(batchUrl(A));
     TestBed.inject(Session).logout();
     TestBed.tick();
-    http.expectOne(`/api/profiles/${A}`).flush(profile({ username: 'alice' }));
+    request.flush([summary(A, 'alice')]);
     expect(directory.label(A)).toBe('aaaaaaaa');
   });
 
-  it('does not remember a 5xx as a missing profile', () => {
+  it('does not remember a failed request as a miss', () => {
     const directory = setup();
     directory.ensure([A]);
-    http.expectOne(`/api/profiles/${A}`).flush('boom', { status: 500, statusText: 'Server Error' });
+    flushBatch();
+    http.expectOne(batchUrl(A)).flush('boom', { status: 500, statusText: 'Server Error' });
 
     directory.ensure([A]);
-    http.expectOne(`/api/profiles/${A}`).flush(profile({ username: 'alice' }));
+    flushBatch();
+    http.expectOne(batchUrl(A)).flush([summary(A, 'alice')]);
     expect(directory.label(A)).toBe('alice');
   });
 });
