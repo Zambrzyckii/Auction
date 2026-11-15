@@ -12,6 +12,7 @@ import {
 } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 import { BotSection } from './bot-section';
 import { PawnshopState, pawnshopPollMs, premisesProblem, upgradeOptions } from './pawnshop-rules';
 import { StockSection } from './stock-section';
@@ -80,6 +81,8 @@ export class Pawnshop {
   }
 
   constructor() {
+    refreshOn(this.shopPoller, 'PawnshopChanged');
+    refreshOn(this.walletPoller, 'WalletChanged');
     this.http.get<PawnshopOffers>('/api/pawnshop/offers').subscribe({
       next: (catalog) => this.offers.set(catalog),
       error: (err: unknown) => this.offersError.set(toApiError(err).message),

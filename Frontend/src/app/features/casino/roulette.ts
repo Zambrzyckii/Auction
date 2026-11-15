@@ -12,6 +12,7 @@ import {
   RouletteSpinResult,
 } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 import { casinoPollMs } from './casino-rules';
 import { ROULETTE_BET_TYPES, betProblem, spinProblem } from './roulette-rules';
 
@@ -36,6 +37,10 @@ export class Roulette {
     () => this.http.get<RouletteSpin[]>('/api/casino/roulette/spins'),
     HISTORY_POLL_MS,
   );
+
+  constructor() {
+    refreshOn(this.casinoPoller, 'CasinoChanged');
+  }
 
   readonly betTypes = ROULETTE_BET_TYPES;
   readonly bets = signal<readonly RouletteBet[]>([]);

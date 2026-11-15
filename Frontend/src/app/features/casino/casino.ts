@@ -7,6 +7,7 @@ import { actionState } from '../../core/actions/action-state';
 import { Casino as CasinoDto, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 import { casinoPollMs, cashOutProblem, purchaseNotice, purchaseProblem } from './casino-rules';
 
 const WALLET_POLL_MS = 5000;
@@ -29,6 +30,11 @@ export class Casino {
     () => this.http.get<WalletDto>(`/api/wallets/${this.session.userId()}`),
     WALLET_POLL_MS,
   );
+
+  constructor() {
+    refreshOn(this.casinoPoller, 'CasinoChanged');
+    refreshOn(this.walletPoller, 'WalletChanged');
+  }
 
   readonly notice = computed(() =>
     purchaseNotice(this.casinoPoller.value()?.latestPurchase ?? null),

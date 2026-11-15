@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import {
@@ -11,6 +12,7 @@ import {
   Casino as CasinoDto,
 } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { Blackjack } from './blackjack';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -94,16 +96,23 @@ function historyDto(overrides: Partial<BlackjackHandHistory>): BlackjackHandHist
 describe('Blackjack', () => {
   let fixture: ComponentFixture<Blackjack>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
     await TestBed.configureTestingModule({
       imports: [Blackjack],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Blackjack);
@@ -323,5 +332,13 @@ describe('Blackjack', () => {
     expect(rows.length).toBe(3);
     expect(rows[1].textContent).toContain('Win');
     expect(rows[2].textContent).toContain('Lose (auto-stood)');
+  });
+
+  it('refreshes the casino on CasinoChanged', () => {
+    flushAll(casino({}));
+    push.emit('CasinoChanged');
+    http.expectOne(CASINO_URL).flush(casino({ balance: 555 }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Chip balance: 555');
   });
 });

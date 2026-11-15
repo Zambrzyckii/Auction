@@ -9,6 +9,7 @@ import { timeLeft } from '../../core/format/time-left';
 import { clock } from '../../core/time/clock';
 import { BlackjackHand, BlackjackHandHistory, Casino as CasinoDto } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 import { canDouble, cardLabel, dealProblem, reconcileHand } from './blackjack-rules';
 import { casinoPollMs } from './casino-rules';
 import { HandView, fromHand, fromHistory } from './hand-view';
@@ -101,6 +102,7 @@ export class Blackjack {
   }
 
   constructor() {
+    refreshOn(this.casinoPoller, 'CasinoChanged');
     effect(() => {
       const casino = this.casinoPoller.value();
       if (casino === null || casino === this.staleCasino || this.action.pending()) {

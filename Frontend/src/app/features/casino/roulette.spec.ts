@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import {
@@ -11,6 +12,7 @@ import {
   RouletteSpinResult,
 } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { Roulette } from './roulette';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -55,16 +57,23 @@ function spin(overrides: Partial<RouletteSpin>): RouletteSpin {
 describe('Roulette', () => {
   let fixture: ComponentFixture<Roulette>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
     await TestBed.configureTestingModule({
       imports: [Roulette],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Roulette);
@@ -187,5 +196,13 @@ describe('Roulette', () => {
     const rows = el().querySelectorAll('table.history tr');
     expect(rows[1].textContent).toContain('Green');
     expect(rows[2].textContent).toContain('Black');
+  });
+
+  it('refreshes the casino on CasinoChanged', () => {
+    flushAll(casino({}));
+    push.emit('CasinoChanged');
+    http.expectOne(CASINO_URL).flush(casino({ balance: 555 }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Chip balance: 555');
   });
 });

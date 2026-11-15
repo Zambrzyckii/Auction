@@ -1,10 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Pawnshop as PawnshopDto, PawnshopOffers, StockItem, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { Pawnshop } from './pawnshop';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -79,16 +81,22 @@ function stockItem(overrides: Partial<StockItem>): StockItem {
 describe('Pawnshop', () => {
   let fixture: ComponentFixture<Pawnshop>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
     await TestBed.configureTestingModule({
       imports: [Pawnshop],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Pawnshop);
@@ -309,5 +317,21 @@ describe('Pawnshop', () => {
     http.expectOne(SHOP_URL).flush(shop({}));
     fixture.detectChanges();
     expect(el().querySelector('.shop-active')).not.toBeNull();
+  });
+
+  it('refreshes the shop on PawnshopChanged', () => {
+    flushAll('none');
+    push.emit('PawnshopChanged');
+    http.expectOne(SHOP_URL).flush(shop({}));
+    fixture.detectChanges();
+    expect(el().querySelector('.shop-active')).not.toBeNull();
+  });
+
+  it('refreshes the wallet on WalletChanged', () => {
+    flushAll(shop({}));
+    push.emit('WalletChanged');
+    http.expectOne(WALLET_URL).flush(wallet({ availableFunds: 777 }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Available funds: 777');
   });
 });
