@@ -1,9 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { Wallet } from './wallet';
 
 const USER_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -12,16 +14,22 @@ const WALLET_URL = `/api/wallets/${USER_ID}`;
 describe('Wallet', () => {
   let fixture: ComponentFixture<Wallet>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
     await TestBed.configureTestingModule({
       imports: [Wallet],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Wallet);
@@ -74,5 +82,14 @@ describe('Wallet', () => {
     const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
     expect(text).toContain('280');
     expect(text).toContain('20');
+  });
+
+  it('refreshes the wallet on WalletChanged', () => {
+    http.expectOne(WALLET_URL).flush({ availableFunds: 300, lockedFunds: 0, lifetimeTurnover: 0 });
+    push.emit('WalletChanged');
+    http.expectOne(WALLET_URL).flush({ availableFunds: 280, lockedFunds: 20, lifetimeTurnover: 0 });
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('280');
   });
 });

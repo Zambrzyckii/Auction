@@ -7,6 +7,7 @@ import { Loan, LoanOffer, Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 import { clock } from '../../core/time/clock';
 import { loansPollMs, offerBlockReason, repayHint } from './bank-rules';
 
@@ -92,6 +93,8 @@ export class Bank {
   }
 
   constructor() {
+    refreshOn(this.loansPoller, 'LoanChanged');
+    refreshOn(this.walletPoller, 'WalletChanged');
     this.http.get<LoanOffer[]>('/api/bank/offers').subscribe({
       next: (offers) => this.offers.set(offers),
       error: (err: unknown) => this.offersError.set(toApiError(err).message),

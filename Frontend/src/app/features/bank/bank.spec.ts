@@ -1,10 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Loan, LoanOffer, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { Bank } from './bank';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -51,16 +53,22 @@ function wallet(overrides: Partial<Wallet>): Wallet {
 describe('Bank', () => {
   let fixture: ComponentFixture<Bank>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
     await TestBed.configureTestingModule({
       imports: [Bank],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Bank);
@@ -208,5 +216,21 @@ describe('Bank', () => {
     http.expectOne(WALLET_URL).flush(wallet({}));
     vi.advanceTimersByTime(2000);
     http.expectOne(LOANS_URL).flush([loan({})]);
+  });
+
+  it('refreshes the loans on LoanChanged', () => {
+    flushAll([]);
+    push.emit('LoanChanged');
+    http.expectOne(LOANS_URL).flush([loan({})]);
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Active');
+  });
+
+  it('refreshes the wallet on WalletChanged', () => {
+    flushAll([]);
+    push.emit('WalletChanged');
+    http.expectOne(WALLET_URL).flush(wallet({ availableFunds: 777 }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Available funds: 777');
   });
 });

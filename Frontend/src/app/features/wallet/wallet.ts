@@ -6,6 +6,7 @@ import { toApiError } from '../../core/api/api-error';
 import { Wallet as WalletDto } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 
 const POLL_MS = 5000;
 const PROVISIONING_RETRY_MS = 1500;
@@ -22,6 +23,10 @@ export class Wallet {
   private readonly provisioningDeadline = Date.now() + PROVISIONING_WINDOW_MS;
 
   readonly poller = startPolling(() => this.loadWallet(), POLL_MS);
+
+  constructor() {
+    refreshOn(this.poller, 'WalletChanged');
+  }
 
   private loadWallet(): Observable<WalletDto> {
     return this.http.get<WalletDto>(`/api/wallets/${this.session.userId()}`).pipe(

@@ -15,6 +15,7 @@ import {
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { refreshOn } from '../../core/push/refresh-on';
 import { ProfilePicker } from '../profiles/profile-picker';
 import { transferProblem } from './transfers-rules';
 
@@ -100,6 +101,7 @@ export class Transfers {
   }
 
   constructor() {
+    refreshOn(this.walletPoller, 'WalletChanged');
     effect(() => {
       const id = this.sendModel().recipientUserId;
       if (GUID_RE.test(id)) {

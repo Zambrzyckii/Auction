@@ -3,11 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { OwnProfile as OwnProfileDto, Transfer, Wallet } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory, shortId } from '../../core/profiles/profile-directory';
+import { PushClient } from '../../core/push/push-client';
 import { Transfers } from './transfers';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -49,12 +51,14 @@ function me(overrides: Partial<OwnProfileDto>): OwnProfileDto {
 describe('Transfers', () => {
   let fixture: ComponentFixture<Transfers>;
   let http: HttpTestingController;
+  let push: PushStub;
   let directoryNames: WritableSignal<ReadonlyMap<string, string>>;
   let ensure: ReturnType<typeof vi.fn>;
   let remember: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
@@ -67,6 +71,7 @@ describe('Transfers', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
         {
           provide: ProfileDirectory,
           useValue: {
@@ -234,6 +239,14 @@ describe('Transfers', () => {
       expect((el().querySelector('button.send') as HTMLButtonElement).disabled).toBe(false);
     });
   });
+
+  it('refreshes the wallet on WalletChanged', () => {
+    flushAll([]);
+    push.emit('WalletChanged');
+    http.expectOne(WALLET_URL).flush(wallet({ availableFunds: 123 }));
+    fixture.detectChanges();
+    expect(el().textContent).toContain('Available funds: 123');
+  });
 });
 
 describe('Transfers with ?to=', () => {
@@ -250,6 +263,7 @@ describe('Transfers with ?to=', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: PushClient, useValue: pushStub() },
         {
           provide: ProfileDirectory,
           useValue: { ensure: vi.fn(), remember: vi.fn(), label: shortId, labelWithId: shortId },
