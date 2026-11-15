@@ -278,9 +278,10 @@ module's Application layer; retries and dead letters live per recipient on the d
 `IntegrationEventRecipients` map** — a type missing from either throws `NotSupportedException`, so the row retries
 and dead-letters instead of being delivered.
 The outbox row `Id` and the event's `EventId` are the same Guid by convention (`AuctionCloser.cs`,
-`PlaceBidCommandHandler.cs`, `CreateAuctionCommandHandler.cs`, `RegisterCommandHandler.cs`); the reply handlers reuse
-it for the reply they emit (`ItemLockRequestedEventHandler.cs`, `ItemLockedEventHandler.cs`, Wallets'
-`AuctionFinishedEventHandler.cs`).
+`PlaceBidCommandHandler.cs`, `CreateAuctionCommandHandler.cs`, `RegisterCommandHandler.cs`). The reply handlers mint
+a fresh Guid for the reply they emit and use it as both the reply row `Id` and the reply's `EventId` (all 14 reply
+sites, for example `var replyId = Guid.NewGuid()` in `ItemLockRequestedEventHandler.cs`), and the reply is correlated
+with its request through the dedicated `RequestId` fields, as ADR-012 has described since `82d0e00`.
 
 Active event flows:
 
@@ -472,8 +473,9 @@ is the TTL alone, priced into the k6 `visibility_lag` threshold (8 s since 2026-
 
 Caveat when touching that SQL: EF creates PascalCase, quoted identifiers (`"Auctions"`, `"Status"`), and the
 query quotes them accordingly. Keep every identifier double-quoted in raw SQL — an unquoted name is folded to
-lowercase by PostgreSQL and will not match the schema. Both queries are covered by
-`GetActiveAuctionsQueryHandlerTests` / `GetAuctionByIdQueryHandlerTests`, which build a real
+lowercase by PostgreSQL and will not match the schema. All four queries are covered by
+`GetActiveAuctionsQueryHandlerTests`, `GetAuctionByIdQueryHandlerTests`, `GetAuctionBidsQueryHandlerTests` and
+`GetMyAuctionsQueryHandlerTests`, which build a real
 `SqlConnectionFactory(fixture.ConnectionString)` against the Testcontainers database.
 
 ### Financial-write conventions (Wallets)
