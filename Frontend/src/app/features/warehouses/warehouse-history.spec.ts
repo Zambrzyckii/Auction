@@ -2,7 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { MyWarehouse } from '../../core/api/models';
+import { PushClient } from '../../core/push/push-client';
 import { WarehouseHistory } from './warehouse-history';
 
 const URL = '/api/warehouses/mine';
@@ -27,12 +29,19 @@ function war(overrides: Partial<MyWarehouse>): MyWarehouse {
 describe('WarehouseHistory', () => {
   let fixture: ComponentFixture<WarehouseHistory>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     await TestBed.configureTestingModule({
       imports: [WarehouseHistory],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(WarehouseHistory);
@@ -95,5 +104,13 @@ describe('WarehouseHistory', () => {
     const error = el().querySelector('.error')?.textContent ?? '';
     expect(error.length).toBeGreaterThan(0);
     expect(error).not.toContain('<');
+  });
+
+  it('refreshes the own wars on WarehouseChanged', () => {
+    http.expectOne(URL).flush([]);
+    push.emit('WarehouseChanged', '{"warehouseId":"war-1"}');
+    http.expectOne(URL).flush([war({})]);
+    fixture.detectChanges();
+    expect(el().textContent).not.toContain('You have not joined any warehouse war yet');
   });
 });

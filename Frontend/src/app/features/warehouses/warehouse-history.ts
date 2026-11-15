@@ -4,6 +4,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MyWarehouse } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
+import { refreshOn } from '../../core/push/refresh-on';
 import { warOutcome } from './warehouse-rules';
 
 const POLL_MS = 10_000;
@@ -20,6 +21,10 @@ export class WarehouseHistory {
     () => this.http.get<MyWarehouse[]>('/api/warehouses/mine'),
     POLL_MS,
   );
+
+  constructor() {
+    refreshOn(this.poller, 'WarehouseChanged');
+  }
 
   readonly warOutcome = warOutcome;
 }

@@ -2,10 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { FriendSummary, OwnProfile, Wallet, WarehouseDetails } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { WarehouseDetail } from './warehouse-detail';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -60,9 +62,11 @@ function wallet(overrides: Partial<Wallet>): Wallet {
 describe('WarehouseDetail', () => {
   let fixture: ComponentFixture<WarehouseDetail>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
@@ -73,6 +77,7 @@ describe('WarehouseDetail', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: PushClient, useValue: push },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: 'war-1' }) } },
@@ -383,5 +388,24 @@ describe('WarehouseDetail', () => {
     );
     vi.advanceTimersByTime(20_000);
     http.expectNone(WAR_URL);
+  });
+
+  it('refreshes the war on WarehouseChanged for this id only', () => {
+    flushAll(war({}));
+    push.emit('WarehouseChanged', '{"warehouseId":"other"}');
+    http.expectNone(WAR_URL);
+    push.emit('WarehouseChanged', '{"warehouseId":"war-1"}');
+    http.expectOne(WAR_URL).flush(war({ currentPrice: 60, status: 'Bidding' }));
+    fixture.detectChanges();
+    expect(el().querySelector('.current-price')?.textContent).toBe('60');
+  });
+
+  it('refreshes the wallet on WalletChanged and re-evaluates the join', () => {
+    flushAll(war({}));
+    expect((el().querySelector('button.join') as HTMLButtonElement).disabled).toBe(false);
+    push.emit('WalletChanged');
+    http.expectOne(WALLET_URL).flush(wallet({ availableFunds: 300 }));
+    fixture.detectChanges();
+    expect((el().querySelector('button.join') as HTMLButtonElement).disabled).toBe(true);
   });
 });

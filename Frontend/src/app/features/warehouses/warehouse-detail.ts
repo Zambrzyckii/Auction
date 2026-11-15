@@ -14,6 +14,7 @@ import {
 import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
+import { idMatches, refreshOn } from '../../core/push/refresh-on';
 import { clock } from '../../core/time/clock';
 import {
   canLeave,
@@ -136,6 +137,8 @@ export class WarehouseDetail {
   }
 
   constructor() {
+    refreshOn(this.warPoller, 'WarehouseChanged', idMatches('warehouseId', this.id));
+    refreshOn(this.walletPoller, 'WalletChanged');
     this.http.get<OwnProfile>('/api/profiles/me').subscribe({
       next: (profile) => this.friends.set(profile.friends),
       error: () => this.friends.set([]),

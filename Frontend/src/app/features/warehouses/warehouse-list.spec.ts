@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { WarehouseInvite, WarehouseSummary } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { PushClient } from '../../core/push/push-client';
 import { WarehouseList } from './warehouse-list';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
@@ -46,10 +48,12 @@ function invite(overrides: Partial<WarehouseInvite>): WarehouseInvite {
 describe('WarehouseList', () => {
   let fixture: ComponentFixture<WarehouseList>;
   let http: HttpTestingController;
+  let push: PushStub;
   let remember: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
@@ -62,6 +66,7 @@ describe('WarehouseList', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: ProfileDirectory, useValue: { remember } },
+        { provide: PushClient, useValue: push },
       ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
@@ -167,5 +172,13 @@ describe('WarehouseList', () => {
   it('links to the war history', () => {
     flushAll([]);
     expect(el().querySelector('a[href="/warehouses/mine"]')).not.toBeNull();
+  });
+
+  it('refreshes the list on WarehouseChanged', () => {
+    flushAll([]);
+    push.emit('WarehouseChanged', '{"warehouseId":"war-1"}');
+    http.expectOne(LIST_URL).flush([war({})]);
+    fixture.detectChanges();
+    expect(el().textContent).not.toContain('No warehouse wars right now.');
   });
 });

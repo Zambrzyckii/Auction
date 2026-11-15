@@ -8,6 +8,7 @@ import { WarehouseInvite, WarehouseSummary } from '../../core/api/models';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { refreshOn } from '../../core/push/refresh-on';
 import { clock } from '../../core/time/clock';
 
 const LIST_POLL_MS = 5000;
@@ -38,6 +39,10 @@ export class WarehouseList {
       ),
     INVITES_POLL_MS,
   );
+
+  constructor() {
+    refreshOn(this.listPoller, 'WarehouseChanged');
+  }
 
   readonly now = clock();
   readonly timeLeft = timeLeft;
