@@ -3,7 +3,12 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { installStorageStub } from '../testing/storage-stub';
-import { REAL_TOKEN, REAL_TOKEN_EMAIL } from '../testing/token-fixture';
+import {
+  REAL_TOKEN,
+  REAL_TOKEN_EMAIL,
+  REAL_TOKEN_USER_ID,
+  tokenWithClaims,
+} from '../testing/token-fixture';
 import { App } from './app';
 import { routes } from './app.routes';
 import { TokenStorage } from './core/auth/token-storage';
@@ -66,12 +71,17 @@ describe('App', () => {
   });
 
   it('opens one push stream with the bearer token for a signed-in user and closes it on logout', async () => {
-    new TokenStorage().set(REAL_TOKEN);
+    const token = tokenWithClaims({
+      nameid: REAL_TOKEN_USER_ID,
+      unique_name: REAL_TOKEN_EMAIL,
+      exp: Math.floor(Date.now() / 1000) + 600,
+    });
+    new TokenStorage().set(token);
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
     expect(pushRequests.length).toBe(1);
-    expect(new Headers(pushRequests[0].headers).get('Authorization')).toBe(`Bearer ${REAL_TOKEN}`);
+    expect(new Headers(pushRequests[0].headers).get('Authorization')).toBe(`Bearer ${token}`);
 
     (fixture.nativeElement as HTMLElement)
       .querySelector<HTMLButtonElement>('.session button')!

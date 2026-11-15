@@ -214,17 +214,100 @@ describe('PushClient', () => {
   });
 
   it('stops after a clean end once the token has expired', async () => {
-    setup(Math.floor(Date.now() / 1000) - 10);
+    setup(Math.floor(Date.now() / 1000) + 2);
     const first = sseStream();
     responses.push(first, sseStream());
 
     client.connect(token);
     await settle();
+    first.push('event: connected\ndata: {}\n\n');
+    await settle();
+    await vi.advanceTimersByTimeAsync(3000);
     first.close();
     await settle();
     await vi.advanceTimersByTimeAsync(60_000);
 
     expect(fetchCalls.length).toBe(1);
+  });
+
+  it('does not open a stream when the stored token has already expired', async () => {
+    setup(Math.floor(Date.now() / 1000) - 10);
+    responses.push(sseStream());
+    const router = TestBed.inject(Router);
+
+    client.connect(token);
+    await settle();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(fetchCalls.length).toBe(0);
+    expect(new TokenStorage().get()).toBe(token);
+    expect(router.url).not.toContain('/login');
+  });
+
+  it('stops without logging out on a 401 within the clock skew of the expiry', async () => {
+    setup(Math.floor(Date.now() / 1000) + 60);
+    responses.push(plainResponse(401));
+    const router = TestBed.inject(Router);
+
+    client.connect(token);
+    await settle();
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(fetchCalls.length).toBe(1);
+    expect(new TokenStorage().get()).toBe(token);
+    expect(router.url).not.toContain('/login');
+  });
+
+  it('keeps backing off while every stream ends early', async () => {
+    setup();
+    const first = sseStream();
+    const second = sseStream();
+    responses.push(first, second, sseStream());
+
+    client.connect(token);
+    await settle();
+    first.push('event: connected\ndata: {}\n\n');
+    await settle();
+    first.close();
+    await settle();
+    await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS);
+    expect(fetchCalls.length).toBe(2);
+
+    second.push('event: connected\ndata: {}\n\n');
+    await settle();
+    second.close();
+    await settle();
+    await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS);
+    expect(fetchCalls.length).toBe(2);
+    await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS);
+    expect(fetchCalls.length).toBe(3);
+  });
+
+  it('resets the backoff once a stream has lived five seconds', async () => {
+    setup();
+    const first = sseStream();
+    const second = sseStream();
+    const third = sseStream();
+    responses.push(first, second, third, sseStream());
+
+    client.connect(token);
+    await settle();
+    first.close();
+    await settle();
+    await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS);
+    expect(fetchCalls.length).toBe(2);
+
+    second.push('event: connected\ndata: {}\n\n');
+    await settle();
+    await vi.advanceTimersByTimeAsync(PUSH_MIN_STREAM_MS);
+    second.close();
+    await settle();
+    expect(fetchCalls.length).toBe(3);
+
+    third.close();
+    await settle();
+    await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS);
+    expect(fetchCalls.length).toBe(4);
   });
 
   it('disconnect aborts the stream, clears connected and schedules nothing', async () => {

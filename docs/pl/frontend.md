@@ -65,7 +65,7 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 
 Widok dodaje w konstruktorze jedną linię `refreshOn(poller, topic)` na poller (`core/push/refresh-on.ts`), która woła `poller.refresh()`, gdy nadejdzie temat, opcjonalnie tylko gdy dane pasują do id widoku (`idMatches('auctionId', id)`), i opcjonalnie jeszcze raz po `settleMs`. Odświeżenie jest pomijane, gdy poller jest w wycofaniu (status błędu 0, 429 lub 5xx), więc nudge nigdy nie nadpisuje `Retry-After`. Polling pozostaje fallbackiem i nie zmienia się.
 
-Polityka ponawiania siedzi w `shouldReconnect` i `failureOf`. 401 czyści sesję tym samym `handleUnauthorized`, co interceptor, i kończy, wygasły token kończy, 429 czeka na `Retry-After`, błąd sieci lub 5xx wycofuje się wykładniczo do 30 s przez `nextDelay` pollerów, a czysty koniec łączy od razu, chyba że strumień żył krócej niż `PUSH_MIN_STREAM_MS` (5 s), co liczy się jako błąd, żeby piąta karta wyparta przez limit czterech strumieni hosta nie walczyła z pozostałymi. Specy podmieniają `PushClient` na `pushStub()` z `src/testing/push-stub.ts`, a własny spec klienta stubuje `fetch` odpowiedziami z `ReadableStream`.
+Polityka ponawiania siedzi w `shouldReconnect` i `failureOf`. 401 czyści sesję tym samym `handleUnauthorized`, co interceptor, i kończy, wygasły token kończy, 429 czeka na `Retry-After`, błąd sieci lub 5xx wycofuje się wykładniczo do 30 s przez `nextDelay` pollerów, a czysty koniec łączy od razu, chyba że strumień żył krócej niż `PUSH_MIN_STREAM_MS` (5 s), co liczy się jako błąd. Wycofanie zeruje się dopiero po strumieniu, który żył tak długo, więc piąta karta wyparta przez limit czterech strumieni hosta wycofuje się do 30 s, zamiast co sekundę wypierać kolejną kartę. 401 wylogowuje gracza przez `handleUnauthorized` tylko wtedy, gdy token powinien być ważny jeszcze dłużej niż `PUSH_CLOCK_SKEW_MS` (5 min), 401 na końcu życia tokenu tylko kończy strumień, a klient nigdy nie otwiera strumienia tokenem, który już wygasł, więc nieświeży token na stronie publicznej nie wymusza logowania. Specy podmieniają `PushClient` na `pushStub()` z `src/testing/push-stub.ts`, a własny spec klienta stubuje `fetch` odpowiedziami z `ReadableStream`.
 
 | Temat | Widoki, które się na nim odświeżają |
 |---|---|
@@ -93,6 +93,7 @@ Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, 
 | `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | walidator kont społecznościowych: najwyżej sześć linków, po jednym na znaną platformę, na jej domenie |
 | `ROULETTE_BET_TYPES` i zakresy selekcji (`roulette-rules.ts`) | typy zakładów ruletki z ich zakresami selekcji |
 | `PushTopic` (`push-topics.ts`) | siedem nazw tematów z `PushTopics` hosta (`Infrastructure/Push`), jedyne nazwy `event:`, na które klient się zapisuje |
+| `PUSH_CLOCK_SKEW_MS` (`push-client.ts`) | domyślne pięć minut `ClockSkew` walidacji JWT w hoście (`TokenValidationParameters` w `Program.cs`, nienadpisane), okno, w którym API wciąż przyjmuje token, którego endpoint push już odmawia |
 | `AUCTION_SETTLE_MS` (`push-topics.ts`) | 2 s TTL cache odczytów modułu Auctions (`Auctions:ReadCache`, ADR-009). Nudge może trafić w TTL i odczytać nieświeżą migawkę, więc widoki aukcji odświeżają się jeszcze raz po nim |
 
 ## Decyzje

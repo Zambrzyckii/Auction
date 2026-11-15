@@ -10,6 +10,7 @@ import { SseEvent, parseSseChunk } from './sse';
 
 export const PUSH_BASE_DELAY_MS = 1000;
 export const PUSH_MIN_STREAM_MS = 5000;
+export const PUSH_CLOCK_SKEW_MS = 5 * 60_000;
 
 export type PushHandler = (data: string) => void;
 
@@ -49,6 +50,9 @@ export class PushClient {
 
   connect(token: string): void {
     this.disconnect();
+    if (!shouldReconnect(null, this.expiresAt(), Date.now())) {
+      return;
+    }
     this.token = token;
     this.attempt = 0;
     void this.open();
@@ -115,7 +119,6 @@ export class PushClient {
   private dispatch(event: SseEvent): void {
     if (event.event === 'connected') {
       this.connected.set(true);
-      this.attempt = 0;
       return;
     }
     if (event.event === 'ping') {
@@ -131,15 +134,21 @@ export class PushClient {
     retryAfterSeconds: number | undefined,
     livedMs: number,
   ): void {
+    const expiresAt = this.expiresAt();
+    const now = Date.now();
     if (status === 401) {
       this.token = null;
-      handleUnauthorized(this.router, this.storage, this.directory);
+      if (expiresAt === null || expiresAt - now > PUSH_CLOCK_SKEW_MS) {
+        handleUnauthorized(this.router, this.storage, this.directory);
+      }
       return;
     }
-    const exp = this.session.claims()?.exp;
-    if (!shouldReconnect(status, exp === undefined ? null : exp * 1000, Date.now())) {
+    if (!shouldReconnect(status, expiresAt, now)) {
       this.token = null;
       return;
+    }
+    if (livedMs >= PUSH_MIN_STREAM_MS) {
+      this.attempt = 0;
     }
     const failure = failureOf(status, retryAfterSeconds, livedMs);
     const delay = failure === null ? 0 : nextDelay(PUSH_BASE_DELAY_MS, this.attempt, failure);
@@ -147,6 +156,11 @@ export class PushClient {
       this.attempt += 1;
     }
     this.timer = setTimeout(() => void this.open(), delay);
+  }
+
+  private expiresAt(): number | null {
+    const exp = this.session.claims()?.exp;
+    return exp === undefined ? null : exp * 1000;
   }
 }
 
