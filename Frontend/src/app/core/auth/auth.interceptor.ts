@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { ProfileDirectory } from '../profiles/profile-directory';
 import { TokenStorage } from './token-storage';
+import { handleUnauthorized } from './unauthorized';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const storage = inject(TokenStorage);
@@ -18,25 +19,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(request).pipe(
     catchError((err: unknown) => {
-      handleUnauthorized(err, storage, router, directory);
+      if (err instanceof HttpErrorResponse && err.status === 401) {
+        handleUnauthorized(router, storage, directory);
+      }
       return throwError(() => err);
     }),
   );
 };
-
-function handleUnauthorized(
-  err: unknown,
-  storage: TokenStorage,
-  router: Router,
-  directory: ProfileDirectory,
-): void {
-  if (!(err instanceof HttpErrorResponse) || err.status !== 401) {
-    return;
-  }
-  if (router.url.startsWith('/login')) {
-    return;
-  }
-  storage.clear();
-  directory.clear();
-  router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
-}
