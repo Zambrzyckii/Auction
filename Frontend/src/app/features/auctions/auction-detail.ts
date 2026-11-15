@@ -9,6 +9,8 @@ import { Session } from '../../core/auth/session';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { AUCTION_SETTLE_MS } from '../../core/push/push-topics';
+import { idMatches, refreshOn } from '../../core/push/refresh-on';
 import { isBidConfirmed } from './auction-rules';
 
 const POLL_MS = 2500;
@@ -91,6 +93,9 @@ export class AuctionDetail {
   }
 
   constructor() {
+    const thisAuction = idMatches('auctionId', this.id ?? '');
+    refreshOn(this.poller, 'AuctionChanged', thisAuction, AUCTION_SETTLE_MS);
+    refreshOn(this.bidsPoller, 'AuctionChanged', thisAuction, AUCTION_SETTLE_MS);
     effect(() => {
       const status = this.poller.value()?.status;
       if (status === 'Closed' || status === 'Cancelled') {

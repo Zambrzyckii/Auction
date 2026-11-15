@@ -2,7 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { MyAuction } from '../../core/api/models';
+import { PushClient } from '../../core/push/push-client';
 import { MyAuctions } from './my-auctions';
 
 const URL = '/api/auctions/mine';
@@ -27,12 +29,19 @@ function auction(overrides: Partial<MyAuction>): MyAuction {
 describe('MyAuctions', () => {
   let fixture: ComponentFixture<MyAuctions>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     await TestBed.configureTestingModule({
       imports: [MyAuctions],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(MyAuctions);
@@ -57,6 +66,14 @@ describe('MyAuctions', () => {
 
   it('requests the own list without a limit parameter', () => {
     http.expectOne(URL).flush([]);
+  });
+
+  it('refreshes the own list on AuctionListChanged', () => {
+    http.expectOne(URL).flush([]);
+    push.emit('AuctionListChanged');
+    http.expectOne(URL).flush([auction({})]);
+    fixture.detectChanges();
+    expect(el().textContent).not.toContain('No auctions');
   });
 
   it('splits running and finished auctions into two tables', () => {

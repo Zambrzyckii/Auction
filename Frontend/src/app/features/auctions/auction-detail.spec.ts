@@ -3,11 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { WritableSignal, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction, AuctionBid } from '../../core/api/models';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { ProfileDirectory, shortId } from '../../core/profiles/profile-directory';
+import { PushClient } from '../../core/push/push-client';
 import { AuctionDetail } from './auction-detail';
 
 const URL = '/api/auctions/abc';
@@ -42,11 +44,13 @@ function bid(overrides: Partial<AuctionBid>): AuctionBid {
 describe('AuctionDetail', () => {
   let fixture: ComponentFixture<AuctionDetail>;
   let http: HttpTestingController;
+  let push: PushStub;
   let directoryNames: WritableSignal<ReadonlyMap<string, string>>;
   let directoryStub: { ensure: ReturnType<typeof vi.fn>; label(userId: string): string };
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     new TokenStorage().set(
       tokenWithClaims({ nameid: MY_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
@@ -63,6 +67,7 @@ describe('AuctionDetail', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: ProfileDirectory, useValue: directoryStub },
+        { provide: PushClient, useValue: push },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ id: 'abc' }) } },
@@ -142,6 +147,22 @@ describe('AuctionDetail', () => {
     http.expectOne(BIDS_URL).flush(null, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
     expect(el().querySelector('.error')?.textContent).toContain('Auction not found');
+  });
+
+  it('refreshes the auction and its bids on AuctionChanged for this id, and once more after 2 s', () => {
+    http.expectOne(URL).flush(auction({}));
+    flushBids([]);
+
+    push.emit('AuctionChanged', '{"auctionId":"other"}');
+    http.expectNone(URL);
+    http.expectNone(BIDS_URL);
+
+    push.emit('AuctionChanged', '{"auctionId":"abc"}');
+    http.expectOne(URL).flush(auction({ currentPrice: 180 }));
+    http.expectOne(BIDS_URL).flush([]);
+    vi.advanceTimersByTime(2000);
+    http.expectOne(URL).flush(auction({ currentPrice: 180 }));
+    http.expectOne(BIDS_URL).flush([]);
   });
 
   it('lists the bid history with shortened bidder ids', () => {

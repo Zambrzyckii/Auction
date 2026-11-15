@@ -1,6 +1,7 @@
 import { DestroyRef, inject } from '@angular/core';
 import { Poller } from '../polling/poll';
 import { PushClient } from './push-client';
+import { PushTopic } from './push-topics';
 
 export function idMatches(key: string, id: string): (data: string) => boolean {
   return (data) => {
@@ -19,7 +20,7 @@ export function idMatches(key: string, id: string): (data: string) => boolean {
 
 export function refreshOn(
   poller: Poller<unknown>,
-  topic: string,
+  topic: PushTopic,
   predicate?: (data: string) => boolean,
   settleMs?: number,
 ): void {

@@ -2,11 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
 import { Auction } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
 import { TokenStorage } from '../../core/auth/token-storage';
+import { PushClient } from '../../core/push/push-client';
 import { AuctionList } from './auction-list';
 
 function auction(overrides: Partial<Auction>): Auction {
@@ -28,12 +30,20 @@ function auction(overrides: Partial<Auction>): Auction {
 describe('AuctionList', () => {
   let fixture: ComponentFixture<AuctionList>;
   let http: HttpTestingController;
+  let push: PushStub;
 
   beforeEach(async () => {
+    vi.useFakeTimers();
+    push = pushStub();
     installStorageStub();
     await TestBed.configureTestingModule({
       imports: [AuctionList],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: PushClient, useValue: push },
+      ],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(AuctionList);
@@ -43,6 +53,7 @@ describe('AuctionList', () => {
   afterEach(() => {
     fixture.destroy();
     http.verify();
+    vi.useRealTimers();
   });
 
   function el(): HTMLElement {
@@ -50,6 +61,14 @@ describe('AuctionList', () => {
   }
 
   it('always requests the list with an explicit limit', () => {
+    http.expectOne('/api/auctions?limit=50').flush([]);
+  });
+
+  it('refreshes the list on AuctionListChanged and once more after 2 s', () => {
+    http.expectOne('/api/auctions?limit=50').flush([]);
+    push.emit('AuctionListChanged');
+    http.expectOne('/api/auctions?limit=50').flush([]);
+    vi.advanceTimersByTime(2000);
     http.expectOne('/api/auctions?limit=50').flush([]);
   });
 
