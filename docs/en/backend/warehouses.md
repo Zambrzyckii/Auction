@@ -26,7 +26,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Warehouses --start
 dotnet test tests/AuctionServer.Modules.Warehouses.Tests
 ```
 
-Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Persistence/Migrations): `20261014171153_Initial_Warehouses`, `20261014191955_Add_Warehouses_Lobby` and `20261114214818_Add_Warehouse_Participant_User_Index`.
+Migrations live in [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Warehouses/Infrastructure/Persistence/Migrations): `20261014171153_Initial_Warehouses`, `20261014191955_Add_Warehouses_Lobby`, `20261101131313_Add_Warehouse_Participant_Request`, `20261101143643_Add_Outbox_Lease` and `20261114214818_Add_Warehouse_Participant_User_Index`.
 
 ## Configuration
 

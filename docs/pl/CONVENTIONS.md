@@ -38,7 +38,7 @@ To reguły, których repozytorium przestrzega dziś, wzięte z kodu i historii g
 
 ## 4. Testy
 
-- Każdy moduł ma jeden projekt xUnit z testami offline (`Application/`, `Domain/`, `Infrastructure/`) i namespace `IntegrationTests/`, który działa na PostgreSQL uruchamianym przez Testcontainers (`postgres:latest`), nigdy na zamockowanej bazie.
+- Każdy moduł ma jeden projekt xUnit z testami offline (`Application/`, `Domain/`, `Infrastructure/`) i namespace `IntegrationTests/`, który działa na PostgreSQL uruchamianym przez Testcontainers (`postgres:16-alpine` przez wspólną stałą `TestDatabase.Image`), nigdy na zamockowanej bazie.
 - Fixtury integracyjne to fixtury kolekcji o nazwie `<Module>PostgresFixture`; testy na poziomie API używają `WebApplicationFactory<Program>` (`CustomApi`).
 - Metody testowe mają nazwy `Method_WhenCondition_ShouldResult` i układ arrange, act, assert.
 - CI uruchamia testy offline Auctions w `unit-tests`, całą resztę w `integration-tests`, `nginx -t` na konfiguracji gatewaya w `gateway-config` i build Angulara z Vitestem w `frontend`, a każdy job musi przejść.
@@ -47,7 +47,7 @@ To reguły, których repozytorium przestrzega dziś, wzięte z kodu i historii g
 
 - Ustawienia są czytane przez `IConfiguration`; wartości lokalne pochodzą z `dotnet user-secrets` na `src/AuctionServer.Api`, CI i kontenery używają zmiennych środowiskowych z `__`.
 - Klucze wymagane: `ConnectionStrings:DefaultConnection`, `Jwt:Key` (co najmniej 32 znaki), `Bots:ApiKey`, `Wallets:StartingFunds`; `Jwt:Issuer` i `Jwt:Audience` mają domyślne wartości w `appsettings.json`.
-- Migracje są aplikowane przez `dotnet ef database update`, nigdy przy starcie aplikacji.
+- Migracje są aplikowane przez `dotnet ef database update` w developmencie. Host aplikuje je też przy starcie, gdy `Database:MigrateOnStartup` jest true, co `compose.yaml` ustawia dla kontenera api.
 
 ## 6. Definition of done
 

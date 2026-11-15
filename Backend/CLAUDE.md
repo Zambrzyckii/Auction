@@ -100,7 +100,8 @@ dotnet ef migrations add <Name> --project src/AuctionServer.Modules.Profiles \
 `--output-dir` matters for Auctions: the module has **two** migration folders. `Migrations/` holds the initial
 migration plus `AppDbContextModelSnapshot.cs` (legacy name — it is annotated `[DbContext(typeof(AuctionDbContext))]`),
 while `Infrastructure/Migrations/` holds every later migration (`Sync_Auctions_Fix` … `Add_Auction_Status_And_Item_Snapshot`,
-`Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid`, `Add_Auction_Seller_Index`) and has no snapshot. EF finds both because it
+`Add_Auctions_Inbox`, `Add_Auction_CreatedOn`, `Add_Auction_Pending_Bid`, `Add_Auctions_Bids`, `Add_Auction_Pending_Bid_Request`,
+`Add_Outbox_Lease`, `Add_Auction_Seller_Index`) and has no snapshot. EF finds both because it
 scans the whole assembly, but the default output dir is `Migrations/`, so new migrations land in the old folder
 unless you pass `--output-dir`. Wallets is consistent: everything under `Infrastructure/Persistence/Migrations/`
 (`Initial_Wallets`, `Add_Wallets_Inbox`, `Add_Wallets_Outbox`, `Add_Wallets_Funds_Locks`).
@@ -112,7 +113,7 @@ share one schema. Inventory follows the same layout (snapshot `InventoryDbContex
 `Add_Inventory_Inbox` (`InventoryProcessedMessages`) follow. Warehouses uses the Wallets layout as well:
 `Initial_Warehouses` (wars, stock items, outbox, inbox), `Add_Warehouses_Lobby` (participants table plus
 `CancellationReason`) and `Add_Warehouse_Participant_Request` (`EntryRequestId` on participants, backfilled with
-`Guid.Empty`) and `Add_Warehouse_Participant_User_Index` under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
+`Guid.Empty`), `Add_Outbox_Lease` and `Add_Warehouse_Participant_User_Index` under `Infrastructure/Persistence/Migrations/`. Pawnshop uses the same layout with
 `Initial_Pawnshop` (shops, outbox, inbox), `Add_Pawnshop_Bot` (bot snapshot columns), `Add_Pawnshop_Stock` (pending
 stock-request columns plus `PawnshopStockItems`) and `Set_Pawnshop_Stock_Rate_Precision` (`numeric(5,4)` for
 `PendingStockPayoutRate`). Casino follows the same layout with `Initial_Casino` (chip accounts, purchases, outbox,
@@ -234,8 +235,9 @@ migration loop):
   its whole options section; each lands in a singleton options record.
 - `<Module>Endpoints.Map<Module>Endpoints(app)` — minimal-API `MapGroup("/api/<module>")` with handlers that only
   build a MediatR message and `sender.Send(...)`, no logic in the endpoint
-  (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`) — with one known exception, the
-  inline `limit` range guard in `AuctionEndpoints.cs:22` sitting outside the FluentValidation pipeline.
+  (`Presentation/WalletEndpoints.cs:13`, `Presentation/AuctionEndpoints.cs:13`) — with two known exceptions, the
+  inline `limit` range guards in `AuctionEndpoints.cs:24` and `WarehouseEndpoints.cs:24` sitting outside the
+  FluentValidation pipeline.
 
 MediatR and FluentValidation are registered per module assembly in `Program.cs:81-142` — each module gets its own
 `AddValidatorsFromAssembly(...)` plus an `AddMediatR(...)` block that also re-adds the shared
@@ -450,8 +452,9 @@ SQL through Dapper into flat DTOs. Four queries: `GetActiveAuctions` (`WHERE "St
 LIMIT @Limit`, `GetActiveAuctionsQueryHandler.cs:11`), `GetAuctionById` (`QuerySingleOrDefaultAsync`, `null` →
 `AuctionNotFoundException` 404, any status — the seller sees `Pending` / `Cancelled` + `CancellationReason`,
 `GetAuctionByIdQueryHandler.cs:11`), `GetAuctionBids` (the confirmed bid history of one auction, newest first) and `GetMyAuctions` (JWT only, `WHERE "SellerUserId" = @SellerUserId ORDER BY "CreatedOn" DESC LIMIT @MaxRows` with a constant 50, every status, the one uncached query). Each query owns its DTO in its own folder (`ActiveAuctionQueryDto`,
-`AuctionByIdQueryDto`, `MyAuctionQueryDto` with `CreatedOn` as an eleventh field) — the first two identical ten fields today, kept separate on purpose so they can diverge. Dapper matches the
-record constructor **by column name**, so a DTO parameter must be spelled exactly like the column; `Status` is an
+`AuctionByIdQueryDto`, `MyAuctionQueryDto` with `CreatedOn` as an eleventh field) — the first two identical ten fields today, kept separate on purpose so they can diverge. Dapper binds the
+record constructor **position by position**, checking that the i-th column name matches the i-th parameter, so the
+SELECT list must follow the record's parameter order and each parameter must be spelled like its column; `Status` is an
 `integer` column that Dapper maps to `AuctionStatus` and the host serializes as a string (`Program.cs:166-167`).
 Writes go through `IAuctionRepository` + EF Core. Wallets does not do this — it reads through EF with `AsNoTracking()`
 (`Infrastructure/Persistence/WalletRepository.cs:24`).
@@ -645,7 +648,7 @@ no JWT at all and answers `Cache-Control: public`. The same day added `GET /api/
 unknown ids skipped) and `GET /api/profiles/search?q=` (case-insensitive username prefix with the wildcards
 escaped, at most 20 rows, deliberately without an index), the first queries with FluentValidation validators, and
 `AvatarLinks.For` as the single `avatarUrl` formula. Sixteen
-endpoints under `/api/profiles` (57 total, `GET /api/push` included), event registry at 37, tables at 38. The chain was probed live against a
+endpoints under `/api/profiles` (57 total, `GET /api/push` included), event registry at 38, tables at 39. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`

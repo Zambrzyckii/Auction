@@ -38,7 +38,7 @@ These are the rules the repository follows today, taken from the code and the gi
 
 ## 4. Testing
 
-- Each module has one xUnit project with offline tests (`Application/`, `Domain/`, `Infrastructure/`) and an `IntegrationTests/` namespace that runs against PostgreSQL started by Testcontainers (`postgres:latest`), never against a mocked database.
+- Each module has one xUnit project with offline tests (`Application/`, `Domain/`, `Infrastructure/`) and an `IntegrationTests/` namespace that runs against PostgreSQL started by Testcontainers (`postgres:16-alpine` through the shared `TestDatabase.Image` constant), never against a mocked database.
 - Integration fixtures are collection fixtures named `<Module>PostgresFixture`; API-level tests use `WebApplicationFactory<Program>` (`CustomApi`).
 - Test methods are named `Method_WhenCondition_ShouldResult` and follow arrange, act, assert.
 - CI runs the offline Auctions tests in `unit-tests`, everything else in `integration-tests`, `nginx -t` on the gateway configuration in `gateway-config` and the Angular build with Vitest in `frontend`, and every job must pass.
@@ -47,7 +47,7 @@ These are the rules the repository follows today, taken from the code and the gi
 
 - Settings are read through `IConfiguration`; local values come from `dotnet user-secrets` on `src/AuctionServer.Api`, CI and containers use environment variables with `__`.
 - Required keys: `ConnectionStrings:DefaultConnection`, `Jwt:Key` (at least 32 characters), `Bots:ApiKey`, `Wallets:StartingFunds`; `Jwt:Issuer` and `Jwt:Audience` have defaults in `appsettings.json`.
-- Migrations are applied by `dotnet ef database update`, never at application startup.
+- Migrations are applied by `dotnet ef database update` in development. The host also applies them at startup when `Database:MigrateOnStartup` is true, which `compose.yaml` sets for the api container.
 
 ## 6. Definition of done
 
