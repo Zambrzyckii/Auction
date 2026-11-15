@@ -80,9 +80,9 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 
 Planowane nadal po nich:
 
-- Braki API wymienione we [frontend.md](frontend.md) z kanałem push na Server-Sent Events (decyzja z 2026-11-14), potem boty rynkowe AI, potem przejście UI/UX nad celowo surowym frontendem jako ostatnia odnoga planu.
+- Boty rynkowe AI, potem przejście UI/UX nad celowo surowym frontendem jako ostatnia odnoga planu.
 
-RabbitMQ, wymieniany tu do 2026-11-04, wszedł tego dnia jako transport zdarzeń za `IIntegrationEventPublisher` z rynkowym exchange'em tylko do konsumpcji dla botów (zobacz [ADR-013](adr/013-rabbitmq-transport.md)). Frontend Angular, wymieniany tu do 2026-11-10, wszedł tego dnia jako widoki MVP na istniejącym API (zobacz [frontend.md](frontend.md)). Widoki dla pozostałych modułów, wymieniane tu do 2026-11-14, weszły tego dnia na tym samym API (zobacz [frontend.md](frontend.md)). Właściwe przejście UI/UX zostaje na końcu roadmapy.
+RabbitMQ, wymieniany tu do 2026-11-04, wszedł tego dnia jako transport zdarzeń za `IIntegrationEventPublisher` z rynkowym exchange'em tylko do konsumpcji dla botów (zobacz [ADR-013](adr/013-rabbitmq-transport.md)). Frontend Angular, wymieniany tu do 2026-11-10, wszedł tego dnia jako widoki MVP na istniejącym API (zobacz [frontend.md](frontend.md)). Widoki dla pozostałych modułów, wymieniane tu do 2026-11-14, weszły tego dnia na tym samym API (zobacz [frontend.md](frontend.md)). Braki API z kanałem push na Server-Sent Events, wymieniane tu do 2026-11-15, weszły tego dnia z klientem Angular, który je konsumuje (zobacz [frontend.md](frontend.md) i [ADR-016](adr/016-server-sent-events-push.md)). Właściwe przejście UI/UX zostaje na końcu roadmapy.
 
 ## 7. Zasady projektu
 
