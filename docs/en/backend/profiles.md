@@ -2,14 +2,14 @@
 
 > English version. Polish 1:1 counterpart: [../../pl/backend/profiles.md](../../pl/backend/profiles.md)
 
-`AuctionServer.Modules.Profiles` is the ninth module and the social layer of the game: a public profile per player with a username snapshot, a level earned from wallet turnover, an avatar stored in SeaweedFS, up to six social links, friends with requests and acceptance, warehouse-war invites for friends, and a privacy toggle that hides everything except the username and the avatar from strangers. It is the first **consume-only** module: it publishes no events, so it has no outbox table, no `OutboxProcessor` and no keeper, only the inbox `ProfilesProcessedMessages`. Fourteen endpoints live under `/api/profiles`, all behind JWT.
+`AuctionServer.Modules.Profiles` is the ninth module and the social layer of the game: a public profile per player with a username snapshot, a level earned from wallet turnover, an avatar stored in SeaweedFS, up to six social links, friends with requests and acceptance, warehouse-war invites for friends, and a privacy toggle that hides everything except the username and the avatar from strangers. It is the first **consume-only** module: it publishes no events, so it has no outbox table, no `OutboxProcessor` and no keeper, only the inbox `ProfilesProcessedMessages`. Sixteen endpoints live under `/api/profiles`, all behind JWT except the anonymous avatar download.
 
 ## Overview
 
 | Area | Files |
 |---|---|
 | Endpoints | [`Presentation/ProfilesEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Presentation/ProfilesEndpoints.cs), request records `ReplaceSocialLinksRequest`, `FriendRequestRequest`, `WarehouseInviteRequest` |
-| Commands and queries | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/`, `CreateWarehouseInvite/` and `DeclineWarehouseInvite/` (command, handler, validator each), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/` and `GetWarehouseInvites/` (query, handler, DTOs each) |
+| Commands and queries | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/`, `CreateWarehouseInvite/` and `DeclineWarehouseInvite/` (command, handler, validator each), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/`, `GetWarehouseInvites/`, `GetProfileSummaries/` and `SearchProfiles/` (query, handler, DTOs each; the two lookups add the first validators on queries and share `Application/Queries/ProfileSummaryDto.cs` and `AvatarLinks.cs`, the one place that builds `avatarUrl`) |
 | Options | `Application/Options/ProfilesOptions.cs` (`ProfilesOptions`, `AvatarOptions`, `InviteOptions`, `StorageOptions`) |
 | Event handlers | `Application/Handlers/UserRegisteredEventHandler.cs`, `PlayerLevelledUpEventHandler.cs` |
 | Storage seam | [`Application/Interfaces/IAvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Application/Interfaces/IAvatarStorage.cs), [`Infrastructure/Storage/S3AvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Storage/S3AvatarStorage.cs) |
@@ -79,17 +79,19 @@ The whole `Profiles` section of `appsettings.json` binds to `ProfilesOptions`, a
 
 ## API
 
-All fourteen routes require a JWT.
+All sixteen routes require a JWT except the avatar download, which is anonymous since 2026-11-15.
 
 | Method and route | Request | Response | Handler |
 |---|---|---|---|
 | `GET /api/profiles/me` | none | 200 with the own profile: username, `isPrivate`, level, `avatarUrl`, friends, incoming and outgoing pending friend requests, social links. 404 before the registration event is consumed | `GetOwnProfileQueryHandler` |
 | `GET /api/profiles/{publicUserId}` | none | 200 with username, `isPrivate`, level, `avatarUrl`, accepted friends and social links; a private profile viewed by a stranger keeps only the username, `isPrivate` and `avatarUrl` and nulls the rest; 404 for players without a profile | `GetProfileQueryHandler` |
+| `GET /api/profiles?ids={id}&ids={id}` | 1 to 50 repeated `ids` | 200 with one summary per known id (`userId`, `username`, `avatarUrl`); unknown ids are skipped, never 404, and a private profile is included because those three fields are what a stranger sees anyway. 400 for no ids or more than 50 | `GetProfileSummariesQueryHandler` |
+| `GET /api/profiles/search?q=&limit=` | `q` 2 to 32 characters after trimming, `limit` 1 to 20 (default 20) | 200 with the summaries whose username starts with `q`, case-insensitive, ordered by username; `%`, `_` and `\` in `q` match literally. 400 outside the bounds | `SearchProfilesQueryHandler` |
 | `PUT /api/profiles/me/socials` | `{ links: [{ platform, url }] }` | 204; replaces the whole set, an empty list clears it. 400 for a seventh link, a duplicate platform, a non-https url or a host outside the platform's domain | `ReplaceSocialLinksCommandHandler` |
 | `PUT /api/profiles/me/privacy` | `{ isPrivate }` | 204; idempotent, setting the value already in force does not touch the `Version` token | `SetProfilePrivacyCommandHandler` |
 | `PUT /api/profiles/me/avatar` | multipart `file` | 200; the endpoint caps the body and reads the form itself, the bytes are sniffed, the declared content type is ignored. 400 for anything but jpeg, png or webp, 413 over the size limit, 503 when the storage is unreachable | `UploadAvatarCommandHandler` |
 | `DELETE /api/profiles/me/avatar` | none | 204, idempotent | `DeleteAvatarCommandHandler` |
-| `GET /api/profiles/{publicUserId}/avatar` | none | 200 streaming the bytes with the sniffed `Content-Type`, `X-Content-Type-Options: nosniff`, an `ETag` from the hash and `Cache-Control: private, max-age=86400`; 404 without an avatar or when the object vanished from storage | `GetAvatarQueryHandler` |
+| `GET /api/profiles/{publicUserId}/avatar` | none, no JWT | 200 streaming the bytes with the sniffed `Content-Type`, `X-Content-Type-Options: nosniff`, an `ETag` from the hash and `Cache-Control: public, max-age=86400`; 404 without an avatar or when the object vanished from storage | `GetAvatarQueryHandler` |
 | `POST /api/profiles/friends/requests` | `{ userId }` | 201 with `publicFriendshipId` and `status`. A cross request (the target already asked the caller) auto-accepts and returns the existing relation as `Accepted`. 400 for self, 404 for an unknown player, 409 for a duplicate or a full friend list (100) | `RequestFriendshipCommandHandler` |
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/accept` | none | 200; only the addressee can accept, anyone else gets 404 so the route leaks nothing | `AcceptFriendRequestCommandHandler` |
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/decline` | none | 200; deletes the row, so a later re-request works. Only the addressee, others get 404 | `DeclineFriendRequestCommandHandler` |
@@ -120,7 +122,7 @@ A warehouse invite is a pointer, not a reservation: creating one checks the acce
 
 ## Privacy
 
-A profile is public by default. `PUT /api/profiles/me/privacy` flips `UserProfile.IsPrivate`, and `GetProfileQueryHandler` applies the rule at read time: the owner and accepted friends always get the full profile, while a stranger viewing a private profile receives only the username, the `isPrivate` flag and the `avatarUrl`, with the level, the member-since date, the friends and the social links nulled or empty. Friendship is checked through the same canonical pair lookup the invite handler uses, so the privacy read adds one indexed query only when the profile is actually private. The avatar download route stays open because the picture is the one thing a private profile still shows.
+A profile is public by default. `PUT /api/profiles/me/privacy` flips `UserProfile.IsPrivate`, and `GetProfileQueryHandler` applies the rule at read time: the owner and accepted friends always get the full profile, while a stranger viewing a private profile receives only the username, the `isPrivate` flag and the `avatarUrl`, with the level, the member-since date, the friends and the social links nulled or empty. Friendship is checked through the same canonical pair lookup the invite handler uses, so the privacy read adds one indexed query only when the profile is actually private. The avatar download route stays open and, since 2026-11-15, needs no JWT at all, so a plain `<img src>` loads it; the batch lookup and the username search return private profiles too, because the username and the avatar are exactly the public part.
 
 The username stays visible on purpose: it already appears in other players' friend lists and in pending friend requests, so hiding it on the profile route alone would fake a guarantee the module cannot keep. Friend requests to a private profile remain possible, consistent with there being no block list in v1.
 
@@ -144,13 +146,14 @@ The module publishes nothing. Social links, avatars, friends and invites are syn
 - Invites are pointers. No seat reservation and no saga with Warehouses; a stale invite costs one click on a dead lobby, a reservation would cost a cross-module protocol.
 - The username is a snapshot. Nothing updates usernames today (`UpdateCredentials` has no callers), names are not unique, and every relation uses ids; a future rename means a new event, not a join into Identity.
 - Privacy is a read-time rule, not a data change (owner decision, 2026-10-22). Accepted friends see the full private profile, because a friendship needs both sides' consent, and strangers keep the username, because friend lists and pending requests leak it anyway; hiding it in one route would be a false promise.
+- Username search without an index (2026-11-15). `SearchProfileSummariesAsync` runs `ILIKE 'prefix%'` with `\`, `%` and `_` in the query escaped and `ESCAPE '\'` spelled out; a plain B-tree cannot serve a case-insensitive prefix and an expression index would need raw SQL in a migration, so at the project's scale (tens of profiles) the sequential scan is accepted and the validator bounds the query to 2 to 32 characters and 20 rows.
 
 Accepted risks, recorded by the owner on 2026-10-22:
 
 - Turnover can be farmed (wash trading, loan cycling, pawnshop flipping, bot `POST /funds`), so levels can be bought with patience. The quadratic thresholds with the 100-level cap bound the lifetime faucet to 3 383 500 per player against 10 000 000 turnover, rewards do not feed turnover back, and transfers never level anyone.
 - Players registered before the module have no profile: their `GET /api/profiles/{id}` is 404 and their level events dead-letter. The repository stance is cleaning the dev database, a visible failure beats a silent skip.
 - An invite can point at a war that filled up or ended, and expired rows lie in the table until the next create purges them.
-- Avatars keep EXIF metadata (no re-encoding in v1), the avatar GET needs a JWT (a future `<img src>` needs a blob fetch), SeaweedFS is a single container with a local volume, and a lost object turns the profile's avatar into a 404.
+- Avatars keep EXIF metadata (no re-encoding in v1), the avatar GET is anonymous since 2026-11-15 (an avatar URL is guessable from a user id, which the privacy rule already accepts), SeaweedFS is a single container with a local volume, and a lost object turns the profile's avatar into a 404.
 - No rate limit on friend requests and no block list in v1; a decline deletes the row, so the same player can ask again.
 
 ## Related documents

@@ -2,14 +2,14 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/profiles.md](../../en/backend/profiles.md)
 
-`AuctionServer.Modules.Profiles` to dziewiąty moduł i warstwa społecznościowa gry: publiczny profil gracza ze snapshotem nazwy, poziom zdobywany z obrotu portfela, awatar przechowywany w SeaweedFS, do sześciu kont społecznościowych, znajomi z zaproszeniami i akceptacją, zaproszenia znajomych do wojen magazynowych oraz przełącznik prywatności, który ukrywa przed obcymi wszystko poza nazwą i awatarem. To pierwszy moduł **wyłącznie konsumujący**: nie publikuje żadnych zdarzeń, więc nie ma tabeli outboxa, nie ma `OutboxProcessor`a ani keepera, jedynie inbox `ProfilesProcessedMessages`. Czternaście endpointów żyje pod `/api/profiles`, wszystkie za JWT.
+`AuctionServer.Modules.Profiles` to dziewiąty moduł i warstwa społecznościowa gry: publiczny profil gracza ze snapshotem nazwy, poziom zdobywany z obrotu portfela, awatar przechowywany w SeaweedFS, do sześciu kont społecznościowych, znajomi z zaproszeniami i akceptacją, zaproszenia znajomych do wojen magazynowych oraz przełącznik prywatności, który ukrywa przed obcymi wszystko poza nazwą i awatarem. To pierwszy moduł **wyłącznie konsumujący**: nie publikuje żadnych zdarzeń, więc nie ma tabeli outboxa, nie ma `OutboxProcessor`a ani keepera, jedynie inbox `ProfilesProcessedMessages`. Szesnaście endpointów żyje pod `/api/profiles`, wszystkie za JWT poza anonimowym pobraniem awatara.
 
 ## Przegląd
 
 | Obszar | Pliki |
 |---|---|
 | Endpointy | [`Presentation/ProfilesEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Presentation/ProfilesEndpoints.cs), rekordy żądań `ReplaceSocialLinksRequest`, `FriendRequestRequest`, `WarehouseInviteRequest` |
-| Komendy i zapytania | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/`, `CreateWarehouseInvite/` i `DeclineWarehouseInvite/` (komenda, handler, walidator w każdym), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/` i `GetWarehouseInvites/` (zapytanie, handler, DTO w każdym) |
+| Komendy i zapytania | `Application/Command/ReplaceSocialLinks/`, `UploadAvatar/`, `DeleteAvatar/`, `RequestFriendship/`, `AcceptFriendRequest/`, `DeclineFriendRequest/`, `RemoveFriend/`, `CreateWarehouseInvite/` i `DeclineWarehouseInvite/` (komenda, handler, walidator w każdym), `Application/Queries/GetOwnProfile/`, `GetProfile/`, `GetAvatar/`, `GetWarehouseInvites/`, `GetProfileSummaries/` i `SearchProfiles/` (zapytanie, handler, DTO w każdym; dwa wyszukiwania dodają pierwsze walidatory na zapytaniach i dzielą `Application/Queries/ProfileSummaryDto.cs` oraz `AvatarLinks.cs`, jedyne miejsce budujące `avatarUrl`) |
 | Opcje | `Application/Options/ProfilesOptions.cs` (`ProfilesOptions`, `AvatarOptions`, `InviteOptions`, `StorageOptions`) |
 | Handlery zdarzeń | `Application/Handlers/UserRegisteredEventHandler.cs`, `PlayerLevelledUpEventHandler.cs` |
 | Szew storage | [`Application/Interfaces/IAvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Application/Interfaces/IAvatarStorage.cs), [`Infrastructure/Storage/S3AvatarStorage.cs`](../../../Backend/src/AuctionServer.Modules.Profiles/Infrastructure/Storage/S3AvatarStorage.cs) |
@@ -79,17 +79,19 @@ Cała sekcja `Profiles` z `appsettings.json` binduje się do `ProfilesOptions`, 
 
 ## API
 
-Wszystkie czternaście tras wymaga JWT.
+Wszystkie szesnaście tras wymaga JWT poza pobraniem awatara, które od 2026-11-15 jest anonimowe.
 
 | Metoda i trasa | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|
 | `GET /api/profiles/me` | brak | 200 z własnym profilem: nazwa, `isPrivate`, poziom, `avatarUrl`, znajomi, przychodzące i wychodzące oczekujące zaproszenia, konta społecznościowe. 404 zanim zdarzenie rejestracji zostanie skonsumowane | `GetOwnProfileQueryHandler` |
 | `GET /api/profiles/{publicUserId}` | brak | 200 z nazwą, `isPrivate`, poziomem, `avatarUrl`, zaakceptowanymi znajomymi i kontami; profil prywatny oglądany przez obcego zachowuje tylko nazwę, `isPrivate` i `avatarUrl`, a resztę nulluje; 404 dla graczy bez profilu | `GetProfileQueryHandler` |
+| `GET /api/profiles?ids={id}&ids={id}` | 1 do 50 powtórzonych `ids` | 200 z jednym podsumowaniem na znane id (`userId`, `username`, `avatarUrl`); nieznane id są pomijane, nigdy 404, a profil prywatny jest obecny, bo te trzy pola i tak widzi obcy. 400 bez id albo powyżej 50 | `GetProfileSummariesQueryHandler` |
+| `GET /api/profiles/search?q=&limit=` | `q` 2 do 32 znaków po przycięciu, `limit` 1 do 20 (domyślnie 20) | 200 z podsumowaniami, których nazwa zaczyna się od `q`, bez rozróżniania wielkości liter, posortowane po nazwie; `%`, `_` i `\` w `q` pasują literalnie. 400 poza granicami | `SearchProfilesQueryHandler` |
 | `PUT /api/profiles/me/socials` | `{ links: [{ platform, url }] }` | 204; wymienia cały zestaw, pusta lista czyści. 400 za siódmy link, duplikat platformy, url bez https albo host spoza domeny platformy | `ReplaceSocialLinksCommandHandler` |
 | `PUT /api/profiles/me/privacy` | `{ isPrivate }` | 204; idempotentnie, ustawienie wartości już obowiązującej nie rusza tokenu `Version` | `SetProfilePrivacyCommandHandler` |
 | `PUT /api/profiles/me/avatar` | multipart `file` | 200; endpoint sam ogranicza body i czyta formularz, bajty są sniffowane, deklarowany typ ignorowany. 400 za wszystko poza jpeg, png i webp, 413 ponad limit rozmiaru, 503 gdy storage nieosiągalny | `UploadAvatarCommandHandler` |
 | `DELETE /api/profiles/me/avatar` | brak | 204, idempotentnie | `DeleteAvatarCommandHandler` |
-| `GET /api/profiles/{publicUserId}/avatar` | brak | 200 streamując bajty ze sniffowanym `Content-Type`, `X-Content-Type-Options: nosniff`, `ETag` z hasha i `Cache-Control: private, max-age=86400`; 404 bez awatara albo gdy obiekt zniknął ze storage | `GetAvatarQueryHandler` |
+| `GET /api/profiles/{publicUserId}/avatar` | brak, bez JWT | 200 streamując bajty ze sniffowanym `Content-Type`, `X-Content-Type-Options: nosniff`, `ETag` z hasha i `Cache-Control: public, max-age=86400`; 404 bez awatara albo gdy obiekt zniknął ze storage | `GetAvatarQueryHandler` |
 | `POST /api/profiles/friends/requests` | `{ userId }` | 201 z `publicFriendshipId` i `status`. Krzyżowe zaproszenie (cel już zaprosił wołającego) auto-akceptuje i zwraca istniejącą relację jako `Accepted`. 400 za samego siebie, 404 za nieznanego gracza, 409 za duplikat albo pełną listę znajomych (100) | `RequestFriendshipCommandHandler` |
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/accept` | brak | 200; akceptować może tylko adresat, każdy inny dostaje 404, więc trasa niczego nie zdradza | `AcceptFriendRequestCommandHandler` |
 | `POST /api/profiles/friends/requests/{publicFriendshipId}/decline` | brak | 200; kasuje wiersz, więc późniejsze ponowne zaproszenie działa. Tylko adresat, inni dostają 404 | `DeclineFriendRequestCommandHandler` |
@@ -120,7 +122,7 @@ Zaproszenie magazynowe to wskaźnik, nie rezerwacja: utworzenie sprawdza zaakcep
 
 ## Prywatność
 
-Profil jest domyślnie publiczny. `PUT /api/profiles/me/privacy` przestawia `UserProfile.IsPrivate`, a `GetProfileQueryHandler` stosuje regułę przy odczycie: właściciel i zaakceptowani znajomi zawsze dostają pełny profil, obcy oglądający profil prywatny dostaje tylko nazwę, flagę `isPrivate` i `avatarUrl`, a poziom, data dołączenia, znajomi i konta społecznościowe są nullowane albo puste. Znajomość jest sprawdzana tym samym kanonicznym wyszukaniem pary, którego używa handler zaproszeń, więc odczyt prywatności dokłada jedno indeksowane zapytanie tylko wtedy, gdy profil faktycznie jest prywatny. Trasa pobrania awatara zostaje otwarta, bo zdjęcie to jedyna rzecz, którą profil prywatny nadal pokazuje.
+Profil jest domyślnie publiczny. `PUT /api/profiles/me/privacy` przestawia `UserProfile.IsPrivate`, a `GetProfileQueryHandler` stosuje regułę przy odczycie: właściciel i zaakceptowani znajomi zawsze dostają pełny profil, obcy oglądający profil prywatny dostaje tylko nazwę, flagę `isPrivate` i `avatarUrl`, a poziom, data dołączenia, znajomi i konta społecznościowe są nullowane albo puste. Znajomość jest sprawdzana tym samym kanonicznym wyszukaniem pary, którego używa handler zaproszeń, więc odczyt prywatności dokłada jedno indeksowane zapytanie tylko wtedy, gdy profil faktycznie jest prywatny. Trasa pobrania awatara zostaje otwarta i od 2026-11-15 nie wymaga w ogóle JWT, więc ładuje ją zwykłe `<img src>`; wyszukiwanie hurtem i wyszukiwarka nazw zwracają także profile prywatne, bo nazwa i awatar to dokładnie ich publiczna część.
 
 Nazwa pozostaje widoczna celowo: i tak pojawia się na listach znajomych innych graczy i w oczekujących zaproszeniach, więc ukrycie jej na samej trasie profilu udawałoby gwarancję, której moduł nie umie dotrzymać. Zaproszenia do znajomych wysłane do profilu prywatnego nadal działają, spójnie z brakiem block listy w v1.
 
@@ -144,13 +146,14 @@ Moduł niczego nie publikuje. Konta społecznościowe, awatary, znajomi i zapros
 - Zaproszenia są wskaźnikami. Bez rezerwacji miejsca i bez sagi z Warehouses; nieświeże zaproszenie kosztuje jeden klik w martwe lobby, rezerwacja kosztowałaby protokół między modułami.
 - Nazwa użytkownika jest snapshotem. Nic dziś nie aktualizuje nazw (`UpdateCredentials` bez wywołań), nazwy nie są unikalne, a każda relacja używa id; przyszła zmiana nazwy to nowe zdarzenie, nie join do Identity.
 - Prywatność to reguła odczytu, nie zmiana danych (decyzja właściciela, 2026-10-22). Zaakceptowani znajomi widzą pełny profil prywatny, bo znajomość wymaga zgody obu stron, a obcy zachowuje nazwę, bo listy znajomych i oczekujące zaproszenia i tak ją ujawniają; ukrycie jej w jednej trasie byłoby fałszywą obietnicą.
+- Wyszukiwanie po nazwie bez indeksu (2026-11-15). `SearchProfileSummariesAsync` wykonuje `ILIKE 'prefix%'` z escapowanymi `\`, `%` i `_` w zapytaniu i jawnym `ESCAPE '\'`; zwykły B-tree nie obsłuży prefiksu bez rozróżniania wielkości liter, a indeks wyrażeniowy wymagałby surowego SQL w migracji, więc przy skali projektu (dziesiątki profili) skan sekwencyjny jest zaakceptowany, a walidator ogranicza zapytanie do 2 do 32 znaków i 20 wierszy.
 
 Zaakceptowane ryzyka, zapisane przez właściciela 2026-10-22:
 
 - Obrót da się farmić (wash trading, pożyczki w kółko, obracanie lombardem, bot `POST /funds`), więc poziomy można kupić cierpliwością. Kwadratowe progi z limitem 100 poziomów ograniczają życiowy kran do 3 383 500 na gracza przy 10 000 000 obrotu, nagrody nie karmią obrotu z powrotem, a przelewy nikogo nie awansują.
 - Gracze zarejestrowani przed modułem nie mają profilu: ich `GET /api/profiles/{id}` to 404, a ich zdarzenia poziomów dead-letterują. Stanowisko repozytorium to czyszczenie bazy dev, widoczna porażka bije ciche pominięcie.
 - Zaproszenie może wskazywać wojnę, która się zapełniła albo skończyła, a wygasłe wiersze leżą w tabeli do następnego czyszczenia przy tworzeniu.
-- Awatary zachowują metadane EXIF (bez re-enkodowania w v1), GET awatara wymaga JWT (przyszłe `<img src>` potrzebuje blob fetch), SeaweedFS to jeden kontener z lokalnym wolumenem, a zgubiony obiekt zamienia awatar profilu w 404.
+- Awatary zachowują metadane EXIF (bez re-enkodowania w v1), GET awatara jest anonimowy od 2026-11-15 (URL awatara da się zgadnąć z id użytkownika, co reguła prywatności i tak akceptuje), SeaweedFS to jeden kontener z lokalnym wolumenem, a zgubiony obiekt zamienia awatar profilu w 404.
 - Brak rate limitu na zaproszenia znajomych i brak block listy w v1; odrzucenie kasuje wiersz, więc ten sam gracz może zapytać ponownie.
 
 ## Powiązane dokumenty
