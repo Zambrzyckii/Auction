@@ -11,6 +11,7 @@ interface FakeStream {
   readonly response: Response;
   push(text: string): void;
   close(): void;
+  error(reason: unknown): void;
 }
 
 function sseStream(status = 200, headers: Record<string, string> = {}): FakeStream {
@@ -28,6 +29,13 @@ function sseStream(status = 200, headers: Record<string, string> = {}): FakeStre
     response,
     push: (text) => controller.enqueue(new TextEncoder().encode(text)),
     close: () => controller.close(),
+    error: (reason) => {
+      try {
+        controller.error(reason);
+      } catch {
+        // a stream that already ended cannot end again
+      }
+    },
   };
 }
 
@@ -36,6 +44,7 @@ function plainResponse(status: number, headers: Record<string, string> = {}): Fa
     response: new Response(null, { status, headers }),
     push: () => undefined,
     close: () => undefined,
+    error: () => undefined,
   };
 }
 
@@ -74,7 +83,15 @@ describe('PushClient', () => {
       'fetch',
       vi.fn((url: string, init?: RequestInit) => {
         fetchCalls.push({ url, init });
+        if (init?.signal?.aborted) {
+          return Promise.reject(new DOMException('Aborted', 'AbortError'));
+        }
         const next = responses.shift() ?? plainResponse(503);
+        init?.signal?.addEventListener(
+          'abort',
+          () => next.error(new DOMException('Aborted', 'AbortError')),
+          { once: true },
+        );
         return Promise.resolve(next.response);
       }),
     );
@@ -326,6 +343,28 @@ describe('PushClient', () => {
     expect(client.connected()).toBe(false);
     expect(fetchCalls[0].init?.signal?.aborted).toBe(true);
     expect(fetchCalls.length).toBe(1);
+  });
+
+  it('ignores the end of a replaced stream', async () => {
+    setup();
+    const first = sseStream();
+    const second = sseStream();
+    responses.push(first, second);
+    client.connect(token);
+    await settle();
+    first.push('event: connected\ndata: {}\n\n');
+    await settle();
+
+    client.disconnect();
+    const other = tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 1200 });
+    client.connect(other);
+    await settle();
+    second.push('event: connected\ndata: {}\n\n');
+    await settle();
+
+    expect(client.connected()).toBe(true);
+    await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS * 2);
+    expect(fetchCalls.length).toBe(2);
   });
 
   it('replaces the stream when connect is called with a new token', async () => {
