@@ -60,6 +60,7 @@ public class StartBlackjackHandCommandTests(CasinoPostgresFixture fixture)
             new ScriptedCardSource("AS", "5H", "KD", "9C"));
 
         Assert.Equal(BlackjackOutcome.Blackjack, dto.Outcome);
+        Assert.Null(dto.AutoStandOn);
         Assert.Equal(650m, dto.Balance);
         var updatedAccount = await fixture.GetAccountAsync(account.UserId);
         Assert.Equal(650m, updatedAccount.Balance);

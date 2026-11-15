@@ -224,7 +224,7 @@ export interface BlackjackHand {
   readonly autoStood: boolean;
   readonly balance: number;
   readonly startedOn: string;
-  readonly autoStandOn: string;
+  readonly autoStandOn: string | null;
   readonly completedOn: string | null;
 }
 

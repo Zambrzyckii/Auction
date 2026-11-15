@@ -33,7 +33,7 @@ public class ActOnBlackjackHandCommandTests(CasinoPostgresFixture fixture)
             new ActOnBlackjackHandCommand(account.UserId, hand.PublicHandId, BlackjackAction.Hit),
             new ScriptedCardSource("2D"));
 
-        Assert.InRange(dto.AutoStandOn,
+        Assert.InRange(dto.AutoStandOn!.Value,
             before + Options.Blackjack.HandTimeout, DateTime.UtcNow + Options.Blackjack.HandTimeout);
     }
 
@@ -69,6 +69,20 @@ public class ActOnBlackjackHandCommandTests(CasinoPostgresFixture fixture)
         Assert.Equal(600m, dto.Balance);
         var updatedAccount = await fixture.GetAccountAsync(account.UserId);
         Assert.Equal(600m, updatedAccount.Balance);
+    }
+
+    [Fact]
+    public async Task Handle_WhenTheActionCompletesTheHand_ShouldReturnNoAutoStandOn()
+    {
+        var account = await fixture.SeedAccountAsync(400m);
+        var hand = await fixture.SeedHandAsync(account.UserId, "10H", "10S", "9D", "6C");
+
+        var dto = await HandleAsync(
+            new ActOnBlackjackHandCommand(account.UserId, hand.PublicHandId, BlackjackAction.Stand),
+            new ScriptedCardSource("AD"));
+
+        Assert.Equal(BlackjackHandStatus.Completed, dto.Status);
+        Assert.Null(dto.AutoStandOn);
     }
 
     [Fact]

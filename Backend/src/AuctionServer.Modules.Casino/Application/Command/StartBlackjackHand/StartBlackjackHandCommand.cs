@@ -21,7 +21,7 @@ public record BlackjackHandDto(
     bool AutoStood,
     decimal Balance,
     DateTime StartedOn,
-    DateTime AutoStandOn,
+    DateTime? AutoStandOn,
     DateTime? CompletedOn)
 {
     public static BlackjackHandDto From(BlackjackHand hand, decimal balance, TimeSpan handTimeout) =>
@@ -29,5 +29,6 @@ public record BlackjackHandDto(
             hand.PlayerValue.Total, hand.PlayerValue.IsSoft, hand.VisibleDealerCards,
             hand.Status == BlackjackHandStatus.Completed ? hand.DealerValue.Total : null,
             hand.Outcome, hand.Payout, hand.AutoStood, balance, hand.StartedOn,
-            hand.LastActionOn + handTimeout, hand.CompletedOn);
+            hand.Status == BlackjackHandStatus.Completed ? null : hand.LastActionOn + handTimeout,
+            hand.CompletedOn);
 }
