@@ -203,6 +203,30 @@ public class ProfilesApiSmokeTests(ProfilesCustomApi factory)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAvatar_WhenAnonymous_ShouldReturnOkWithPublicCacheControl()
+    {
+        var userId = await SeedProfileAsync();
+        await CreateAuthorizedClient(userId).PutAsync("/api/profiles/me/avatar", Multipart(PngPayload));
+
+        var response = await factory.CreateClient().GetAsync($"/api/profiles/{userId}/avatar");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/png", response.Content.Headers.ContentType!.MediaType);
+        Assert.StartsWith("public", response.Headers.CacheControl!.ToString());
+        Assert.Equal(PngPayload, await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task GetAvatar_WhenAnonymousAndNoAvatar_ShouldReturnNotFound()
+    {
+        var userId = await SeedProfileAsync();
+
+        var response = await factory.CreateClient().GetAsync($"/api/profiles/{userId}/avatar");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private async Task<Guid> SeedProfileAsync(string username = "smoke-player")
     {
         using var scope = factory.Services.CreateScope();

@@ -149,11 +149,11 @@ public static class ProfilesEndpoints
             var result = await sender.Send(new GetAvatarQuery(publicUserId, http.Request.Headers.IfNoneMatch));
             http.Response.Headers["X-Content-Type-Options"] = "nosniff";
             http.Response.Headers.ETag = $"\"{result.Hash}\"";
-            http.Response.Headers.CacheControl = "private, max-age=86400";
+            http.Response.Headers.CacheControl = "public, max-age=86400";
             return result.NotModified
                 ? Results.StatusCode(StatusCodes.Status304NotModified)
                 : Results.Stream(result.Content!, result.ContentType!);
-        }).RequireAuthorization();
+        });
 
         group.MapGet("/{publicUserId:guid}", async (Guid publicUserId, ClaimsPrincipal user, ISender sender) =>
         {
