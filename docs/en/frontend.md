@@ -69,13 +69,13 @@ The reconnect policy sits in `shouldReconnect` and `failureOf`. A 401 clears the
 
 | Topic | Views that refresh on it |
 |---|---|
-| `AuctionChanged` with `{"auctionId"}` | the auction detail (the auction and its bids) when the id matches, once more after `AUCTION_SETTLE_MS` |
-| `AuctionListChanged` | the auction list (once more after `AUCTION_SETTLE_MS`), own auctions |
+| `AuctionChanged` with `{"auctionId"}` | the auction detail (the auction and its bids) when the id matches, once more after `AUCTION_SETTLE_MS`, own auctions when the id is in the list |
+| `AuctionListChanged` | the auction list (once more after `AUCTION_SETTLE_MS`) |
 | `WalletChanged` | wallet, transfers, bank, casino chips, pawnshop, warehouse war detail |
 | `LoanChanged` | bank |
 | `CasinoChanged` | casino chips, roulette, blackjack |
 | `PawnshopChanged` | pawnshop |
-| `WarehouseChanged` with `{"warehouseId"}` | the warehouse war detail when the id matches, the war list, the war history |
+| `WarehouseChanged` with `{"warehouseId"}` | the warehouse war detail when the id matches, the war list, the war history when the id is in its list |
 
 ## Client-side rules and mirrored constants
 

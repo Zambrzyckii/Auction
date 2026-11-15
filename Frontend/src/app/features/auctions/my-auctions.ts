@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { MyAuction } from '../../core/api/models';
 import { timeLeft } from '../../core/format/time-left';
 import { startPolling } from '../../core/polling/poll';
-import { refreshOn } from '../../core/push/refresh-on';
+import { idIn, refreshOn } from '../../core/push/refresh-on';
 import { auctionGroups } from './auction-rules';
 
 const POLL_MS = 10_000;
@@ -24,6 +24,10 @@ export class MyAuctions {
   readonly timeLeft = timeLeft;
 
   constructor() {
-    refreshOn(this.poller, 'AuctionListChanged');
+    refreshOn(
+      this.poller,
+      'AuctionChanged',
+      idIn('auctionId', () => this.poller.value()?.map((a) => a.publicAuctionId) ?? []),
+    );
   }
 }

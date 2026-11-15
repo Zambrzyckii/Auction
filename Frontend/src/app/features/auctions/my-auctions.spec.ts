@@ -68,12 +68,16 @@ describe('MyAuctions', () => {
     http.expectOne(URL).flush([]);
   });
 
-  it('refreshes the own list on AuctionListChanged', () => {
-    http.expectOne(URL).flush([]);
-    push.emit('AuctionListChanged');
-    http.expectOne(URL).flush([auction({})]);
+  it('refreshes the own list only on AuctionChanged for one of its auctions', () => {
+    http.expectOne(URL).flush([auction({ publicAuctionId: 'a-1' })]);
+    push.emit('AuctionChanged', '{"auctionId":"a-1"}');
+    http.expectOne(URL).flush([auction({ publicAuctionId: 'a-1' })]);
     fixture.detectChanges();
     expect(el().textContent).not.toContain('No auctions');
+
+    push.emit('AuctionChanged', '{"auctionId":"zzz"}');
+    push.emit('AuctionListChanged');
+    http.expectNone(URL);
   });
 
   it('splits running and finished auctions into two tables', () => {

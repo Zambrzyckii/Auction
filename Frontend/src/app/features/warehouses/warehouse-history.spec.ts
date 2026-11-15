@@ -106,11 +106,14 @@ describe('WarehouseHistory', () => {
     expect(error).not.toContain('<');
   });
 
-  it('refreshes the own wars on WarehouseChanged', () => {
-    http.expectOne(URL).flush([]);
+  it('refreshes the own wars only on WarehouseChanged for one of its wars', () => {
+    http.expectOne(URL).flush([war({ publicWarehouseId: 'war-1' })]);
     push.emit('WarehouseChanged', '{"warehouseId":"war-1"}');
     http.expectOne(URL).flush([war({})]);
     fixture.detectChanges();
     expect(el().textContent).not.toContain('You have not joined any warehouse war yet');
+
+    push.emit('WarehouseChanged', '{"warehouseId":"zzz"}');
+    http.expectNone(URL);
   });
 });

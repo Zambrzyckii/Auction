@@ -4,18 +4,27 @@ import { PushClient } from './push-client';
 import { PushTopic } from './push-topics';
 
 export function idMatches(key: string, id: string): (data: string) => boolean {
+  return (data) => readId(key, data) === id;
+}
+
+export function idIn(key: string, ids: () => readonly string[]): (data: string) => boolean {
   return (data) => {
-    try {
-      const parsed: unknown = JSON.parse(data);
-      return (
-        typeof parsed === 'object' &&
-        parsed !== null &&
-        (parsed as Record<string, unknown>)[key] === id
-      );
-    } catch {
-      return false;
-    }
+    const id = readId(key, data);
+    return id !== null && ids().includes(id);
   };
+}
+
+function readId(key: string, data: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(data);
+    if (typeof parsed !== 'object' || parsed === null) {
+      return null;
+    }
+    const value = (parsed as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 export function refreshOn(

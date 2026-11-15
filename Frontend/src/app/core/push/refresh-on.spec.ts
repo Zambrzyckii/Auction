@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ApiError } from '../api/api-error';
 import { Poller } from '../polling/poll';
 import { PushClient } from './push-client';
-import { idMatches, refreshOn } from './refresh-on';
+import { idIn, idMatches, refreshOn } from './refresh-on';
 
 interface FakePush {
   readonly handlers: Map<string, (data: string) => void>;
@@ -31,6 +31,20 @@ describe('idMatches', () => {
     expect(matches('{"auctionId":"a-1"}')).toBe(true);
     expect(matches('{"auctionId":"a-2"}')).toBe(false);
     expect(matches('not json')).toBe(false);
+  });
+});
+
+describe('idIn', () => {
+  it('matches an id from the list', () => {
+    expect(idIn('auctionId', () => ['a-1', 'a-2'])('{"auctionId":"a-2"}')).toBe(true);
+  });
+
+  it('rejects an id outside the list', () => {
+    expect(idIn('auctionId', () => ['a-1'])('{"auctionId":"a-9"}')).toBe(false);
+  });
+
+  it('rejects malformed data', () => {
+    expect(idIn('auctionId', () => ['a-1'])('not json')).toBe(false);
   });
 });
 

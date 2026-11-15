@@ -69,13 +69,13 @@ Polityka ponawiania siedzi w `shouldReconnect` i `failureOf`. 401 czyści sesję
 
 | Temat | Widoki, które się na nim odświeżają |
 |---|---|
-| `AuctionChanged` z `{"auctionId"}` | detal aukcji (aukcja i jej oferty), gdy id pasuje, jeszcze raz po `AUCTION_SETTLE_MS` |
-| `AuctionListChanged` | lista aukcji (jeszcze raz po `AUCTION_SETTLE_MS`), własne aukcje |
+| `AuctionChanged` z `{"auctionId"}` | detal aukcji (aukcja i jej oferty), gdy id pasuje, jeszcze raz po `AUCTION_SETTLE_MS`, własne aukcje, gdy id jest na liście |
+| `AuctionListChanged` | lista aukcji (jeszcze raz po `AUCTION_SETTLE_MS`) |
 | `WalletChanged` | portfel, przelewy, bank, żetony kasyna, lombard, detal wojny magazynowej |
 | `LoanChanged` | bank |
 | `CasinoChanged` | żetony kasyna, ruletka, blackjack |
 | `PawnshopChanged` | lombard |
-| `WarehouseChanged` z `{"warehouseId"}` | detal wojny magazynowej, gdy id pasuje, lista wojen, historia wojen |
+| `WarehouseChanged` z `{"warehouseId"}` | detal wojny magazynowej, gdy id pasuje, lista wojen, historia wojen, gdy id jest na jej liście |
 
 ## Reguły po stronie klienta i lustrzane stałe
 
