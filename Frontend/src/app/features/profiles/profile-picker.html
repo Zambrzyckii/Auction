@@ -1,0 +1,6 @@
+<input [attr.list]="listId" [value]="value()" (input)="onInput($event)" autocomplete="off" />
+<datalist [id]="listId">
+  @for (option of options(); track option.userId) {
+    <option [value]="option.userId">{{ option.username }}</option>
+  }
+</datalist>

@@ -174,6 +174,21 @@ describe('Transfers', () => {
       http.expectOne(HISTORY_URL).flush([transfer({})]);
     });
 
+    it('suggests players from the username search while typing a recipient', () => {
+      flushAll([]);
+      const input = el().querySelector('.send-form input') as HTMLInputElement;
+      input.value = 'al';
+      input.dispatchEvent(new Event('input'));
+      vi.advanceTimersByTime(300);
+      http
+        .expectOne('/api/profiles/search?q=al')
+        .flush([{ userId: OTHER_ID, username: 'alice', avatarUrl: null }]);
+      fixture.detectChanges();
+      const option = el().querySelector(`.send-form datalist option[value="${OTHER_ID}"]`);
+      expect(option?.textContent).toContain('alice');
+      expect(remember).toHaveBeenCalledWith(OTHER_ID, 'alice');
+    });
+
     it('shows the recipient preview with the short id', () => {
       directoryNames.set(new Map([[OTHER_ID, 'alice']]));
       flushAll([]);

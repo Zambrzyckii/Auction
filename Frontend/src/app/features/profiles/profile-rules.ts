@@ -36,3 +36,12 @@ export function avatarFileProblem(file: File): string | null {
     return 'Avatar file must be a jpeg, png or webp image';
   return null;
 }
+
+export const SEARCH_MIN_LENGTH = 2;
+
+export function searchQuery(text: string): string | null {
+  const query = text.trim();
+  if (query.length < SEARCH_MIN_LENGTH) return null;
+  if (GUID_RE.test(query)) return null;
+  return query;
+}

@@ -15,6 +15,7 @@ import {
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
+import { ProfilePicker } from '../profiles/profile-picker';
 import { transferProblem } from './transfers-rules';
 
 const WALLET_POLL_MS = 5000;
@@ -23,7 +24,7 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 @Component({
   selector: 'app-transfers',
-  imports: [DatePipe, DecimalPipe, FormField],
+  imports: [DatePipe, DecimalPipe, FormField, ProfilePicker],
   templateUrl: './transfers.html',
 })
 export class Transfers {
@@ -47,7 +48,7 @@ export class Transfers {
   readonly friends = signal<readonly FriendSummary[] | null>(null);
   readonly friendsError = signal<string | null>(null);
 
-  private readonly sendModel = signal({
+  protected readonly sendModel = signal({
     recipientUserId: inject(ActivatedRoute).snapshot.queryParamMap.get('to') ?? '',
     amount: 0,
   });
@@ -81,6 +82,10 @@ export class Transfers {
       ? null
       : 'This player is not on your friends list, double-check the id';
   });
+
+  setRecipient(userId: string): void {
+    this.sendModel.update((model) => ({ ...model, recipientUserId: userId }));
+  }
 
   send(): void {
     if (this.sendProblem() !== null) {

@@ -66,8 +66,8 @@
 
 <form class="friend-form" (submit)="$event.preventDefault(); addFriend()">
   <label>
-    Add a friend by player id
-    <input [formField]="friendForm.userId" />
+    Add a friend by username or player id
+    <app-profile-picker [value]="friendModel().userId" (valueChange)="setFriendId($event)" />
   </label>
   <button
     type="submit"

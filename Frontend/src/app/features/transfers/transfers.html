@@ -10,14 +10,13 @@
 <h3>Send funds</h3>
 <form class="send-form" (submit)="$event.preventDefault(); send()">
   <label>
-    Recipient id
-    <input list="friends-list" [formField]="sendForm.recipientUserId" />
+    Recipient
+    <app-profile-picker
+      [seed]="friends() ?? []"
+      [value]="sendModel().recipientUserId"
+      (valueChange)="setRecipient($event)"
+    />
   </label>
-  <datalist id="friends-list">
-    @for (friend of friends() ?? []; track friend.userId) {
-      <option [value]="friend.userId">{{ friend.username }}</option>
-    }
-  </datalist>
   <label>
     Amount
     <input type="number" step="any" [formField]="sendForm.amount" />

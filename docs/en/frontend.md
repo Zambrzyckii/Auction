@@ -68,6 +68,7 @@ Eight features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions
 | `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | the statuses the bank counts as an open loan |
 | `RARITY_ORDER` (`pawnshop-rules.ts`) | the rarity ladder bot upgrades must climb strictly upward |
 | `AVATAR_MAX_BYTES`, `AVATAR_TYPES`, `MAX_FRIENDS` (`profile-rules.ts`) | the avatar size and format limits and the 100-friends cap |
+| `SEARCH_MIN_LENGTH` (`profile-rules.ts`) | the two-character lower bound of the username search validator; the picker sends nothing below it and never searches for a full player id |
 | `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | the social-link validator: at most six links, one per known platform, on its domain |
 | `ROULETTE_BET_TYPES` and the selection ranges (`roulette-rules.ts`) | the roulette bet types with their selection ranges |
 

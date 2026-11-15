@@ -1,15 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FormField, form } from '@angular/forms/signals';
 import { Observable } from 'rxjs';
 import { actionState } from '../../core/actions/action-state';
 import { FriendRequestResult, OwnProfile as OwnProfileDto } from '../../core/api/models';
+import { ProfilePicker } from './profile-picker';
 import { addFriendProblem } from './profile-rules';
 
 @Component({
   selector: 'app-friends-section',
-  imports: [FormField, RouterLink],
+  imports: [ProfilePicker, RouterLink],
   templateUrl: './friends-section.html',
 })
 export class FriendsSection {
@@ -19,12 +19,15 @@ export class FriendsSection {
   readonly changed = output<void>();
 
   readonly friendship = actionState();
-  private readonly friendModel = signal({ userId: '' });
-  protected readonly friendForm = form(this.friendModel);
+  protected readonly friendModel = signal({ userId: '' });
 
   readonly friendProblem = computed<string | null>(() =>
     addFriendProblem(this.friendModel().userId, this.profile()),
   );
+
+  setFriendId(userId: string): void {
+    this.friendModel.set({ userId });
+  }
 
   addFriend(): void {
     if (this.friendProblem() !== null) {

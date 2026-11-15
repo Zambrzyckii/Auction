@@ -333,6 +333,21 @@ describe('OwnProfile', () => {
         .flush(ownProfile({ friends: [{ userId: FRIEND_ID, username: 'alice' }] }));
     });
 
+    it('suggests players from the username search in the add-friend form', () => {
+      http.expectOne(ME_URL).flush(ownProfile({}));
+      fixture.detectChanges();
+      const input = el().querySelector('.friend-form input') as HTMLInputElement;
+      input.value = 'al';
+      input.dispatchEvent(new Event('input'));
+      vi.advanceTimersByTime(300);
+      http
+        .expectOne('/api/profiles/search?q=al')
+        .flush([{ userId: FRIEND_ID, username: 'alice', avatarUrl: null }]);
+      fixture.detectChanges();
+      const option = el().querySelector(`.friend-form option[value="${FRIEND_ID}"]`);
+      expect(option?.textContent).toContain('alice');
+    });
+
     it('blocks my own id with the server text', () => {
       http.expectOne(ME_URL).flush(ownProfile({}));
       fixture.detectChanges();

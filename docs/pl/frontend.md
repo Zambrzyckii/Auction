@@ -68,6 +68,7 @@ Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, 
 | `OPEN_LOAN_STATUSES` (`bank-rules.ts`) | statusy, które bank liczy jako otwartą pożyczkę |
 | `RARITY_ORDER` (`pawnshop-rules.ts`) | drabinę rzadkości, po której ulepszenia bota idą wyłącznie w górę |
 | `AVATAR_MAX_BYTES`, `AVATAR_TYPES`, `MAX_FRIENDS` (`profile-rules.ts`) | limity rozmiaru i formatu awatara oraz limit 100 znajomych |
+| `SEARCH_MIN_LENGTH` (`profile-rules.ts`) | dolna granica dwóch znaków z walidatora wyszukiwarki nazw; picker nic nie wysyła poniżej niej i nigdy nie szuka pełnego id gracza |
 | `MAX_SOCIAL_LINKS`, `SOCIAL_PLATFORMS`, `SOCIAL_DOMAINS` (`social-links.ts`) | walidator kont społecznościowych: najwyżej sześć linków, po jednym na znaną platformę, na jej domenie |
 | `ROULETTE_BET_TYPES` i zakresy selekcji (`roulette-rules.ts`) | typy zakładów ruletki z ich zakresami selekcji |
 

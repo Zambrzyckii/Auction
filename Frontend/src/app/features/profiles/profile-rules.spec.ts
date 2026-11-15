@@ -1,5 +1,11 @@
 import { OwnProfile as OwnProfileDto } from '../../core/api/models';
-import { AVATAR_MAX_BYTES, addFriendProblem, avatarFileProblem, relationTo } from './profile-rules';
+import {
+  AVATAR_MAX_BYTES,
+  addFriendProblem,
+  avatarFileProblem,
+  relationTo,
+  searchQuery,
+} from './profile-rules';
 
 const MY_ID = '26a451d4-dd74-4a58-859f-636aca258443';
 const PLAYER_ID = 'deadbeef-1111-2222-3333-444444444444';
@@ -121,5 +127,16 @@ describe('avatarFileProblem', () => {
     expect(avatarFileProblem(file)).toBe(
       `Avatar file exceeds the limit of ${AVATAR_MAX_BYTES} bytes`,
     );
+  });
+});
+
+describe('searchQuery', () => {
+  it('trims the text and needs at least two characters', () => {
+    expect(searchQuery(' a ')).toBeNull();
+    expect(searchQuery('  al ')).toBe('al');
+  });
+
+  it('never searches for a full player id', () => {
+    expect(searchQuery(PLAYER_ID)).toBeNull();
   });
 });
