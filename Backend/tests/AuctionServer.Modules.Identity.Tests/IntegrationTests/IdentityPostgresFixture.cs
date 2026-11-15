@@ -1,3 +1,4 @@
+using AuctionServer.Modules.Identity.Application.Tokens;
 using AuctionServer.Modules.Identity.Domain.Entities;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.TestSupport;
@@ -45,6 +46,18 @@ public sealed class IdentityPostgresFixture : IAsyncLifetime
         context.Users.Add(user);
         await context.SaveChangesAsync();
         return user;
+    }
+
+    public async Task<(RefreshToken Token, string Raw)> SeedRefreshTokenAsync(
+        int userId, Guid familyId, DateTime createdOn, DateTime? revokedOn = null)
+    {
+        await using var context = CreateContext();
+        var raw = RefreshTokenSecret.Generate();
+        var token = RefreshToken.Issue(userId, familyId, RefreshTokenSecret.Hash(raw), createdOn);
+        if (revokedOn is not null) token.Revoke(revokedOn.Value);
+        context.RefreshTokens.Add(token);
+        await context.SaveChangesAsync();
+        return (token, raw);
     }
 
     public static string UniqueEmail() => $"{Guid.NewGuid():N}@test.com";

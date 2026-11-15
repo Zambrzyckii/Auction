@@ -11,9 +11,9 @@
 | Endpointy | [`Presentation/IdentityEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Presentation/IdentityEndpoints.cs), rekordy żądań `RegisterRequest`, `LoginRequest`, `RegisterBotRequest` |
 | Komendy | `Application/Commands/Register/`, `Application/Commands/Login/`, `Application/Commands/RegisterBot/` (komenda, handler oraz, dla dwóch rejestracji, walidator) |
 | Domena | [`Domain/Entities/User.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/User.cs), [`Domain/Entities/Role.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), `Domain/Exceptions/IdentityException.cs` |
-| Infrastruktura | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `OutboxMessageConfiguration`) |
+| Infrastruktura | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `RefreshTokenRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `RefreshTokenConfiguration`, `OutboxMessageConfiguration`) |
 
-[`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) rejestruje `IdentityDbContext` z Npgsql, `IAuthRepository` jako scoped i współdzielony hosted service `OutboxProcessor<IdentityDbContext>` przez `AddOutboxProcessor`; `MapIdentityEndpoints` mapuje grupę tras. Sama walidacja bearera JWT i schemat `ApiKey` żyją w hoście, zobacz [README.md](README.md).
+[`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) rejestruje `IdentityDbContext` z Npgsql, `IAuthRepository` i `IRefreshTokenRepository` jako scoped i współdzielony hosted service `OutboxProcessor<IdentityDbContext>` przez `AddOutboxProcessor`; `MapIdentityEndpoints` mapuje grupę tras. Sama walidacja bearera JWT i schemat `ApiKey` żyją w hoście, zobacz [README.md](README.md).
 
 ## Uruchomienie
 
@@ -24,7 +24,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Identity --startup
 dotnet test tests/AuctionServer.Modules.Identity.Tests
 ```
 
-Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Identity/Infrastructure/Persistence/Migrations): `20260815123208_Initial_Identity` i `20260816103415_Add_Outbox_DeadLetter_And_Backoff`. `BotProvisioningApiTests` podnoszą cały host przez [`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs) z testowym kluczem JWT i testowym kluczem API, więc jak każdy test integracyjny potrzebują Dockera.
+Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Identity/Infrastructure/Persistence/Migrations): `20260815123208_Initial_Identity`, `20260816103415_Add_Outbox_DeadLetter_And_Backoff`, `20261101143634_Add_Outbox_Lease`, `20261114123053_Add_Unique_Username` oraz `20261115180018_Add_Identity_Refresh_Tokens`. `BotProvisioningApiTests` podnoszą cały host przez [`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs) z testowym kluczem JWT i testowym kluczem API, więc jak każdy test integracyjny potrzebują Dockera.
 
 ## Konfiguracja
 
@@ -51,6 +51,19 @@ Czasy życia tokenów to stałe w `LoginCommandHandler`: `PlayerTokenLifetime` t
 | `UserRoles` | `integer` | `Role.Admin = 0`, `Role.User = 1`, `Role.Bot = 2`; domyślnie `User`, `Bot` po `ChangeRole` w rejestracji bota, `Admin` nigdy nie przypisywany |
 
 Moduł posiada też `IdentityOutboxMessages`, opisane w [messaging.md](messaging.md); od 2026-11-01 encja jest tą współdzieloną, więc publiczne settery `Errors` i `IsDead`, które miało tylko Identity, zniknęły. `User.ChangeEmail`, `ChangePassword` i `UpdateCredentials` istnieją, ale nie mają wywołań.
+
+Od 2026-11-15 moduł posiada też `IdentityRefreshTokens`, jeden wiersz na wydany refresh token:
+
+| Kolumna | Typ | Uwagi |
+|---|---|---|
+| `Id` | `uuid` | klucz główny, `Guid.NewGuid()` w `RefreshToken.Issue` |
+| `UserId` | `integer` | `Users.Id`, z indeksem, bez klucza obcego i bez nawigacji, bo `User` ma filtr zapytań `IsDeleted` |
+| `TokenHash` | `varchar(64)` | unikalny SHA-256 surowej wartości jako małe hex, sama wartość nigdy nie jest zapisywana |
+| `FamilyId` | `uuid` | nadawany przy logowaniu, dziedziczony przez każdego następcę przy rotacji, z indeksem |
+| `CreatedOn` | `timestamptz` | chwila wydania, po niej purge w handlerze rotacji mierzy wiek wiersza |
+| `ExpiresOn` | `timestamptz` | `CreatedOn + 7 dni` (`RefreshToken.Lifetime`), rotacja wydaje następcę ze świeżym oknem |
+| `RevokedOn` | `timestamptz`, nullable | `null` znaczy aktywny, ustawiany przez `Revoke`, które wygrywa raz i podbija `Version` |
+| `Version` | `uuid` | token współbieżności odnawiany przez `Revoke` i `RevokeFamilyAsync`, więc rotacja przygotowana na nieaktualnym wierszu kończy się 409 |
 
 ## API
 

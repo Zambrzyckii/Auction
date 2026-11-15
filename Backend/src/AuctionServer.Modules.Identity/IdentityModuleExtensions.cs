@@ -13,6 +13,7 @@ public static class IdentityModuleExtensions
         services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IAuthRepository, AuthRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
         services.AddOutboxProcessor<IdentityDbContext>("Identity");
         
