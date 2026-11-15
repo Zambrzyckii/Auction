@@ -37,6 +37,8 @@ public sealed class ProfilesPostgresFixture : IAsyncLifetime
         return new ProfilesDbContext(options);
     }
 
+    public static string UniqueStamp() => Guid.NewGuid().ToString("N")[..8];
+
     public async Task<Guid> SeedProfileAsync(string username = "seed-player")
     {
         await using var context = CreateContext();

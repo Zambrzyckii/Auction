@@ -125,26 +125,28 @@ public class ProfileQueryHandlerTests(ProfilesPostgresFixture fixture)
     [Fact]
     public async Task SearchProfiles_ShouldMatchThePrefixIgnoringCase()
     {
-        var target = await fixture.SeedProfileAsync("CaseProbe-Player");
-        await fixture.SeedProfileAsync("xcaseprobe-player");
+        var stamp = ProfilesPostgresFixture.UniqueStamp();
+        var target = await fixture.SeedProfileAsync($"{stamp}CaseProbe-Player");
+        await fixture.SeedProfileAsync($"x{stamp}caseprobe-player");
 
-        var rows = await SearchAsync("caseprobe-");
+        var rows = await SearchAsync($"{stamp}caseprobe-");
 
         var row = Assert.Single(rows);
         Assert.Equal(target, row.UserId);
-        Assert.Equal("CaseProbe-Player", row.Username);
+        Assert.Equal($"{stamp}CaseProbe-Player", row.Username);
         Assert.Null(row.AvatarUrl);
     }
 
     [Fact]
     public async Task SearchProfiles_ShouldOrderByUsernameAndHonourTheLimit()
     {
-        var third = await fixture.SeedProfileAsync("ord-c3");
-        var first = await fixture.SeedProfileAsync("ord-a1");
-        var second = await fixture.SeedProfileAsync("ord-b2");
+        var stamp = ProfilesPostgresFixture.UniqueStamp();
+        var third = await fixture.SeedProfileAsync($"{stamp}ord-c3");
+        var first = await fixture.SeedProfileAsync($"{stamp}ord-a1");
+        var second = await fixture.SeedProfileAsync($"{stamp}ord-b2");
 
-        var all = await SearchAsync("ord-");
-        var limited = await SearchAsync("ord-", 2);
+        var all = await SearchAsync($"{stamp}ord-");
+        var limited = await SearchAsync($"{stamp}ord-", 2);
 
         Assert.Equal(new[] { first, second, third }, all.Select(r => r.UserId).ToList());
         Assert.Equal(new[] { first, second }, limited.Select(r => r.UserId).ToList());
@@ -156,12 +158,27 @@ public class ProfileQueryHandlerTests(ProfilesPostgresFixture fixture)
     public async Task SearchProfiles_ShouldTreatWildcardsInTheQueryLiterally(
         string query, string matching, string decoy)
     {
-        var expected = await fixture.SeedProfileAsync(matching);
-        await fixture.SeedProfileAsync(decoy);
+        var stamp = ProfilesPostgresFixture.UniqueStamp();
+        var expected = await fixture.SeedProfileAsync(stamp + matching);
+        await fixture.SeedProfileAsync(stamp + decoy);
 
-        var rows = await SearchAsync(query);
+        var rows = await SearchAsync(stamp + query);
 
         var row = Assert.Single(rows);
         Assert.Equal(expected, row.UserId);
+    }
+
+    [Fact]
+    public async Task SearchProfiles_ShouldTreatBackslashLiterally()
+    {
+        var stamp = ProfilesPostgresFixture.UniqueStamp();
+        var expected = await fixture.SeedProfileAsync($"{stamp}bs\\literal");
+        await fixture.SeedProfileAsync($"{stamp}bsXliteral");
+
+        var rows = await SearchAsync($"{stamp}bs\\");
+
+        var row = Assert.Single(rows);
+        Assert.Equal(expected, row.UserId);
+        Assert.Equal($"{stamp}bs\\literal", row.Username);
     }
 }

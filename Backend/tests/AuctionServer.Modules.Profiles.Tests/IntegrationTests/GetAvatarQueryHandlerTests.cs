@@ -43,6 +43,7 @@ public class GetAvatarQueryHandlerTests(ProfilesPostgresFixture fixture)
 
         var dto = await QueryAsync(userId, storage);
 
+        Assert.NotNull(dto.Content);
         using var memory = new MemoryStream();
         await dto.Content.CopyToAsync(memory);
         Assert.Equal(PngPayload, memory.ToArray());
