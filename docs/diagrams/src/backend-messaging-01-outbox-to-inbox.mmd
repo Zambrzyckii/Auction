@@ -5,7 +5,8 @@ flowchart LR
     end
 
     Out --> Proc["OutboxProcessor&lt;TContext&gt; (Shared.Infrastructure)<br/>every 3 s OutboxCourier.ClaimAsync: due, unleased rows,<br/>lease 30 s via FOR UPDATE SKIP LOCKED, ORDER BY CreatedOn, max 20;<br/>hourly cleanup of rows processed over 7 days ago"]:::shared
-    Proc -->|"PublishAsync = hand-off,<br/>MarkAsProcessed on accept or broker confirm"| Pub["IIntegrationEventPublisher<br/>InProcessEventPublisher | RabbitEventPublisher"]:::host
+    Proc -->|"PublishAsync = hand-off,<br/>MarkAsProcessed on accept or broker confirm"| Pub["IIntegrationEventPublisher<br/>PushEventPublisher (nudge) around InstrumentedEventPublisher (metrics)<br/>around InProcessEventPublisher | RabbitEventPublisher"]:::host
+    Pub -.->|"after a successful hand-off:<br/>PushRoutes, 18 of 38 event types"| Push["GET /api/push (SSE, host, ADR-016)<br/>PushConnections: one bounded channel per stream,<br/>connected first, ping every 15 s, 4 streams per user"]:::host
     Pub -.->|"Rabbit: persistent message on auctionserver.events,<br/>publisher confirm awaited"| MQ["RabbitMQ queue auctionserver.deliveries<br/>RabbitDeliveryConsumer: manual ack, prefetch 20,<br/>requeue after 5 s on failure"]:::host
     Pub -.->|"4 public auction events"| Market["auctionserver.market (topic)<br/>consume-only bot feed"]:::planned
     MQ -.-> Disp
