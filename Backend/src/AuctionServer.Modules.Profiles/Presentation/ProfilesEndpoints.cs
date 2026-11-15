@@ -13,7 +13,9 @@ using AuctionServer.Modules.Profiles.Application.Options;
 using AuctionServer.Modules.Profiles.Application.Queries.GetAvatar;
 using AuctionServer.Modules.Profiles.Application.Queries.GetOwnProfile;
 using AuctionServer.Modules.Profiles.Application.Queries.GetProfile;
+using AuctionServer.Modules.Profiles.Application.Queries.GetProfileSummaries;
 using AuctionServer.Modules.Profiles.Application.Queries.GetWarehouseInvites;
+using AuctionServer.Modules.Profiles.Application.Queries.SearchProfiles;
 using AuctionServer.Modules.Profiles.Presentation.Request;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -26,6 +28,8 @@ namespace AuctionServer.Modules.Profiles.Presentation;
 
 public static class ProfilesEndpoints
 {
+    private const int DefaultSearchLimit = 20;
+
     public static IEndpointRouteBuilder MapProfilesEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/profiles");
@@ -127,6 +131,18 @@ public static class ProfilesEndpoints
                 await sender.Send(new DeclineWarehouseInviteCommand(userId, publicInviteId));
                 return Results.Ok();
             }).RequireAuthorization();
+
+        group.MapGet("", async (Guid[] ids, ISender sender) =>
+        {
+            var result = await sender.Send(new GetProfileSummariesQuery(ids));
+            return Results.Ok(result);
+        }).RequireAuthorization();
+
+        group.MapGet("/search", async (string? q, int? limit, ISender sender) =>
+        {
+            var result = await sender.Send(new SearchProfilesQuery(q ?? string.Empty, limit ?? DefaultSearchLimit));
+            return Results.Ok(result);
+        }).RequireAuthorization();
 
         group.MapGet("/{publicUserId:guid}/avatar", async (Guid publicUserId, HttpContext http, ISender sender) =>
         {

@@ -13,9 +13,7 @@ public sealed class GetOwnProfileQueryHandler(IProfilesRepository repository)
 
         if (profile is null) throw new ProfilesExceptions.ProfileNotFoundException();
 
-        var avatarUrl = profile.AvatarHash is null
-            ? null
-            : $"/api/profiles/{profile.UserId}/avatar?v={profile.AvatarHash[..12]}";
+        var avatarUrl = AvatarLinks.For(profile.UserId, profile.AvatarHash);
         var friends = await repository.GetAcceptedFriendsAsync(request.UserId, cancellationToken);
         var pending = await repository.GetPendingFriendshipsAsync(request.UserId, cancellationToken);
 

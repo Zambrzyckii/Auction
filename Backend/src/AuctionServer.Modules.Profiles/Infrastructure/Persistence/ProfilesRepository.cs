@@ -146,4 +146,27 @@ public sealed class ProfilesRepository(ProfilesDbContext context) : IProfilesRep
         context.WarehouseInvites.Remove(invite);
         await context.SaveChangesAsync(token);
     }
+
+    public async Task<List<ProfileSummaryEntry>> GetProfileSummariesAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken token) =>
+        await context.UserProfiles
+            .Where(p => userIds.Contains(p.UserId))
+            .Select(p => new ProfileSummaryEntry(p.UserId, p.Username, p.AvatarHash))
+            .ToListAsync(token);
+
+    public async Task<List<ProfileSummaryEntry>> SearchProfileSummariesAsync(
+        string prefix, int limit, CancellationToken token)
+    {
+        var pattern = EscapeLikePattern(prefix) + "%";
+
+        return await context.UserProfiles
+            .Where(p => EF.Functions.ILike(p.Username, pattern, "\\"))
+            .OrderBy(p => p.Username)
+            .Take(limit)
+            .Select(p => new ProfileSummaryEntry(p.UserId, p.Username, p.AvatarHash))
+            .ToListAsync(token);
+    }
+
+    private static string EscapeLikePattern(string text) =>
+        text.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 }

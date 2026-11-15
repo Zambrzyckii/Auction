@@ -22,6 +22,8 @@ public interface IProfilesRepository
     Task AddWarehouseInviteAsync(WarehouseInvite invite, CancellationToken token);
     Task<WarehouseInvite?> FindWarehouseInviteAsync(Guid inviteId, CancellationToken token);
     Task RemoveWarehouseInviteAsync(WarehouseInvite invite, CancellationToken token);
+    Task<List<ProfileSummaryEntry>> GetProfileSummariesAsync(IReadOnlyList<Guid> userIds, CancellationToken token);
+    Task<List<ProfileSummaryEntry>> SearchProfileSummariesAsync(string prefix, int limit, CancellationToken token);
 }
 
 public sealed record FriendEntry(Guid UserId, string Username);
@@ -30,3 +32,5 @@ public sealed record PendingFriendEntry(Guid PublicFriendshipId, Guid UserId, st
 
 public sealed record WarehouseInviteEntry(
     Guid Id, Guid PublicWarehouseId, Guid InviterUserId, string InviterUsername, DateTime CreatedOn);
+
+public sealed record ProfileSummaryEntry(Guid UserId, string Username, string? AvatarHash);

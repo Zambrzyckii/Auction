@@ -15,9 +15,7 @@ public sealed class GetProfileQueryHandler(IProfilesRepository repository)
 
         if (profile is null) throw new ProfilesExceptions.ProfileNotFoundException();
 
-        var avatarUrl = profile.AvatarHash is null
-            ? null
-            : $"/api/profiles/{profile.UserId}/avatar?v={profile.AvatarHash[..12]}";
+        var avatarUrl = AvatarLinks.For(profile.UserId, profile.AvatarHash);
 
         var restricted = profile.IsPrivate && request.ViewerId != profile.UserId;
         if (restricted)

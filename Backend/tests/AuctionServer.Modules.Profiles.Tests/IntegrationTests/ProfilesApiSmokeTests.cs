@@ -154,11 +154,60 @@ public class ProfilesApiSmokeTests(ProfilesCustomApi factory)
         Assert.Equal(HttpStatusCode.NotFound, second.StatusCode);
     }
 
-    private async Task<Guid> SeedProfileAsync()
+    [Fact]
+    public async Task GetProfiles_WithIds_ShouldReturnOnlyTheKnownSummaries()
+    {
+        var known = await SeedProfileAsync("lookup-known");
+        var callerId = await SeedProfileAsync();
+        var client = CreateAuthorizedClient(callerId);
+
+        var rows = await client.GetFromJsonAsync<JsonElement>(
+            $"/api/profiles?ids={known}&ids={callerId}&ids={Guid.NewGuid()}");
+
+        var byId = rows.EnumerateArray().ToDictionary(r => r.GetProperty("userId").GetGuid());
+        Assert.Equal(2, byId.Count);
+        Assert.Equal("lookup-known", byId[known].GetProperty("username").GetString());
+        Assert.Equal(JsonValueKind.Null, byId[known].GetProperty("avatarUrl").ValueKind);
+    }
+
+    [Fact]
+    public async Task SearchProfiles_ShouldReturnTheMatchesForThePrefix()
+    {
+        var target = await SeedProfileAsync("search-target");
+        var client = CreateAuthorizedClient(target);
+
+        var rows = await client.GetFromJsonAsync<JsonElement>("/api/profiles/search?q=search-tar");
+
+        var row = Assert.Single(rows.EnumerateArray());
+        Assert.Equal(target, row.GetProperty("userId").GetGuid());
+        Assert.Equal("search-target", row.GetProperty("username").GetString());
+    }
+
+    [Fact]
+    public async Task SearchProfiles_WithOneCharacter_ShouldReturnBadRequest()
+    {
+        var client = CreateAuthorizedClient(await SeedProfileAsync());
+
+        var response = await client.GetAsync("/api/profiles/search?q=p");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/api/profiles?ids=00000000-0000-0000-0000-000000000001")]
+    [InlineData("/api/profiles/search?q=pr")]
+    public async Task GetLookups_WhenAnonymous_ShouldReturnUnauthorized(string path)
+    {
+        var response = await factory.CreateClient().GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private async Task<Guid> SeedProfileAsync(string username = "smoke-player")
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ProfilesDbContext>();
-        var profile = UserProfile.Create(Guid.NewGuid(), "smoke-player", DateTime.UtcNow);
+        var profile = UserProfile.Create(Guid.NewGuid(), username, DateTime.UtcNow);
         context.UserProfiles.Add(profile);
         await context.SaveChangesAsync();
         return profile.UserId;
