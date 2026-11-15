@@ -36,6 +36,7 @@ The telemetry pipeline is described in [`Infrastructure/README.md`](../../Infras
 | Path | What happens |
 |---|---|
 | `/api/` | proxied to the api |
+| `/api/push` | proxied to the api with `proxy_buffering off`, so every Server-Sent Events line reaches the browser as the api writes it; the api's 15 s heartbeat keeps the stream under nginx's default 60 s `proxy_read_timeout`, which stays untouched |
 | `/health`, `/health/live`, `/health/ready` | proxied to the api |
 | `/openapi/` | proxied for `127.0.0.1`, `172.16.0.0/12` and `192.168.0.0/16`, everyone else gets 403 |
 | `/gateway-health` | answered by nginx itself, used by its container healthcheck |

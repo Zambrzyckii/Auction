@@ -257,8 +257,9 @@ SKIP LOCKED ... RETURNING *` statement, safe behind PgBouncer), hands them — r
 7 days ago. The processors know nothing about the transport.
 The host picks the transport from the fail-fast `Messaging` section (`MessagingOptions`, default `InProcess`, the
 compose stack runs `Rabbit`) and registers `InProcessEventPublisher` or `RabbitEventPublisher`
-(`AuctionServer.Api/Infrastructure/Messaging/`) behind the `InstrumentedEventPublisher` decorator that measures
-each hand-off. The Rabbit publisher sends a persistent message per outbox row to the durable exchange
+(`AuctionServer.Api/Infrastructure/Messaging/`) behind two decorators built once by the `Decorate` local function at
+the end of `Program.cs`: the outer `PushEventPublisher` (`Infrastructure/Push/`, ADR-016) forwards a browser nudge after
+a successful hand-off, the inner `InstrumentedEventPublisher` measures each hand-off. The Rabbit publisher sends a persistent message per outbox row to the durable exchange
 `auctionserver.events` (metadata in the AMQP `MessageId`/`Type` properties, body = the raw event JSON) and awaits the
 publisher confirm, so the outbox row is marked processed only once the broker has it on disk; `RabbitDeliveryConsumer`
 (manual acks, prefetch 20, nack+requeue after a 5 s cooldown) then feeds the same dispatcher, and the four public
@@ -415,6 +416,31 @@ Events live in `AuctionServer.Shared.Integration/Events/`, grouped by subject in
 `Items/`, `Pawnshop/`, `Players/`, `Users/` and `Warehouses/` (one namespace segment each), and are plain records carrying an `EventId`. The outbox
 `Type` column and the `IntegrationEventTypes` registry use the simple type name, so the folders are purely for
 readability — moving an event never touches stored rows.
+
+### Push
+
+`GET /api/push` (`Infrastructure/Push/PushEndpoints.cs`, mapped right after the health endpoints) is the host's only
+long-lived response: a Server-Sent Events stream behind the JWT, returned through `TypedResults.ServerSentEvents` over
+an `IAsyncEnumerable<SseItem<string>>` (ADR-016). The handler re-reads `AuthenticateAsync().Properties.ExpiresUtc` and
+answers 401 when the remaining lifetime is not positive, because the default `ClockSkew` would otherwise admit a token
+the stream cannot outlive. The iterator subscribes to `PushConnections` inside itself (so the subscription is disposed
+with the response), yields `event: connected` at once (that first item flushes the headers), then waits on the channel
+with the heartbeat as a timeout and yields `event: ping` or the message; the wait lives in a helper that returns null
+on cancellation, because C# forbids `yield` inside `try` with `catch`, and the iterator ends with `yield break`, so a
+cancelled stream closes cleanly instead of tearing the chunked response. The stop token links `RequestAborted`,
+`IHostApplicationLifetime.ApplicationStopping` (otherwise one open tab holds every `restart api` for the full
+`stop_grace_period`) and `CancelAfter` on the token's remaining lifetime. `PushConnections` keeps one bounded channel
+per stream (`PushOptions.Default`: heartbeat 15 s, buffer 64 with `DropOldest`, 4 streams per user, the fifth closes
+the oldest); a nudge is idempotent, so a dropped older message loses nothing. `PushRoutes.Build()` maps 18 of the 38
+event types by `nameof` like `IntegrationEventRecipients`: auction events broadcast `AuctionChanged(auctionId)` (plus
+`AuctionListChanged` for activated and finished), `WarehouseWonEvent` broadcasts `WarehouseChanged(warehouseId)`, the
+rest go to the event's `*UserId` as `WalletChanged`, `LoanChanged`, `CasinoChanged` or `PawnshopChanged`; the rule is
+"nudge the module that published, because only its state is saved", so rejections, requests and `UserRegisteredEvent`
+send nothing. **An event a browser should learn about needs a row in `PushRoutes.Build()` as well.** `PushMessage.Data`
+is a pre-serialized camelCase JSON string (`{"auctionId":"..."}` or `{}`) fed to `SseItem<string>`, which the result
+writes raw. The gateway proxies `= /api/push` with `proxy_buffering off`. Tests live in `Api.Tests/Push/`: offline
+routing, connections and decorator tests, and `PushEndpointTests`, which boots the host on an unreachable database
+with a no-op `IIntegrationEventDispatcher` and a 300 ms heartbeat from `ConfigureTestServices`.
 
 ### Read path (Auctions)
 
@@ -619,7 +645,7 @@ no JWT at all and answers `Cache-Control: public`. The same day added `GET /api/
 unknown ids skipped) and `GET /api/profiles/search?q=` (case-insensitive username prefix with the wildcards
 escaped, at most 20 rows, deliberately without an index), the first queries with FluentValidation validators, and
 `AvatarLinks.For` as the single `avatarUrl` formula. Sixteen
-endpoints under `/api/profiles` (56 total), event registry at 37, tables at 38. The chain was probed live against a
+endpoints under `/api/profiles` (57 total, `GET /api/push` included), event registry at 37, tables at 38. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`

@@ -36,6 +36,7 @@ Pipeline telemetrii opisuje [`Infrastructure/README.md`](../../Infrastructure/RE
 | Ścieżka | Co się dzieje |
 |---|---|
 | `/api/` | przekazywane do api |
+| `/api/push` | przekazywane do api z `proxy_buffering off`, więc każda linia Server-Sent Events dociera do przeglądarki, gdy api ją zapisze; heartbeat api co 15 s trzyma strumień poniżej domyślnego `proxy_read_timeout` nginx 60 s, który zostaje bez zmian |
 | `/health`, `/health/live`, `/health/ready` | przekazywane do api |
 | `/openapi/` | przekazywane dla `127.0.0.1`, `172.16.0.0/12` i `192.168.0.0/16`, pozostali dostają 403 |
 | `/gateway-health` | odpowiada sam nginx, korzysta z tego healthcheck jego kontenera |

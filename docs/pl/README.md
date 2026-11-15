@@ -34,7 +34,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 | [VISION.md](VISION.md) | Czym jest produkt, co znaczą pojęcia, co jest planowane dalej? |
 | [CONVENTIONS.md](CONVENTIONS.md) | Jak utrzymywane są kod, testy i dokumentacja, czym jest definition of done? |
 | [DECISIONS.md](DECISIONS.md) | Jakie decyzje podjęto kiedy i dlaczego? |
-| [adr/](adr) | Piętnaście decyzji o trwałych konsekwencjach, w formie kontekst, decyzja i konsekwencje. |
+| [adr/](adr) | Szesnaście decyzji o trwałych konsekwencjach, w formie kontekst, decyzja i konsekwencje. |
 | [STATE.md](STATE.md) | Co istnieje w tej chwili, jakie jest środowisko, jaki jest następny krok? |
 | [CHANGELOG.md](CHANGELOG.md) | Jak projekt tu doszedł, kamień milowy po kamieniu milowym? |
 | [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | Co robi klient frontendu, co jest planowane dla botów, co backend już im oferuje i jaka platforma istnieje dziś. |
