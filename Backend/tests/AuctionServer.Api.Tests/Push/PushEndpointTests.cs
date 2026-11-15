@@ -181,21 +181,21 @@ public class PushEndpointTests
     {
         await using var factory = CreateFactory();
         using var client = factory.CreateClient();
-        using var response = await OpenStreamAsync(client, CreateToken(Guid.NewGuid(), TimeSpan.FromSeconds(2)));
+        var issued = DateTime.UtcNow;
+        using var response = await OpenStreamAsync(client, CreateToken(Guid.NewGuid(), TimeSpan.FromSeconds(3)));
         using var reader = new StreamReader(await response.Content.ReadAsStreamAsync());
         Assert.Equal(PushTopics.Connected, (await ReadEventAsync(reader, ReadTimeout))?.Event);
 
-        var started = DateTime.UtcNow;
         SseEvent? last = null;
-        while (DateTime.UtcNow - started < TimeSpan.FromSeconds(6))
+        while (DateTime.UtcNow - issued < TimeSpan.FromSeconds(8))
         {
-            var sse = await ReadEventAsync(reader, TimeSpan.FromSeconds(6));
+            var sse = await ReadEventAsync(reader, TimeSpan.FromSeconds(8));
             if (sse is null) break;
             last = sse;
         }
 
         Assert.Equal(PushTopics.Ping, last?.Event);
-        Assert.InRange(DateTime.UtcNow - started, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(5));
+        Assert.InRange(DateTime.UtcNow - issued, TimeSpan.FromSeconds(1.5), TimeSpan.FromSeconds(6));
     }
 
     [Fact]
