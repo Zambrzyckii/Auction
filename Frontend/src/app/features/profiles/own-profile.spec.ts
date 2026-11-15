@@ -36,8 +36,6 @@ describe('OwnProfile', () => {
   beforeEach(async () => {
     vi.useFakeTimers();
     installStorageStub();
-    (URL as unknown as Record<string, unknown>)['createObjectURL'] = vi.fn(() => 'blob:fake-1');
-    (URL as unknown as Record<string, unknown>)['revokeObjectURL'] = vi.fn();
     new TokenStorage().set(
       tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 600 }),
     );
@@ -59,8 +57,6 @@ describe('OwnProfile', () => {
   afterEach(() => {
     fixture.destroy();
     http.verify();
-    delete (URL as unknown as Record<string, unknown>)['createObjectURL'];
-    delete (URL as unknown as Record<string, unknown>)['revokeObjectURL'];
     vi.useRealTimers();
   });
 
@@ -410,8 +406,7 @@ describe('OwnProfile', () => {
     it('deletes the avatar and refreshes', () => {
       http.expectOne(ME_URL).flush(ownProfile({ avatarUrl: AVATAR_PATH }));
       fixture.detectChanges();
-      http.expectOne(AVATAR_PATH).flush(new Blob(['x'], { type: 'image/png' }));
-      fixture.detectChanges();
+      expect(el().querySelector('img.avatar')?.getAttribute('src')).toBe(AVATAR_PATH);
 
       (el().querySelector('button.delete-avatar') as HTMLButtonElement).click();
       const del = http.expectOne('/api/profiles/me/avatar');
