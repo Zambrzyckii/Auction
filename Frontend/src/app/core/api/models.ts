@@ -41,6 +41,7 @@ export interface Wallet {
 
 export interface LoginResponse {
   readonly token: string;
+  readonly refreshToken: string | null;
 }
 
 export type SocialPlatform =

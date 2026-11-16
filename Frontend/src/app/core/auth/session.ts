@@ -32,10 +32,7 @@ export class Session {
 
   login(email: string, password: string): Observable<void> {
     return this.http.post<LoginResponse>('/api/users/login', { email, password }).pipe(
-      tap((response) => {
-        this.storage.set(response.token);
-        this.tokenSignal.set(response.token);
-      }),
+      tap((response) => this.applyTokens(response.token, response.refreshToken)),
       map(() => undefined),
     );
   }
@@ -44,7 +41,17 @@ export class Session {
     return this.http.post('/api/users/register', data).pipe(map(() => undefined));
   }
 
+  applyTokens(token: string, refreshToken: string | null | undefined): void {
+    this.storage.set(token);
+    this.storage.setRefresh(refreshToken);
+    this.tokenSignal.set(token);
+  }
+
   logout(): void {
+    this.clear();
+  }
+
+  clear(): void {
     this.storage.clear();
     this.tokenSignal.set(null);
   }

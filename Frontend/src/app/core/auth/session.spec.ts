@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
-import { REAL_TOKEN, REAL_TOKEN_USER_ID } from '../../../testing/token-fixture';
+import { REAL_TOKEN, REAL_TOKEN_EXP, REAL_TOKEN_USER_ID, tokenWithClaims } from '../../../testing/token-fixture';
 import { Session } from './session';
 import { TokenStorage } from './token-storage';
 
@@ -37,12 +37,56 @@ describe('Session', () => {
     const req = TestBed.inject(HttpTestingController).expectOne('/api/users/login');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ email: 'probe1@test.local', password: 'pw' });
-    req.flush({ token: REAL_TOKEN });
+    req.flush({ token: REAL_TOKEN, refreshToken: 'r1' });
 
     expect(completed).toBe(true);
     expect(session.isLoggedIn()).toBe(true);
     expect(session.email()).toBe('probe1@test.local');
     expect(new TokenStorage().get()).toBe(REAL_TOKEN);
+    expect(new TokenStorage().getRefresh()).toBe('r1');
+  });
+
+  it('login of a bot stores no refresh token', () => {
+    const session = TestBed.inject(Session);
+    session.login('bot@test.local', 'pw').subscribe();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/users/login')
+      .flush({ token: REAL_TOKEN, refreshToken: null });
+
+    expect(session.isLoggedIn()).toBe(true);
+    expect(new TokenStorage().getRefresh()).toBeNull();
+  });
+
+  it('applyTokens replaces both keys and the signal', () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const session = TestBed.inject(Session);
+    const other = tokenWithClaims({
+      nameid: 'other-user',
+      unique_name: 'other@test.local',
+      role: 'User',
+      exp: REAL_TOKEN_EXP,
+    });
+
+    session.applyTokens(other, 'r2');
+
+    expect(session.userId()).toBe('other-user');
+    expect(storage.get()).toBe(other);
+    expect(storage.getRefresh()).toBe('r2');
+  });
+
+  it('clear drops both keys and the signal', () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const session = TestBed.inject(Session);
+
+    session.clear();
+
+    expect(session.isLoggedIn()).toBe(false);
+    expect(storage.get()).toBeNull();
+    expect(storage.getRefresh()).toBeNull();
   });
 
   it('register posts the payload unchanged', () => {
