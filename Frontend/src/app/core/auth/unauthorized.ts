@@ -1,17 +1,17 @@
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
 import { ProfileDirectory } from '../profiles/profile-directory';
 import { authGuard } from './auth.guard';
-import { TokenStorage } from './token-storage';
+import { Session } from './session';
 
 export function handleUnauthorized(
   router: Router,
-  storage: TokenStorage,
+  session: Session,
   directory: ProfileDirectory,
 ): void {
   if (router.url.startsWith('/login')) {
     return;
   }
-  storage.clear();
+  session.clear();
   directory.clear();
   router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
 }

@@ -2,7 +2,6 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiError } from '../api/api-error';
 import { Session } from '../auth/session';
-import { TokenStorage } from '../auth/token-storage';
 import { handleUnauthorized } from '../auth/unauthorized';
 import { nextDelay } from '../polling/poll';
 import { ProfileDirectory } from '../profiles/profile-directory';
@@ -27,7 +26,6 @@ export function shouldReconnect(
 @Injectable({ providedIn: 'root' })
 export class PushClient {
   private readonly session = inject(Session);
-  private readonly storage = inject(TokenStorage);
   private readonly router = inject(Router);
   private readonly directory = inject(ProfileDirectory);
 
@@ -139,7 +137,7 @@ export class PushClient {
     if (status === 401) {
       this.token = null;
       if (expiresAt === null || expiresAt - now > PUSH_CLOCK_SKEW_MS) {
-        handleUnauthorized(this.router, this.storage, this.directory);
+        handleUnauthorized(this.router, this.session, this.directory);
       }
       return;
     }
