@@ -6,7 +6,7 @@
 
 ## Status
 
-Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 57 endpointów, 38 zdarzeń integracyjnych, 995 metod testowych, pipeline CI na GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6, gateway nginx przed API, PgBouncer przed PostgreSQL, cache TTL na Redisie dla gorących odczytów aukcji, RabbitMQ niosący zdarzenia integracyjne plus rynkowy feed tylko do konsumpcji dla botów, OpenBao serwujący sekrety aplikacji oraz kanał push Server-Sent Events nudgujący klienta. Frontend Angular dowiózł widoki MVP 2026-11-10, widoki modułów 2026-11-14 i widoki etapu trzeciego z klientem push 2026-11-15, a boty AI są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
+Backend jest kompletny dla głównego przepływu: dziewięć modułów (Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles), 59 endpointów, 38 zdarzeń integracyjnych, 1042 metody testowe, pipeline CI na GitHub Actions, stack obserwowalności OpenTelemetry mierzony k6, gateway nginx przed API, PgBouncer przed PostgreSQL, cache TTL na Redisie dla gorących odczytów aukcji, RabbitMQ niosący zdarzenia integracyjne plus rynkowy feed tylko do konsumpcji dla botów, OpenBao serwujący sekrety aplikacji kanał push Server-Sent Events nudgujący klienta oraz rotowane refresh tokeny dla sesji graczy. Frontend Angular dowiózł widoki MVP 2026-11-10, widoki modułów 2026-11-14, widoki etapu trzeciego z klientem push 2026-11-15 i ciche odświeżanie sesji 2026-11-16, a boty AI są planowane i nierozpoczęte. Bieżący stan: [docs/pl/STATE.md](docs/pl/STATE.md).
 
 ## Szybki start
 

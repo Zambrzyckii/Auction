@@ -330,6 +330,7 @@ The diagram shows the GitHub Actions workflow defined in [`.github/workflows/ci.
 13. Outbox throughput caps the bot population. Each `OutboxProcessor` delivers at most 20 rows per 3 s poll and a Pawn Clerk writes about 240 Pawnshop outbox rows an hour, so about 100 Pawn Clerks saturate the Pawnshop outbox.
 14. Casino variance creates money without a cap. On average both games are sinks (roulette returns exactly 36/37, the measured blackjack edge is about 1.1 % of the stake), but a straight bet returns 36 times the stake, nothing caps a chip balance and no rate limiter exists on the game endpoints. The owner accepted this on 2026-10-17; the numbers are in [backend/casino.md](backend/casino.md#games-and-the-house-edge).
 15. A bot spinning roulette nonstop can win the `Version` race against the casino's purchase-completion handler on all five delivery attempts, dead-lettering the purchase with the wallet debited and no chips credited; reviving the dead row repairs it, because a late completion is tolerated. Casino game history (spins, bets, hands) is also kept forever, like pawnshop stock.
+16. Refresh-token rows are purged only when their owner rotates again ([ADR-017](adr/017-refresh-token-rotation.md)). A player online all day adds about 100 rows a day to `IdentityRefreshTokens` and keeps them up to seven days, and an account that logs in without ever refreshing, like the k6 seed players, keeps one row per login, because no retention sweep exists.
 
 ## Related documents
 

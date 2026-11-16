@@ -149,15 +149,15 @@ Każdy modułowy projekt testowy ma część offline (`Application/`, `Domain/`,
 |---|---|---|---|
 | `AuctionServer.Modules.Auctions.Tests` | 100 | 60 | 40 |
 | `AuctionServer.Modules.Banking.Tests` | 55 | 37 | 18 |
-| `AuctionServer.Modules.Casino.Tests` | 107 | 75 | 32 |
-| `AuctionServer.Modules.Identity.Tests` | 39 | 22 | 17 |
+| `AuctionServer.Modules.Casino.Tests` | 108 | 75 | 33 |
+| `AuctionServer.Modules.Identity.Tests` | 83 | 44 | 39 |
 | `AuctionServer.Modules.Inventory.Tests` | 90 | 43 | 47 |
 | `AuctionServer.Modules.Pawnshop.Tests` | 89 | 62 | 27 |
-| `AuctionServer.Modules.Profiles.Tests` | 121 | 38 | 83 |
+| `AuctionServer.Modules.Profiles.Tests` | 122 | 38 | 84 |
 | `AuctionServer.Modules.Wallets.Tests` | 153 | 65 | 88 |
 | `AuctionServer.Modules.Warehouses.Tests` | 74 | 44 | 30 |
 | `AuctionServer.Shared.Infrastructure.Tests` | 23 | 5 | 18 |
-| `AuctionServer.Api.Tests` | 144 | 100 | 44 |
+| `AuctionServer.Api.Tests` | 145 | 101 | 44 |
 
 ```bash
 dotnet test AuctionServer.slnx                                                                       # wszystko, wymaga Dockera

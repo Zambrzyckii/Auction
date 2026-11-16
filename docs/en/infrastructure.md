@@ -144,7 +144,7 @@ Before more than one api replica is allowed, the single-instance assumptions mus
 Identity issues the JWTs today. When social login, MFA or more client types arrive, a dedicated OIDC provider (Keycloak) takes over token issuing.
 
 - The host switches `AddJwtBearer` to the provider's `Authority` and validates through its JWKS instead of the shared `Jwt:Key`.
-- The Angular client logs in with Authorization Code + PKCE, which also adds the refresh flow the current 15-minute tokens lack.
+- The Angular client logs in with Authorization Code + PKCE, and the provider's refresh tokens replace the rotation Identity runs since [ADR-017](adr/017-refresh-token-rotation.md).
 - The bots move from `X-Api-Key` provisioning to the client-credentials flow.
 - Identity stays as the user store, mapping `PublicUserId` onto the provider's `sub`, and the BCrypt hashes migrate lazily on first login.
 - The price is one heavyweight service more, roughly 500 MB of RAM in this stack, which is why it waits for a real trigger.

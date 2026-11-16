@@ -144,7 +144,7 @@ Zanim wolno będzie uruchomić więcej niż jedną replikę api, muszą paść z
 Dziś JWT wydaje Identity. Gdy pojawi się social login, MFA albo więcej typów klientów, wydawanie tokenów przejmie dedykowany dostawca OIDC (Keycloak).
 
 - Host przełącza `AddJwtBearer` na `Authority` dostawcy i waliduje przez jego JWKS zamiast współdzielonego `Jwt:Key`.
-- Klient Angular loguje się przez Authorization Code + PKCE, co dokłada też refresh flow, którego brakuje obecnym 15-minutowym tokenom.
+- Klient Angular loguje się przez Authorization Code + PKCE, a refresh tokeny dostawcy zastępują rotację, którą Identity prowadzi od [ADR-017](adr/017-refresh-token-rotation.md).
 - Boty przechodzą z provisioningu `X-Api-Key` na flow client credentials.
 - Identity zostaje magazynem użytkowników, mapując `PublicUserId` na `sub` dostawcy, a hashe BCrypt migrują leniwie przy pierwszym logowaniu.
 - Ceną jest jedna ciężka usługa więcej, około 500 MB RAM w tym stacku, dlatego czeka na realny powód.

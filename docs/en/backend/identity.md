@@ -113,7 +113,7 @@ Wallets consumes the event and creates the wallet with `Wallets:StartingFunds`; 
 - Deleted users are hidden by a global query filter rather than removed, which keeps the unique e-mail reserved.
 - Bot provisioning uses a separate authentication scheme keyed by `X-Api-Key`; a JWT with the `Bot` role does not satisfy the `BotProvisioning` policy, which `RegisterBot_WhenOnlyBotJwtIsPresented_ShouldReturnUnauthorized` pins down.
 - Login answers an unknown e-mail and a wrong password with the same 400 message, so the response does not reveal whether an account exists.
-- A refresh token is stored only as the SHA-256 hash of 32 random bytes, so a database leak yields nothing a client could present, and the raw value exists only in the login or refresh response.
+- A refresh token is stored only as the SHA-256 hash of 32 random bytes, so a database leak yields nothing a client could present, and the raw value exists only in the login or refresh response ([ADR-017](../adr/017-refresh-token-rotation.md)).
 - Every token carries the `FamilyId` of the login it descends from, and a revoked token presented again revokes the whole family, which is how a stolen value replayed after the legitimate rotation is caught.
 - The expiry slides because a rotation issues a successor with a fresh seven-day window, so an active user never has to log in again, while seven idle days end the session.
 - Dead rows are purged by the rotation handler itself, for the rotating user only, once they are older than `RefreshToken.Lifetime`, so the table stays small without a background service.

@@ -113,7 +113,7 @@ Wallets konsumuje zdarzenie i tworzy portfel ze `Wallets:StartingFunds`; poniewa
 - Usunięci użytkownicy są ukrywani globalnym filtrem zapytań, a nie usuwani, co utrzymuje rezerwację unikalnego e-maila.
 - Provisioning botów używa osobnego schematu uwierzytelniania opartego na `X-Api-Key`; JWT z rolą `Bot` nie spełnia polityki `BotProvisioning`, co przypina `RegisterBot_WhenOnlyBotJwtIsPresented_ShouldReturnUnauthorized`.
 - Logowanie odpowiada na nieznany e-mail i złe hasło tym samym komunikatem 400, więc odpowiedź nie zdradza, czy konto istnieje.
-- Refresh token jest przechowywany tylko jako hash SHA-256 32 losowych bajtów, więc wyciek bazy nie daje nic, co klient mógłby przedstawić, a surowa wartość istnieje wyłącznie w odpowiedzi logowania lub odświeżenia.
+- Refresh token jest przechowywany tylko jako hash SHA-256 32 losowych bajtów, więc wyciek bazy nie daje nic, co klient mógłby przedstawić, a surowa wartość istnieje wyłącznie w odpowiedzi logowania lub odświeżenia ([ADR-017](../adr/017-refresh-token-rotation.md)).
 - Każdy token niesie `FamilyId` logowania, z którego pochodzi, a ponowne przedstawienie unieważnionego tokenu unieważnia całą rodzinę, co wyłapuje skradzioną wartość odtworzoną po prawowitej rotacji.
 - Termin przesuwa się, bo rotacja wydaje następcę ze świeżym siedmiodniowym oknem, więc aktywny użytkownik nigdy nie loguje się ponownie, a siedem dni bezczynności kończy sesję.
 - Martwe wiersze czyści sam handler rotacji, tylko dla rotującego użytkownika, gdy są starsze niż `RefreshToken.Lifetime`, więc tabela zostaje mała bez usługi w tle.

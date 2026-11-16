@@ -330,6 +330,7 @@ Diagram pokazuje workflow GitHub Actions zdefiniowany w [`.github/workflows/ci.y
 13. Przepustowość outboxa ogranicza populację botów. Każdy `OutboxProcessor` dostarcza najwyżej 20 wierszy na odpytanie co 3 s, a bot `Pawn Clerk` zapisuje około 240 wierszy outboxa Pawnshop na godzinę, więc około 100 botów `Pawn Clerk` nasyca outbox Pawnshop.
 14. Wariancja kasyna tworzy pieniądze bez limitu. Średnio obie gry są zlewami (ruletka zwraca dokładnie 36/37, zmierzona przewaga blackjacka to około 1.1 % stawki), ale zakład prosty zwraca 36 razy stawkę, salda żetonów nic nie ogranicza i na endpointach gier nie ma rate limitera. Właściciel zaakceptował to 2026-10-17; liczby są w [backend/casino.md](backend/casino.md#gry-i-przewaga-kasyna).
 15. Bot kręcący ruletką bez przerwy może wygrać wyścig o `Version` z handlerem zakończenia zakupu przy wszystkich pięciu próbach dostarczenia, posyłając zakup do martwych z obciążonym portfelem i bez żetonów; naprawą jest wskrzeszenie martwego wiersza, bo spóźnione zakończenie jest tolerowane. Historia gier kasyna (spiny, zakłady, rozdania) też zostaje na zawsze, jak magazyn lombardu.
+16. Wiersze refresh tokenów są czyszczone dopiero przy następnej rotacji ich właściciela ([ADR-017](adr/017-refresh-token-rotation.md)). Gracz online przez cały dzień dodaje około 100 wierszy dziennie do `IdentityRefreshTokens` i trzyma je do siedmiu dni, a konto, które loguje się bez odświeżania, jak gracze z seedów k6, trzyma jeden wiersz na logowanie, bo nie istnieje żadne sprzątanie retencyjne.
 
 ## Powiązane dokumenty
 
