@@ -654,7 +654,7 @@ endpoints under `/api/profiles` (57 total, `GET /api/push` included), event regi
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
-column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `LoginCommandHandler.cs:34`, the
+column, so adding members needs no migration), a `ClaimTypes.Role` claim issued in `Application/Tokens/JwtTokenFactory.cs`, the
 `"Bot"` policy registered in `Program.cs:71-79`, and two bot-only endpoints — `POST /api/wallets/funds`
 (`WalletEndpoints.cs:29`) and `POST /api/inventory/items` (`InventoryEndpoints.cs:41-46`, `GrantItemCommand` →
 `Item.Create`). The policy name is a plain string repeated in the host and both modules — keep it `"Bot"`.
@@ -671,7 +671,8 @@ Bot provisioning: `POST /api/users/bots` (`IdentityEndpoints.cs:31-36`; `Registe
 `ApiKey` scheme only (`Program.cs:60-79`; `Api/Infrastructure/Authentication/ApiKeyAuthenticationHandler.cs` — header
 `X-Api-Key`, secret `Bots:ApiKey`, constant-time compare, `Scheme.Name` as the identity's authentication type). A JWT
 alone never satisfies it and the API-key principal never satisfies `"Bot"`; `BotProvisioningApiTests` proves both.
-Bot JWTs live 24 h, player JWTs 15 min (`LoginCommandHandler.cs:27`); there is no token revocation. Policy literals:
+Bot JWTs live 24 h, player JWTs 15 min (`JwtTokenFactory.cs`). A player login also stores a refresh token hash in
+`IdentityRefreshTokens` and returns the raw value next to the JWT (`SessionTokensDto`), a bot login returns `refreshToken: null`. Policy literals:
 `"Bot"` (host, Wallets, Inventory) and `"BotProvisioning"` (host, Identity). Bots also receive `Wallets:StartingFunds`
 — `UserRegisteredEvent` carries no role — which is harmless because they top themselves up through `/funds`.
 

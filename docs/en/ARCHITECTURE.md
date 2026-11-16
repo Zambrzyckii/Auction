@@ -50,7 +50,7 @@ Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints a
 | [Casino](backend/casino.md) | `/api/casino` | `CasinoDbContext` | `CasinoAccounts`, `CasinoChipPurchases`, `CasinoRouletteSpins`, `CasinoRouletteBets`, `CasinoBlackjackHands`, `CasinoOutboxMessages`, `CasinoProcessedMessages` | `OutboxProcessor`, `CasinoKeeper` | `AuctionServer.Modules.Casino.Tests` |
 | [Profiles](backend/profiles.md) | `/api/profiles` | `ProfilesDbContext` | `ProfilesUserProfiles`, `ProfilesSocialLinks`, `ProfilesFriendships`, `ProfilesWarehouseInvites`, `ProfilesProcessedMessages` | none; the first consume-only module | `AuctionServer.Modules.Profiles.Tests` |
 
-The module rules are enforced by convention, not by tooling: no cross-module project reference, no cross-module database query, and `Domain/` and `Application/` free of ASP.NET Core types. The last rule holds for ASP.NET Core itself, but `Application/` handlers do reference the shared `Shared.Infrastructure` types to build reply outbox rows and to call the apply-once inbox operation through their repository, and `LoginCommandHandler` reads `IConfiguration` directly.
+The module rules are enforced by convention, not by tooling: no cross-module project reference, no cross-module database query, and `Domain/` and `Application/` free of ASP.NET Core types. The last rule holds for ASP.NET Core itself, but `Application/` handlers do reference the shared `Shared.Infrastructure` types to build reply outbox rows and to call the apply-once inbox operation through their repository, and Identity's `JwtTokenFactory` reads `IConfiguration` directly.
 
 ## Request handling
 

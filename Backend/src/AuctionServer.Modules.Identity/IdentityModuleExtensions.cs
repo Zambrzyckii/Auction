@@ -1,4 +1,5 @@
 using AuctionServer.Modules.Identity.Application.Interfaces;
+using AuctionServer.Modules.Identity.Application.Tokens;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Shared.Infrastructure.Outbox;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ public static class IdentityModuleExtensions
 
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddSingleton<JwtTokenFactory>();
 
         services.AddOutboxProcessor<IdentityDbContext>("Identity");
         

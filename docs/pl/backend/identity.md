@@ -30,11 +30,11 @@ Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/sr
 
 | Klucz | Do czego | Gdzie |
 |---|---|---|
-| `Jwt:Key` | podpisywanie tokenów HMAC-SHA256; klucz krótszy niż 32 znaki sprawia, że logowanie z poprawnymi danymi rzuca `MissingConfigurationException` (500), a brak klucza wywraca każde żądanie wcześniej, w konfiguracji bearera w hoście | [`LoginCommandHandler`](../../../Backend/src/AuctionServer.Modules.Identity/Application/Commands/Login/LoginCommandHandler.cs), czytany przez `IConfiguration` |
-| `Jwt:Issuer`, `Jwt:Audience` | claimy `iss` i `aud` wystawianych tokenów (domyślnie `AuctionServer`, `AuctionServer.Client`) | `LoginCommandHandler` i walidacja bearera w hoście |
+| `Jwt:Key` | podpisywanie tokenów HMAC-SHA256; klucz krótszy niż 32 znaki sprawia, że logowanie z poprawnymi danymi rzuca `MissingConfigurationException` (500), a brak klucza wywraca każde żądanie wcześniej, w konfiguracji bearera w hoście | [`JwtTokenFactory`](../../../Backend/src/AuctionServer.Modules.Identity/Application/Tokens/JwtTokenFactory.cs), czytany przez `IConfiguration` |
+| `Jwt:Issuer`, `Jwt:Audience` | claimy `iss` i `aud` wystawianych tokenów (domyślnie `AuctionServer`, `AuctionServer.Client`) | `JwtTokenFactory` i walidacja bearera w hoście |
 | `Bots:ApiKey` | wartość `X-Api-Key` spełniająca politykę `BotProvisioning` na `POST /api/users/bots` | `ApiKeyAuthenticationHandler` w hoście |
 
-Czasy życia tokenów to stałe w `LoginCommandHandler`: `PlayerTokenLifetime` to 15 minut, a `BotTokenLifetime` to 24 godziny, wybierane według roli użytkownika.
+Czasy życia tokenów to stałe w `JwtTokenFactory`, wspólne dla logowania i odświeżenia: `PlayerTokenLifetime` to 15 minut, a `BotTokenLifetime` to 24 godziny, wybierane według roli użytkownika.
 
 ## Model danych
 
@@ -77,7 +77,7 @@ Diagram pokazuje, jak host uwierzytelnia żądanie i jakiej polityki wymaga każ
 | Metoda i trasa | Auth | Żądanie | Odpowiedź | Handler |
 |---|---|---|---|---|
 | `POST /api/users/register` | anonimowy | `{ email, password, username, name, surname, birthday }` | 201 z pustym ciałem | `RegisterCommandHandler` |
-| `POST /api/users/login` | anonimowy | `{ email, password }` | 200 `{ token }` | `LoginCommandHandler` |
+| `POST /api/users/login` | anonimowy | `{ email, password }` | 200 `{ token, refreshToken }`, `refreshToken` jest null dla bota | `LoginCommandHandler` |
 | `POST /api/users/bots` | nagłówek `X-Api-Key` (polityka `BotProvisioning`) | to samo ciało co rejestracja | 201 `{ publicUserId }` z `Location: /api/users/{id}` | `RegisterBotCommandHandler` |
 
 `RegisterCommandValidator` i `RegisterBotCommandValidator` stosują te same reguły: poprawny adres e-mail; hasło o długości co najmniej 8 znaków z małą literą, wielką literą, cyfrą i znakiem specjalnym; `Username`, `Name` i `Surname` o długości najwyżej 30 znaków; `Birthday` wcześniejsze niż dzisiaj (UTC). Oba handlery najpierw pytają `DoesUserWithThisEmailExists` i `DoesUserWithThisUsernameExists`, a potem polegają na indeksach unikalnych: [`AuthRepository.AddUserWithOutboxAsync`](../../../Backend/src/AuctionServer.Modules.Identity/Infrastructure/Persistence/AuthRepository.cs) odczytuje nazwę naruszonego constraintu i zamienia naruszenie na ten sam błąd `This email is taken` lub `This username is taken`.
@@ -90,7 +90,7 @@ Diagram pokazuje, jak host uwierzytelnia żądanie i jakiej polityki wymaga każ
 | 409 | `This username is taken` | username istnieje (wstępne sprawdzenie lub indeks unikalny), od 2026-11-14 |
 | 500 | `Server configuration error` | logowanie z poprawnymi danymi, gdy `Jwt:Key` jest krótszy niż 32 znaki; bez klucza każde żądanie zawodzi wcześniej z `Unhandled error occurred` |
 
-Token wystawiany przez `LoginCommandHandler` to JWT podpisany `HmacSha256Signature`, którego claimy to `ClaimTypes.Name` = e-mail, `ClaimTypes.NameIdentifier` = `PublicUserId` i `ClaimTypes.Role` = `UserRoles.ToString()`, z `Issuer`, `Audience` i `Expires` z konfiguracji oraz czasem życia zależnym od roli. Nie ma refresh tokenów ani unieważniania; token jest ważny do wygaśnięcia.
+Token wystawiany przez `JwtTokenFactory` to JWT podpisany `HmacSha256Signature`, którego claimy to `ClaimTypes.Name` = e-mail, `ClaimTypes.NameIdentifier` = `PublicUserId` i `ClaimTypes.Role` = `UserRoles.ToString()`, z `Issuer`, `Audience` i `Expires` z konfiguracji oraz czasem życia zależnym od roli. Nie ma refresh tokenów ani unieważniania; token jest ważny do wygaśnięcia.
 
 ## Zdarzenia
 

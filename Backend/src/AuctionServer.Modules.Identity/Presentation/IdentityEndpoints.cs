@@ -23,10 +23,7 @@ public static class IdentityEndpoints
         });
 
         group.MapPost("/login", async (LoginRequest request, ISender sender) =>
-        {
-            var token = await sender.Send(new LoginCommand(request.Email, request.Password));
-            return Results.Ok(new { Token = token });
-        });
+            Results.Ok(await sender.Send(new LoginCommand(request.Email, request.Password))));
         
         group.MapPost("/bots", async (RegisterBotRequest request, ISender sender) =>
         {

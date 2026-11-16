@@ -50,7 +50,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 | [Casino](backend/casino.md) | `/api/casino` | `CasinoDbContext` | `CasinoAccounts`, `CasinoChipPurchases`, `CasinoRouletteSpins`, `CasinoRouletteBets`, `CasinoBlackjackHands`, `CasinoOutboxMessages`, `CasinoProcessedMessages` | `OutboxProcessor`, `CasinoKeeper` | `AuctionServer.Modules.Casino.Tests` |
 | [Profiles](backend/profiles.md) | `/api/profiles` | `ProfilesDbContext` | `ProfilesUserProfiles`, `ProfilesSocialLinks`, `ProfilesFriendships`, `ProfilesWarehouseInvites`, `ProfilesProcessedMessages` | brak; pierwszy moduł wyłącznie konsumujący | `AuctionServer.Modules.Profiles.Tests` |
 
-Reguły modułów są egzekwowane konwencją, nie narzędziami: brak referencji projektowych między modułami, brak zapytań do bazy innego modułu oraz `Domain/` i `Application/` wolne od typów ASP.NET Core. Ostatnia reguła jest spełniona dla samego ASP.NET Core, ale handlery w `Application/` referencują wspólne typy `Shared.Infrastructure`, żeby budować wiersze outboxa z odpowiedziami i wołać operację inboxa "zastosuj raz" przez swoje repozytorium, a `LoginCommandHandler` czyta `IConfiguration` bezpośrednio.
+Reguły modułów są egzekwowane konwencją, nie narzędziami: brak referencji projektowych między modułami, brak zapytań do bazy innego modułu oraz `Domain/` i `Application/` wolne od typów ASP.NET Core. Ostatnia reguła jest spełniona dla samego ASP.NET Core, ale handlery w `Application/` referencują wspólne typy `Shared.Infrastructure`, żeby budować wiersze outboxa z odpowiedziami i wołać operację inboxa "zastosuj raz" przez swoje repozytorium, a `JwtTokenFactory` w Identity czyta `IConfiguration` bezpośrednio.
 
 ## Obsługa żądań
 
