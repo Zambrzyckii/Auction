@@ -7,7 +7,12 @@ import { REAL_TOKEN, tokenWithClaims } from '../../../testing/token-fixture';
 import { ProfileDirectory } from '../profiles/profile-directory';
 import { authGuard } from './auth.guard';
 import { Session } from './session';
-import { REFRESH_LEAD_MS, SessionRefresher, needsRefresh } from './session-refresher';
+import {
+  REFRESH_LEAD_MS,
+  REFRESH_MIN_INTERVAL_MS,
+  SessionRefresher,
+  needsRefresh,
+} from './session-refresher';
 import { TokenStorage } from './token-storage';
 
 describe('SessionRefresher', () => {
@@ -230,5 +235,120 @@ describe('SessionRefresher', () => {
     expect(await pending).toBe(fresh);
     expect(TestBed.inject(Session).token()).toBe(fresh);
     expect(storage.getRefresh()).toBe('r9');
+  });
+
+  describe('timer', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1_800_000_000_000);
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    function tokenExpiringIn(seconds: number, nameid = 'timer-user'): string {
+      return tokenWithClaims({
+        nameid,
+        unique_name: 'timer@test.local',
+        role: 'User',
+        exp: Math.floor(Date.now() / 1000) + seconds,
+      });
+    }
+
+    function start(): SessionRefresher {
+      const refresher = TestBed.inject(SessionRefresher);
+      TestBed.tick();
+      return refresher;
+    }
+
+    async function flushRefresh(token: string, refreshToken: string): Promise<void> {
+      http().expectOne('/api/users/refresh').flush({ token, refreshToken });
+      await vi.advanceTimersByTimeAsync(0);
+      TestBed.tick();
+    }
+
+    it('refreshes REFRESH_LEAD_MS before the token expires', async () => {
+      const storage = new TokenStorage();
+      storage.set(tokenExpiringIn(600));
+      storage.setRefresh('r1');
+      start();
+
+      await vi.advanceTimersByTimeAsync(600_000 - REFRESH_LEAD_MS - 1);
+      http().expectNone('/api/users/refresh');
+      await vi.advanceTimersByTimeAsync(1);
+
+      await flushRefresh(tokenExpiringIn(900), 'r2');
+      expect(storage.getRefresh()).toBe('r2');
+    });
+
+    it('refreshes at startup when the stored token is already expired', async () => {
+      const storage = new TokenStorage();
+      storage.set(REAL_TOKEN);
+      storage.setRefresh('r1');
+
+      start();
+
+      const rotated = tokenExpiringIn(900);
+      await flushRefresh(rotated, 'r2');
+      expect(TestBed.inject(Session).token()).toBe(rotated);
+    });
+
+    it('refreshes at startup when only the refresh token is stored', async () => {
+      new TokenStorage().setRefresh('r1');
+
+      start();
+
+      await flushRefresh(tokenExpiringIn(900), 'r2');
+      expect(TestBed.inject(Session).isLoggedIn()).toBe(true);
+    });
+
+    it('schedules nothing without a refresh token', async () => {
+      new TokenStorage().set(tokenExpiringIn(600));
+      start();
+
+      await vi.advanceTimersByTimeAsync(600_000);
+
+      http().expectNone('/api/users/refresh');
+    });
+
+    it('reschedules after another tab rotated', async () => {
+      const storage = new TokenStorage();
+      storage.set(tokenExpiringIn(600));
+      storage.setRefresh('r1');
+      start();
+      const rotated = tokenExpiringIn(1200, 'rotated-user');
+      storage.set(rotated);
+      storage.setRefresh('r2');
+      window.dispatchEvent(new StorageEvent('storage', { key: 'auction.token', newValue: rotated }));
+      TestBed.tick();
+
+      await vi.advanceTimersByTimeAsync(600_000 - REFRESH_LEAD_MS);
+      http().expectNone('/api/users/refresh');
+      await vi.advanceTimersByTimeAsync(600_000);
+
+      const req = http().expectOne('/api/users/refresh');
+      expect(req.request.body).toEqual({ refreshToken: 'r2' });
+      req.flush({ token: tokenExpiringIn(900), refreshToken: 'r3' });
+    });
+
+    it('rotates at most once per REFRESH_MIN_INTERVAL_MS when the clock runs ahead', async () => {
+      const serverNow = Math.floor(Date.now() / 1000);
+      const issued = (n: number): string =>
+        tokenWithClaims({ nameid: 'ahead', role: 'User', iat: serverNow + n, exp: serverNow + 900 + n });
+      vi.setSystemTime(Date.now() + 20 * 60_000);
+      const storage = new TokenStorage();
+      storage.set(issued(0));
+      storage.setRefresh('r1');
+      start();
+      await flushRefresh(issued(1), 'r2');
+
+      await vi.advanceTimersByTimeAsync(REFRESH_MIN_INTERVAL_MS - 1);
+      http().expectNone('/api/users/refresh');
+      await vi.advanceTimersByTimeAsync(1);
+      await flushRefresh(issued(2), 'r3');
+      await vi.advanceTimersByTimeAsync(REFRESH_MIN_INTERVAL_MS - 2);
+
+      http().expectNone('/api/users/refresh');
+      expect(storage.getRefresh()).toBe('r3');
+    });
   });
 });
