@@ -8,4 +8,5 @@ public static class IdentityException
     public class EmailAlreadyTakenException() : AppException("This email is taken", 409);
     public class UsernameAlreadyTakenException() : AppException("This username is taken", 409);
     public class MissingConfigurationException() : AppException("Server configuration error", 500);
+    public class InvalidRefreshTokenException() : AppException("Invalid refresh token", 400);
 }
