@@ -153,19 +153,40 @@ describe('Session', () => {
     expect(storage.getRefresh()).toBeNull();
   });
 
-  it('login over a session with a refresh token revokes the previous one', () => {
+  it('login over a session with a refresh token revokes the previous one once the new pair is stored', () => {
     new TokenStorage().setRefresh('r1');
     const session = TestBed.inject(Session);
 
     session.login('probe1@test.local', 'pw').subscribe();
 
     const http = TestBed.inject(HttpTestingController);
+    http.expectNone('/api/users/logout');
+    http.expectOne('/api/users/login').flush({ token: REAL_TOKEN, refreshToken: 'r2' });
     const revoke = http.expectOne('/api/users/logout');
     expect(revoke.request.body).toEqual({ refreshToken: 'r1' });
     revoke.flush(null);
-    http.expectOne('/api/users/login').flush({ token: REAL_TOKEN, refreshToken: 'r2' });
     expect(session.isLoggedIn()).toBe(true);
     expect(new TokenStorage().getRefresh()).toBe('r2');
+  });
+
+  it('a failed login keeps the stored pair and revokes nothing', () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const session = TestBed.inject(Session);
+    let failed = false;
+
+    session.login('probe1@test.local', 'wrong').subscribe({ error: () => (failed = true) });
+
+    const http = TestBed.inject(HttpTestingController);
+    http
+      .expectOne('/api/users/login')
+      .flush({ error: 'Invalid credentials provided' }, { status: 400, statusText: 'Bad Request' });
+    http.expectNone('/api/users/logout');
+    expect(failed).toBe(true);
+    expect(session.token()).toBe(REAL_TOKEN);
+    expect(storage.get()).toBe(REAL_TOKEN);
+    expect(storage.getRefresh()).toBe('r1');
   });
 
   it('adopts a token rotated in another tab', () => {

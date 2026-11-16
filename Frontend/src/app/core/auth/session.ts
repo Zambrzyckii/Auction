@@ -40,10 +40,12 @@ export class Session {
   }
 
   login(email: string, password: string): Observable<void> {
-    const previous = this.storage.getRefresh();
-    if (previous) this.revoke(previous);
     return this.http.post<LoginResponse>('/api/users/login', { email, password }).pipe(
-      tap((response) => this.applyTokens(response.token, response.refreshToken)),
+      tap((response) => {
+        const previous = this.storage.getRefresh();
+        this.applyTokens(response.token, response.refreshToken);
+        if (previous) this.revoke(previous);
+      }),
       map(() => undefined),
     );
   }

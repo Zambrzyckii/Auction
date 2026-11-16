@@ -57,7 +57,7 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 | historia wojen magazynowych (`/warehouses/mine`, za guardem) | `GET /api/warehouses/mine` |
 | profil własny (`/profile`, za guardem) | `GET /api/profiles/me`, `PUT /api/profiles/me/privacy`, `PUT /api/profiles/me/socials`, upload i usunięcie awatara pod `/api/profiles/me/avatar`, przyjęcie i odrzucenie zaproszenia do znajomych, `POST /api/profiles/friends/requests` z `GET /api/profiles/search?q=` zasilającym picker dodawania znajomego, `DELETE /api/profiles/friends/{userId}` |
 | publiczny profil gracza (`/profiles/:id`, za guardem) | `GET /api/profiles/{id}`, `GET /api/profiles/me`, `POST /api/profiles/friends/requests`, przyjęcie zaproszenia przy skrzyżowanych zaproszeniach, `DELETE /api/profiles/friends/{userId}` |
-| rejestracja i logowanie (`/register`, `/login`) | `POST /api/users/register` z automatycznym logowaniem po 201, `POST /api/users/login`, poprzedzony `POST /api/users/logout` dla refresh tokenu, który został w storage po poprzednim graczu |
+| rejestracja i logowanie (`/register`, `/login`) | `POST /api/users/register` z automatycznym logowaniem po 201, `POST /api/users/login`, a po udanym logowaniu `POST /api/users/logout` dla refresh tokenu, który został w storage po poprzedniej sesji |
 
 ## Sesja
 

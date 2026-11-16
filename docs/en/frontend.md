@@ -57,7 +57,7 @@ The module views shipped on 2026-11-14 on the stack decided in [ADR-015](adr/015
 | warehouse war history (`/warehouses/mine`, guarded) | `GET /api/warehouses/mine` |
 | own profile (`/profile`, guarded) | `GET /api/profiles/me`, `PUT /api/profiles/me/privacy`, `PUT /api/profiles/me/socials`, the avatar upload and delete under `/api/profiles/me/avatar`, the friend-request accept and decline, `POST /api/profiles/friends/requests` with `GET /api/profiles/search?q=` feeding the add-friend picker, `DELETE /api/profiles/friends/{userId}` |
 | public player profile (`/profiles/:id`, guarded) | `GET /api/profiles/{id}`, `GET /api/profiles/me`, `POST /api/profiles/friends/requests`, the friend-request accept for a crossed request, `DELETE /api/profiles/friends/{userId}` |
-| register and login (`/register`, `/login`) | `POST /api/users/register` with an auto-login after the 201, `POST /api/users/login`, preceded by `POST /api/users/logout` for a refresh token still stored from a previous player |
+| register and login (`/register`, `/login`) | `POST /api/users/register` with an auto-login after the 201, `POST /api/users/login`, followed by `POST /api/users/logout` for a refresh token still stored from a previous session once the login succeeded |
 
 ## Session
 
