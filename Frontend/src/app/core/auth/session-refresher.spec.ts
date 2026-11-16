@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { REAL_TOKEN, tokenWithClaims } from '../../../testing/token-fixture';
+import { ProfileDirectory } from '../profiles/profile-directory';
 import { authGuard } from './auth.guard';
 import { Session } from './session';
 import { REFRESH_LEAD_MS, SessionRefresher, needsRefresh } from './session-refresher';
@@ -145,5 +146,89 @@ describe('SessionRefresher', () => {
     expect(storage.get()).toBeNull();
     expect(storage.getRefresh()).toBeNull();
     expect(session.isLoggedIn()).toBe(false);
+  });
+
+  const USER_A = 'aaaaaaaa-1111-2222-3333-444444444444';
+
+  async function startExpiredRefresh(route: string): Promise<{
+    pending: Promise<string | null>;
+    flushError: (status: number, statusText: string) => void;
+    fail: () => void;
+  }> {
+    const storage = new TokenStorage();
+    storage.set(fresh);
+    await TestBed.inject(Router).navigateByUrl(route);
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const pending = TestBed.inject(SessionRefresher).ensureFresh();
+    const req = await vi.waitFor(() => http().expectOne('/api/users/refresh'));
+    return {
+      pending,
+      flushError: (status, statusText) => req.flush({ error: 'refresh failed' }, { status, statusText }),
+      fail: () => req.error(new ProgressEvent('error')),
+    };
+  }
+
+  it('a 400 clears both keys, the session and the directory and sends a guarded route to login', async () => {
+    const directory = TestBed.inject(ProfileDirectory);
+    directory.remember(USER_A, 'alice');
+    const { pending, flushError } = await startExpiredRefresh('/wallet');
+
+    flushError(400, 'Bad Request');
+
+    expect(await pending).toBeNull();
+    const storage = new TokenStorage();
+    expect(storage.get()).toBeNull();
+    expect(storage.getRefresh()).toBeNull();
+    expect(TestBed.inject(Session).isLoggedIn()).toBe(false);
+    expect(directory.label(USER_A)).toBe('aaaaaaaa');
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fwallet'));
+  });
+
+  it('a 400 on a public route clears the session but stays on the page', async () => {
+    const { pending, flushError } = await startExpiredRefresh('/auctions');
+
+    flushError(400, 'Bad Request');
+
+    expect(await pending).toBeNull();
+    expect(TestBed.inject(Session).isLoggedIn()).toBe(false);
+    expect(new TokenStorage().getRefresh()).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(TestBed.inject(Router).url).toBe('/auctions');
+  });
+
+  it('a network failure keeps the stored pair and returns the current token', async () => {
+    const { pending, fail } = await startExpiredRefresh('/auctions');
+
+    fail();
+
+    expect(await pending).toBe(REAL_TOKEN);
+    const storage = new TokenStorage();
+    expect(storage.get()).toBe(REAL_TOKEN);
+    expect(storage.getRefresh()).toBe('r1');
+  });
+
+  it('a 409 keeps the stored pair', async () => {
+    const { pending, flushError } = await startExpiredRefresh('/auctions');
+
+    flushError(409, 'Conflict');
+
+    expect(await pending).toBe(REAL_TOKEN);
+    const storage = new TokenStorage();
+    expect(storage.get()).toBe(REAL_TOKEN);
+    expect(storage.getRefresh()).toBe('r1');
+  });
+
+  it('a failure after another tab rotated adopts the stored pair', async () => {
+    const { pending, flushError } = await startExpiredRefresh('/auctions');
+    const storage = new TokenStorage();
+    storage.set(fresh);
+    storage.setRefresh('r9');
+
+    flushError(400, 'Bad Request');
+
+    expect(await pending).toBe(fresh);
+    expect(TestBed.inject(Session).token()).toBe(fresh);
+    expect(storage.getRefresh()).toBe('r9');
   });
 });

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -8,6 +8,7 @@ import { decodeJwtClaims } from './jwt';
 import { withRefreshLock } from './refresh-lock';
 import { Session } from './session';
 import { TokenStorage } from './token-storage';
+import { isOnGuardedRoute } from './unauthorized';
 
 export const REFRESH_LEAD_MS = 60_000;
 export const REFRESH_MIN_INTERVAL_MS = 30_000;
@@ -49,9 +50,14 @@ export class SessionRefresher {
       return this.storage.get();
     }
     const posted = this.storage.getRefresh();
-    const response = await firstValueFrom(
-      this.http.post<LoginResponse>('/api/users/refresh', { refreshToken: posted }),
-    );
+    let response: LoginResponse;
+    try {
+      response = await firstValueFrom(
+        this.http.post<LoginResponse>('/api/users/refresh', { refreshToken: posted }),
+      );
+    } catch (error) {
+      return this.recover(error, posted);
+    }
     if (this.storage.getRefresh() !== posted) {
       this.session.syncFromStorage();
       return this.storage.get();
@@ -59,5 +65,25 @@ export class SessionRefresher {
     this.session.applyTokens(response.token, response.refreshToken);
     this.lastRotationAt = Date.now();
     return response.token;
+  }
+
+  private recover(error: unknown, posted: string | null): string | null {
+    if (this.storage.getRefresh() !== posted) {
+      this.session.syncFromStorage();
+      return this.storage.get();
+    }
+    if (error instanceof HttpErrorResponse && error.status === 400) {
+      this.endSession();
+      return null;
+    }
+    return this.storage.get();
+  }
+
+  private endSession(): void {
+    const guarded = isOnGuardedRoute(this.router);
+    const returnUrl = this.router.url;
+    this.session.clear();
+    this.directory.clear();
+    if (guarded) void this.router.navigate(['/login'], { queryParams: { returnUrl } });
   }
 }
