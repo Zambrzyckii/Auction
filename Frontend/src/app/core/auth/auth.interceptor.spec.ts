@@ -146,10 +146,17 @@ describe('authInterceptor', () => {
 
   it('sends the auth routes without a bearer and without refreshing', () => {
     storeExpiredPair();
-    const routes = ['/api/users/login', '/api/users/register', '/api/users/refresh', '/api/users/logout'];
+    const routes = [
+      '/api/users/login',
+      '/api/users/register',
+      '/api/users/refresh',
+      '/api/users/logout',
+    ];
 
     for (const url of routes) {
-      TestBed.inject(HttpClient).post(url, {}).subscribe({ error: () => undefined });
+      TestBed.inject(HttpClient)
+        .post(url, {})
+        .subscribe({ error: () => undefined });
     }
 
     for (const url of routes) {

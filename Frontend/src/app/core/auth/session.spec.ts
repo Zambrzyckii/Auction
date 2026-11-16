@@ -2,7 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { installStorageStub } from '../../../testing/storage-stub';
-import { REAL_TOKEN, REAL_TOKEN_EXP, REAL_TOKEN_USER_ID, tokenWithClaims } from '../../../testing/token-fixture';
+import {
+  REAL_TOKEN,
+  REAL_TOKEN_EXP,
+  REAL_TOKEN_USER_ID,
+  tokenWithClaims,
+} from '../../../testing/token-fixture';
 import { Session } from './session';
 import { TokenStorage } from './token-storage';
 

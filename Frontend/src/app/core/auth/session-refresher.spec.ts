@@ -169,7 +169,8 @@ describe('SessionRefresher', () => {
     const req = await vi.waitFor(() => http().expectOne('/api/users/refresh'));
     return {
       pending,
-      flushError: (status, statusText) => req.flush({ error: 'refresh failed' }, { status, statusText }),
+      flushError: (status, statusText) =>
+        req.flush({ error: 'refresh failed' }, { status, statusText }),
       fail: () => req.error(new ProgressEvent('error')),
     };
   }
@@ -318,7 +319,9 @@ describe('SessionRefresher', () => {
       const rotated = tokenExpiringIn(1200, 'rotated-user');
       storage.set(rotated);
       storage.setRefresh('r2');
-      window.dispatchEvent(new StorageEvent('storage', { key: 'auction.token', newValue: rotated }));
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: 'auction.token', newValue: rotated }),
+      );
       TestBed.tick();
 
       await vi.advanceTimersByTimeAsync(600_000 - REFRESH_LEAD_MS);
@@ -333,7 +336,12 @@ describe('SessionRefresher', () => {
     it('rotates at most once per REFRESH_MIN_INTERVAL_MS when the clock runs ahead', async () => {
       const serverNow = Math.floor(Date.now() / 1000);
       const issued = (n: number): string =>
-        tokenWithClaims({ nameid: 'ahead', role: 'User', iat: serverNow + n, exp: serverNow + 900 + n });
+        tokenWithClaims({
+          nameid: 'ahead',
+          role: 'User',
+          iat: serverNow + n,
+          exp: serverNow + 900 + n,
+        });
       vi.setSystemTime(Date.now() + 20 * 60_000);
       const storage = new TokenStorage();
       storage.set(issued(0));
