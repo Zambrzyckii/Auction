@@ -116,6 +116,89 @@ describe('Session', () => {
     expect(new TokenStorage().get()).toBeNull();
   });
 
+  it('logout posts the stored refresh token and clears both keys', () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const session = TestBed.inject(Session);
+
+    session.logout();
+
+    const req = TestBed.inject(HttpTestingController).expectOne('/api/users/logout');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ refreshToken: 'r1' });
+    req.flush(null);
+    expect(session.isLoggedIn()).toBe(false);
+    expect(storage.get()).toBeNull();
+    expect(storage.getRefresh()).toBeNull();
+  });
+
+  it('logout survives a failing logout request', () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const session = TestBed.inject(Session);
+
+    session.logout();
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/users/logout')
+      .flush({ error: 'boom' }, { status: 500, statusText: 'Server Error' });
+
+    expect(session.isLoggedIn()).toBe(false);
+    expect(storage.getRefresh()).toBeNull();
+  });
+
+  it('login over a session with a refresh token revokes the previous one', () => {
+    new TokenStorage().setRefresh('r1');
+    const session = TestBed.inject(Session);
+
+    session.login('probe1@test.local', 'pw').subscribe();
+
+    const http = TestBed.inject(HttpTestingController);
+    const revoke = http.expectOne('/api/users/logout');
+    expect(revoke.request.body).toEqual({ refreshToken: 'r1' });
+    revoke.flush(null);
+    http.expectOne('/api/users/login').flush({ token: REAL_TOKEN, refreshToken: 'r2' });
+    expect(session.isLoggedIn()).toBe(true);
+    expect(new TokenStorage().getRefresh()).toBe('r2');
+  });
+
+  it('adopts a token rotated in another tab', () => {
+    new TokenStorage().set(REAL_TOKEN);
+    const session = TestBed.inject(Session);
+    const fresh = tokenWithClaims({
+      nameid: 'other-user',
+      unique_name: 'other@test.local',
+      role: 'User',
+      exp: REAL_TOKEN_EXP,
+    });
+    new TokenStorage().set(fresh);
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'auction.token', newValue: fresh }));
+
+    expect(session.userId()).toBe('other-user');
+  });
+
+  it('follows a logout in another tab', () => {
+    new TokenStorage().set(REAL_TOKEN);
+    const session = TestBed.inject(Session);
+    new TokenStorage().clear();
+
+    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+
+    expect(session.isLoggedIn()).toBe(false);
+  });
+
+  it('ignores storage events for other keys', () => {
+    new TokenStorage().set(REAL_TOKEN);
+    const session = TestBed.inject(Session);
+    new TokenStorage().clear();
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'auction.theme', newValue: 'dark' }));
+
+    expect(session.isLoggedIn()).toBe(true);
+  });
+
   it('syncFromStorage picks up an outside change', () => {
     new TokenStorage().set(REAL_TOKEN);
     const session = TestBed.inject(Session);

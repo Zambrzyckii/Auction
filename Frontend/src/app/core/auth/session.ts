@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, map, tap } from 'rxjs';
 import { LoginResponse } from '../api/models';
 import { decodeJwtClaims } from './jwt';
-import { TokenStorage } from './token-storage';
+import { REFRESH_KEY, TOKEN_KEY, TokenStorage } from './token-storage';
 
 export interface RegisterData {
   readonly email: string;
@@ -30,7 +30,18 @@ export class Session {
   readonly email = computed(() => this.claims()?.unique_name ?? null);
   readonly isLoggedIn = computed(() => this.userId() !== null);
 
+  constructor() {
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key !== null && event.key !== TOKEN_KEY && event.key !== REFRESH_KEY) return;
+      this.syncFromStorage();
+    };
+    window.addEventListener('storage', onStorage);
+    inject(DestroyRef).onDestroy(() => window.removeEventListener('storage', onStorage));
+  }
+
   login(email: string, password: string): Observable<void> {
+    const previous = this.storage.getRefresh();
+    if (previous) this.revoke(previous);
     return this.http.post<LoginResponse>('/api/users/login', { email, password }).pipe(
       tap((response) => this.applyTokens(response.token, response.refreshToken)),
       map(() => undefined),
@@ -48,7 +59,9 @@ export class Session {
   }
 
   logout(): void {
+    const refreshToken = this.storage.getRefresh();
     this.clear();
+    if (refreshToken) this.revoke(refreshToken);
   }
 
   clear(): void {
@@ -58,5 +71,9 @@ export class Session {
 
   syncFromStorage(): void {
     this.tokenSignal.set(this.storage.get());
+  }
+
+  private revoke(refreshToken: string): void {
+    this.http.post('/api/users/logout', { refreshToken }).subscribe({ error: () => undefined });
   }
 }
