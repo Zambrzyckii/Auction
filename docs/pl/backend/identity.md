@@ -2,15 +2,15 @@
 
 > Wersja polska. Angielski odpowiednik 1:1: [../../en/backend/identity.md](../../en/backend/identity.md)
 
-`AuctionServer.Modules.Identity` odpowiada za konta użytkowników: rejestrację, logowanie z JWT oraz chroniony kluczem API provisioning kont botów, wszystko pod `/api/users`. Publikuje jedno zdarzenie, `UserRegisteredEvent`, i żadnego nie konsumuje, więc ma outbox, ale nie ma inboxa.
+`AuctionServer.Modules.Identity` odpowiada za konta użytkowników: rejestrację, logowanie z JWT i rotowanym refresh tokenem, odświeżanie i wylogowanie tej sesji oraz chroniony kluczem API provisioning kont botów, wszystko pod `/api/users`. Publikuje jedno zdarzenie, `UserRegisteredEvent`, i żadnego nie konsumuje, więc ma outbox, ale nie ma inboxa.
 
 ## Przegląd
 
 | Obszar | Pliki |
 |---|---|
-| Endpointy | [`Presentation/IdentityEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Presentation/IdentityEndpoints.cs), rekordy żądań `RegisterRequest`, `LoginRequest`, `RegisterBotRequest` |
-| Komendy | `Application/Commands/Register/`, `Application/Commands/Login/`, `Application/Commands/RegisterBot/` (komenda, handler oraz, dla dwóch rejestracji, walidator) |
-| Domena | [`Domain/Entities/User.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/User.cs), [`Domain/Entities/Role.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), `Domain/Exceptions/IdentityException.cs` |
+| Endpointy | [`Presentation/IdentityEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Presentation/IdentityEndpoints.cs), rekordy żądań `RegisterRequest`, `LoginRequest`, `RefreshTokenRequest`, `RegisterBotRequest` |
+| Komendy | `Application/Commands/Register/`, `Application/Commands/Login/`, `Application/Commands/RefreshSession/`, `Application/Commands/Logout/`, `Application/Commands/RegisterBot/` (komenda, handler oraz, dla każdej komendy poza logowaniem, walidator) i `Application/Tokens/` (`JwtTokenFactory`, `RefreshTokenSecret`, `SessionTokensDto`) |
+| Domena | [`Domain/Entities/User.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/User.cs), [`Domain/Entities/Role.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), `Domain/Entities/RefreshToken.cs`, `Domain/Exceptions/IdentityException.cs` |
 | Infrastruktura | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `RefreshTokenRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `RefreshTokenConfiguration`, `OutboxMessageConfiguration`) |
 
 [`IdentityModuleExtensions.AddIdentityModule`](../../../Backend/src/AuctionServer.Modules.Identity/IdentityModuleExtensions.cs) rejestruje `IdentityDbContext` z Npgsql, `IAuthRepository` i `IRefreshTokenRepository` jako scoped i współdzielony hosted service `OutboxProcessor<IdentityDbContext>` przez `AddOutboxProcessor`; `MapIdentityEndpoints` mapuje grupę tras. Sama walidacja bearera JWT i schemat `ApiKey` żyją w hoście, zobacz [README.md](README.md).
@@ -24,7 +24,7 @@ dotnet ef database update --project src/AuctionServer.Modules.Identity --startup
 dotnet test tests/AuctionServer.Modules.Identity.Tests
 ```
 
-Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Identity/Infrastructure/Persistence/Migrations): `20260815123208_Initial_Identity`, `20260816103415_Add_Outbox_DeadLetter_And_Backoff`, `20261101143634_Add_Outbox_Lease`, `20261114123053_Add_Unique_Username` oraz `20261115180018_Add_Identity_Refresh_Tokens`. `BotProvisioningApiTests` podnoszą cały host przez [`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs) z testowym kluczem JWT i testowym kluczem API, więc jak każdy test integracyjny potrzebują Dockera.
+Migracje leżą w [`Infrastructure/Persistence/Migrations/`](../../../Backend/src/AuctionServer.Modules.Identity/Infrastructure/Persistence/Migrations): `20260815123208_Initial_Identity`, `20260816103415_Add_Outbox_DeadLetter_And_Backoff`, `20261101143634_Add_Outbox_Lease`, `20261114123053_Add_Unique_Username` oraz `20261115180018_Add_Identity_Refresh_Tokens`. `BotProvisioningApiTests` i `SessionApiTests` współdzielą jeden host podniesiony przez [`CustomApi`](../../../Backend/tests/AuctionServer.Modules.Identity.Tests/IntegrationTests/CustomApi.cs) (kolekcja `HostIntegration`) z testowym kluczem JWT i testowym kluczem API, więc jak każdy test integracyjny potrzebują Dockera.
 
 ## Konfiguracja
 
@@ -78,19 +78,25 @@ Diagram pokazuje, jak host uwierzytelnia żądanie i jakiej polityki wymaga każ
 |---|---|---|---|---|
 | `POST /api/users/register` | anonimowy | `{ email, password, username, name, surname, birthday }` | 201 z pustym ciałem | `RegisterCommandHandler` |
 | `POST /api/users/login` | anonimowy | `{ email, password }` | 200 `{ token, refreshToken }`, `refreshToken` jest null dla bota | `LoginCommandHandler` |
+| `POST /api/users/refresh` | anonimowy | `{ refreshToken }` | 200 `{ token, refreshToken }` z nową parą, przedstawiony token zostaje unieważniony | `RefreshSessionCommandHandler` |
+| `POST /api/users/logout` | anonimowy | `{ refreshToken }` | 200 z pustym ciałem, także dla nieznanego lub już unieważnionego tokenu | `LogoutCommandHandler` |
 | `POST /api/users/bots` | nagłówek `X-Api-Key` (polityka `BotProvisioning`) | to samo ciało co rejestracja | 201 `{ publicUserId }` z `Location: /api/users/{id}` | `RegisterBotCommandHandler` |
+
+`RefreshSessionCommandHandler` hashuje przedstawioną wartość i ładuje wiersz po `TokenHash`. Nieznany hash, wygasły token albo token użytkownika, który już nie istnieje, kończy się 400. Token już unieważniony liczy się jako ponowne użycie, więc każdy aktywny token jego `FamilyId` zostaje unieważniony jednym `ExecuteUpdateAsync` przed 400, a zarówno prawowity klient, jak i ktokolwiek odtworzył starą wartość, musi zalogować się ponownie. W pozostałych przypadkach najpierw powstaje JWT, przedstawiony wiersz zostaje unieważniony, dochodzi następca z tym samym `FamilyId` i świeżym siedmiodniowym oknem, unieważnione lub wygasłe wiersze użytkownika utworzone dawniej niż `RefreshToken.Lifetime` temu są usuwane, a wszystko zapisuje się raz. `LogoutCommandHandler` unieważnia tylko przedstawiony token, gdy jest aktywny, a w każdym innym przypadku wraca po cichu, bo nieaktualny token przy wylogowaniu to wyścig dwóch kart, nie atak.
 
 `RegisterCommandValidator` i `RegisterBotCommandValidator` stosują te same reguły: poprawny adres e-mail; hasło o długości co najmniej 8 znaków z małą literą, wielką literą, cyfrą i znakiem specjalnym; `Username`, `Name` i `Surname` o długości najwyżej 30 znaków; `Birthday` wcześniejsze niż dzisiaj (UTC). Oba handlery najpierw pytają `DoesUserWithThisEmailExists` i `DoesUserWithThisUsernameExists`, a potem polegają na indeksach unikalnych: [`AuthRepository.AddUserWithOutboxAsync`](../../../Backend/src/AuctionServer.Modules.Identity/Infrastructure/Persistence/AuthRepository.cs) odczytuje nazwę naruszonego constraintu i zamienia naruszenie na ten sam błąd `This email is taken` lub `This username is taken`.
 
 | Status | Komunikat | Kiedy |
 |---|---|---|
 | 400 | `Invalid credentials provided` | nieznany e-mail lub złe hasło; komunikat jest ten sam w obu przypadkach |
+| 400 | `Invalid refresh token` | `/refresh` z nieznanym, unieważnionym lub wygasłym tokenem albo dla usuniętego użytkownika, przy czym unieważniony token najpierw unieważnia całą swoją rodzinę |
 | 401 | puste ciało | `POST /api/users/bots` bez poprawnego `X-Api-Key`; sam JWT bota też jest odrzucany |
 | 409 | `This email is taken` | e-mail istnieje (wstępne sprawdzenie lub indeks unikalny) |
 | 409 | `This username is taken` | username istnieje (wstępne sprawdzenie lub indeks unikalny), od 2026-11-14 |
-| 500 | `Server configuration error` | logowanie z poprawnymi danymi, gdy `Jwt:Key` jest krótszy niż 32 znaki; bez klucza każde żądanie zawodzi wcześniej z `Unhandled error occurred` |
+| 409 | `Data corrupted, try again` | dwie rotacje tego samego tokenu w tej samej chwili, przegranemu nie zgadza się `Version` w `SaveChangesAsync` |
+| 500 | `Server configuration error` | logowanie z poprawnymi danymi lub odświeżenie z poprawnym tokenem, gdy `Jwt:Key` jest krótszy niż 32 znaki; bez klucza każde żądanie zawodzi wcześniej z `Unhandled error occurred` |
 
-Token wystawiany przez `JwtTokenFactory` to JWT podpisany `HmacSha256Signature`, którego claimy to `ClaimTypes.Name` = e-mail, `ClaimTypes.NameIdentifier` = `PublicUserId` i `ClaimTypes.Role` = `UserRoles.ToString()`, z `Issuer`, `Audience` i `Expires` z konfiguracji oraz czasem życia zależnym od roli. Nie ma refresh tokenów ani unieważniania; token jest ważny do wygaśnięcia.
+Token wystawiany przez `JwtTokenFactory` to JWT podpisany `HmacSha256Signature`, którego claimy to `ClaimTypes.Name` = e-mail, `ClaimTypes.NameIdentifier` = `PublicUserId` i `ClaimTypes.Role` = `UserRoles.ToString()`, z `Issuer`, `Audience` i `Expires` z konfiguracji oraz czasem życia zależnym od roli. Sam JWT nigdy nie jest unieważniany i jest ważny do wygaśnięcia, więc wylogowanie działa dla wywołań API najpóźniej po 15 minutach. Wylogowanie albo wykryte ponowne użycie unieważnia refresh token, a z nim możliwość uzyskania kolejnego JWT.
 
 ## Zdarzenia
 
@@ -107,6 +113,10 @@ Wallets konsumuje zdarzenie i tworzy portfel ze `Wallets:StartingFunds`; poniewa
 - Usunięci użytkownicy są ukrywani globalnym filtrem zapytań, a nie usuwani, co utrzymuje rezerwację unikalnego e-maila.
 - Provisioning botów używa osobnego schematu uwierzytelniania opartego na `X-Api-Key`; JWT z rolą `Bot` nie spełnia polityki `BotProvisioning`, co przypina `RegisterBot_WhenOnlyBotJwtIsPresented_ShouldReturnUnauthorized`.
 - Logowanie odpowiada na nieznany e-mail i złe hasło tym samym komunikatem 400, więc odpowiedź nie zdradza, czy konto istnieje.
+- Refresh token jest przechowywany tylko jako hash SHA-256 32 losowych bajtów, więc wyciek bazy nie daje nic, co klient mógłby przedstawić, a surowa wartość istnieje wyłącznie w odpowiedzi logowania lub odświeżenia.
+- Każdy token niesie `FamilyId` logowania, z którego pochodzi, a ponowne przedstawienie unieważnionego tokenu unieważnia całą rodzinę, co wyłapuje skradzioną wartość odtworzoną po prawowitej rotacji.
+- Termin przesuwa się, bo rotacja wydaje następcę ze świeżym siedmiodniowym oknem, więc aktywny użytkownik nigdy nie loguje się ponownie, a siedem dni bezczynności kończy sesję.
+- Martwe wiersze czyści sam handler rotacji, tylko dla rotującego użytkownika, gdy są starsze niż `RefreshToken.Lifetime`, więc tabela zostaje mała bez usługi w tle.
 
 ## Powiązane dokumenty
 

@@ -24,7 +24,7 @@ Od 2026-11-04 host publikuje ponownie cztery publiczne zdarzenia aukcyjne na trw
 | Potrzeba | Dostępne dziś |
 |---|---|
 | konto | `POST /api/users/bots` z nagłówkiem `X-Api-Key` równym `Bots:ApiKey`; zwraca `{ publicUserId }`; konto dostaje `Role.Bot` i portfel ze `Wallets:StartingFunds` |
-| sesja | `POST /api/users/login` zwraca token ważny 24 godziny dla konta bota (15 minut dla graczy) |
+| sesja | `POST /api/users/login` zwraca token ważny 24 godziny dla konta bota (15 minut dla graczy) oraz `refreshToken: null`, bo tylko gracze rotują sesję przez `POST /api/users/refresh` |
 | akcje tylko dla botów | `POST /api/wallets/funds` (doładowanie własnego portfela bota) i `POST /api/inventory/items` (utworzenie przedmiotu o wybranej nazwie i rzadkości w ekwipunku samego bota), oba za polityką `Bot` |
 | akcje rynkowe | te same endpointy co gracze: tworzenie aukcji, licytacja, crafting, sprzedaż do sklepu, odczyt aukcji i portfeli |
 
@@ -33,7 +33,7 @@ Od 2026-11-04 host publikuje ponownie cztery publiczne zdarzenia aukcyjne na trw
 - Brak kodu botów: feed istnieje, ale nic go jeszcze nie konsumuje, nie ma też skryptu provisioningu.
 - Gateway ogranicza bota jak każdego klienta po adresie (60 żądań na sekundę z tokenem bearer) i nie odróżnia botów, bo strefa botów po `X-Api-Key` wypadła ([ADR-006](adr/006-nginx-gateway.md)). Kilka botów na jednej maszynie dzieli jeden adres, a więc jedną pulę 60 żądań na sekundę.
 - Brak historii ofert, więc bot musi pamiętać, na co licytował. Własne aukcje czyta z `GET /api/auctions/mine`.
-- Brak unieważniania tokenów i endpointu wyłączającego konto, więc token bota pozostaje ważny przez pełne 24 godziny.
+- Brak unieważniania tokenu bota i endpointu wyłączającego konto, więc token bota pozostaje ważny przez pełne 24 godziny. Gracze unieważniają swój refresh token przez `POST /api/users/logout`, boty go nie mają.
 
 ## API
 

@@ -18,7 +18,7 @@ Dziś cały system to jeden host ASP.NET Core, [`AuctionServer.Api`](../../Backe
 | Komponent | Status | Opisany w |
 |---|---|---|
 | Host `AuctionServer.Api` z dziewięcioma modułami | istnieje | [backend/README.md](backend/README.md) |
-| PostgreSQL, jedna baza, 39 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
+| PostgreSQL, jedna baza, 40 tabel | istnieje (uruchamiany ręcznie, przez Compose albo przez Testcontainers) | [Model danych](#model-danych) |
 | Object storage SeaweedFS dla awatarów | istnieje (serwis Compose, bez publikowanych portów) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (gateway nginx, obraz API, PostgreSQL, SeaweedFS i stack telemetrii) | istnieje | [infrastructure.md](infrastructure.md) |
 | Pipeline CI na GitHub Actions | istnieje | [Build i CI](#build-i-ci) |
@@ -40,7 +40,7 @@ Każdy moduł to jeden `.csproj` podzielony na `Presentation/` (endpointy minima
 
 | Moduł | Prefiks tras | DbContext | Tabele | Serwisy tła | Testy |
 |---|---|---|---|---|---|
-| [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
+| [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityRefreshTokens`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
 | [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsTransfers`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `AuctionsBids`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
@@ -237,7 +237,7 @@ Profiles nie ma sagi i niczego nie publikuje; to pierwszy moduł wyłącznie kon
 
 ## Model danych
 
-Diagram pokazuje trzydzieści osiem tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
+Diagram pokazuje trzydzieści dziewięć tabel pogrupowanych według modułu właściciela; prefiks w nazwie każdej encji to moduł, a każda relacja jest kropkowana, bo żaden klucz obcy nie przekracza granicy modułu.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
@@ -250,6 +250,7 @@ Wszystkie dziewięć `DbContext`ów wskazuje tę samą bazę i dzielą domyśln�
 |---|---|---|
 | `Users` | Identity | konta; unikalny `Email`, miękkie usuwanie przez globalny filtr zapytań na `IsDeleted`, `UserRoles` przechowywane jako liczba całkowita |
 | `IdentityOutboxMessages` | Identity | outbox dla `UserRegisteredEvent` |
+| `IdentityRefreshTokens` | Identity | jeden wiersz na wydany refresh token, tylko hash SHA-256, `FamilyId` wspólne dla logowania i jego rotacji, `RevokedOn` i token współbieżności `Version` |
 | `Wallets` | Wallets | jeden wiersz na użytkownika z kluczem `PublicUserId`; `AvailableFunds`, `LockedFunds`, `LifetimeTurnover` (tylko wpływy z gospodarki, bramka ofert banku i lokalu lombardu), `Version` |
 | `WalletsFundsLocks` | Wallets | księga blokad środków per oferta, własność agregatu `Wallet`; unikalne (`WalletUserId`, `PublicAuctionId`) dopóki `Status = 0` |
 | `WalletsTransfers` | Wallets | append-only historia przelewów między graczami, jeden wiersz na przelew, zapisywany razem z dwiema zmianami sald |

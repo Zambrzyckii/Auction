@@ -11,6 +11,16 @@ erDiagram
         boolean IsDeleted "global query filter"
         integer UserRoles "Admin=0 User=1 Bot=2"
     }
+    IDENTITY__IdentityRefreshTokens {
+        uuid Id PK
+        integer UserId "Users.Id, indexed, no FK"
+        varchar TokenHash UK "SHA-256 hex, max 64"
+        uuid FamilyId "indexed, inherited on rotation"
+        timestamptz CreatedOn
+        timestamptz ExpiresOn "CreatedOn + 7 days"
+        timestamptz RevokedOn "nullable"
+        uuid Version "concurrency token"
+    }
     WALLETS__Wallets {
         uuid UserId PK "equals Users.PublicUserId"
         numeric AvailableFunds "18,2"
@@ -287,6 +297,7 @@ erDiagram
     WALLETS__Wallets ||--o{ WALLETS__WalletsFundsLocks : "WalletUserId, real FK, owned by the aggregate"
     WALLETS__Wallets ||..o{ WALLETS__WalletsTransfers : "SenderUserId and RecipientUserId, no FK"
     AUCTIONS__Auctions |o..o{ WALLETS__WalletsFundsLocks : "PublicAuctionId, no FK"
+    IDENTITY__Users ||..o{ IDENTITY__IdentityRefreshTokens : "UserId = Id, no FK"
     IDENTITY__Users ||..|| WALLETS__Wallets : "UserId = PublicUserId, no FK"
     IDENTITY__Users ||..o{ AUCTIONS__Auctions : "SellerUserId and CurrentWinningUserId, no FK"
     IDENTITY__Users ||..o{ INVENTORY__InventoryItems : "OwnerUserId, no FK"

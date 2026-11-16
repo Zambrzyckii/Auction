@@ -131,14 +131,14 @@ Most failures are a JSON object `{ "error": "<message>" }` with the status below
 
 | Status | Source | Example message |
 |---|---|---|
-| 400 | `RequestValidationException` (validator messages joined by `; `) and domain rules such as `InvalidBidException`, `InsufficientFundsException`, `ItemNotAvailableException` | `Price must be higher than current price` |
+| 400 | `RequestValidationException` (validator messages joined by `; `) and domain rules such as `InvalidBidException`, `InsufficientFundsException`, `ItemNotAvailableException`, `InvalidRefreshTokenException` | `Price must be higher than current price` |
 | 400 | `GET /api/auctions` with `limit` outside 1–100, returned directly by the endpoint | `Limit must be between 1 and 100` |
 | 400 | request binding in Production: missing or non-numeric `limit`, a body that is not valid JSON | empty body |
 | 401 / 403 | missing or invalid token or API key; a `User` token on a `Bot` endpoint | empty body |
 | 404 | `AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException` | `Auction <id> not found` |
 | 409 | `AuctionAlreadyExistException`, `InvalidAuctionStateTransitionException`, `ItemAlreadyExistInInventoryException`, `WalletAlreadyExistException` | `Auction already exist` |
 | 409 | `DbUpdateConcurrencyException` from a `Version` token conflict | `Data corrupted, try again` |
-| 500 | `MissingConfigurationException`: a login with valid credentials while `Jwt:Key` is shorter than 32 characters | `Server configuration error` |
+| 500 | `MissingConfigurationException`: a login with valid credentials or a refresh with a valid token while `Jwt:Key` is shorter than 32 characters | `Server configuration error` |
 | 500 | any other exception, logged with method and path; this covers every request when `Jwt:Key` is missing and request-binding failures in Development | `Unhandled error occurred` |
 
 ## Testing

@@ -212,7 +212,7 @@ Modular monolith on .NET 10 + PostgreSQL. One module = one `.csproj`, internally
 AuctionServer.Api                  host: DI wiring, endpoint mapping, GlobalExceptionHandler, JWT + ApiKey schemes
 AuctionServer.Modules.Auctions     auctions & bidding, item-lock and funds-lock sagas; CQRS — EF Core writes, Dapper reads
 AuctionServer.Modules.Wallets      virtual funds with a per-bid lock ledger and player transfers with an append-only history, settlement inbox + outbox; CQS — EF Core for both
-AuctionServer.Modules.Identity     register/login/bot provisioning (BCrypt, JWT with name/id/role claims, 24 h bot tokens)
+AuctionServer.Modules.Identity     register/login/refresh/logout/bot provisioning (BCrypt, JWT with name/id/role claims, rotated refresh tokens, 24 h bot tokens)
 AuctionServer.Modules.Inventory    items/crafting/shop + bot-only mint and a config-driven starter pack on registration; locks items for auctions, transfers them to the winner
 AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 5-10 s raise windows, settlement burns the final price; CQS — EF Core for both
 AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wallet turnover, grant and collection sagas with Wallets, one repayment at maturity pulled by BankKeeper, one-time overdue penalty with retries; CQS — EF Core for both
@@ -650,7 +650,7 @@ no JWT at all and answers `Cache-Control: public`. The same day added `GET /api/
 unknown ids skipped) and `GET /api/profiles/search?q=` (case-insensitive username prefix with the wildcards
 escaped, at most 20 rows, deliberately without an index), the first queries with FluentValidation validators, and
 `AvatarLinks.For` as the single `avatarUrl` formula. Sixteen
-endpoints under `/api/profiles` (57 total, `GET /api/push` included), event registry at 38, tables at 39. The chain was probed live against a
+endpoints under `/api/profiles` (59 total, `GET /api/push`, `POST /api/users/refresh` and `POST /api/users/logout` included), event registry at 38, tables at 40. The chain was probed live against a
 fresh compose stack the same day with 53 checks, all passed, zero dead and zero stale rows across all eight outboxes.
 
 Roles are wired end-to-end: `Role { Admin, User, Bot }` (`Identity/Domain/Entities/Role.cs`, stored as an `integer`
@@ -672,7 +672,11 @@ Bot provisioning: `POST /api/users/bots` (`IdentityEndpoints.cs:31-36`; `Registe
 `X-Api-Key`, secret `Bots:ApiKey`, constant-time compare, `Scheme.Name` as the identity's authentication type). A JWT
 alone never satisfies it and the API-key principal never satisfies `"Bot"`; `BotProvisioningApiTests` proves both.
 Bot JWTs live 24 h, player JWTs 15 min (`JwtTokenFactory.cs`). A player login also stores a refresh token hash in
-`IdentityRefreshTokens` and returns the raw value next to the JWT (`SessionTokensDto`), a bot login returns `refreshToken: null`. Policy literals:
+`IdentityRefreshTokens` and returns the raw value next to the JWT (`SessionTokensDto`), a bot login returns `refreshToken: null`.
+`POST /api/users/refresh` rotates the pair (the presented token is revoked, a successor joins its `FamilyId`, a revoked token
+presented again revokes the whole family and answers 400 `Invalid refresh token`) and `POST /api/users/logout` revokes only the
+presented token, quietly for an unknown or dead one. Both are anonymous routes, covered by `SessionApiTests` through the shared
+`HostIntegration` collection. Policy literals:
 `"Bot"` (host, Wallets, Inventory) and `"BotProvisioning"` (host, Identity). Bots also receive `Wallets:StartingFunds`
 — `UserRegisteredEvent` carries no role — which is harmless because they top themselves up through `/funds`.
 

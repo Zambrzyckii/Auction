@@ -131,14 +131,14 @@ Większość porażek to obiekt JSON `{ "error": "<komunikat>" }` ze statusem z 
 
 | Status | Źródło | Przykładowy komunikat |
 |---|---|---|
-| 400 | `RequestValidationException` (komunikaty walidatorów połączone przez `; `) i reguły domenowe, np. `InvalidBidException`, `InsufficientFundsException`, `ItemNotAvailableException` | `Price must be higher than current price` |
+| 400 | `RequestValidationException` (komunikaty walidatorów połączone przez `; `) i reguły domenowe, np. `InvalidBidException`, `InsufficientFundsException`, `ItemNotAvailableException`, `InvalidRefreshTokenException` | `Price must be higher than current price` |
 | 400 | `GET /api/auctions` z `limit` poza zakresem 1–100, zwracane bezpośrednio przez endpoint | `Limit must be between 1 and 100` |
 | 400 | bindowanie żądania w Production: brakujący lub nienumeryczny `limit`, ciało, które nie jest poprawnym JSON-em | puste ciało |
 | 401 / 403 | brakujący lub nieprawidłowy token albo klucz API; token `User` na endpoincie `Bot` | puste ciało |
 | 404 | `AuctionNotFoundException`, `UserWithThisIdDontHaveWallet`, `UserOrItemDoesntExistException` | `Auction <id> not found` |
 | 409 | `AuctionAlreadyExistException`, `InvalidAuctionStateTransitionException`, `ItemAlreadyExistInInventoryException`, `WalletAlreadyExistException` | `Auction already exist` |
 | 409 | `DbUpdateConcurrencyException` z konfliktu tokenu `Version` | `Data corrupted, try again` |
-| 500 | `MissingConfigurationException`: logowanie z poprawnymi danymi, gdy `Jwt:Key` jest krótszy niż 32 znaki | `Server configuration error` |
+| 500 | `MissingConfigurationException`: logowanie z poprawnymi danymi lub odświeżenie z poprawnym tokenem, gdy `Jwt:Key` jest krótszy niż 32 znaki | `Server configuration error` |
 | 500 | każdy inny wyjątek, logowany z metodą i ścieżką; obejmuje to każde żądanie przy braku `Jwt:Key` oraz błędy bindowania w Development | `Unhandled error occurred` |
 
 ## Testy

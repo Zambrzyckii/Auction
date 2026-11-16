@@ -18,7 +18,7 @@ Today the whole system is one ASP.NET Core host, [`AuctionServer.Api`](../../Bac
 | Component | Status | Documented in |
 |---|---|---|
 | `AuctionServer.Api` host with the nine modules | exists | [backend/README.md](backend/README.md) |
-| PostgreSQL, one database, 39 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
+| PostgreSQL, one database, 40 tables | exists (started by hand, by Compose or by Testcontainers) | [Data model](#data-model) |
 | SeaweedFS object storage for avatars | exists (Compose service, no published ports) | [backend/profiles.md](backend/profiles.md) |
 | Docker Compose (nginx gateway, API image, PostgreSQL, SeaweedFS and the telemetry stack) | exists | [infrastructure.md](infrastructure.md) |
 | A GitHub Actions CI pipeline | exists | [Build and CI](#build-and-ci) |
@@ -40,7 +40,7 @@ Each module is one `.csproj` split into `Presentation/` (minimal-API endpoints a
 
 | Module | Route prefix | DbContext | Tables | Background services | Tests |
 |---|---|---|---|---|---|
-| [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
+| [Identity](backend/identity.md) | `/api/users` | `IdentityDbContext` | `Users`, `IdentityRefreshTokens`, `IdentityOutboxMessages` | `OutboxProcessor` | `AuctionServer.Modules.Identity.Tests` |
 | [Wallets](backend/wallets.md) | `/api/wallets` | `WalletDbContext` | `Wallets`, `WalletsFundsLocks`, `WalletsTransfers`, `WalletsOutboxMessages`, `WalletsProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Wallets.Tests` |
 | [Auctions](backend/auctions.md) | `/api/auctions` | `AuctionDbContext` | `Auctions`, `AuctionsBids`, `OutboxMessages`, `AuctionsProcessedMessages` | `OutboxProcessor`, `AuctionCloser` | `AuctionServer.Modules.Auctions.Tests` |
 | [Inventory](backend/inventory.md) | `/api/inventory` | `InventoryDbContext` | `InventoryItems`, `InventoryOutboxMessages`, `InventoryProcessedMessages` | `OutboxProcessor` | `AuctionServer.Modules.Inventory.Tests` |
@@ -237,7 +237,7 @@ Profiles has no saga and publishes nothing; it is the first consume-only module.
 
 ## Data model
 
-The diagram shows the thirty-eight tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
+The diagram shows the thirty-nine tables grouped by owning module; the prefix in each entity name is the module, and every relationship is dotted because no foreign key crosses a module boundary.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="../diagrams/architecture-06-data-model.dark.svg">
@@ -250,6 +250,7 @@ All nine `DbContext`s point at the same database and share the default `__EFMigr
 |---|---|---|
 | `Users` | Identity | accounts; unique `Email`, soft delete through a global query filter on `IsDeleted`, `UserRoles` stored as an integer |
 | `IdentityOutboxMessages` | Identity | outbox for `UserRegisteredEvent` |
+| `IdentityRefreshTokens` | Identity | one row per issued refresh token, SHA-256 hash only, `FamilyId` shared by a login and its rotations, `RevokedOn` and a `Version` concurrency token |
 | `Wallets` | Wallets | one row per user keyed by `PublicUserId`; `AvailableFunds`, `LockedFunds`, `LifetimeTurnover` (economy credits only, gates the bank offers and the pawnshop premises), `Version` |
 | `WalletsFundsLocks` | Wallets | per-bid funds-lock ledger owned by the `Wallet` aggregate; unique (`WalletUserId`, `PublicAuctionId`) while `Status = 0` |
 | `WalletsTransfers` | Wallets | append-only player-to-player transfer history, one row per transfer, written with the two balance changes |

@@ -10,7 +10,7 @@ flowchart TB
     PAuth["RequireAuthorization()<br/>POST /api/auctions, POST /api/auctions/{id}/bid, /api/inventory group"]:::shared
     PBot["policy Bot = RequireRole(Bot)<br/>POST /api/wallets/funds, POST /api/inventory/items"]:::shared
     PProv["policy BotProvisioning = scheme ApiKey<br/>POST /api/users/bots"]:::shared
-    Anon["anonymous<br/>GET /api/auctions, GET /api/auctions/{id}, GET /api/wallets/{id},<br/>POST /api/users/register, POST /api/users/login"]:::shared
+    Anon["anonymous<br/>GET /api/auctions, GET /api/auctions/{id}, GET /api/wallets/{id},<br/>POST /api/users/register, POST /api/users/login,<br/>POST /api/users/refresh, POST /api/users/logout"]:::shared
 
     Req --> B -->|"yes"| Jwt --> Claims --> PAuth & PBot
     Req --> K -->|"yes"| Key --> Prov --> PProv
