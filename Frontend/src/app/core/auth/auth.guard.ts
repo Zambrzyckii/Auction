@@ -4,9 +4,11 @@ import { decodeJwtClaims } from './jwt';
 import { TokenStorage } from './token-storage';
 
 export const authGuard: CanActivateFn = (route, state) => {
-  const token = inject(TokenStorage).get();
+  const storage = inject(TokenStorage);
+  const token = storage.get();
   const claims = token === null ? null : decodeJwtClaims(token);
-  if (claims !== null && claims.exp > Date.now() / 1000) {
+  const live = claims !== null && claims.exp > Date.now() / 1000;
+  if (live || storage.getRefresh() !== null) {
     return true;
   }
   return inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });

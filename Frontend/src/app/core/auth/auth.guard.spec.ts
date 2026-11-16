@@ -41,4 +41,16 @@ describe('authGuard', () => {
     new TokenStorage().set('not.a.jwt');
     expect(runGuard('/wallet')).toBeInstanceOf(UrlTree);
   });
+
+  it('lets an expired token through when a refresh token is stored', () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    expect(runGuard('/wallet')).toBe(true);
+  });
+
+  it('lets a missing token through when a refresh token is stored', () => {
+    new TokenStorage().setRefresh('r1');
+    expect(runGuard('/wallet')).toBe(true);
+  });
 });
