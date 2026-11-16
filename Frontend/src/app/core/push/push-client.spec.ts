@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
 import { tokenWithClaims } from '../../../testing/token-fixture';
+import { Session } from '../auth/session';
 import { TokenStorage } from '../auth/token-storage';
 import { PUSH_BASE_DELAY_MS, PUSH_MIN_STREAM_MS, PushClient, shouldReconnect } from './push-client';
 
@@ -120,7 +121,7 @@ describe('PushClient', () => {
     const stream = sseStream();
     responses.push(stream);
 
-    client.connect(token);
+    client.connect();
     await settle();
 
     expect(fetchCalls.length).toBe(1);
@@ -138,7 +139,7 @@ describe('PushClient', () => {
     responses.push(stream);
     const seen: string[] = [];
     const off = client.on('AuctionChanged', (data) => seen.push(data));
-    client.connect(token);
+    client.connect();
     await settle();
 
     stream.push('event: connected\ndata: {}\n\nevent: ping\ndata: {}\n\n');
@@ -159,12 +160,13 @@ describe('PushClient', () => {
     responses.push(plainResponse(401));
     const router = TestBed.inject(Router);
 
-    client.connect(token);
+    client.connect();
     await settle();
     await vi.advanceTimersByTimeAsync(60_000);
 
     expect(fetchCalls.length).toBe(1);
     expect(new TokenStorage().get()).toBeNull();
+    expect(TestBed.inject(Session).token()).toBeNull();
     expect(router.url).toContain('/login');
   });
 
@@ -172,7 +174,7 @@ describe('PushClient', () => {
     setup();
     responses.push(plainResponse(503), plainResponse(503), sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     expect(fetchCalls.length).toBe(1);
     await vi.advanceTimersByTimeAsync(PUSH_BASE_DELAY_MS - 1);
@@ -189,7 +191,7 @@ describe('PushClient', () => {
     setup();
     responses.push(plainResponse(429, { 'Retry-After': '7' }), sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     await vi.advanceTimersByTimeAsync(6_999);
     expect(fetchCalls.length).toBe(1);
@@ -202,7 +204,7 @@ describe('PushClient', () => {
     const first = sseStream();
     responses.push(first, sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     first.push('event: connected\ndata: {}\n\n');
     await vi.advanceTimersByTimeAsync(PUSH_MIN_STREAM_MS);
@@ -218,7 +220,7 @@ describe('PushClient', () => {
     const first = sseStream();
     responses.push(first, sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     first.push('event: connected\ndata: {}\n\n');
     await settle();
@@ -235,7 +237,7 @@ describe('PushClient', () => {
     const first = sseStream();
     responses.push(first, sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     first.push('event: connected\ndata: {}\n\n');
     await settle();
@@ -252,7 +254,7 @@ describe('PushClient', () => {
     responses.push(sseStream());
     const router = TestBed.inject(Router);
 
-    client.connect(token);
+    client.connect();
     await settle();
     await vi.advanceTimersByTimeAsync(60_000);
 
@@ -266,7 +268,7 @@ describe('PushClient', () => {
     responses.push(plainResponse(401));
     const router = TestBed.inject(Router);
 
-    client.connect(token);
+    client.connect();
     await settle();
     await vi.advanceTimersByTimeAsync(60_000);
 
@@ -281,7 +283,7 @@ describe('PushClient', () => {
     const second = sseStream();
     responses.push(first, second, sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     first.push('event: connected\ndata: {}\n\n');
     await settle();
@@ -307,7 +309,7 @@ describe('PushClient', () => {
     const third = sseStream();
     responses.push(first, second, third, sseStream());
 
-    client.connect(token);
+    client.connect();
     await settle();
     first.close();
     await settle();
@@ -331,7 +333,7 @@ describe('PushClient', () => {
     setup();
     const stream = sseStream();
     responses.push(stream, sseStream());
-    client.connect(token);
+    client.connect();
     await settle();
     stream.push('event: connected\ndata: {}\n\n');
     await settle();
@@ -350,14 +352,15 @@ describe('PushClient', () => {
     const first = sseStream();
     const second = sseStream();
     responses.push(first, second);
-    client.connect(token);
+    client.connect();
     await settle();
     first.push('event: connected\ndata: {}\n\n');
     await settle();
 
     client.disconnect();
     const other = tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 1200 });
-    client.connect(other);
+    TestBed.inject(Session).applyTokens(other, null);
+    client.connect();
     await settle();
     second.push('event: connected\ndata: {}\n\n');
     await settle();
@@ -367,14 +370,84 @@ describe('PushClient', () => {
     expect(fetchCalls.length).toBe(2);
   });
 
-  it('replaces the stream when connect is called with a new token', async () => {
+  it('keeps the running stream when connect is called again', async () => {
     setup();
     responses.push(sseStream(), sseStream());
-    client.connect(token);
+    client.connect();
+    await settle();
+
+    client.connect();
+    await settle();
+
+    expect(fetchCalls.length).toBe(1);
+    expect(fetchCalls[0].init?.signal?.aborted).toBe(false);
+  });
+
+  it('still reconnects after a clean end once connect was called again', async () => {
+    setup();
+    const first = sseStream();
+    responses.push(first, sseStream());
+    client.connect();
+    await settle();
+    first.push('event: connected\ndata: {}\n\n');
+    await vi.advanceTimersByTimeAsync(PUSH_MIN_STREAM_MS);
+
+    client.connect();
+    first.close();
+    await settle();
+
+    expect(fetchCalls.length).toBe(2);
+  });
+
+  it('opens the next stream with the token current at reconnect time', async () => {
+    setup();
+    const first = sseStream();
+    responses.push(first, sseStream());
+    client.connect();
+    await settle();
+    first.push('event: connected\ndata: {}\n\n');
+    const rotated = tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 1200 });
+    TestBed.inject(Session).applyTokens(rotated, 'r2');
+
+    await vi.advanceTimersByTimeAsync(PUSH_MIN_STREAM_MS);
+    first.close();
+    await settle();
+
+    expect(fetchCalls.length).toBe(2);
+    expect(new Headers(fetchCalls[1].init?.headers).get('Authorization')).toBe(`Bearer ${rotated}`);
+  });
+
+  it('starts again after a stop at expiry when connect is called', async () => {
+    setup(Math.floor(Date.now() / 1000) + 2);
+    const first = sseStream();
+    responses.push(first, sseStream());
+    client.connect();
+    await settle();
+    first.push('event: connected\ndata: {}\n\n');
+    await settle();
+    await vi.advanceTimersByTimeAsync(3000);
+    first.close();
+    await settle();
+    expect(fetchCalls.length).toBe(1);
+
+    const rotated = tokenWithClaims({ nameid: USER_ID, exp: Math.floor(Date.now() / 1000) + 600 });
+    TestBed.inject(Session).applyTokens(rotated, 'r2');
+    client.connect();
+    await settle();
+
+    expect(fetchCalls.length).toBe(2);
+    expect(new Headers(fetchCalls[1].init?.headers).get('Authorization')).toBe(`Bearer ${rotated}`);
+  });
+
+  it('restarts the push stream when another user signs in without logging out', async () => {
+    setup();
+    responses.push(sseStream(), sseStream());
+    client.connect();
     await settle();
 
     const other = tokenWithClaims({ nameid: 'other', exp: Math.floor(Date.now() / 1000) + 600 });
-    client.connect(other);
+    TestBed.inject(Session).applyTokens(other, 'r9');
+    client.connect();
     await settle();
 
     expect(fetchCalls.length).toBe(2);

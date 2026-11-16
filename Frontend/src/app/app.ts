@@ -22,7 +22,7 @@ export class App {
       if (token === null) {
         this.push.disconnect();
       } else {
-        this.push.connect(token);
+        this.push.connect();
       }
     });
   }

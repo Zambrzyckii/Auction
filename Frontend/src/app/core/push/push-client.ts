@@ -34,7 +34,8 @@ export class PushClient {
   private readonly handlers = new Map<string, Set<PushHandler>>();
   private controller: AbortController | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private token: string | null = null;
+  private active = false;
+  private activeUserId: string | null = null;
   private attempt = 0;
 
   on(topic: string, handler: PushHandler): () => void {
@@ -46,18 +47,21 @@ export class PushClient {
     };
   }
 
-  connect(token: string): void {
+  connect(): void {
+    if (this.active && this.activeUserId === this.session.userId()) return;
     this.disconnect();
     if (!shouldReconnect(null, this.expiresAt(), Date.now())) {
       return;
     }
-    this.token = token;
+    this.active = true;
+    this.activeUserId = this.session.userId();
     this.attempt = 0;
     void this.open();
   }
 
   disconnect(): void {
-    this.token = null;
+    this.active = false;
+    this.activeUserId = null;
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -68,8 +72,8 @@ export class PushClient {
   }
 
   private async open(): Promise<void> {
-    const token = this.token;
-    if (token === null) {
+    const token = this.session.token();
+    if (!this.active || token === null) {
       return;
     }
     const controller = new AbortController();
@@ -135,14 +139,14 @@ export class PushClient {
     const expiresAt = this.expiresAt();
     const now = Date.now();
     if (status === 401) {
-      this.token = null;
+      this.active = false;
       if (expiresAt === null || expiresAt - now > PUSH_CLOCK_SKEW_MS) {
         handleUnauthorized(this.router, this.session, this.directory);
       }
       return;
     }
     if (!shouldReconnect(status, expiresAt, now)) {
-      this.token = null;
+      this.active = false;
       return;
     }
     if (livedMs >= PUSH_MIN_STREAM_MS) {

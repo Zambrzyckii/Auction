@@ -1,5 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { installStorageStub } from '../testing/storage-stub';
@@ -11,6 +11,7 @@ import {
 } from '../testing/token-fixture';
 import { App } from './app';
 import { routes } from './app.routes';
+import { Session } from './core/auth/session';
 import { TokenStorage } from './core/auth/token-storage';
 import { PushClient } from './core/push/push-client';
 
@@ -90,5 +91,51 @@ describe('App', () => {
 
     expect(pushRequests[0].signal?.aborted).toBe(true);
     expect(pushRequests.length).toBe(1);
+  });
+
+  it('keeps the push stream open when the token rotates', async () => {
+    const token = tokenWithClaims({
+      nameid: REAL_TOKEN_USER_ID,
+      exp: Math.floor(Date.now() / 1000) + 600,
+    });
+    new TokenStorage().set(token);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    expect(pushRequests.length).toBe(1);
+
+    const rotated = tokenWithClaims({
+      nameid: REAL_TOKEN_USER_ID,
+      exp: Math.floor(Date.now() / 1000) + 1200,
+    });
+    TestBed.inject(Session).applyTokens(rotated, 'r2');
+    await fixture.whenStable();
+
+    expect(pushRequests.length).toBe(1);
+    expect(pushRequests[0].signal?.aborted).toBe(false);
+  });
+
+  it('refreshes an expired session at startup and opens the stream with the new token', async () => {
+    const storage = new TokenStorage();
+    storage.set(REAL_TOKEN);
+    storage.setRefresh('r1');
+    const fresh = tokenWithClaims({
+      nameid: REAL_TOKEN_USER_ID,
+      unique_name: REAL_TOKEN_EMAIL,
+      exp: Math.floor(Date.now() / 1000) + 600,
+    });
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    expect(pushRequests).toEqual([]);
+
+    const refresh = await vi.waitFor(() =>
+      TestBed.inject(HttpTestingController).expectOne('/api/users/refresh'),
+    );
+    refresh.flush({ token: fresh, refreshToken: 'r2' });
+    await vi.waitFor(() => expect(TestBed.inject(Session).token()).toBe(fresh));
+    await fixture.whenStable();
+
+    expect(pushRequests.length).toBe(1);
+    expect(new Headers(pushRequests[0].headers).get('Authorization')).toBe(`Bearer ${fresh}`);
+    expect(storage.getRefresh()).toBe('r2');
   });
 });
