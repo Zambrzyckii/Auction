@@ -1,4 +1,6 @@
 using AuctionServer.Modules.Identity.Application.Commands.Login;
+using AuctionServer.Modules.Identity.Application.Commands.Logout;
+using AuctionServer.Modules.Identity.Application.Commands.RefreshSession;
 using AuctionServer.Modules.Identity.Application.Commands.Register;
 using AuctionServer.Modules.Identity.Application.Commands.RegisterBot;
 using AuctionServer.Modules.Identity.Presentation.Request;
@@ -24,6 +26,15 @@ public static class IdentityEndpoints
 
         group.MapPost("/login", async (LoginRequest request, ISender sender) =>
             Results.Ok(await sender.Send(new LoginCommand(request.Email, request.Password))));
+
+        group.MapPost("/refresh", async (RefreshTokenRequest request, ISender sender) =>
+            Results.Ok(await sender.Send(new RefreshSessionCommand(request.RefreshToken))));
+
+        group.MapPost("/logout", async (RefreshTokenRequest request, ISender sender) =>
+        {
+            await sender.Send(new LogoutCommand(request.RefreshToken));
+            return Results.Ok();
+        });
         
         group.MapPost("/bots", async (RegisterBotRequest request, ISender sender) =>
         {

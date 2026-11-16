@@ -13,7 +13,8 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace AuctionServer.Modules.Identity.Tests.IntegrationTests;
 
-public class BotProvisioningApiTests(CustomApi factory) : IClassFixture<CustomApi>
+[Collection(HostIntegrationCollection.Name)]
+public class BotProvisioningApiTests(CustomApi factory)
 {
     private sealed record CreatedBotResponse(Guid PublicUserId);
     private sealed record ErrorResponse(string Error);
