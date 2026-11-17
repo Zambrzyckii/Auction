@@ -90,10 +90,16 @@ describe('bootStreet', () => {
   });
 
   it('starts no scene when the scene chunk fails to load', async () => {
-    const factory = vi.fn<SceneFactory>();
     const deps = depsWith({ loadScene: vi.fn().mockRejectedValue(new Error('chunk failed')) });
     expect(await bootStreet(canvas, opts, deps, () => true)).toBeNull();
-    expect(factory).not.toHaveBeenCalled();
+  });
+
+  it('starts no scene when the scene constructor throws', async () => {
+    const factory = vi.fn<SceneFactory>().mockImplementation(() => {
+      throw new Error('constructor failed');
+    });
+    const deps = depsWith({ loadScene: vi.fn().mockResolvedValue(factory) });
+    expect(await bootStreet(canvas, opts, deps, () => true)).toBeNull();
   });
 
   it('creates the scene with the canvas and the options', async () => {
@@ -120,6 +126,28 @@ describe('fontsReady', () => {
     vi.useFakeTimers();
     const load = vi.fn().mockRejectedValue(new Error('font failed'));
     await expect(fontsReady({ load } as unknown as FontFaceSet)).resolves.toBeUndefined();
+  });
+
+  it('waits for the other fonts when one fails', async () => {
+    vi.useFakeTimers();
+    let finishSecond: () => void = () => {};
+    const second = new Promise<void>((resolve) => {
+      finishSecond = resolve;
+    });
+    const load = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('font failed'))
+      .mockReturnValueOnce(second)
+      .mockResolvedValue([]);
+    let settled = false;
+    const pending = fontsReady({ load } as unknown as FontFaceSet).then(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(settled).toBe(false);
+    finishSecond();
+    await pending;
+    expect(settled).toBe(true);
   });
 
   it('gives up after the time limit', async () => {
