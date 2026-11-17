@@ -40,5 +40,9 @@ export async function bootStreet(
   const factory = await deps.loadScene().catch(() => null);
   if (!factory) return null;
   if (!alive()) return null;
-  return factory(canvas, opts);
+  try {
+    return factory(canvas, opts);
+  } catch {
+    return null;
+  }
 }

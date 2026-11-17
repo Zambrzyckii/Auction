@@ -10,8 +10,7 @@ export async function fontsReady(fonts: FontFaceSet, timeoutMs = 4000): Promise<
   const timeout = new Promise<void>((resolve) => {
     timer = setTimeout(resolve, timeoutMs);
   });
-  const loaded = Promise.all(SCENE_FONTS.map((font) => fonts.load(font))).then(
-    () => undefined,
+  const loaded = Promise.allSettled(SCENE_FONTS.map((font) => fonts.load(font))).then(
     () => undefined,
   );
   try {
