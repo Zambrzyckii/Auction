@@ -25,8 +25,30 @@ Angular 22 with the CLI defaults: standalone components, signals, zoneless chang
 Vitest, plain SCSS (no component library) and Signal Forms. Under zoneless change detection a
 plain class field mutated in a `subscribe` callback does not refresh the view; state that the
 template reads belongs in a signal. New npm packages beyond the scaffold need the owner's
-consent (ADR-015). The UI is deliberately bare; the UI/UX pass is a separate branch of the
-plan at the end of the project, so do not invest in styling.
+consent (ADR-015) outside the UI/UX pass. Styling follows the UI/UX pass section below.
+
+## UI/UX pass
+
+The pixel-art UI/UX pass runs on the `ui-ux` branch since 2026-11-17 (`docs/en/DECISIONS.md`). These
+rules bind every change it makes.
+
+- Existing templates keep every class name, element type and visible text that a spec selects or
+  asserts. New styling hooks onto them or wraps markup in new presentational components.
+- Existing `.ts` files keep their logic. They may gain imports and `imports` entries.
+- Art lives in new files. The street scene is a layer of its own in `src/app/street/`, and its drawing
+  modules import nothing from Angular. Presentational components take inputs, emit outputs and inject
+  no services.
+- Pixels stay crisp. Sprites scale by whole numbers with `image-rendering: pixelated` and no smoothing.
+- Motion animates `transform` and `opacity` or draws on a canvas, honours `prefers-reduced-motion` and
+  pauses off screen.
+- The specs run on jsdom, which has no canvas, `matchMedia` or `IntersectionObserver`. Code that needs
+  them checks for them first and loads its art with a dynamic import behind that check.
+- Packages that give a better pixel-art result are allowed for this pass, each named with its reason.
+  The pass is not bound by the plain-SCSS rule or the per-package consent of 2026-11-08
+  (`docs/en/DECISIONS.md:107` and `:132`).
+- Fonts and other third-party assets are CC0, CC-BY or OFL only, self-hosted under `public/` and
+  listed with source and licence in `CREDITS.md`.
+- The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
 
