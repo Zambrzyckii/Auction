@@ -29,6 +29,7 @@ export class StreetScene {
 
   private alive = true;
   private handle: SceneHandle | null = null;
+  private measuredWidth = 0;
   private resizeTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly listeners = new AbortController();
 
@@ -42,7 +43,8 @@ export class StreetScene {
     const canvas = this.canvas().nativeElement;
     const opts: SceneOptions = {
       interactive: true,
-      cssWidth: () => wrap.clientWidth,
+      cssWidth: () => (this.measuredWidth = wrap.clientWidth),
+      scaleWidth: () => window.innerWidth,
       onHover: (building, event) => this.showTip(building, event),
       onPick: (building) => this.picked.emit(building.id),
     };
@@ -56,14 +58,18 @@ export class StreetScene {
     const center = () => {
       wrap.scrollLeft = Math.max(0, (canvas.offsetWidth - wrap.clientWidth) / 2);
     };
-    center();
+    const settle = () => {
+      if (wrap.clientWidth !== this.measuredWidth) handle.resize();
+      center();
+    };
+    settle();
     window.addEventListener(
       'resize',
       () => {
         clearTimeout(this.resizeTimer);
         this.resizeTimer = setTimeout(() => {
           handle.resize();
-          center();
+          settle();
         }, RESIZE_DEBOUNCE_MS);
       },
       { signal: this.listeners.signal },

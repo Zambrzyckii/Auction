@@ -15,6 +15,7 @@ type Line = [string, FontKey, string];
 interface SceneOptions {
   interactive?: boolean;
   cssWidth?: () => number;
+  scaleWidth?: () => number;
   onHover?: (building: Building | null, event?: PointerEvent) => void;
   onPick?: (building: Building) => void;
   mode?: Mode;
@@ -596,17 +597,18 @@ class Scene {
     const o = this.opts,
       dpr = window.devicePixelRatio || 1;
     const cw = o.cssWidth ? o.cssWidth() : this.cv.parentElement!.clientWidth;
+    const sw = o.scaleWidth ? o.scaleWidth() : cw;
     let s = o.scale || 2;
     if (!o.scale)
       for (const k of [4, 3, 2])
-        if (cw / k >= 360) {
+        if (sw / k >= 360) {
           s = k;
           break;
         }
     const view = o.view || {};
     this.vw = o.fit
       ? Math.max(40, Math.ceil(cw / s))
-      : view.w || Math.min(this.city.W, Math.max(Math.ceil(cw / s), CORE + 8));
+      : view.w || Math.min(this.city.W, Math.max(Math.floor(cw / s), CORE + 8));
     this.vh = view.h || this.city.H;
     this.vy = view.y || 0;
     this.vx =
