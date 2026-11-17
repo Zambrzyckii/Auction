@@ -101,7 +101,7 @@ Dziesięć feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, auk
 | `PUSH_CLOCK_SKEW_MS` (`push-client.ts`) | domyślne pięć minut `ClockSkew` walidacji JWT w hoście (`TokenValidationParameters` w `Program.cs`, nienadpisane), okno, w którym API wciąż przyjmuje token, którego endpoint push już odmawia |
 | `REFRESH_LEAD_MS` (`session-refresher.ts`) | nie lustro, tylko ograniczenie. Wyprzedzenie 60 s musi zostać wyraźnie poniżej `JwtTokenFactory.PlayerTokenLifetime` (15 min w `JwtTokenFactory.cs`), więc timer odpala około 14 minut po wydaniu JWT. Wyprzedzenie równe czasowi życia albo dłuższe rotowałoby co `REFRESH_MIN_INTERVAL_MS` |
 | `AUCTION_SETTLE_MS` (`push-topics.ts`) | 2 s TTL cache odczytów modułu Auctions (`Auctions:ReadCache`, ADR-009). Nudge może trafić w TTL i odczytać nieświeżą migawkę, więc widoki aukcji odświeżają się jeszcze raz po nim |
-| `STARTING_FUNDS` (`welcome-rules.ts`) i napis na billboardzie w `street/city.ts` | startowe środki nowego portfela (`StartingFunds`, 300 w ustawieniach API) |
+| `STARTING_FUNDS` (`welcome-rules.ts`), napis na billboardzie w `street/city.ts` i `aria-label` canvasu w `street/street-scene.html` | startowe środki nowego portfela (`StartingFunds`, 300 w ustawieniach API) |
 
 ## Decyzje
 
