@@ -40,6 +40,7 @@ Widoki modułów weszły 2026-11-14 na stacku wybranym w [ADR-015](adr/015-angul
 
 | Widok (trasa) | Używane endpointy backendu |
 |---|---|
+| strona powitalna z ulicą (`/welcome`) | żadne, ulica, opis i przyciski są statyczne |
 | lista aukcji (`/auctions`) | `GET /api/auctions?limit=50` |
 | detal aukcji z licytacją i historią (`/auctions/:id`) | `GET /api/auctions/{id}`, `GET /api/auctions/{id}/bids`, `POST /api/auctions/{id}/bid`, `GET /api/profiles?ids=` dla nazw licytujących |
 | wystawienie przedmiotu (`/auctions/new`, za guardem) | `GET /api/inventory`, `POST /api/auctions` |
@@ -83,7 +84,7 @@ Polityka ponawiania siedzi w `shouldReconnect` i `failureOf`. 401 czyści sesję
 
 ## Reguły po stronie klienta i lustrzane stałe
 
-Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, profile) trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed; walidatory rejestracji wciąż mieszkają w pliku komponentu. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
+Dziesięć feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, profile, magazyny, strona powitalna) trzyma swoje prechecki, rytmy pollingu i lustrzane stałe w czystym module `<feature>-rules.ts` obok komponentów (dla kont społecznościowych tę rolę gra `social-links.ts`), testowanym bez TestBed; walidatory rejestracji wciąż mieszkają w pliku komponentu. Poniższe stałe lustrzą konfigurację lub walidatory backendu i muszą podążać za każdą jego zmianą:
 
 | Stała klienta (moduł) | Lustrzy |
 |---|---|
@@ -100,6 +101,7 @@ Osiem feature'ów (przelewy, kasyno, blackjack, ruletka, bank, lombard, aukcje, 
 | `PUSH_CLOCK_SKEW_MS` (`push-client.ts`) | domyślne pięć minut `ClockSkew` walidacji JWT w hoście (`TokenValidationParameters` w `Program.cs`, nienadpisane), okno, w którym API wciąż przyjmuje token, którego endpoint push już odmawia |
 | `REFRESH_LEAD_MS` (`session-refresher.ts`) | nie lustro, tylko ograniczenie. Wyprzedzenie 60 s musi zostać wyraźnie poniżej `JwtTokenFactory.PlayerTokenLifetime` (15 min w `JwtTokenFactory.cs`), więc timer odpala około 14 minut po wydaniu JWT. Wyprzedzenie równe czasowi życia albo dłuższe rotowałoby co `REFRESH_MIN_INTERVAL_MS` |
 | `AUCTION_SETTLE_MS` (`push-topics.ts`) | 2 s TTL cache odczytów modułu Auctions (`Auctions:ReadCache`, ADR-009). Nudge może trafić w TTL i odczytać nieświeżą migawkę, więc widoki aukcji odświeżają się jeszcze raz po nim |
+| `STARTING_FUNDS` (`welcome-rules.ts`) i napis na billboardzie w `street/city.ts` | startowe środki nowego portfela (`StartingFunds`, 300 w ustawieniach API) |
 
 ## Decyzje
 
