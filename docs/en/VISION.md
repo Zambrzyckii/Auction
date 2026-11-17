@@ -80,9 +80,9 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 
 Still planned after these:
 
-- The AI market bots, then the UI/UX pass over the deliberately bare frontend as the final branch of the plan.
+- The AI market bots on `main` and, since 2026-11-17, the UI/UX pass over the deliberately bare frontend on branch `ui-ux` alongside them, with the owner alternating between the two.
 
-RabbitMQ, listed here until 2026-11-04, shipped that day as the event transport behind `IIntegrationEventPublisher` with the consume-only market exchange for the bots (see [ADR-013](adr/013-rabbitmq-transport.md)). The Angular frontend, listed here until 2026-11-10, shipped that day as the MVP views over the existing API (see [frontend.md](frontend.md)). The views for the remaining modules, listed here until 2026-11-14, shipped that day on the same API (see [frontend.md](frontend.md)). The API gaps with the push channel over Server-Sent Events, listed here until 2026-11-15, shipped that day with the Angular client consuming them (see [frontend.md](frontend.md) and [ADR-016](adr/016-server-sent-events-push.md)). The real UI/UX pass stays at the end of the roadmap.
+RabbitMQ, listed here until 2026-11-04, shipped that day as the event transport behind `IIntegrationEventPublisher` with the consume-only market exchange for the bots (see [ADR-013](adr/013-rabbitmq-transport.md)). The Angular frontend, listed here until 2026-11-10, shipped that day as the MVP views over the existing API (see [frontend.md](frontend.md)). The views for the remaining modules, listed here until 2026-11-14, shipped that day on the same API (see [frontend.md](frontend.md)). The API gaps with the push channel over Server-Sent Events, listed here until 2026-11-15, shipped that day with the Angular client consuming them (see [frontend.md](frontend.md) and [ADR-016](adr/016-server-sent-events-push.md)). The real UI/UX pass no longer waits for the bots and runs on its own branch since 2026-11-17 (see [DECISIONS.md](DECISIONS.md)).
 
 ## 7. Ground rules
 
