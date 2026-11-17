@@ -46,8 +46,8 @@ rules bind every change it makes.
 - Packages that give a better pixel-art result are allowed for this pass, each named with its reason.
   The pass is not bound by the plain-SCSS rule or the per-package consent of 2026-11-08
   (`docs/en/DECISIONS.md:107` and `:132`).
-- Fonts and other third-party assets are CC0, CC-BY or OFL only, self-hosted under `public/` and
-  listed with source and licence in `CREDITS.md`.
+- Fonts and other new third-party assets are CC0, CC-BY or OFL only, self-hosted under `public/`
+  and listed with source and licence in `CREDITS.md`.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session

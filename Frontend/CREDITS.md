@@ -1,7 +1,7 @@
 # Credits
 
-Every third-party asset in this client is CC0, CC-BY or OFL. Each one is listed here with its source
-and licence.
+Every third-party asset that the UI/UX pass adds to this client is CC0, CC-BY or OFL. Each one is
+listed here with its source and licence.
 
 | Asset | Files | Source | Licence |
 |---|---|---|---|
