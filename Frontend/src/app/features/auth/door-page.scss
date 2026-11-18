@@ -1,0 +1,118 @@
+:host {
+  display: block;
+  position: absolute;
+  inset-inline: 0;
+  margin-top: -1rem;
+  min-height: 100dvh;
+  color-scheme: dark;
+  background: var(--m-road);
+  color: var(--m-text);
+  font: 16px/24px var(--m-pixel);
+  font-synthesis: none;
+}
+
+@media (max-width: 700px) {
+  :host {
+    --u: 2px;
+  }
+}
+
+.door {
+  --strip-guess: 720px;
+  position: relative;
+  overflow: hidden;
+  min-height: var(--strip, var(--strip-guess));
+  background: var(--m-road);
+}
+
+@media (max-width: 1439px) {
+  .door {
+    --strip-guess: 540px;
+  }
+}
+
+@media (max-width: 1079px) {
+  .door {
+    --strip-guess: 360px;
+  }
+}
+
+@media (max-width: 759px) {
+  .door {
+    --strip-guess: 150px;
+  }
+}
+
+app-door-scene {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+
+.content {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  padding-inline: max(16px, calc(var(--u) * 8));
+  padding-block: 16px calc(var(--u) * 16);
+}
+
+.back {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  font: 16px/16px var(--m-pixel);
+  text-transform: uppercase;
+  color: var(--m-text);
+  background: var(--m-panel2);
+  border: var(--u) solid var(--m-ink);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4);
+  box-shadow:
+    inset 0 var(--u) 0 #4a4452,
+    inset 0 calc(var(--u) * -2) 0 var(--m-ink);
+  text-decoration: none;
+
+  svg {
+    width: calc(var(--u) * 7);
+    height: calc(var(--u) * 7);
+    shape-rendering: crispEdges;
+    fill: currentColor;
+  }
+
+  &:hover {
+    color: var(--m-taxi-hi);
+  }
+
+  &:focus-visible {
+    outline: var(--u) solid var(--m-taxi-hi);
+    outline-offset: var(--u);
+  }
+}
+
+.sheet {
+  grid-column: 2;
+  position: relative;
+  width: min(500px, calc(100% - 12px));
+  margin-left: 12px;
+  margin-top: calc(var(--u) * 10);
+}
+
+@media (max-width: 759px) {
+  .content {
+    grid-template-columns: minmax(0, 1fr);
+    padding-inline: 12px;
+    padding-top: calc(var(--strip, var(--strip-guess)) - var(--u) * 4);
+  }
+
+  .sheet {
+    grid-column: 1;
+    width: min(500px, 100%);
+    margin: 0 auto;
+  }
+}

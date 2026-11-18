@@ -1,0 +1,34 @@
+<div class="door" [style.--strip.px]="strip()">
+  <app-door-scene
+    [mode]="mode()"
+    [pending]="pending()"
+    [refused]="refused()"
+    (strip)="strip.set($event)"
+  />
+  <div class="content">
+    <a class="back" routerLink="/welcome">
+      <svg viewBox="0 0 7 7" aria-hidden="true">
+        <rect x="3" y="0" width="1" height="7" />
+        <rect x="2" y="1" width="1" height="5" />
+        <rect x="1" y="2" width="1" height="3" />
+        <rect x="0" y="3" width="1" height="1" />
+        <rect x="4" y="2" width="3" height="3" />
+      </svg>
+      <span>Back to the street</span>
+    </a>
+    <section class="sheet">
+      <span class="clip" aria-hidden="true"></span>
+      <div class="board">
+        <div class="paper">
+          <div class="sheet-head">
+            <span class="eyebrow">{{ eyebrow() }}</span>
+            @if (mode() === 'register') {
+              <span class="stamp">${{ startingFunds }} to start</span>
+            }
+          </div>
+          <ng-content />
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

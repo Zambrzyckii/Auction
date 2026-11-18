@@ -1,0 +1,323 @@
+app-door-page {
+  --m-paper-hi: #f7f2e6;
+  --m-ink-mute: #6e6458;
+  --m-ink-red: #8f2a2c;
+  --m-error-bg: #f4dfd6;
+  --m-mark: #f3df8a;
+  --m-board: #6f4a2e;
+  --m-board-hi: #a07444;
+  --m-board-lo: #3f2a1e;
+
+  .clip {
+    position: absolute;
+    z-index: 1;
+    left: 50%;
+    top: calc(var(--u) * -6);
+    width: calc(var(--u) * 36);
+    height: calc(var(--u) * 13);
+    transform: translateX(-50%);
+    background: url('/street/door/clip.png') 0 0 / 100% 100% no-repeat;
+    image-rendering: pixelated;
+  }
+
+  .board {
+    position: relative;
+    padding: calc(var(--u) * 6) calc(var(--u) * 4) calc(var(--u) * 4);
+    background: var(--m-board);
+    border: var(--u) solid var(--m-ink);
+    box-shadow:
+      inset var(--u) var(--u) 0 var(--m-board-hi),
+      inset calc(var(--u) * -2) calc(var(--u) * -2) 0 var(--m-board-lo);
+  }
+
+  .paper {
+    position: relative;
+    display: grid;
+    gap: calc(var(--u) * 5);
+    color-scheme: light;
+    background: var(--m-paper);
+    color: var(--m-ink);
+    padding: calc(var(--u) * 7) calc(var(--u) * 6) 0;
+    box-shadow: 0 var(--u) 0 var(--m-board-lo);
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: calc(var(--u) * 8);
+      height: calc(var(--u) * 8);
+      background: url('/street/door/dog-ear.png') 0 0 / 100% 100% no-repeat;
+      image-rendering: pixelated;
+    }
+  }
+
+  .sheet-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: calc(var(--u) * 3);
+    padding-right: calc(var(--u) * 6);
+    min-height: 33px;
+  }
+
+  .eyebrow {
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink-mute);
+  }
+
+  .stamp {
+    font: 27px/27px var(--m-head);
+    text-transform: uppercase;
+    color: var(--m-red);
+    border: var(--u) solid var(--m-red);
+    padding: 0 calc(var(--u) * 3);
+  }
+
+  .paper h2 {
+    font: 54px/54px var(--m-head);
+    margin: 0;
+    text-transform: uppercase;
+    color: var(--m-ink);
+    font-weight: 400;
+  }
+
+  .paper form {
+    display: grid;
+    gap: calc(var(--u) * 5);
+    max-width: none;
+    margin: 0;
+  }
+
+  .paper label {
+    display: grid;
+    gap: calc(var(--u) * 2);
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+  }
+
+  .paper input {
+    font: 27px/27px var(--m-head);
+    text-transform: none;
+    color: var(--m-ink);
+    background: var(--m-paper-hi);
+    border: var(--u) solid var(--m-ink);
+    border-radius: 0;
+    padding: calc(var(--u) * 2) calc(var(--u) * 3);
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    box-shadow: inset 0 var(--u) 0 var(--m-paper2);
+
+    &:focus {
+      outline: var(--u) solid var(--m-ink);
+      outline-offset: var(--u);
+      background: var(--m-mark);
+      box-shadow: none;
+    }
+
+    &[type='date'] {
+      min-height: calc(27px + var(--u) * 6);
+    }
+
+    &[type='date']::-webkit-calendar-picker-indicator {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      background: url('/street/door/calendar.png') 0 0 / 100% 100% no-repeat;
+      image-rendering: pixelated;
+      opacity: 1;
+    }
+  }
+
+  .paper label:has(+ .error:not(.form-error)) input,
+  .paper .pw:has(+ .error:not(.form-error)) input,
+  .paper .pw:has(+ .hint + .error:not(.form-error)) input {
+    border-color: var(--m-ink-red);
+    background: var(--m-error-bg);
+  }
+
+  .paper .error {
+    margin: calc(var(--u) * -3) 0 0;
+    display: flex;
+    gap: calc(var(--u) * 3);
+    align-items: start;
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-ink-red);
+
+    &::before {
+      content: '!';
+      flex: none;
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      background: var(--m-ink-red);
+      color: var(--m-paper);
+      font: 16px/16px var(--m-pixel);
+    }
+
+    &.form-error {
+      margin: 0;
+      padding: calc(var(--u) * 3);
+      border: var(--u) solid var(--m-red);
+      background: var(--m-error-bg);
+      text-transform: uppercase;
+      animation: door-stamp 0.24s var(--m-ease) both;
+    }
+  }
+
+  .paper .pw {
+    position: relative;
+    display: grid;
+
+    input {
+      padding-right: calc(var(--u) * 30);
+    }
+  }
+
+  .paper .reveal {
+    position: absolute;
+    right: calc(var(--u) * 2);
+    bottom: calc(var(--u) * 2);
+    height: calc(27px + var(--u) * 2);
+    min-width: calc(var(--u) * 24);
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+    background: var(--m-paper2);
+    border: var(--u) solid var(--m-ink);
+    border-radius: 0;
+    padding: 0 calc(var(--u) * 3);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--m-paper3);
+    }
+
+    &:focus-visible {
+      outline: var(--u) solid var(--m-ink);
+      outline-offset: var(--u);
+    }
+  }
+
+  .paper .hint {
+    margin: calc(var(--u) * -3) 0 0;
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-ink-mute);
+
+    &:has(+ .error:not(.form-error)) {
+      display: none;
+    }
+  }
+
+  .paper button[type='submit'] {
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: calc(var(--u) * 2);
+    width: 100%;
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+    background: var(--m-taxi);
+    border: var(--u) solid var(--m-ink);
+    border-radius: 0;
+    padding: calc(var(--u) * 5);
+    box-shadow:
+      inset 0 var(--u) 0 var(--m-taxi-hi),
+      inset 0 calc(var(--u) * -2) 0 var(--m-taxi-lo);
+    cursor: pointer;
+    transition: transform 0.14s var(--m-ease);
+
+    &:hover {
+      transform: translateY(calc(var(--u) * -1));
+    }
+
+    &:active {
+      transform: translateY(var(--u));
+    }
+
+    &:focus-visible {
+      outline: var(--u) solid var(--m-ink);
+      outline-offset: var(--u);
+    }
+
+    &:disabled {
+      cursor: progress;
+      transform: none;
+
+      &::before {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        inset: 0 calc(var(--u) * -8) 0 0;
+        background: url('/street/door/busy.png') 0 0 / calc(var(--u) * 8) calc(var(--u) * 8);
+        image-rendering: pixelated;
+        animation: door-busy 0.48s steps(8) infinite;
+      }
+    }
+  }
+
+  .paper > p {
+    margin: var(--u) calc(var(--u) * -6) 0;
+    padding: calc(var(--u) * 4) calc(var(--u) * 6) calc(var(--u) * 5);
+    border-top: var(--u) dashed var(--m-paper3);
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-ink);
+
+    a {
+      color: var(--m-ink-red);
+      text-transform: uppercase;
+      text-decoration: underline;
+      text-decoration-thickness: var(--u);
+      text-underline-offset: calc(var(--u) * 2);
+
+      &:focus-visible {
+        outline: var(--u) solid var(--m-ink);
+        outline-offset: var(--u);
+      }
+    }
+  }
+}
+
+@keyframes door-stamp {
+  from {
+    transform: scale(1.12);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes door-busy {
+  from {
+    transform: translateX(calc(var(--u) * -8));
+  }
+  to {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  app-door-page {
+    .paper .error.form-error,
+    .paper button[type='submit']:disabled::before {
+      animation: none;
+    }
+
+    .paper button[type='submit'] {
+      transition: none;
+    }
+  }
+}
