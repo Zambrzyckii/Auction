@@ -36,4 +36,16 @@ describe('StreetScene', () => {
     expect(root.querySelector<HTMLElement>('.tip')?.hidden).toBe(true);
     expect(root.querySelector('canvas')?.style.width).toBe('');
   });
+
+  it('accepts a reserve before the scene boots', async () => {
+    vi.stubGlobal('matchMedia', vi.fn());
+    vi.stubGlobal('IntersectionObserver', vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+
+    fixture.componentRef.setInput('reserve', 237);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.reserve()).toBe(237);
+  });
 });

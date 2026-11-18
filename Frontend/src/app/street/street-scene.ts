@@ -2,9 +2,12 @@ import {
   afterNextRender,
   Component,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
+  input,
   output,
+  untracked,
   viewChild,
 } from '@angular/core';
 import type { Building, BuildingId } from './city';
@@ -20,6 +23,7 @@ const RESIZE_DEBOUNCE_MS = 150;
 })
 export class StreetScene {
   readonly picked = output<BuildingId>();
+  readonly reserve = input(0);
 
   private readonly wrap = viewChild.required<ElementRef<HTMLElement>>('wrap');
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -30,11 +34,16 @@ export class StreetScene {
   private alive = true;
   private handle: SceneHandle | null = null;
   private measuredWidth = 0;
+  private relayout: (() => void) | null = null;
   private resizeTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly listeners = new AbortController();
 
   constructor() {
     afterNextRender(() => void this.start());
+    effect(() => {
+      this.reserve();
+      untracked(() => this.relayout?.());
+    });
     inject(DestroyRef).onDestroy(() => this.stop());
   }
 
@@ -45,6 +54,8 @@ export class StreetScene {
       interactive: true,
       cssWidth: () => (this.measuredWidth = wrap.clientWidth),
       scaleWidth: () => window.innerWidth,
+      heightBudget: () =>
+        window.innerHeight - this.reserve() - (wrap.getBoundingClientRect().top + window.scrollY),
       onHover: (building, event) => this.showTip(building, event),
       onPick: (building) => this.picked.emit(building.id),
     };
@@ -62,15 +73,16 @@ export class StreetScene {
       if (wrap.clientWidth !== this.measuredWidth) handle.resize();
       center();
     };
+    this.relayout = () => {
+      handle.resize();
+      settle();
+    };
     settle();
     window.addEventListener(
       'resize',
       () => {
         clearTimeout(this.resizeTimer);
-        this.resizeTimer = setTimeout(() => {
-          handle.resize();
-          settle();
-        }, RESIZE_DEBOUNCE_MS);
+        this.resizeTimer = setTimeout(() => this.relayout?.(), RESIZE_DEBOUNCE_MS);
       },
       { signal: this.listeners.signal },
     );
@@ -99,6 +111,7 @@ export class StreetScene {
     this.alive = false;
     this.listeners.abort();
     clearTimeout(this.resizeTimer);
+    this.relayout = null;
     this.handle?.destroy();
     this.handle = null;
   }
