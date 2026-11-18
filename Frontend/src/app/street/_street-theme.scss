@@ -1,0 +1,75 @@
+@font-face {
+  font-family: 'Tiny5';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/tiny5/tiny5-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Jersey 15';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jersey-15/jersey-15-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Jacquard 12';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jacquard-12/jacquard-12-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Micro 5';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/micro-5/micro-5-latin.woff2') format('woff2');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --u: 3px;
+  --m-ink: #17121c;
+  --m-night: #1a1720;
+  --m-road: #1f1c25;
+  --m-panel: #25212c;
+  --m-panel2: #302b38;
+  --m-line: #433d4b;
+  --m-paper: #ece4d0;
+  --m-paper2: #d2c7b0;
+  --m-paper3: #a89d8a;
+  --m-text: #e8e0cf;
+  --m-mute: #aaa2ab;
+  --m-taxi: #dcad2c;
+  --m-taxi-hi: #f6dc6a;
+  --m-taxi-lo: #a8731a;
+  --m-red: #b0383a;
+  --m-red-hi: #d9644a;
+  --m-green: #8cc063;
+  --m-pink: #ff5fa2;
+  --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --m-pixel: 'Tiny5', 'Micro 5', ui-monospace, monospace;
+  --m-head: 'Jersey 15', 'Tiny5', sans-serif;
+  --m-logo: 'Jacquard 12', 'Jersey 15', serif;
+}
+
+@media (max-width: 700px) {
+  :root {
+    --u: 2px;
+  }
+}

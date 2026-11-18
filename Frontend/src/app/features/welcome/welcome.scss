@@ -4,35 +4,6 @@
   inset-inline: 0;
   margin-top: -1rem;
   color-scheme: dark;
-  --u: 3px;
-  --m-ink: #17121c;
-  --m-night: #1a1720;
-  --m-road: #1f1c25;
-  --m-panel: #25212c;
-  --m-panel2: #302b38;
-  --m-line: #433d4b;
-  --m-paper: #ece4d0;
-  --m-paper2: #d2c7b0;
-  --m-paper3: #a89d8a;
-  --m-text: #e8e0cf;
-  --m-mute: #aaa2ab;
-  --m-taxi: #dcad2c;
-  --m-taxi-hi: #f6dc6a;
-  --m-taxi-lo: #a8731a;
-  --m-red: #b0383a;
-  --m-red-hi: #d9644a;
-  --m-green: #8cc063;
-  --m-pink: #ff5fa2;
-  --m-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --m-pixel: 'Tiny5', 'Micro 5', ui-monospace, monospace;
-  --m-head: 'Jersey 15', 'Tiny5', sans-serif;
-  --m-logo: 'Jacquard 12', 'Jersey 15', serif;
-}
-
-@media (max-width: 700px) {
-  :host {
-    --u: 2px;
-  }
 }
 
 .welcome {
