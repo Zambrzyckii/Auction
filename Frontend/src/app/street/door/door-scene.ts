@@ -42,6 +42,7 @@ export class DoorScene {
   private alive = true;
   private observer: ResizeObserver | undefined;
   private frame = 0;
+  private readonly listeners = new AbortController();
 
   constructor() {
     afterNextRender(() => void this.start());
@@ -69,17 +70,20 @@ export class DoorScene {
       handle.destroy();
       return;
     }
-    this.observer = new ResizeObserver(() => {
+    const schedule = () => {
       cancelAnimationFrame(this.frame);
       this.frame = requestAnimationFrame(() => handle.resize());
-    });
+    };
+    this.observer = new ResizeObserver(schedule);
     this.observer.observe(this.host);
+    window.addEventListener('resize', schedule, { signal: this.listeners.signal });
     this.view.set(handle);
   }
 
   private stop(): void {
     this.alive = false;
     this.observer?.disconnect();
+    this.listeners.abort();
     cancelAnimationFrame(this.frame);
     this.view()?.destroy();
     this.view.set(null);
