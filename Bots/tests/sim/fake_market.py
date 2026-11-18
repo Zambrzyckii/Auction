@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from auction_bots.api.client import BadRequest, BidInProgress, NotFound, Unauthorized
+from auction_bots.api.client import BadRequest, BidInProgress, Conflict, NotFound, Unauthorized
 from auction_bots.api.models import (
     AuctionDto,
+    ManifestItemDto,
     MyAuctionDto,
     Rarity,
     UserItemDto,
@@ -29,6 +30,18 @@ SAGA_DELAY_S = (3.0, 9.0)
 ACTIVATION_DELAY_S = (6.0, 9.0)
 ANTI_SNIPING_S = 30.0
 CLOSER_INTERVAL_S = 3.0
+WAR_ENTRY_FEE = Decimal(500)
+WAR_INCREMENTS = (Decimal(10), Decimal(50), Decimal(100))
+WAR_MIN_PLAYERS = 3
+WAR_MAX_PLAYERS = 5
+WAR_JOIN_COUNTDOWN_S = 30.0
+WAR_RAISE_WINDOW_S = 10.0
+WAR_LOCK_DELAY_S = (1.0, 3.0)
+ESTIMATE_VARIANTS = ((0.3, 0.7), (0.8, 1.2), (1.3, 2.5))
+
+
+def _tens(value: Decimal) -> Decimal:
+    return Decimal(round(float(value) / 10.0) * 10)
 
 
 @dataclass
@@ -66,6 +79,31 @@ class _Account:
 
 
 @dataclass
+class RaiseRecord:
+    warehouse_id: UUID
+    user_id: UUID
+    increment: int
+    price_after: Decimal
+
+
+@dataclass
+class _FakeWar:
+    warehouse_id: UUID
+    manifest: list[_Item]
+    true_value: Decimal
+    estimate_min: Decimal
+    estimate_max: Decimal
+    status: str = "Filling"
+    current: Decimal = Decimal(0)
+    leader: UUID | None = None
+    participants: dict[UUID, str] = field(default_factory=dict)
+    bidding_starts_on: datetime | None = None
+    window_ends_on: datetime | None = None
+    cancellation_reason: str | None = None
+    countdown_started: bool = False
+
+
+@dataclass
 class _FakeAuction:
     auction_id: UUID
     seller: UUID
@@ -99,7 +137,9 @@ class FakeMarket:
         self._by_token: dict[str, _Account] = {}
         self._by_user: dict[UUID, _Account] = {}
         self._auctions: dict[UUID, _FakeAuction] = {}
+        self._wars: dict[UUID, _FakeWar] = {}
         self.bids: list[BidRecord] = []
+        self.raises: list[RaiseRecord] = []
         self.errors: list[ErrorRecord] = []
         self._schedule_closer()
 
@@ -242,27 +282,174 @@ class FakeMarket:
         when = self._scheduler.now() + timedelta(seconds=delay)
         self._scheduler.call_at(when, lambda: self._confirm(auction))
 
-    # warehouses arrive with the watcher task
+    # warehouses
+
+    def open_warehouse(self, *, prices: list[int], variant: int = 0) -> UUID:
+        manifest = [
+            _Item(item_id=uuid4(), name="Crate Find", rarity=Rarity.Common, official=Decimal(p))
+            for p in prices
+        ]
+        true_value = Decimal(sum(prices))
+        low, high = ESTIMATE_VARIANTS[variant]
+        war = _FakeWar(
+            warehouse_id=uuid4(),
+            manifest=manifest,
+            true_value=true_value,
+            estimate_min=_tens(true_value * Decimal(str(low))),
+            estimate_max=_tens(true_value * Decimal(str(high))),
+        )
+        self._wars[war.warehouse_id] = war
+        return war.warehouse_id
+
+    def war_players(self, warehouse_id: UUID) -> int:
+        return len(self._war(warehouse_id).participants)
+
+    def war_current(self, warehouse_id: UUID) -> Decimal:
+        return self._war(warehouse_id).current
+
+    def participant_states(self, warehouse_id: UUID) -> dict[UUID, str]:
+        return dict(self._war(warehouse_id).participants)
 
     async def list_warehouses(self, token: str, limit: int) -> list[WarehouseSummaryDto]:
         self._account(token)
-        return []
+        return [self._war_summary(war) for war in list(self._wars.values())[:limit]]
 
     async def get_warehouse(self, token: str, warehouse_id: UUID) -> WarehouseDetailsDto:
-        self._account(token)
-        raise NotFound(404, "warehouse not found")
+        account = self._account(token)
+        war = self._war(warehouse_id)
+        summary = self._war_summary(war)
+        manifest = None
+        if war.status == "Settled":
+            manifest = [
+                ManifestItemDto(name=item.name, rarity=item.rarity, price=item.official)
+                for item in war.manifest
+            ]
+        return WarehouseDetailsDto(
+            **summary.model_dump(by_alias=True),
+            is_participant=account.user_id in war.participants,
+            participant_state=war.participants.get(account.user_id),
+            is_leader=war.leader == account.user_id,
+            cancellation_reason=war.cancellation_reason,
+            manifest=manifest,
+            increments=list(WAR_INCREMENTS),
+        )
 
     async def join_warehouse(self, token: str, warehouse_id: UUID) -> None:
-        self._account(token)
-        raise NotFound(404, "warehouse not found")
+        account = self._account(token)
+        war = self._war(warehouse_id)
+        if war.status != "Filling":
+            self._fail(account, BadRequest(400, "warehouse is not filling"))
+        if account.user_id in war.participants:
+            self._fail(account, BadRequest(400, "already joined"))
+        if len(war.participants) >= WAR_MAX_PLAYERS:
+            self._fail(account, BadRequest(400, "lobby is full"))
+        war.participants[account.user_id] = "Pending"
+        delay = self._rng.uniform(*WAR_LOCK_DELAY_S)
+        when = self._scheduler.now() + timedelta(seconds=delay)
+        self._scheduler.call_at(when, lambda u=account.user_id: self._confirm_join(war, u))
+        if not war.countdown_started and len(war.participants) >= WAR_MIN_PLAYERS:
+            war.countdown_started = True
+            start = self._scheduler.now() + timedelta(seconds=WAR_JOIN_COUNTDOWN_S)
+            war.bidding_starts_on = start
+            self._scheduler.call_at(start, lambda: self._start_bidding(war))
 
     async def leave_warehouse(self, token: str, warehouse_id: UUID) -> None:
-        self._account(token)
-        raise NotFound(404, "warehouse not found")
+        account = self._account(token)
+        war = self._war(warehouse_id)
+        if war.status != "Filling":
+            self._fail(account, BadRequest(400, "cannot leave now"))
+        state = war.participants.pop(account.user_id, None)
+        if state == "Active":
+            account.locked -= WAR_ENTRY_FEE
+            account.available += WAR_ENTRY_FEE
 
     async def raise_warehouse(self, token: str, warehouse_id: UUID, increment: int) -> None:
-        self._account(token)
-        raise NotFound(404, "warehouse not found")
+        account = self._account(token)
+        war = self._war(warehouse_id)
+        if war.status != "Bidding":
+            self._fail(account, BadRequest(400, "warehouse is not bidding"))
+        if war.participants.get(account.user_id) != "Active":
+            self._fail(account, BadRequest(400, "not an active participant"))
+        if war.leader == account.user_id:
+            self._fail(account, Conflict(409, "caller already leads"))
+        step = Decimal(increment)
+        if step not in WAR_INCREMENTS:
+            self._fail(account, BadRequest(400, "invalid increment"))
+        if war.current + step > WAR_ENTRY_FEE:
+            self._fail(account, BadRequest(400, "increment exceeds the budget"))
+        war.current += step
+        war.leader = account.user_id
+        war.window_ends_on = self._scheduler.now() + timedelta(seconds=WAR_RAISE_WINDOW_S)
+        self._scheduler.call_at(war.window_ends_on, lambda: self._check_window(war))
+        self.raises.append(RaiseRecord(warehouse_id, account.user_id, increment, war.current))
+
+    def _war(self, warehouse_id: UUID) -> _FakeWar:
+        war = self._wars.get(warehouse_id)
+        if war is None:
+            raise NotFound(404, "warehouse not found")
+        return war
+
+    def _war_summary(self, war: _FakeWar) -> WarehouseSummaryDto:
+        return WarehouseSummaryDto(
+            public_warehouse_id=war.warehouse_id,
+            tier="Small",
+            status=war.status,
+            estimate_min=war.estimate_min,
+            estimate_max=war.estimate_max,
+            entry_fee=WAR_ENTRY_FEE,
+            current_price=war.current,
+            item_count=len(war.manifest),
+            players=len(war.participants),
+            max_players=WAR_MAX_PLAYERS,
+            bidding_starts_on=war.bidding_starts_on,
+            bidding_ends_on=war.window_ends_on,
+        )
+
+    def _confirm_join(self, war: _FakeWar, user_id: UUID) -> None:
+        if war.participants.get(user_id) != "Pending":
+            return
+        account = self._by_user[user_id]
+        if account.available < WAR_ENTRY_FEE:
+            del war.participants[user_id]
+            return
+        account.available -= WAR_ENTRY_FEE
+        account.locked += WAR_ENTRY_FEE
+        war.participants[user_id] = "Active"
+
+    def _start_bidding(self, war: _FakeWar) -> None:
+        if war.status != "Filling":
+            return
+        war.status = "Bidding"
+        war.window_ends_on = self._scheduler.now() + timedelta(seconds=WAR_RAISE_WINDOW_S)
+        self._scheduler.call_at(war.window_ends_on, lambda: self._check_window(war))
+
+    def _check_window(self, war: _FakeWar) -> None:
+        if war.status != "Bidding" or war.window_ends_on is None:
+            return
+        now = self._scheduler.now()
+        if now < war.window_ends_on:
+            self._scheduler.call_at(war.window_ends_on, lambda: self._check_window(war))
+            return
+        self._settle_war(war)
+
+    def _settle_war(self, war: _FakeWar) -> None:
+        if war.leader is None:
+            war.status = "Cancelled"
+            war.cancellation_reason = "No bids placed"
+        else:
+            war.status = "Settled"
+        for user_id, state in war.participants.items():
+            if state != "Active":
+                continue
+            account = self._by_user[user_id]
+            account.locked -= WAR_ENTRY_FEE
+            if user_id == war.leader:
+                account.available += WAR_ENTRY_FEE - war.current
+                account.turnover += war.current
+                for item in war.manifest:
+                    account.items[item.item_id] = item
+            else:
+                account.available += WAR_ENTRY_FEE
 
     # internals
 

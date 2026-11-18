@@ -102,6 +102,19 @@ class BotAgent:
         self._failed: dict[UUID, int] = {}
         self._last_price: dict[UUID, int] = {}
 
+    @property
+    def persona(self) -> Persona:
+        return self._persona
+
+    @property
+    def session(self) -> BotSession:
+        return self._session
+
+    def wallet_hint(self) -> Decimal:
+        if self._wallet is not None:
+            return self._wallet
+        return Decimal(self._persona.bankroll)
+
     async def react(self, change: MarketChange) -> None:
         if change.kind in ("finished", "cancelled"):
             self._forget(change.auction_id)
