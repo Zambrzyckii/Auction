@@ -35,9 +35,15 @@ rules bind every change it makes.
 - Existing templates keep every class name, element type and visible text that a spec selects or
   asserts. New styling hooks onto them or wraps markup in new presentational components.
 - Existing `.ts` files keep their logic. They may gain imports and `imports` entries.
-- Art lives in new files. The street scene is a layer of its own in `src/app/street/`, and its drawing
-  modules import nothing from Angular. Presentational components take inputs, emit outputs and inject
-  no services.
+- The look lives in new files under `src/app/pixel/`, apart from the logic in `core/` and
+  `features/`. `pixel/street/` holds the canvas scenes, whose drawing modules import nothing from
+  Angular. `pixel/<feature>/` holds the frame that a page of `features/<feature>/` wraps itself in,
+  such as `pixel/auth/door-page.ts` for login and register and `pixel/welcome/street-page.ts` for
+  the welcome page. Presentational components take inputs, emit outputs and inject no services.
+- Code in `pixel/` imports nothing from `core/` or `features/`, and `features/` holds no
+  stylesheet. A page imports from `pixel/` only the frames and components it puts in its template
+  and the types they take. `features/auth/reveal-password.ts` stays with the login and register
+  forms, because it flips the type of the password field.
 - Pixels stay crisp. Sprites scale by whole numbers with `image-rendering: pixelated` and no smoothing.
 - Motion animates `transform` and `opacity` or draws on a canvas, honours `prefers-reduced-motion` and
   pauses off screen.
@@ -53,20 +59,21 @@ rules bind every change it makes.
   `body:has(app-welcome, app-door-page) .topbar`, so renaming those selectors or that class
   brings the bar back.
 - The pixel fonts, the `--m-*` tokens and the default `--u: 3px` live in
-  `src/app/street/_street-theme.scss`, which `styles.scss` loads once. Components use the tokens
-  and declare no `@font-face`.
+  `src/app/pixel/street/_street-theme.scss`, which `styles.scss` loads once. Components use the
+  tokens and declare no `@font-face`.
 - The global stylesheet holds no width or height media query. Chromium re-creates the `@font-face`
   faces of a stylesheet whose viewport media query flips, which drops the loaded pixel fonts and
-  lets a canvas redraw its text in a fallback font. Each page switches `--u` to 2px up to 700 px
-  in its own stylesheet, and the door pages also below 916 px of window height.
-- The welcome street fits the window height. `street/street-fit.ts` keeps the width scale and cuts
-  up to `MAX_SKY_ROWS` (14) sky rows above the billboard, and drops to a smaller scale only where
-  the 640-column street still covers the window. The welcome page measures the pitch with
+  lets a canvas redraw its text in a fallback font. Each page frame switches `--u` to 2px up to
+  700 px in its own stylesheet, and the door frame also below 916 px of window height.
+- The welcome street fits the window height. `pixel/street/street-fit.ts` keeps the width scale and
+  cuts up to `MAX_SKY_ROWS` (14) sky rows above the billboard, and drops to a smaller scale only
+  where the 640-column street still covers the window. The street frame measures the pitch with
   `appHeightProbe` and passes it to `<app-street-scene>` as `reserve`.
 - A wrapper component cannot style content projected into it, because emulated encapsulation
   scopes its styles to its own template. The door pages therefore style the projected login and
-  register forms from the global partial `src/app/features/auth/_door-sheet.scss`, with every rule
-  under `app-door-page`.
+  register forms from the global partial `src/app/pixel/auth/_door-sheet.scss`, with every rule
+  under `app-door-page`. The street frame needs no such partial, because it renders the hidden
+  building links itself from its `links` and `paths` inputs.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
