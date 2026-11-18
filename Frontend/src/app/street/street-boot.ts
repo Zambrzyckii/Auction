@@ -6,12 +6,15 @@ export interface SceneHandle {
   destroy(): void;
 }
 
-export type SceneFactory = (canvas: HTMLCanvasElement, opts: SceneOptions) => SceneHandle;
+export type SceneFactory<O = SceneOptions, H extends SceneHandle = SceneHandle> = (
+  canvas: HTMLCanvasElement,
+  opts: O,
+) => H;
 
-export interface StreetBootDeps {
+export interface StreetBootDeps<O = SceneOptions, H extends SceneHandle = SceneHandle> {
   canRun(canvas: HTMLCanvasElement): boolean;
   fontsReady(): Promise<void>;
-  loadScene(): Promise<SceneFactory>;
+  loadScene(): Promise<SceneFactory<O, H>>;
 }
 
 export function canRunScene(win: Window, canvas: HTMLCanvasElement): boolean {
@@ -28,12 +31,12 @@ export function browserDeps(): StreetBootDeps {
   };
 }
 
-export async function bootStreet(
+export async function bootStreet<O, H extends SceneHandle>(
   canvas: HTMLCanvasElement,
-  opts: SceneOptions,
-  deps: StreetBootDeps,
+  opts: O,
+  deps: StreetBootDeps<O, H>,
   alive: () => boolean,
-): Promise<SceneHandle | null> {
+): Promise<H | null> {
   if (!deps.canRun(canvas)) return null;
   await deps.fontsReady();
   if (!alive()) return null;
