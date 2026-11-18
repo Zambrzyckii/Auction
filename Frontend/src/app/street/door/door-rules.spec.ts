@@ -75,6 +75,7 @@ describe('doorLayout', () => {
   it('follows the viewport, not the host, so a scrollbar cannot flip the scale', () => {
     expect(doorLayout(1440, 1425)).toEqual({
       scale: 4,
+      k: 4,
       stacked: false,
       cols: 357,
       center: 178,
@@ -85,6 +86,7 @@ describe('doorLayout', () => {
   it('switches to the stacked strip below 760 px of viewport', () => {
     expect(doorLayout(760, 745)).toEqual({
       scale: 2,
+      k: 2,
       stacked: false,
       cols: 373,
       center: 186,
@@ -93,6 +95,7 @@ describe('doorLayout', () => {
     });
     expect(doorLayout(759, 744)).toEqual({
       scale: 2,
+      k: 2,
       stacked: true,
       cols: 372,
       center: 236,
@@ -101,6 +104,7 @@ describe('doorLayout', () => {
     });
     expect(doorLayout(400, 400)).toEqual({
       scale: 2,
+      k: 2,
       stacked: true,
       cols: 200,
       center: 150,
@@ -109,11 +113,43 @@ describe('doorLayout', () => {
     });
     expect(doorLayout(360, 360)).toEqual({
       scale: 2,
+      k: 2,
       stacked: true,
       cols: 180,
       center: 140,
       top: 77,
       rows: 75,
+    });
+  });
+  it('keeps the canvas as wide as its host at a fractional devicePixelRatio', () => {
+    expect(doorLayout(1309, 1309, 1.1)).toEqual({
+      scale: 3,
+      k: 3,
+      stacked: false,
+      cols: 480,
+      center: 240,
+      top: 0,
+      rows: 180,
+    });
+    expect(doorLayout(1229, 1229, 1.25)).toEqual({
+      scale: 3,
+      k: 4,
+      stacked: false,
+      cols: 385,
+      center: 192,
+      top: 0,
+      rows: 180,
+    });
+  });
+  it('keeps the dpr 1 columns at a whole devicePixelRatio', () => {
+    expect(doorLayout(1440, 1425, 2)).toEqual({
+      scale: 4,
+      k: 8,
+      stacked: false,
+      cols: 357,
+      center: 178,
+      top: 0,
+      rows: 180,
     });
   });
 });
