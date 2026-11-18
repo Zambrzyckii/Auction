@@ -101,7 +101,7 @@ Ten features (transfers, casino, blackjack, roulette, bank, pawnshop, auctions, 
 | `PUSH_CLOCK_SKEW_MS` (`push-client.ts`) | the five-minute default `ClockSkew` of the host's JWT validation (`TokenValidationParameters` in `Program.cs`, not overridden), the window in which the API still accepts a token the push endpoint already refuses |
 | `REFRESH_LEAD_MS` (`session-refresher.ts`) | not a mirror but a bound. The 60 s lead must stay well below `JwtTokenFactory.PlayerTokenLifetime` (15 min in `JwtTokenFactory.cs`), so the timer fires about 14 minutes after a JWT is issued. A lead at or above the lifetime would rotate every `REFRESH_MIN_INTERVAL_MS` |
 | `AUCTION_SETTLE_MS` (`push-topics.ts`) | the 2 s read-cache TTL of the Auctions module (`Auctions:ReadCache`, ADR-009). A nudge can land inside the TTL and read a stale snapshot, so the auction views refresh once more after it |
-| `STARTING_FUNDS` (`welcome-rules.ts`, also read by the register stamp in `door-page.ts`), the billboard copy in `street/city.ts` and the canvas `aria-label` in `street/street-scene.html` | the starting funds of a new wallet (`StartingFunds`, 300 in the API settings) |
+| `STARTING_FUNDS` (`pixel/starting-funds.ts`, read by the street frame in `pixel/welcome/street-page.ts` and the register stamp in `pixel/auth/door-page.ts`), the billboard copy in `pixel/street/city.ts` and the canvas `aria-label` in `pixel/street/street-scene.html` | the starting funds of a new wallet (`StartingFunds`, 300 in the API settings) |
 
 ## Decisions
 
