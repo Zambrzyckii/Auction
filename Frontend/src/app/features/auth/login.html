@@ -13,7 +13,9 @@
         Password
         <input #password type="password" [formField]="loginForm.password" />
       </label>
-      <button type="button" class="reveal" [appRevealPassword]="password" #reveal="revealPassword">{{ reveal.label() }}</button>
+      <button type="button" class="reveal" [appRevealPassword]="password" #reveal="revealPassword">
+        {{ reveal.label() }}
+      </button>
     </div>
     @if (loginForm.password().touched() && loginForm.password().invalid()) {
       <p class="error">Password is required.</p>
