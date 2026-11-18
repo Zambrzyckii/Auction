@@ -37,7 +37,7 @@ main {
   }
 }
 
-body:has(app-welcome) .topbar {
+body:has(app-welcome, app-door-page) .topbar {
   display: none;
 }
 
