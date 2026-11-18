@@ -25,19 +25,19 @@
   background: var(--m-road);
 }
 
-@media (max-width: 1439px) {
+@media (width < 1440px) {
   .door {
     --strip-guess: 540px;
   }
 }
 
-@media (max-width: 1079px) {
+@media (width < 1080px) {
   .door {
     --strip-guess: 360px;
   }
 }
 
-@media (max-width: 759px) {
+@media (width < 760px) {
   .door {
     --strip-guess: 150px;
   }
@@ -103,7 +103,7 @@ app-door-scene {
   margin-top: calc(var(--u) * 10);
 }
 
-@media (max-width: 759px) {
+@media (width < 760px) {
   .content {
     grid-template-columns: minmax(0, 1fr);
     padding-inline: 12px;
