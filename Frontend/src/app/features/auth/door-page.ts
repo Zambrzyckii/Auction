@@ -9,6 +9,11 @@ const EYEBROWS: Record<DoorMode, string> = {
   register: 'New members',
 };
 
+const SHEET_LABELS: Record<DoorMode, string> = {
+  login: 'Log in',
+  register: 'Register',
+};
+
 @Component({
   selector: 'app-door-page',
   imports: [RouterLink, DoorScene],
@@ -22,5 +27,6 @@ export class DoorPage {
 
   readonly strip = signal<number | null>(null);
   readonly eyebrow = computed(() => EYEBROWS[this.mode()]);
+  readonly sheetLabel = computed(() => SHEET_LABELS[this.mode()]);
   readonly startingFunds = STARTING_FUNDS;
 }
