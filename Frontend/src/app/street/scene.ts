@@ -7,6 +7,7 @@ import type { Building, BuildingId } from './city';
 import { compose, CORE, CORE_X } from './city';
 import type { PersonSpec, CarKind } from './actors';
 import * as A from './actors';
+import { deviceScale, widthScale } from './street-fit';
 
 type Mode = 'smooth' | 'snap';
 type PartKind = 'coin' | 'spark';
@@ -598,24 +599,19 @@ class Scene {
       dpr = window.devicePixelRatio || 1;
     const cw = o.cssWidth ? o.cssWidth() : this.cv.parentElement!.clientWidth;
     const sw = o.scaleWidth ? o.scaleWidth() : cw;
-    let s = o.scale || 2;
-    if (!o.scale)
-      for (const k of [4, 3, 2])
-        if (sw / k >= 360) {
-          s = k;
-          break;
-        }
+    const s = o.scale || widthScale(sw);
+    const ds = deviceScale(s, dpr);
     const view = o.view || {};
     this.vw = o.fit
-      ? Math.max(40, Math.ceil(cw / s))
-      : view.w || Math.min(this.city.W, Math.max(Math.floor(cw / s), CORE + 8));
+      ? Math.max(40, Math.ceil((cw * dpr) / ds))
+      : view.w || Math.min(this.city.W, Math.max(Math.floor((cw * dpr) / ds), CORE + 8));
     this.vh = view.h || this.city.H;
     this.vy = view.y || 0;
     this.vx =
       view.x ??
       Math.max(0, Math.min(this.city.W - this.vw, Math.round(CORE_X + CORE / 2 - this.vw / 2)));
     this.s = s;
-    this.ds = Math.max(1, Math.round(s * dpr));
+    this.ds = ds;
     this.cv.width = this.vw * this.ds;
     this.cv.height = this.vh * this.ds;
     this.cv.style.width = (this.vw * this.ds) / dpr + 'px';
