@@ -349,9 +349,10 @@ function car(kind: CarKind, f = 0, left = false) {
   s.outline();
   const out = left ? s.flipX() : s;
   if (kind === 'van') {
-    const x0 = left ? X + 13 : X + 4;
-    text(out, 'JUNK', x0, OY + 2, R.red[1], 'micro', { alignTop: true });
-    text(out, 'HAULING', x0, OY + 8, R.red[1], 'micro', { alignTop: true });
+    const label = 'JUNK HAUL',
+      x0 = X + 2,
+      span = measure(label, 'micro') - 1;
+    text(out, label, left ? W + 2 - x0 - span : x0, OY + 3, R.red[1], 'micro', { alignTop: true });
   }
   return out;
 }
