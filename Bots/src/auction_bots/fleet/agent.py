@@ -95,6 +95,8 @@ class BotAgent:
         self._relogin = relogin
         self.open_bids: dict[UUID, OpenBid] = {}
         self.saga_latencies: list[float] = []
+        self.bids_placed = 0
+        self.topups_total = 0
         self._valuations: dict[UUID, Decimal] = {}
         self._wallet: Decimal | None = None
         self._last_topup: datetime | None = None
@@ -114,6 +116,10 @@ class BotAgent:
         if self._wallet is not None:
             return self._wallet
         return Decimal(self._persona.bankroll)
+
+    @property
+    def tracked_listings(self) -> int:
+        return len(self._tracked)
 
     async def react(self, change: MarketChange) -> None:
         if change.kind in ("finished", "cancelled"):
@@ -209,6 +215,7 @@ class BotAgent:
             self._gate.release(auction_id, None)
             log.warning("bid rejected", extra={"status": error.status, "bot": self._persona.index})
             return
+        self.bids_placed += 1
         self.open_bids[auction_id] = OpenBid(auction_id, amount, valuation, self._clock())
 
     def _forget(self, auction_id: UUID) -> None:
@@ -238,6 +245,7 @@ class BotAgent:
         await self._authorized(lambda token: self._api.add_funds(token, amount))
         self._last_topup = now
         self._wallet = target
+        self.topups_total += amount
 
     async def _relist(self) -> None:
         mine = await self._authorized(self._api.my_auctions)

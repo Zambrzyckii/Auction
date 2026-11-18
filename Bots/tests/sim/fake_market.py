@@ -1,12 +1,24 @@
+import base64
+import json
 import random
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from auction_bots.api.client import BadRequest, BidInProgress, Conflict, NotFound, Unauthorized
+from auction_bots.api.client import (
+    BadRequest,
+    BidInProgress,
+    Conflict,
+    EmailTaken,
+    NotFound,
+    Unauthorized,
+    UsernameTaken,
+)
 from auction_bots.api.models import (
     AuctionDto,
+    LoginResponse,
     ManifestItemDto,
     MyAuctionDto,
     Rarity,
@@ -136,6 +148,8 @@ class FakeMarket:
         self._duplicate_p = duplicate_p
         self._by_token: dict[str, _Account] = {}
         self._by_user: dict[UUID, _Account] = {}
+        self._by_email: dict[str, tuple[_Account, str]] = {}
+        self._usernames: set[str] = set()
         self._auctions: dict[UUID, _FakeAuction] = {}
         self._wars: dict[UUID, _FakeWar] = {}
         self.bids: list[BidRecord] = []
@@ -163,6 +177,35 @@ class FakeMarket:
         self._by_token[token] = account
         self._by_user[user_id] = account
         return token
+
+    def user_count(self) -> int:
+        return len(self._by_user)
+
+    async def provision_bot(self, api_key: str, body: Mapping[str, str]) -> UUID:
+        email = body["email"]
+        username = body["username"]
+        if email in self._by_email:
+            raise EmailTaken(409, "This email is taken")
+        if username in self._usernames:
+            raise UsernameTaken(409, "This username is taken")
+        user_id = uuid4()
+        token = self._register(user_id, 300)
+        self._by_email[email] = (self._by_token[token], body["password"])
+        self._usernames.add(username)
+        return user_id
+
+    async def login(self, email: str, password: str) -> LoginResponse:
+        entry = self._by_email.get(email)
+        if entry is None or entry[1] != password:
+            raise BadRequest(400, "invalid credentials")
+        account, _ = entry
+        expires = int((self._scheduler.now() + timedelta(hours=24)).timestamp())
+        claims = json.dumps({"nameid": str(account.user_id), "exp": expires}).encode()
+        payload = base64.urlsafe_b64encode(claims).rstrip(b"=").decode()
+        token = f"header.{payload}.signature"
+        account.token = token
+        self._by_token[token] = account
+        return LoginResponse(token=token)
 
     def _account(self, token: str) -> _Account:
         account = self._by_token.get(token)

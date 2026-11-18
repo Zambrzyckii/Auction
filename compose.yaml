@@ -311,6 +311,34 @@ services:
     depends_on:
       - api
 
+  bots:
+    build: ./Bots
+    profiles:
+      - bots
+    restart: unless-stopped
+    cpus: 1
+    mem_limit: 256m
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      BOTS_GATEWAY_URL: "http://gateway"
+      BOTS_AMQP_HOST: "rabbitmq"
+      BOTS_API_KEY_FILE: /run/secrets/bots_api_key
+      BOTS_AMQP_PASSWORD_FILE: /run/secrets/rabbitmq_password
+      BOTS_FLEET_SIZE: ${BOTS_FLEET_SIZE:-100}
+    secrets:
+      - bots_api_key
+      - rabbitmq_password
+    networks:
+      - edge
+      - data
+    depends_on:
+      gateway:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
 networks:
   edge:
     ipam:
