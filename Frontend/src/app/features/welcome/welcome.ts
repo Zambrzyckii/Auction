@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { StreetScene } from '../../street/street-scene';
-import type { BuildingId } from '../../street/city';
+import { StreetScene } from '../../pixel/street/street-scene';
+import type { BuildingId } from '../../pixel/street/city';
 import { HeightProbe } from './height-probe';
 import { WelcomePitch } from './welcome-pitch';
 import { BUILDING_LINKS, BUILDING_PATHS, STARTING_FUNDS } from './welcome-rules';

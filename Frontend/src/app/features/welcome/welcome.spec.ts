@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { StreetScene } from '../../street/street-scene';
+import { StreetScene } from '../../pixel/street/street-scene';
 import { Welcome } from './welcome';
 
 describe('Welcome', () => {
