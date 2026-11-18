@@ -6,6 +6,12 @@
   color-scheme: dark;
 }
 
+@media (max-width: 700px) {
+  :host {
+    --u: 2px;
+  }
+}
+
 .welcome {
   background: var(--m-night);
   color: var(--m-text);
