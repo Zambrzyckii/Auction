@@ -1,4 +1,4 @@
-import type { BuildingId } from '../../street/city';
+import type { BuildingId } from '../../pixel/street/city';
 
 export const STARTING_FUNDS = 300;
 

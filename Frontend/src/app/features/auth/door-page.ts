@@ -1,7 +1,7 @@
 import { Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DoorMode } from '../../street/door/door-rules';
-import { DoorScene } from '../../street/door/door-scene';
+import { DoorMode } from '../../pixel/street/door/door-rules';
+import { DoorScene } from '../../pixel/street/door/door-scene';
 import { STARTING_FUNDS } from '../welcome/welcome-rules';
 
 const EYEBROWS: Record<DoorMode, string> = {
