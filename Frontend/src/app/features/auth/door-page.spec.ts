@@ -72,7 +72,8 @@ describe('DoorPage', () => {
     const door = el().querySelector<HTMLElement>('.door')!;
     expect(door.style.getPropertyValue('--strip')).toBe('');
 
-    const scene = fixture.debugElement.query(By.directive(DoorScene)).componentInstance as DoorScene;
+    const scene = fixture.debugElement.query(By.directive(DoorScene))
+      .componentInstance as DoorScene;
     scene.strip.emit(150);
     fixture.detectChanges();
 

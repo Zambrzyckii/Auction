@@ -32,11 +32,20 @@
     <div class="pw">
       <label>
         Password
-        <input #password type="password" [formField]="registerForm.password" aria-describedby="register-password-hint" />
+        <input
+          #password
+          type="password"
+          [formField]="registerForm.password"
+          aria-describedby="register-password-hint"
+        />
       </label>
-      <button type="button" class="reveal" [appRevealPassword]="password" #reveal="revealPassword">{{ reveal.label() }}</button>
+      <button type="button" class="reveal" [appRevealPassword]="password" #reveal="revealPassword">
+        {{ reveal.label() }}
+      </button>
     </div>
-    <p class="hint" id="register-password-hint">Min 8 characters with a lowercase, an uppercase, a digit and a special character.</p>
+    <p class="hint" id="register-password-hint">
+      Min 8 characters with a lowercase, an uppercase, a digit and a special character.
+    </p>
     @if (registerForm.password().touched() && registerForm.password().invalid()) {
       <p class="error">
         Min 8 characters with a lowercase, an uppercase, a digit and a special character.
