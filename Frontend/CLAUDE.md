@@ -48,6 +48,9 @@ rules bind every change it makes.
   (`docs/en/DECISIONS.md:107` and `:132`).
 - Fonts and other new third-party assets are CC0, CC-BY or OFL only, self-hosted under `public/`
   and listed with source and licence in `CREDITS.md`.
+- `/welcome` shows no top bar, because the street's buildings are its navigation. `styles.scss`
+  hides the bar with `body:has(app-welcome) .topbar`, so renaming that selector or that class
+  brings the bar back.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
