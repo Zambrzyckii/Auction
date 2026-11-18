@@ -2,8 +2,8 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
-import { DoorMode } from '../../pixel/street/door/door-rules';
-import { DoorScene } from '../../pixel/street/door/door-scene';
+import { DoorMode } from '../street/door/door-rules';
+import { DoorScene } from '../street/door/door-scene';
 import { DoorPage } from './door-page';
 
 @Component({
