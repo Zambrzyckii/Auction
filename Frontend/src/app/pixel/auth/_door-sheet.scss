@@ -107,6 +107,7 @@ app-door-page {
     border: var(--u) solid var(--m-ink);
     border-radius: 0;
     padding: calc(var(--u) * 2) calc(var(--u) * 3);
+    height: calc(27px + var(--u) * 6);
     width: 100%;
     min-width: 0;
     margin: 0;
@@ -117,10 +118,6 @@ app-door-page {
       outline-offset: var(--u);
       background: var(--m-mark);
       box-shadow: none;
-    }
-
-    &[type='date'] {
-      min-height: calc(27px + var(--u) * 6);
     }
 
     &[type='date']::-webkit-calendar-picker-indicator {
