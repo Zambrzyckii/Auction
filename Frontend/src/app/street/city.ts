@@ -274,9 +274,9 @@ function tenement(): Building {
   for (const wx of [X + 5, X + 18, X + 31]) {
     box(s, wx, sf + 13, 10, 10, R.white);
     s.hline(wx, sf + 14, 10, R.white[1]);
-    disc(s, wx + 5, sf + 18.5, 3, R.glass[1]);
-    s.set(wx + 4, sf + 17, R.glass[3]);
-    s.set(wx + 5, sf + 17, R.glass[2]);
+    disc(s, wx + 5, sf + 18.5, 3, R.white[0]);
+    disc(s, wx + 5, sf + 18.5, 2, R.steel[3]);
+    s.set(wx + 4, sf + 17, R.white[3]);
   }
   reflect(s, X + 3, sf + 9, 40, 12, ['', '', '#c8e4d6', '#e8fbf1']);
   box(s, X + 48, sf + 8, 14, 17, R.steel);
