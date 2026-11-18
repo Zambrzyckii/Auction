@@ -1,22 +1,17 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { StreetScene } from '../../pixel/street/street-scene';
+import { Router } from '@angular/router';
 import type { BuildingId } from '../../pixel/street/city';
-import { HeightProbe } from './height-probe';
-import { WelcomePitch } from './welcome-pitch';
-import { STARTING_FUNDS } from '../../pixel/starting-funds';
+import { StreetPage } from '../../pixel/welcome/street-page';
 import { BUILDING_LINKS, BUILDING_PATHS } from './welcome-rules';
 
 @Component({
   selector: 'app-welcome',
-  imports: [RouterLink, StreetScene, WelcomePitch, HeightProbe],
+  imports: [StreetPage],
   templateUrl: './welcome.html',
-  styleUrl: './welcome.scss',
 })
 export class Welcome {
   private readonly router = inject(Router);
 
-  readonly startingFunds = STARTING_FUNDS;
   readonly links = BUILDING_LINKS;
   readonly paths = BUILDING_PATHS;
 
