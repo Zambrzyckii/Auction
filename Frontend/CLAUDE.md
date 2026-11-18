@@ -74,6 +74,9 @@ rules bind every change it makes.
   register forms from the global partial `src/app/pixel/auth/_door-sheet.scss`, with every rule
   under `app-door-page`. The street frame needs no such partial, because it renders the hidden
   building links itself from its `links` and `paths` inputs.
+- Firefox keeps a text field at least as tall as the normal line height of its font and ignores a
+  smaller `line-height`, so the door sheet inputs set `height: calc(27px + var(--u) * 6)`. Without
+  it every field grows by about 5 px in Firefox and /register scrolls at 1906x917.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
