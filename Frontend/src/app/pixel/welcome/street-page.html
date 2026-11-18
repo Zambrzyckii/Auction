@@ -1,0 +1,10 @@
+<section class="welcome" aria-label="Street">
+  <h2 class="sr">Everybody starts with ${{ startingFunds }}.</h2>
+  <app-street-scene (picked)="picked.emit($event)" [reserve]="probe.height()" />
+  <nav class="sr" aria-label="Street buildings">
+    @for (link of links(); track link.id) {
+      <a [routerLink]="paths()[link.id]">{{ link.name }}</a>
+    }
+  </nav>
+  <app-welcome-pitch appHeightProbe #probe="heightProbe" [startingFunds]="startingFunds" />
+</section>
