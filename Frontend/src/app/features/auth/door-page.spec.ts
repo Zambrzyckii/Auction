@@ -51,6 +51,7 @@ describe('DoorPage', () => {
 
   it('labels the login sheet', () => {
     expect(text('.eyebrow')).toBe('Members sign-in sheet');
+    expect(el().querySelector('section.sheet')?.getAttribute('aria-label')).toBe('Log in');
     expect(el().querySelector('.stamp')).toBeNull();
   });
 
@@ -59,6 +60,7 @@ describe('DoorPage', () => {
     fixture.detectChanges();
 
     expect(text('.eyebrow')).toBe('New members');
+    expect(el().querySelector('section.sheet')?.getAttribute('aria-label')).toBe('Register');
     expect(text('.stamp')).toBe('$300 to start');
   });
 
