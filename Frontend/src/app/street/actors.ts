@@ -88,9 +88,7 @@ function person(o: PersonSpec, frame = 0) {
   s.hline(hip - 1 + st[1], Y + 24, 3, shoe[2]);
   s.hline(hip - 1 + st[1], Y + 25, 4, shoe[1]);
   const handBack = walking ? [hip + Math.sign(st[1]) * 3, Y + 16 + bob] : [hip - 2, Y + 16];
-  if (o.pose === 'carry') arm(s, hip - 1, Y + 10 + bob, hip - 4, Y + 6 + bob, top[1], skin[1]);
-  else if (o.pose !== 'push')
-    arm(s, hip - 1, Y + 10 + bob, handBack[0], handBack[1], top[1], skin[1]);
+  if (o.pose !== 'push') arm(s, hip - 1, Y + 10 + bob, handBack[0], handBack[1], top[1], skin[1]);
   shape(
     s,
     (i, j) =>
@@ -143,10 +141,11 @@ function person(o: PersonSpec, frame = 0) {
   }
   switch (o.pose) {
     case 'carry':
-      box(s, hip - 10, Y + 2 + bob, 7, 5, R.black);
-      s.set(hip - 9, Y + 4 + bob, R.grey[3]);
-      s.set(hip - 5, Y + 4 + bob, R.grey[3]);
-      s.hline(hip - 8, Y + 1 + bob, 3, R.grey[1]);
+      box(s, hand[0] - 4, hand[1] + 2, 9, 5, R.grey);
+      for (const sx of [hand[0] - 3, hand[0] + 1]) {
+        s.rect(sx, hand[1] + 3, 3, 3, R.black[1]);
+        s.set(sx + 1, hand[1] + 4, R.grey[2]);
+      }
       break;
     case 'case':
       box(s, hand[0] - 2, hand[1] + 1, 6, 4, R.wood);
