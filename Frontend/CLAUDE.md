@@ -60,8 +60,8 @@ rules bind every change it makes.
   lets a canvas redraw its text in a fallback font. Each page switches `--u` to 2px up to 700 px
   in its own stylesheet, and the door pages also below 916 px of window height.
 - The welcome street fits the window height. `street/street-fit.ts` keeps the width scale and cuts
-  up to `MAX_SKY_ROWS` (14) sky rows above the billboard, and drops one scale only where the
-  640-column street still covers the window. The welcome page measures the pitch with
+  up to `MAX_SKY_ROWS` (14) sky rows above the billboard, and drops to a smaller scale only where
+  the 640-column street still covers the window. The welcome page measures the pitch with
   `appHeightProbe` and passes it to `<app-street-scene>` as `reserve`.
 - A wrapper component cannot style content projected into it, because emulated encapsulation
   scopes its styles to its own template. The door pages therefore style the projected login and
