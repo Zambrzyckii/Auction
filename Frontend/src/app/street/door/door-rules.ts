@@ -79,6 +79,7 @@ export function sceneScale(viewportWidth: number): number {
 
 export interface DoorLayout {
   scale: number;
+  k: number;
   stacked: boolean;
   cols: number;
   center: number;
@@ -91,12 +92,14 @@ function doorCenter(cols: number, stacked: boolean): number {
   return Math.floor(cols / 2);
 }
 
-export function doorLayout(viewportWidth: number, hostWidth: number): DoorLayout {
+export function doorLayout(viewportWidth: number, hostWidth: number, dpr = 1): DoorLayout {
   const scale = sceneScale(viewportWidth);
   const stacked = viewportWidth < STACKED_BREAKPOINT;
-  const cols = Math.ceil(hostWidth / scale);
+  const k = Math.max(1, Math.round(scale * dpr));
+  const cols = Math.ceil((hostWidth * dpr) / k);
   return {
     scale,
+    k,
     stacked,
     cols,
     center: doorCenter(cols, stacked),

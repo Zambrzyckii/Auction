@@ -116,12 +116,12 @@ export class DoorView implements DoorHandle {
     this.lastViewport = viewportWidth;
     this.lastDpr = dpr;
 
-    const layout = doorLayout(viewportWidth, hostWidth);
+    const layout = doorLayout(viewportWidth, hostWidth, dpr);
     const art = compose(layout.cols, layout.center, { bare: layout.stacked });
     this.layout = layout;
     this.placement = art.P;
     this.layers = { bg: art.bg.canvas(), glow: art.glow.canvas(), neon: art.neon.canvas() };
-    this.k = Math.max(1, Math.round(layout.scale * dpr));
+    this.k = layout.k;
     this.canvas.width = layout.cols * this.k;
     this.canvas.height = layout.rows * this.k;
     this.canvas.style.width = `${(layout.cols * this.k) / dpr}px`;
