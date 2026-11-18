@@ -42,7 +42,7 @@ services:
       retries: 15
 
   pgbackup:
-    image: prodrigestivill/postgres-backup-local:16-alpine
+    image: prodrigestivill/postgres-backup-local:18-alpine
     restart: unless-stopped
     cpus: 1
     mem_limit: 128m
