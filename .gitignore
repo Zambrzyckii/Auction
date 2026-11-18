@@ -8,3 +8,10 @@ Infrastructure/k6/results/
 Infrastructure/secrets/*
 !Infrastructure/secrets/gen-secrets.sh
 !Infrastructure/secrets/*.example
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

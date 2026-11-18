@@ -1,0 +1,150 @@
+[fleet]
+size = 100
+seed = 1990
+startup_ramp_s = 600
+
+[gateway]
+url = "http://gateway"
+
+[budget]
+rate_per_s = 45
+burst = 60
+login_interval_s = 1.2
+saga_rate_per_s = 0.5
+saga_burst = 5
+
+[amqp]
+host = "rabbitmq"
+port = 5672
+user = "auction"
+vhost = "/"
+exchange = "auctionserver.market"
+queue_prefix = "auctionserver.bots"
+message_ttl_ms = 120000
+queue_expires_ms = 900000
+prefetch = 50
+
+[secrets]
+api_key_file = "/run/secrets/bots_api_key"
+amqp_password_file = "/run/secrets/rabbitmq_password"
+
+[market]
+resync_interval_s = 60
+prune_after_s = 120
+
+[money]
+topup_fraction = 0.3
+topup_interval_s = 300
+wallet_wait_s = 120
+
+[listing]
+start_price_min = 0.3
+start_price_max = 0.8
+duration_min_m = 2
+duration_max_m = 15
+max_items = 20
+relist_discount = 0.8
+active_listings_min = 20
+active_listings_max = 30
+listing_rate_start = 6.0
+listing_rate_min = 1.0
+listing_rate_max = 10.0
+
+[listing.rarity_mix]
+Common = 60
+Rare = 30
+Epic = 9
+Legendary = 1
+
+[warehouses]
+list_poll_s = 3.0
+detail_poll_s = 1.0
+fill_within_s = 10.0
+third_bot_p = 0.5
+bot_war_target_min = 0.4
+bot_war_target_max = 0.9
+
+[director]
+interval_s = 60
+window = 50
+min_outcomes = 5
+target_margin = 0.15
+gain = 0.5
+dead_zone = 0.03
+generosity_start = 0.3
+saga_slow_p50_s = 12.0
+saga_fast_p50_s = 9.0
+
+[persona]
+reaction_delay_min_s = 2.0
+reaction_delay_max_s = 25.0
+tick_min_s = 20.0
+tick_max_s = 90.0
+activity_min = 0.3
+activity_max = 1.0
+yield_bias_min = -0.1
+yield_bias_max = 0.2
+max_open_bids_min = 1
+max_open_bids_max = 4
+max_listings_min = 1
+max_listings_max = 6
+birthday = 1975-01-01
+
+[archetypes.Flipper]
+share = 0.30
+multiplier_min = 0.55
+multiplier_max = 0.95
+bankroll_min = 2000
+bankroll_max = 20000
+step_min = 0.03
+step_max = 0.08
+
+[archetypes.Collector]
+share = 0.20
+multiplier_min = 0.9
+multiplier_max = 1.4
+bankroll_min = 5000
+bankroll_max = 50000
+step_min = 0.05
+step_max = 0.15
+
+[archetypes.Sniper]
+share = 0.15
+multiplier_min = 0.7
+multiplier_max = 1.1
+bankroll_min = 2000
+bankroll_max = 30000
+step_min = 0.0
+step_max = 0.0
+single_bid = true
+
+[archetypes.Whale]
+share = 0.05
+multiplier_min = 1.2
+multiplier_max = 2.0
+bankroll_min = 50000
+bankroll_max = 300000
+step_min = 0.10
+step_max = 0.40
+activity = 0.1
+
+[archetypes.Hawker]
+share = 0.25
+multiplier_min = 0.5
+multiplier_max = 0.8
+bankroll_min = 1000
+bankroll_max = 5000
+step_min = 0.02
+step_max = 0.05
+list_batch_min = 2
+list_batch_max = 6
+
+[archetypes.Tourist]
+share = 0.05
+multiplier_min = 0.4
+multiplier_max = 0.8
+bankroll_min = 300
+bankroll_max = 2000
+step_min = 0.01
+step_max = 0.05
+activity = 0.3
