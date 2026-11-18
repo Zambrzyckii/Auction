@@ -47,6 +47,10 @@ describe('bouncerFrame', () => {
       [0, 80, 239, 240, 1100, 2200, 6400].map((now) => bouncerFrame('idle', 0, now, false)),
     ).toEqual([2, 3, 4, 0, 1, 0, 2]);
   });
+  it('treats a clock that starts after the frame time as just started', () => {
+    expect(bouncerFrame('check', 1000, 998, false)).toBe(0);
+    expect(bouncerFrame('refuse', 1000, 998, false)).toBe(1);
+  });
   it('holds frame 0 under reduced motion', () => {
     expect(bouncerFrame('idle', 0, 80, true)).toBe(0);
     expect(bouncerFrame('check', 0, 380, true)).toBe(0);
