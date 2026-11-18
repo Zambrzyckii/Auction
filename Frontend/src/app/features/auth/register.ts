@@ -14,6 +14,8 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { RegisterData, Session } from '../../core/auth/session';
+import { DoorPage } from './door-page';
+import { RevealPassword } from './reveal-password';
 
 // mirrored from the backend RegisterCommandValidator
 const PASSWORD_REQUIREMENTS = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
@@ -28,7 +30,7 @@ export function isBirthdayBeforeToday(birthday: string): boolean {
 
 @Component({
   selector: 'app-register',
-  imports: [FormField, RouterLink],
+  imports: [FormField, RouterLink, DoorPage, RevealPassword],
   templateUrl: './register.html',
 })
 export class Register {

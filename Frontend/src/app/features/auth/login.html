@@ -1,22 +1,27 @@
-<h2>Log in</h2>
-<form (submit)="$event.preventDefault(); submitForm()">
-  <label>
-    Email
-    <input type="email" [formField]="loginForm.email" />
-  </label>
-  @if (loginForm.email().touched() && loginForm.email().invalid()) {
-    <p class="error">Enter a valid email.</p>
-  }
-  <label>
-    Password
-    <input type="password" [formField]="loginForm.password" />
-  </label>
-  @if (loginForm.password().touched() && loginForm.password().invalid()) {
-    <p class="error">Password is required.</p>
-  }
-  @if (error() !== null) {
-    <p class="error">{{ error() }}</p>
-  }
-  <button type="submit" [disabled]="pending()">Log in</button>
-</form>
-<p>No account yet? <a routerLink="/register">Register</a></p>
+<app-door-page mode="login" [pending]="pending()" [refused]="error() !== null">
+  <h2>Log in</h2>
+  <form novalidate (submit)="$event.preventDefault(); submitForm()">
+    <label>
+      Email
+      <input type="email" [formField]="loginForm.email" />
+    </label>
+    @if (loginForm.email().touched() && loginForm.email().invalid()) {
+      <p class="error">Enter a valid email.</p>
+    }
+    <div class="pw">
+      <label>
+        Password
+        <input #password type="password" [formField]="loginForm.password" />
+      </label>
+      <button type="button" class="reveal" [appRevealPassword]="password" #reveal="revealPassword">{{ reveal.label() }}</button>
+    </div>
+    @if (loginForm.password().touched() && loginForm.password().invalid()) {
+      <p class="error">Password is required.</p>
+    }
+    @if (error() !== null) {
+      <p class="error form-error">{{ error() }}</p>
+    }
+    <button type="submit" [disabled]="pending()">Log in</button>
+  </form>
+  <p>No account yet? <a routerLink="/register">Register</a></p>
+</app-door-page>

@@ -48,9 +48,21 @@ rules bind every change it makes.
   (`docs/en/DECISIONS.md:107` and `:132`).
 - Fonts and other new third-party assets are CC0, CC-BY or OFL only, self-hosted under `public/`
   and listed with source and licence in `CREDITS.md`.
-- `/welcome` shows no top bar, because the street's buildings are its navigation. `styles.scss`
-  hides the bar with `body:has(app-welcome) .topbar`, so renaming that selector or that class
+- `/welcome`, `/login` and `/register` show no top bar. The street's buildings are the navigation
+  and the door pages lead back to the street. `styles.scss` hides the bar with
+  `body:has(app-welcome, app-door-page) .topbar`, so renaming those selectors or that class
   brings the bar back.
+- The pixel fonts, the `--m-*` tokens and the default `--u: 3px` live in
+  `src/app/street/_street-theme.scss`, which `styles.scss` loads once. Components use the tokens
+  and declare no `@font-face`.
+- The global stylesheet holds no width or height media query. Chromium re-creates the `@font-face`
+  faces of a stylesheet whose viewport media query flips, which drops the loaded pixel fonts and
+  lets a canvas redraw its text in a fallback font. Each page switches `--u` to 2px up to 700 px
+  in its own stylesheet.
+- A wrapper component cannot style content projected into it, because emulated encapsulation
+  scopes its styles to its own template. The door pages therefore style the projected login and
+  register forms from the global partial `src/app/features/auth/_door-sheet.scss`, with every rule
+  under `app-door-page`.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
