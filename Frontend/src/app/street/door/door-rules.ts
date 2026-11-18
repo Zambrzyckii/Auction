@@ -51,11 +51,12 @@ export function bouncerFrame(
   reduced: boolean,
 ): number {
   if (reduced) return 0;
+  const elapsedMs = Math.max(0, nowMs - sinceMs);
   switch (state) {
     case 'check':
-      return Math.floor((nowMs - sinceMs) / CHECK_FRAME_MS) % 2;
+      return Math.floor(elapsedMs / CHECK_FRAME_MS) % 2;
     case 'refuse':
-      return refuseFrame(nowMs - sinceMs);
+      return refuseFrame(elapsedMs);
     case 'idle':
       return idleFrame(nowMs);
   }
