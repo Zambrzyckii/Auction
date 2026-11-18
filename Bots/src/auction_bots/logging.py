@@ -4,6 +4,15 @@ import sys
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
+RESERVED_ATTRIBUTES = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {
+    "message",
+    "asctime",
+}
+
+
+def _extra_of(record: logging.LogRecord) -> dict[str, object]:
+    return {key: value for key, value in record.__dict__.items() if key not in RESERVED_ATTRIBUTES}
+
 
 class RedactingFilter(logging.Filter):
     def __init__(self, secrets: Iterable[str]) -> None:
@@ -13,9 +22,8 @@ class RedactingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.msg = self._redact(record.getMessage())
         record.args = None
-        extra = getattr(record, "extra", None)
-        if isinstance(extra, dict):
-            record.extra = {key: self._redact_value(value) for key, value in extra.items()}
+        for key, value in _extra_of(record).items():
+            record.__dict__[key] = self._redact_value(value)
         return True
 
     def _redact(self, text: str) -> str:
@@ -37,8 +45,8 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "msg": record.getMessage(),
         }
-        extra = getattr(record, "extra", None)
-        if isinstance(extra, dict):
+        extra = _extra_of(record)
+        if extra:
             payload["extra"] = extra
         return json.dumps(payload, default=str)
 
