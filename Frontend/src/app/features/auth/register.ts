@@ -14,7 +14,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { RegisterData, Session } from '../../core/auth/session';
-import { DoorPage } from './door-page';
+import { DoorPage } from '../../pixel/auth/door-page';
 import { RevealPassword } from './reveal-password';
 
 // mirrored from the backend RegisterCommandValidator

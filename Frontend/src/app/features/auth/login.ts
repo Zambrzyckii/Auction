@@ -4,7 +4,7 @@ import { FormField, email, form, required, submit } from '@angular/forms/signals
 import { firstValueFrom } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { Session } from '../../core/auth/session';
-import { DoorPage } from './door-page';
+import { DoorPage } from '../../pixel/auth/door-page';
 import { RevealPassword } from './reveal-password';
 
 export function sanitizeReturnUrl(raw: string | null): string {

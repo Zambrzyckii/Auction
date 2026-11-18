@@ -1,8 +1,8 @@
 import { Component, computed, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DoorMode } from '../../pixel/street/door/door-rules';
-import { DoorScene } from '../../pixel/street/door/door-scene';
-import { STARTING_FUNDS } from '../../pixel/starting-funds';
+import { DoorMode } from '../street/door/door-rules';
+import { DoorScene } from '../street/door/door-scene';
+import { STARTING_FUNDS } from '../starting-funds';
 
 const EYEBROWS: Record<DoorMode, string> = {
   login: 'Members sign-in sheet',
