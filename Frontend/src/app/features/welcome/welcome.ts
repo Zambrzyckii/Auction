@@ -4,7 +4,8 @@ import { StreetScene } from '../../pixel/street/street-scene';
 import type { BuildingId } from '../../pixel/street/city';
 import { HeightProbe } from './height-probe';
 import { WelcomePitch } from './welcome-pitch';
-import { BUILDING_LINKS, BUILDING_PATHS, STARTING_FUNDS } from './welcome-rules';
+import { STARTING_FUNDS } from '../../pixel/starting-funds';
+import { BUILDING_LINKS, BUILDING_PATHS } from './welcome-rules';
 
 @Component({
   selector: 'app-welcome',
