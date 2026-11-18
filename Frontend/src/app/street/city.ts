@@ -1172,4 +1172,20 @@ function compose(turnover: number) {
 }
 
 export type { BuildingId, Building };
-export { compose, GROUND, H, WORLD, CORE, CORE_X, NEON, neonOverlay, neonText };
+export {
+  compose,
+  GROUND,
+  H,
+  WORLD,
+  CORE,
+  CORE_X,
+  NEON,
+  neonOverlay,
+  neonText,
+  brickWall,
+  streaks,
+  cornice,
+  win,
+  street,
+  trashCan,
+};
