@@ -1,7 +1,5 @@
 import type { BuildingId } from '../../pixel/street/city';
 
-export const STARTING_FUNDS = 300;
-
 export const BUILDING_PATHS: Readonly<Record<BuildingId, string>> = {
   room: '/inventory',
   auction: '/auctions',
