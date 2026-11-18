@@ -7,7 +7,7 @@ import type { Building, BuildingId } from './city';
 import { compose, CORE, CORE_X } from './city';
 import type { PersonSpec, CarKind } from './actors';
 import * as A from './actors';
-import { deviceScale, widthScale } from './street-fit';
+import { deviceScale, streetFit, widthScale } from './street-fit';
 
 type Mode = 'smooth' | 'snap';
 type PartKind = 'coin' | 'spark';
@@ -22,6 +22,7 @@ interface SceneOptions {
   mode?: Mode;
   scale?: number;
   fit?: boolean;
+  heightBudget?: () => number;
   view?: { x?: number; y?: number; w?: number; h?: number };
   demo?: boolean;
 }
@@ -599,14 +600,28 @@ class Scene {
       dpr = window.devicePixelRatio || 1;
     const cw = o.cssWidth ? o.cssWidth() : this.cv.parentElement!.clientWidth;
     const sw = o.scaleWidth ? o.scaleWidth() : cw;
-    const s = o.scale || widthScale(sw);
-    const ds = deviceScale(s, dpr);
     const view = o.view || {};
+    let s: number;
+    let skyRows = 0;
+    if (o.heightBudget) {
+      const fit = streetFit({
+        viewportWidth: sw,
+        heightBudget: o.heightBudget(),
+        dpr,
+        rows: this.city.H,
+        worldCols: this.city.W,
+      });
+      s = fit.scale;
+      skyRows = fit.skyRows;
+    } else {
+      s = o.scale || widthScale(sw);
+    }
+    const ds = deviceScale(s, dpr);
     this.vw = o.fit
       ? Math.max(40, Math.ceil((cw * dpr) / ds))
       : view.w || Math.min(this.city.W, Math.max(Math.floor((cw * dpr) / ds), CORE + 8));
-    this.vh = view.h || this.city.H;
-    this.vy = view.y || 0;
+    this.vh = view.h || this.city.H - skyRows;
+    this.vy = view.y || skyRows;
     this.vx =
       view.x ??
       Math.max(0, Math.min(this.city.W - this.vw, Math.round(CORE_X + CORE / 2 - this.vw / 2)));
