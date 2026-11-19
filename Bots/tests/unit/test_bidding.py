@@ -125,6 +125,15 @@ def test_first_bid_on_a_human_listing_is_at_least_official() -> None:
         assert decision.amount >= 1000
 
 
+def test_bot_that_cannot_reach_official_skips_a_fresh_human_listing() -> None:
+    auction = view(HUMAN, None, 300)
+    low_valuation = round(1000 / KNOBS.sell_bonus) - 50
+
+    for seed in range(100):
+        assert decide(auction, seed, valuation=low_valuation).action is BidAction.WAIT
+        assert decide(auction, seed, wallet=900).action is BidAction.WAIT
+
+
 def test_no_bot_bids_above_its_valuation_on_a_human_listing() -> None:
     premium_cap = round(900 * KNOBS.sell_bonus)
 
