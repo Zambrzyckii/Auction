@@ -49,29 +49,19 @@ class MarketSettings(BaseModel):
 class MoneySettings(BaseModel):
     topup_fraction: float
     topup_interval_s: float
-    wallet_wait_s: float
 
 
 class ListingSettings(BaseModel):
-    start_price_min: float
-    start_price_max: float
-    duration_min_m: float
-    duration_max_m: float
-    max_items: int
-    relist_discount: float
     active_listings_min: int
     active_listings_max: int
     listing_rate_start: float
     listing_rate_min: float
     listing_rate_max: float
-    rarity_mix: dict[str, float]
 
 
 class WarehouseSettings(BaseModel):
     list_poll_s: float
     detail_poll_s: float
-    fill_within_s: float
-    third_bot_p: float
     bot_war_target_min: float
     bot_war_target_max: float
 

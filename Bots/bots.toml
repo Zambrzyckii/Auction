@@ -35,32 +35,17 @@ prune_after_s = 120
 [money]
 topup_fraction = 0.3
 topup_interval_s = 300
-wallet_wait_s = 120
 
 [listing]
-start_price_min = 0.3
-start_price_max = 0.8
-duration_min_m = 2
-duration_max_m = 15
-max_items = 20
-relist_discount = 0.8
 active_listings_min = 20
 active_listings_max = 30
 listing_rate_start = 6.0
 listing_rate_min = 1.0
 listing_rate_max = 10.0
 
-[listing.rarity_mix]
-Common = 60
-Rare = 30
-Epic = 9
-Legendary = 1
-
 [warehouses]
 list_poll_s = 3.0
 detail_poll_s = 1.0
-fill_within_s = 10.0
-third_bot_p = 0.5
 bot_war_target_min = 0.4
 bot_war_target_max = 0.9
 
