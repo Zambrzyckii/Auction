@@ -1,0 +1,45 @@
+@use 'tools';
+
+@mixin panel {
+  background: var(--m-panel);
+  border: var(--u) solid var(--m-ink);
+  box-shadow: inset 0 var(--u) 0 var(--m-panel2);
+  padding: calc(var(--u) * 6);
+  display: grid;
+  gap: calc(var(--u) * 4);
+  min-width: 0;
+  @include tools.cut-corners;
+}
+
+@mixin row-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: calc(var(--u) * 2);
+
+  > li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--u) * 2) calc(var(--u) * 4);
+    padding: calc(var(--u) * 2) calc(var(--u) * 3);
+    background: var(--m-panel);
+    border: var(--u) solid var(--m-ink);
+    box-shadow: inset 0 var(--u) 0 var(--m-panel2);
+  }
+}
+
+@include tools.inside {
+  main section {
+    @include panel;
+  }
+
+  ul.friends,
+  ul.requests,
+  ul.social-links,
+  ul.upgrades,
+  section.invites ul {
+    @include row-list;
+  }
+}

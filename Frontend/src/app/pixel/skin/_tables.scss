@@ -1,0 +1,60 @@
+@use 'tools';
+
+@include tools.inside {
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font: 16px/24px var(--m-pixel);
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    border: 0;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  tr:not(:has(> td)) > th {
+    color: var(--m-mute);
+    text-transform: uppercase;
+    font-weight: 400;
+    padding: var(--u) calc(var(--u) * 2) calc(var(--u) * 2);
+    border-bottom: var(--u) solid var(--m-ink);
+  }
+
+  tr:has(> td) > th {
+    color: var(--m-mute);
+    text-transform: uppercase;
+    font-weight: 400;
+    padding: calc(var(--u) * 2);
+    border-bottom: var(--u) solid var(--m-panel2);
+    white-space: nowrap;
+    width: 1%;
+  }
+
+  td {
+    padding: calc(var(--u) * 2);
+    border-bottom: var(--u) solid var(--m-panel2);
+    overflow-wrap: anywhere;
+  }
+
+  table:has(> tr > th + td) td {
+    font: 27px/27px var(--m-head);
+  }
+
+  tr:hover td {
+    background: var(--m-panel2);
+  }
+
+  td .offer-problem,
+  td .repay-hint,
+  td .withdraw-problem {
+    display: block;
+    margin-top: var(--u);
+  }
+
+  main:has(table) {
+    overflow-x: auto;
+  }
+}
