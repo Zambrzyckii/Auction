@@ -20,6 +20,7 @@
       display: grid;
       gap: calc(var(--u) * 6);
       align-content: start;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     h1,
