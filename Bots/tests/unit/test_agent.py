@@ -418,3 +418,21 @@ async def test_concurrent_reactions_respect_max_open_bids() -> None:
     assert len(fleet_bids(h)) == 1
     stop.set()
     await task
+
+
+async def test_saga_latency_counts_from_the_confirmation_event() -> None:
+    h = harness(persona_of(reaction_delay_s=20.0))
+    seller = h.fake.register_human(ALICE, 10_000)
+    auction_id = await listed(h, seller)
+    reported: list[float] = []
+    h.agent._on_saga_latency = reported.append
+
+    first = asyncio.ensure_future(h.agent.react(MarketChange(auction_id, "activated")))
+    await run_for(h, 30.0)
+    confirm = asyncio.ensure_future(h.agent.react(MarketChange(auction_id, "bid")))
+    await run_for(h, 21.0)
+    await asyncio.gather(first, confirm)
+
+    assert h.agent.saga_latencies == reported
+    assert len(reported) == 1
+    assert 3.0 <= reported[0] <= 9.0

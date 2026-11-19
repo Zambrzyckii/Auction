@@ -176,6 +176,7 @@ async def run(
             asyncio.sleep,
             settings,
             relogin_for(index),
+            on_saga_latency=director.record_saga_latency,
         )
         agents[session.user_id] = agent
 

@@ -80,7 +80,10 @@ class BotAgent:
         sleep: Callable[[float], Awaitable[None]],
         settings: Settings,
         relogin: Callable[[], Awaitable[BotSession]],
+        *,
+        on_saga_latency: Callable[[float], None] | None = None,
     ) -> None:
+        self._on_saga_latency = on_saga_latency
         self._persona = persona
         self._session = session
         self._api = api
@@ -188,8 +191,12 @@ class BotAgent:
             if view.leader_id != me:
                 return
             open_bid.confirmed = True
-            self.saga_latencies.append((now - open_bid.placed_at).total_seconds())
-            self._gate.release(auction_id, now)
+            confirmed_at = view.last_confirmed_at or now
+            latency = (confirmed_at - open_bid.placed_at).total_seconds()
+            self.saga_latencies.append(latency)
+            if self._on_saga_latency is not None:
+                self._on_saga_latency(latency)
+            self._gate.release(auction_id, confirmed_at)
         elif open_bid is not None and view.leader_id != me:
             self.open_bids.pop(auction_id, None)
             await self._refresh_wallet()
