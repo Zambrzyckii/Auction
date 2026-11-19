@@ -119,6 +119,7 @@ def raise_step(
     human_raises: int = 1,
     cap: int = 1_000_000,
     target: int = 1_000_000,
+    humans_in_war: bool = False,
 ) -> int | None:
     return decide_raise(
         lobby,
@@ -129,6 +130,7 @@ def raise_step(
         random.Random(seed),
         cap=Decimal(cap),
         bot_war_target=Decimal(target),
+        humans_in_war=humans_in_war,
     )
 
 
@@ -204,3 +206,15 @@ def test_raise_uses_only_listed_increments() -> None:
 
         assert human_step is None or human_step in (10, 25, 50)
         assert bot_step is None or bot_step in (10, 25, 50)
+
+
+def test_no_raise_over_a_fleet_leader_while_humans_are_in_the_war() -> None:
+    lobby = details(current_price=40, entry_fee=1000)
+
+    for seed in range(200):
+        assert raise_step(lobby, seed, human_leads=False, humans_in_war=True) is None
+
+    raised = [
+        raise_step(lobby, seed, human_leads=False, humans_in_war=False) for seed in range(200)
+    ]
+    assert any(step is not None for step in raised)

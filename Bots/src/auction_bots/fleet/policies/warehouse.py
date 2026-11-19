@@ -71,8 +71,11 @@ def decide_raise(
     *,
     cap: Decimal,
     bot_war_target: Decimal,
+    humans_in_war: bool,
 ) -> int | None:
     if human_leads and rng.random() < p_yield(knobs, human_raises, persona.yield_bias):
+        return None
+    if humans_in_war and not human_leads:
         return None
     if not human_leads and war.current_price >= bot_war_target:
         return None

@@ -187,6 +187,7 @@ class WarehouseWatcher:
             self._rng,
             cap=cap,
             bot_war_target=war.bot_war_target,
+            humans_in_war=war.humans_seen,
         )
         if step is None:
             return
