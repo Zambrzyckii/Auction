@@ -22,6 +22,30 @@ Every change that claims a performance or reliability effect is measured with k6
 - `gateway-limits.js` runs four 20-second windows against the gateway (anonymous below and above its limit, with a token above its limit, login above its limit), and its thresholds assert that each window gets the 200s and 429s it should.
 - Thresholds, chosen from the first baseline with headroom: failure rate < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 9 s since 2026-11-07, when the hardening entry measured the pipeline's ceiling at ~8.5 s (< 8 s from 2026-11-01, when phase four priced in the 2 s bids TTL, and < 6 s before that). A threshold breach fails the run with exit code 99.
 
+## Market bots — 2026-11-19, commit `b3177e7`
+
+The bot fleet is a client of the stack, not a change to it, so this entry records what one hundred bots cost the gateway and the pipeline instead of a before-and-after pair. The numbers come from the fleet's own `fleet summary` lines, one a minute, not from k6, on a `down -v` fresh stack at the frozen limits with the `bots` service at its default of 100 and no k6 scenario running. The window is the ten minutes from 13:21 UTC, twenty minutes after the fleet's first login and four minutes after the live probe's resilience phase had restarted the broker and the api, so it catches the director working off the listings the hundred first ticks had created. Saga p50 is the median the fleet measures from its own bid request to the market event that confirms it.
+
+| Minute | Bids/min | Active auctions | Fleet listings tracked | Listing rate/min | Saga p50 |
+|---|---|---|---|---|---|
+| 1 | 25 | 46 | 49 | 2.37 | 7.29 s |
+| 2 | 21 | 45 | 46 | 1.78 | 7.29 s |
+| 3 | 9 | 42 | 44 | 1.33 | 7.29 s |
+| 4 | 5 | 39 | 41 | 1.00 | 7.29 s |
+| 5 | 4 | 33 | 36 | 1.00 | 7.30 s |
+| 6 | 5 | 24 | 31 | 1.00 | 7.30 s |
+| 7 | 6 | 20 | 24 | 1.00 | 7.30 s |
+| 8 | 9 | 17 | 20 | 1.25 | 7.29 s |
+| 9 | 4 | 14 | 16 | 1.56 | 7.29 s |
+| 10 | 1 | 12 | 14 | 1.95 | 7.29 s |
+
+- The gateway saw 3670 requests from the fleet in the window, 6.1 per second against the fleet's budget of 45 and the gateway's limit of 60, every one answered 200 or 201. No 429 reached the fleet in the window or since its first login, and the six 409s on its counter all predate the window.
+- The listing-rate column shows the director's liveness step. Active auctions started at 46, above the 20 to 30 band, so the rate fell by a quarter a minute to its floor of 1.0 and stayed there until the count dropped through the band, then rose by a quarter a minute from minute 8. A listing ends only when its 2 to 15 minute auction does, so the count overshot the band on the way down, the lag of a controller on a delayed plant and the reason the band is a band.
+- Bids follow listings. Bots bid on a fleet listing only until one of them stands one below the cap under the official price, so the bid rate is a few bids per new listing and fell with the listing rate from 25 a minute to 1. A human in the market raises it, because every human listing draws an opening bid at the official price within the reaction delays.
+- The saga median held at 7.29 to 7.30 s for the whole window, under the 12 s line at which `saga_rate_step` halves the saga bucket, so the bucket never moved. That is the pipeline the hardening entry measured, two polls and the bids TTL, seen from the client side.
+- The container used 47.5 MiB of its 256 MiB and 0.7 % CPU at the end of the window. The eight outboxes and the delivery table had zero dead rows before and after, with 10 and then 1 row in flight, and `auctionserver_outbox_dead_total` had no series at all, because a counter appears only on its first increment.
+- Through the probe's player the fleet paid 108 over the official price for one item and took 44 for an item capped at 63, the mercy rules on the live stack. Top-ups added 278 k to bot wallets in the window, the cost of bots buying from bots with wallets refilled through the bots API, listed in [bots.md](bots.md) as a known gap.
+
 ## Hardening — 2026-11-07, commit `d766780`
 
 Phase seven hardened the stack around an untouched pipeline: the api now runs non-root on a read-only filesystem, every authenticated write passes the host's per-user token-bucket limiter, and `pgbackup` idles next to postgres. This entry proves the hardening costs nothing on the HTTP path and records the visibility-lag tail honestly. Fresh `down -v && up -d --build --wait` at the frozen limits, the image checked against HEAD, three `mixed.js` runs — the usual pair plus a tiebreaker after the second run breached the threshold. HTTP stayed at 1.5-2.0 ms p95 with 0% failures out of ~2500 requests per run; `mixed.js` treats only 2xx, 400 and 409 as expected, so zero failures also proves the limiter invisible to legitimate load (ten bidders share ~4 bids/s, far under the 5 tokens/s refill of one user's hot-write bucket). All eight outboxes and the delivery table ended every run with zero pending and zero dead rows.

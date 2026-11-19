@@ -130,9 +130,16 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-11-15 | The client renews the JWT a minute before its `exp` and at startup, never retries a request after a 401, lets tabs take turns through `navigator.locks` and adopt each other's pair through the `storage` event, and keeps the running push stream across a rotation | owner | the POSTs are not idempotent, so a retry could repeat a write. A browser built-in needs no package, one rotation per browser avoids false reuse alarms, and the old stream runs to its `exp` and reconnects with the new token |
 | 2026-11-17 | The UI/UX pass no longer waits for the AI market bots. It runs on branch `ui-ux` while the bots continue on `main`, and the owner alternates between the two | owner | the frontend logic is finished, the look needs many short iterative sessions, and a separate branch keeps those sessions from conflicting with the bots work |
 | 2026-11-17 | Any technology or package that gives a better pixel-art result is allowed for the UI/UX pass, each one named with its reason when it is added. For the UI/UX pass this replaces the plain-SCSS rule and the per-package consent of 2026-11-08 | owner | the target look is pixel art at the quality of real battle sprites with smooth animation, which plain SCSS alone may not reach, and the reason recorded with each package keeps the dependency list reviewable |
+| 2026-11-18 | Market bots are scripted personas with mercy rules and one generosity knob steered by a director from the players' real margins, not a learned model | owner | no training data, and a reward for winning breeds a bot that always beats the player; see ADR-018 |
+| 2026-11-18 | One process for the whole fleet as the Compose service `bots` behind an opt-in profile, on the `edge` and `data` networks, through the gateway with one client-side budget under 60 requests per second and one RabbitMQ queue | owner | a hundred containers and direct calls to `api:8080` were rejected, the latter bypasses the gateway; see ADR-018 |
+| 2026-11-18 | Python packages are allowed when they clearly help: `aio-pika`, `httpx`, `pydantic`, `pytest`, `pytest-asyncio`, `testcontainers` and `ruff`, every further one named in the chat with its reason | owner | rationale not recorded |
+| 2026-11-18 | The bots change nothing in the backend: no nginx bot zone, no bot token revocation, and no calls to the casino, the bank, the pawnshop, transfers or profiles | owner | a client-side budget of 45 requests per second suffices for a hundred bots |
+| 2026-11-18 | Bot identities derive from the API key, so rotating the key with `gen-secrets.sh` creates a new fleet with a new fingerprint in the emails and leaves the old accounts dead | owner | stateless provisioning without a registry file |
+| 2026-11-18 | The documented drift between docs and code (10 s raise windows, the `BidInProgressException` row, the `BidPlacedEvent` publisher, the minted warehouse and pawnshop prices) is fixed together with the bots | owner | the code wins over the docs |
+| 2026-11-18 | The broker test on Testcontainers runs in CI, the live probe does not | owner | the runner has Docker but no Compose stack |
 
 ## Related documents
 
-- [adr/](adr) - the seventeen architecture decision records.
+- [adr/](adr) - the eighteen architecture decision records.
 - [CHANGELOG.md](CHANGELOG.md) - the milestones these decisions belong to.
 - [CONVENTIONS.md](CONVENTIONS.md) - the rules that follow from them.

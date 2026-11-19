@@ -130,9 +130,16 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-11-15 | Klient odnawia JWT minutę przed jego `exp` i na starcie, nigdy nie powtarza żądania po 401, pozwala kartom wymieniać się przez `navigator.locks` i przejmować nawzajem parę przez zdarzenie `storage`, a biegnący strumień push zachowuje przez rotację | właściciel | POST-y nie są idempotentne, więc ponowienie mogłoby powtórzyć zapis. Wbudowane API przeglądarki nie wymaga paczki, jedna rotacja na przeglądarkę unika fałszywych alarmów ponownego użycia, a stary strumień dobiega do swojego `exp` i wraca z nowym tokenem |
 | 2026-11-17 | Przejście UI/UX nie czeka już na boty rynkowe AI. Biegnie na gałęzi `ui-ux`, podczas gdy boty idą dalej na `main`, a właściciel przełącza się między nimi | właściciel | logika frontu jest skończona, wygląd wymaga wielu krótkich iteracyjnych sesji, a osobna gałąź chroni te sesje przed konfliktami z pracą nad botami |
 | 2026-11-17 | W przejściu UI/UX dozwolona jest każda technologia i paczka, która daje lepszy efekt pixel artu, każda nazwana z powodem przy dodaniu. Dla przejścia UI/UX zastępuje to regułę czystego SCSS i zgodę na każdą paczkę z 2026-11-08 | właściciel | docelowy wygląd to pixel art na poziomie prawdziwych sprite'ów bitewnych z płynną animacją, czego sam czysty SCSS może nie udźwignąć, a powód zapisany przy każdej paczce utrzymuje listę zależności do przejrzenia |
+| 2026-11-18 | Boty rynkowe to skryptowe persony z regułami litości i jedną gałką hojności sterowaną przez dyrektora z realnych marż graczy, nie model uczony | właściciel | brak danych treningowych, a nagroda za wygrywanie hoduje bota, który zawsze bije gracza; zobacz ADR-018 |
+| 2026-11-18 | Jeden proces dla całej floty jako usługa Compose `bots` za profilem opt-in, w sieciach `edge` i `data`, przez gateway z jednym budżetem po stronie klienta poniżej 60 żądań na sekundę i jedną kolejką RabbitMQ | właściciel | sto kontenerów i bezpośrednie wołania `api:8080` odrzucone, to drugie omija gateway; zobacz ADR-018 |
+| 2026-11-18 | Paczki Pythona są dozwolone, gdy wyraźnie pomagają: `aio-pika`, `httpx`, `pydantic`, `pytest`, `pytest-asyncio`, `testcontainers` i `ruff`, każda kolejna nazwana w czacie z powodem | właściciel | uzasadnienie nie zostało zapisane |
+| 2026-11-18 | Boty nie zmieniają niczego w backendzie: bez strefy botów w nginx, bez unieważniania tokenu bota i bez wołań kasyna, banku, lombardu, przelewów ani profili | właściciel | budżet 45 żądań na sekundę po stronie klienta wystarcza stu botom |
+| 2026-11-18 | Tożsamości botów pochodzą z klucza API, więc rotacja klucza przez `gen-secrets.sh` tworzy nową flotę z nowym odciskiem w adresach e-mail i zostawia stare konta martwe | właściciel | bezstanowy provisioning bez pliku rejestru |
+| 2026-11-18 | Udokumentowany rozjazd docs kontra kod (okna podbić 10 s, wiersz `BidInProgressException`, wydawca `BidPlacedEvent`, mintowane ceny z magazynu i lombardu) jest naprawiany razem z botami | właściciel | kod wygrywa z dokumentacją |
+| 2026-11-18 | Test brokera na Testcontainers biegnie w CI, sonda na żywo nie | właściciel | runner ma Dockera, ale nie stack Compose |
 
 ## Powiązane dokumenty
 
-- [adr/](adr) - siedemnaście rekordów decyzji architektonicznych.
+- [adr/](adr) - osiemnaście rekordów decyzji architektonicznych.
 - [CHANGELOG.md](CHANGELOG.md) - kamienie milowe, do których należą te decyzje.
 - [CONVENTIONS.md](CONVENTIONS.md) - reguły, które z nich wynikają.

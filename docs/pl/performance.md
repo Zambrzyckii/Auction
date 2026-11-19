@@ -22,6 +22,30 @@ Każda zmiana obiecująca efekt wydajnościowy albo niezawodnościowy jest mierz
 - `gateway-limits.js` uruchamia cztery 20-sekundowe okna na gatewayu (anonimowo poniżej i powyżej limitu, z tokenem powyżej limitu, logowanie powyżej limitu), a jego progi sprawdzają, że każde okno dostaje takie 200 i 429, jakie powinno.
 - Progi, dobrane z pierwszego baseline z zapasem: odsetek błędów < 1% (bid-storm < 6%), HTTP p95 < 67 ms, `visibility_lag` p95 < 9 s od 2026-11-07, kiedy wpis o hardeningu zmierzył sufit potoku na ~8,5 s (< 8 s od 2026-11-01, kiedy faza czwarta wliczyła 2 s TTL bidów, a < 6 s wcześniej). Pęknięty próg failuje przebieg kodem wyjścia 99.
 
+## Boty rynkowe — 2026-11-19, commit `b3177e7`
+
+Flota botów jest klientem stacku, nie zmianą w nim, więc ten wpis zapisuje, ile stu botów kosztuje gateway i potok, zamiast pary przed i po. Liczby pochodzą z własnych linii `fleet summary` floty, jednej na minutę, nie z k6, na świeżym stacku po `down -v` przy zamrożonych limitach, z usługą `bots` na domyślnych 100 i bez żadnego scenariusza k6. Okno to dziesięć minut od 13:21 UTC, dwadzieścia minut po pierwszym logowaniu floty i cztery minuty po tym, jak faza odporności sondy na żywo zrestartowała brokera i api, więc łapie dyrektora, który rozładowuje wystawienia stworzone przez sto pierwszych ticków. Saga p50 to mediana, którą flota mierzy od własnego żądania licytacji do zdarzenia rynkowego, które je potwierdza.
+
+| Minuta | Licytacje/min | Aktywne aukcje | Śledzone wystawienia floty | Tempo wystawiania/min | Saga p50 |
+|---|---|---|---|---|---|
+| 1 | 25 | 46 | 49 | 2,37 | 7,29 s |
+| 2 | 21 | 45 | 46 | 1,78 | 7,29 s |
+| 3 | 9 | 42 | 44 | 1,33 | 7,29 s |
+| 4 | 5 | 39 | 41 | 1,00 | 7,29 s |
+| 5 | 4 | 33 | 36 | 1,00 | 7,30 s |
+| 6 | 5 | 24 | 31 | 1,00 | 7,30 s |
+| 7 | 6 | 20 | 24 | 1,00 | 7,30 s |
+| 8 | 9 | 17 | 20 | 1,25 | 7,29 s |
+| 9 | 4 | 14 | 16 | 1,56 | 7,29 s |
+| 10 | 1 | 12 | 14 | 1,95 | 7,29 s |
+
+- Gateway zobaczył w oknie 3670 żądań floty, 6,1 na sekundę wobec budżetu floty 45 i limitu gatewaya 60, każde z odpowiedzią 200 albo 201. Żadne 429 nie dotarło do floty ani w oknie, ani od jej pierwszego logowania, a sześć 409 na jej liczniku pochodzi sprzed okna.
+- Kolumna tempa wystawiania pokazuje krok żywotności dyrektora. Aktywne aukcje zaczęły od 46, powyżej pasma 20 do 30, więc tempo spadało o ćwierć na minutę do podłogi 1,0 i trzymało się jej, aż liczba przeszła przez pasmo, a od ósmej minuty rosło o ćwierć na minutę. Wystawienie kończy się dopiero z aukcją trwającą 2 do 15 minut, więc liczba przestrzeliła pasmo w drodze w dół, co jest opóźnieniem regulatora na obiekcie z opóźnieniem i powodem, dla którego pasmo jest pasmem.
+- Licytacje podążają za wystawieniami. Boty licytują wystawienie floty tylko dopóty, dopóki jedno z nich nie stanie jeden poniżej sufitu pod ceną oficjalną, więc tempo licytacji to kilka licytacji na nowe wystawienie i spadło razem z tempem wystawiania z 25 na minutę do 1. Człowiek na rynku je podnosi, bo każde ludzkie wystawienie ściąga otwierającą licytację po cenie oficjalnej w czasie opóźnień reakcji.
+- Mediana sagi trzymała się 7,29 do 7,30 s przez całe okno, poniżej linii 12 s, przy której `saga_rate_step` zmniejsza kubełek sag o połowę, więc kubełek się nie ruszył. To ten sam potok, który zmierzył wpis o hardeningu, dwa odpytania i TTL licytacji, widziany od strony klienta.
+- Kontener zużywał na koniec okna 47,5 MiB z 256 MiB i 0,7 % CPU. Osiem outboxów i tabela dostaw miały zero martwych wierszy przed i po, z 10, a potem 1 wierszem w locie, a `auctionserver_outbox_dead_total` nie miał żadnej serii, bo licznik pojawia się dopiero przy pierwszym zwiększeniu.
+- Przez gracza sondy flota zapłaciła 108 ponad cenę oficjalną za jeden przedmiot i wzięła 44 za przedmiot z sufitem 63, czyli reguły łaski na żywym stacku. Doładowania dodały w oknie 278 tys. do portfeli botów, koszt botów kupujących od botów z portfelami uzupełnianymi przez API botów, wymieniony w [bots.md](bots.md) jako znana luka.
+
 ## Hardening — 2026-11-07, commit `d766780`
 
 Faza siódma utwardziła stack wokół nietkniętego potoku: api działa odtąd nierootowo na systemie plików tylko do odczytu, każdy uwierzytelniony zapis przechodzi przez limiter token bucket per użytkownik w hoście, a `pgbackup` czuwa obok postgresa. Ten wpis dowodzi, że hardening nie kosztuje nic na ścieżce HTTP, i uczciwie zapisuje ogon visibility lag. Świeży `down -v && up -d --build --wait` na zamrożonych limitach, obraz sprawdzony względem HEAD, trzy przebiegi `mixed.js` — zwykła para plus dogrywka po tym, jak drugi przebieg pękł progiem. HTTP utrzymało 1,5-2,0 ms p95 z 0% błędów na ~2500 żądań na przebieg; `mixed.js` traktuje jako oczekiwane tylko 2xx, 400 i 409, więc zero błędów dowodzi zarazem, że limiter jest niewidzialny dla uczciwego ruchu (dziesięciu licytantów dzieli ~4 bidy/s, daleko poniżej 5 tokenów/s uzupełniania kubełka gorących zapisów jednego użytkownika). Osiem outboxów i tabela doręczeń skończyły każdy przebieg z zerem oczekujących i zerem martwych wierszy.
