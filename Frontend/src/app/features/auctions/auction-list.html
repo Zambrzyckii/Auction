@@ -19,10 +19,18 @@
       </tr>
       @for (auction of auctions; track auction.publicAuctionId) {
         <tr>
-          <td>{{ auction.itemName }}</td>
-          <td>{{ auction.itemRarity }}</td>
+          <td class="lot">
+            <app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+              auction.itemName
+            }}
+          </td>
+          <td>
+            <span class="rarity" [attr.data-rarity]="auction.itemRarity">{{
+              auction.itemRarity
+            }}</span>
+          </td>
           <td>{{ auction.currentPrice | number }}</td>
-          <td>{{ timeLeft(auction.endsOn) }}</td>
+          <td><app-countdown [endsOn]="auction.endsOn" [format]="timeLeft" /></td>
           <td><a [routerLink]="['/auctions', auction.publicAuctionId]">View</a></td>
         </tr>
       }

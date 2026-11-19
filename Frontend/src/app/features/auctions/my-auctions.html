@@ -18,10 +18,14 @@
         </tr>
         @for (auction of groups().running; track auction.publicAuctionId) {
           <tr>
-            <td>{{ auction.itemName }}</td>
+            <td class="lot">
+              <app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+                auction.itemName
+              }}
+            </td>
             <td>{{ auction.status }}</td>
             <td>{{ auction.currentPrice | number }}</td>
-            <td>{{ timeLeft(auction.endsOn) }}</td>
+            <td><app-countdown [endsOn]="auction.endsOn" [format]="timeLeft" /></td>
             <td><a [routerLink]="['/auctions', auction.publicAuctionId]">View</a></td>
           </tr>
         }
@@ -41,7 +45,11 @@
         </tr>
         @for (auction of groups().finished; track auction.publicAuctionId) {
           <tr>
-            <td>{{ auction.itemName }}</td>
+            <td class="lot">
+              <app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+                auction.itemName
+              }}
+            </td>
             <td>{{ auction.status }}</td>
             <td>{{ auction.currentPrice | number }}</td>
             <td>{{ auction.cancellationReason }}</td>

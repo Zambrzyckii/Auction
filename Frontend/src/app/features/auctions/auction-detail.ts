@@ -11,6 +11,8 @@ import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
 import { AUCTION_SETTLE_MS } from '../../core/push/push-topics';
 import { idMatches, refreshOn } from '../../core/push/refresh-on';
+import { Countdown } from '../../pixel/items/countdown';
+import { ItemTile } from '../../pixel/items/item-tile';
 import { isBidConfirmed } from './auction-rules';
 
 const POLL_MS = 2500;
@@ -18,7 +20,7 @@ const CONFIRM_WAIT_MS = 20_000;
 
 @Component({
   selector: 'app-auction-detail',
-  imports: [DatePipe, DecimalPipe, RouterLink],
+  imports: [DatePipe, DecimalPipe, RouterLink, ItemTile, Countdown],
   templateUrl: './auction-detail.html',
 })
 export class AuctionDetail {
