@@ -126,12 +126,15 @@ def test_first_bid_on_a_human_listing_is_at_least_official() -> None:
 
 
 def test_bot_below_its_value_still_opens_a_human_listing_at_official() -> None:
-    auction = view(HUMAN, None, 300)
-    low_valuation = round(1000 / KNOBS.sell_bonus) - 50
+    below = view(HUMAN, None, 300)
+    at_official = view(HUMAN, None, 1000)
+    low = round(1000 / KNOBS.sell_bonus) - 50
 
     for seed in range(100):
-        assert decide(auction, seed, valuation=low_valuation) == BidDecision(BidAction.BID, 1000)
-        assert decide(auction, seed, wallet=900).action is BidAction.WAIT
+        assert decide(below, seed, valuation=low) == BidDecision(BidAction.BID, 1000)
+        assert decide(at_official, seed, valuation=low) == BidDecision(BidAction.BID, 1001)
+        assert decide(below, seed, wallet=900).action is BidAction.WAIT
+        assert decide(at_official, seed, wallet=1000).action is BidAction.WAIT
 
 
 def test_no_bot_bids_above_its_valuation_on_a_human_listing() -> None:
