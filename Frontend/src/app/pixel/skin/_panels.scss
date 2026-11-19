@@ -7,8 +7,13 @@
   padding: calc(var(--u) * 6);
   display: grid;
   gap: calc(var(--u) * 4);
+  grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   @include tools.cut-corners;
+
+  &:has(table) {
+    overflow-x: auto;
+  }
 }
 
 @mixin row-list {

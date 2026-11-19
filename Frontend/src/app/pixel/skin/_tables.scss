@@ -15,18 +15,18 @@
     vertical-align: top;
   }
 
-  tr:not(:has(> td)) > th {
+  th {
     color: var(--m-mute);
     text-transform: uppercase;
     font-weight: 400;
+  }
+
+  tr:not(:has(> td)) > th {
     padding: var(--u) calc(var(--u) * 2) calc(var(--u) * 2);
     border-bottom: var(--u) solid var(--m-ink);
   }
 
   tr:has(> td) > th {
-    color: var(--m-mute);
-    text-transform: uppercase;
-    font-weight: 400;
     padding: calc(var(--u) * 2);
     border-bottom: var(--u) solid var(--m-panel2);
     white-space: nowrap;
@@ -41,9 +41,10 @@
 
   table:has(> tr > th + td) td {
     font: 27px/27px var(--m-head);
+    font-variant-numeric: tabular-nums;
   }
 
-  tr:hover td {
+  tr:hover > * {
     background: var(--m-panel2);
   }
 
