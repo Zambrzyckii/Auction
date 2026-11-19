@@ -1,4 +1,15 @@
-import { INK, R, Sprite, bayer, box, rand, shape, sphere, srand } from '../../street/pix';
+import {
+  INK,
+  R,
+  Sprite,
+  bayer,
+  box,
+  rand,
+  shape,
+  sphere,
+  srand,
+  type Ramp,
+} from '../../street/pix';
 import type { Rarity } from '../rarity';
 import { accentOf, cylTone, ell, poly } from './helpers';
 
@@ -136,6 +147,8 @@ export function pawnedGood(rarity: Rarity): Sprite {
   return s.outline();
 }
 
+const WRENCH_TONES = [0, 0, 2, 3] as const;
+
 export function craftedItem(rarity: Rarity): Sprite {
   const s = new Sprite(32, 32);
   const acc = accentOf(rarity);
@@ -145,7 +158,7 @@ export function craftedItem(rarity: Rarity): Sprite {
     ro: number,
     rb: number,
     teeth: number,
-    ramp: typeof acc,
+    ramp: Ramp,
     hole: number,
     groove: boolean,
   ) => {
@@ -181,8 +194,7 @@ export function craftedItem(rarity: Rarity): Sprite {
       const v = (i + j - 34) / 1.414;
       if (Math.abs(u) > 9 || Math.abs(v) > 2.4) continue;
       if (Math.abs(u) > 7.5 && (i + j) % 2 === 0) continue;
-      const tone = cylTone((v + 2.4) / 4.8);
-      s.set(i, j, R.white[tone === 1 ? 0 : tone]);
+      s.set(i, j, R.white[WRENCH_TONES[cylTone((v + 2.4) / 4.8)]]);
     }
   for (const [x, y] of [
     [15, 14],
@@ -200,20 +212,20 @@ export function rustyToolbox(): Sprite {
   const s = new Sprite(32, 32);
   for (let i = 0; i < 9; i++) {
     const t = (i / 8) * Math.PI;
-    s.set(Math.round(16 - Math.cos(t) * 5), Math.round(10 - Math.sin(t) * 5), R.grey[3]);
-    s.set(Math.round(16 - Math.cos(t) * 5), Math.round(11 - Math.sin(t) * 5), R.grey[1]);
+    s.set(Math.round(16 - Math.cos(t) * 5), Math.round(11 - Math.sin(t) * 5), R.grey[3]);
+    s.set(Math.round(16 - Math.cos(t) * 5), Math.round(12 - Math.sin(t) * 5), R.grey[1]);
   }
-  box(s, 3, 10, 26, 4, R.red);
-  box(s, 3, 14, 26, 13, R.red, { band: 2 });
-  s.hline(3, 14, 26, R.red[0]);
-  box(s, 14, 13, 4, 3, R.grey);
+  box(s, 3, 11, 26, 4, R.red);
+  box(s, 3, 15, 26, 13, R.red, { band: 2 });
+  s.hline(3, 15, 26, R.red[0]);
+  box(s, 14, 14, 4, 3, R.grey);
   for (let k = 0; k < 70; k++) {
     const x = 4 + Math.floor(rand() * 24);
     const y = 11 + Math.floor(rand() * 15);
-    if (bayer(x, y) < 0.45 && (x < 12 || y > 20)) s.set(x, y, R.rust[rand() < 0.5 ? 1 : 2]);
+    if (bayer(x, y) < 0.45 && (x < 12 || y > 20)) s.set(x, y + 1, R.rust[rand() < 0.5 ? 1 : 2]);
   }
-  s.set(22, 18, R.red[1]);
-  s.set(23, 18, R.red[3]);
+  s.set(22, 19, R.red[1]);
+  s.set(23, 19, R.red[3]);
   return s.outline();
 }
 
