@@ -1,0 +1,22 @@
+@mixin cut-corners {
+  clip-path: polygon(
+    0 var(--u),
+    var(--u) var(--u),
+    var(--u) 0,
+    calc(100% - var(--u)) 0,
+    calc(100% - var(--u)) var(--u),
+    100% var(--u),
+    100% calc(100% - var(--u)),
+    calc(100% - var(--u)) calc(100% - var(--u)),
+    calc(100% - var(--u)) 100%,
+    var(--u) 100%,
+    var(--u) calc(100% - var(--u)),
+    0 calc(100% - var(--u))
+  );
+}
+
+@mixin inside {
+  body:not(:has(app-welcome, app-door-page)) {
+    @content;
+  }
+}
