@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
 START = datetime(2026, 11, 18, 12, 0, tzinfo=UTC)
+DRAIN_MAX_CYCLES = 50
 
 Callback = Callable[[], Awaitable[None] | None]
 
@@ -48,5 +49,8 @@ class Scheduler:
         await self._drain()
 
     async def _drain(self) -> None:
-        for _ in range(10):
+        ready = getattr(asyncio.get_running_loop(), "_ready", None)
+        for _ in range(DRAIN_MAX_CYCLES):
             await asyncio.sleep(0)
+            if ready is not None and not ready:
+                return

@@ -1,6 +1,7 @@
 import base64
 import json
 import random
+from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -62,6 +63,7 @@ class BidRecord:
     user_id: UUID
     amount: int
     placed_at: datetime
+    leader_before: UUID | None = None
 
 
 @dataclass
@@ -151,6 +153,7 @@ class FakeMarket:
         self._by_email: dict[str, tuple[_Account, str]] = {}
         self._usernames: set[str] = set()
         self._auctions: dict[UUID, _FakeAuction] = {}
+        self._by_seller: dict[UUID, list[_FakeAuction]] = defaultdict(list)
         self._wars: dict[UUID, _FakeWar] = {}
         self.bids: list[BidRecord] = []
         self.raises: list[RaiseRecord] = []
@@ -281,6 +284,7 @@ class FakeMarket:
             created_on=self._scheduler.now(),
         )
         self._auctions[auction.auction_id] = auction
+        self._by_seller[account.user_id].append(auction)
         delay = self._rng.uniform(*ACTIVATION_DELAY_S)
         when = self._scheduler.now() + timedelta(seconds=delay)
         self._scheduler.call_at(when, lambda: self._activate(auction))
@@ -299,8 +303,7 @@ class FakeMarket:
 
     async def my_auctions(self, token: str) -> list[MyAuctionDto]:
         account = self._account(token)
-        mine = [a for a in self._auctions.values() if a.seller == account.user_id]
-        mine.sort(key=lambda a: a.created_on)
+        mine = sorted(self._by_seller[account.user_id], key=lambda a: a.created_on)
         return [
             MyAuctionDto(**self._dto(a).model_dump(by_alias=True), created_on=a.created_on)
             for a in mine
@@ -320,7 +323,9 @@ class FakeMarket:
         if Decimal(amount) <= auction.current:
             self._fail(account, BadRequest(400, "bid must be above the current price"))
         auction.pending = (account.user_id, amount)
-        self.bids.append(BidRecord(auction_id, account.user_id, amount, self._scheduler.now()))
+        self.bids.append(
+            BidRecord(auction_id, account.user_id, amount, self._scheduler.now(), auction.leader)
+        )
         delay = self._rng.uniform(*SAGA_DELAY_S)
         when = self._scheduler.now() + timedelta(seconds=delay)
         self._scheduler.call_at(when, lambda: self._confirm(auction))
