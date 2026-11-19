@@ -78,12 +78,15 @@ rules bind every change it makes.
   smaller `line-height`, so the door sheet inputs set `height: calc(27px + var(--u) * 6)`. Without
   it every field grows by about 5 px in Firefox and /register scrolls at 1906x917.
 - The inner pages, everything but `/welcome`, `/login` and `/register`, get their look from the
-  global skin in `src/app/pixel/skin/` (`_skin.scss` forwards one partial per concern), which
-  `styles.scss` loads as its last line through `meta.load-css`, so the skin wins over the old base
-  rules at `styles.scss:4-74` by order. A rule added below that `@include` would beat the skin. Every
-  skin rule sits under `body:not(:has(app-welcome, app-door-page))` through the `tools.inside` mixin
-  and hooks only onto elements and classes the templates already have, so a new page gets the look
-  without a template change and the three frame pages stay untouched.
+  global skin in `src/app/pixel/skin/` (`_skin.scss` uses one partial per concern), which
+  `styles.scss` loads as its last line through `meta.load-css`. Every skin rule sits under
+  `body:not(:has(app-welcome, app-door-page))` through the `tools.inside` mixin, except the
+  `color-scheme` rule, which sits on `:root` because the viewport scrollbar reads the root element.
+  The wrapper adds two type selectors, so the skin beats the old base rules at `styles.scss:5-75`
+  by specificity, not by order. A later rule overrides the skin only when it reaches that
+  specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
+  elements and classes the templates already have, so a new page gets the look without a template
+  change and the three frame pages stay untouched.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
