@@ -1,0 +1,21 @@
+@use 'tools';
+
+@include tools.inside {
+  p.invites {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--u) * 3);
+
+    select.invite-friend {
+      width: auto;
+      min-width: calc(var(--u) * 60);
+    }
+  }
+
+  p.raises {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 2);
+  }
+}

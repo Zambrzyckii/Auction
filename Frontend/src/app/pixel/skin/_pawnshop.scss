@@ -1,0 +1,9 @@
+@use 'tools';
+@use 'panels';
+
+@include tools.inside {
+  app-bot-section,
+  app-stock-section {
+    @include panels.panel;
+  }
+}
