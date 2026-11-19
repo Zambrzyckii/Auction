@@ -2,6 +2,8 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 
+MAX_SLEEP_SLICE_S = 5.0
+
 
 class TokenBucket:
     def __init__(
@@ -37,7 +39,7 @@ class TokenBucket:
             if self._tokens >= 1:
                 self._tokens -= 1
                 return
-            await self._sleep(max((1 - self._tokens) / self._rate, 1e-6))
+            await self._sleep(min(max((1 - self._tokens) / self._rate, 1e-6), MAX_SLEEP_SLICE_S))
 
 
 class LoginGate:

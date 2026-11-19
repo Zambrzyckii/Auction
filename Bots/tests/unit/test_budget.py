@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from auction_bots.api.budget import LoginGate, TokenBucket
@@ -14,6 +16,7 @@ class FakeTime:
     async def sleep(self, seconds: float) -> None:
         self.sleeps.append(seconds)
         self.now += seconds
+        await asyncio.sleep(0)
 
 
 async def test_bucket_spreads_a_burst_below_the_gateway_rate() -> None:
@@ -64,3 +67,16 @@ async def test_set_rate_slows_the_bucket() -> None:
 
     assert full_rate_gap == pytest.approx(1.0)
     assert fake.now - before == pytest.approx(2.0)
+
+
+async def test_set_rate_takes_effect_during_a_long_sleep() -> None:
+    fake = FakeTime()
+    bucket = TokenBucket(rate=0.001, burst=1, clock=fake.clock, sleep=fake.sleep)
+    await bucket.acquire()
+
+    task = asyncio.ensure_future(bucket.acquire())
+    await asyncio.sleep(0)
+    bucket.set_rate(10.0)
+    await task
+
+    assert fake.now < 30.0
