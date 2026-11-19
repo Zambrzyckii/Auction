@@ -15,7 +15,7 @@
 
     nav {
       display: flex;
-      gap: calc(var(--u) * 6);
+      gap: calc(var(--u) * 2);
       flex: 1 1 auto;
       min-width: 0;
       overflow-x: auto;
@@ -32,6 +32,7 @@
       display: inline-flex;
       align-items: center;
       height: calc(var(--u) * 15);
+      padding: 0 calc(var(--u) * 2);
       font: 16px/16px var(--m-pixel);
       text-transform: uppercase;
       text-decoration: none;

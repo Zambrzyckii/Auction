@@ -9,6 +9,10 @@
     margin: 0;
   }
 
+  form > button {
+    justify-self: stretch;
+  }
+
   label {
     display: grid;
     gap: calc(var(--u) * 2);

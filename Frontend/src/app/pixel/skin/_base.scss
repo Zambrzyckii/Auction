@@ -1,5 +1,9 @@
 @use 'tools';
 
+:root:not(:has(app-welcome, app-door-page)) {
+  color-scheme: dark;
+}
+
 @include tools.inside {
   & {
     background: var(--m-night);
@@ -7,7 +11,6 @@
     font: 16px/24px var(--m-pixel);
     font-synthesis: none;
     letter-spacing: 0;
-    color-scheme: dark;
     margin: 0;
   }
 
