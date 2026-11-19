@@ -181,7 +181,7 @@ async def test_human_buyer_never_pays_above_buy_cap() -> None:
     wins = 0
     for auction_id in contested:
         dto = await w.fake.get_auction(auction_id)
-        assert dto.status == "Finished"
+        assert dto.status == "Closed"
         if dto.current_winning_user_id == human_id:
             wins += 1
             assert float(dto.current_price) <= float(dto.item_official_price) * BUY_CAP
@@ -234,7 +234,7 @@ async def test_human_seller_gets_at_least_official() -> None:
     for auction_id in listed:
         bids = [b for b in w.fake.bids if b.auction_id == auction_id and b.user_id in fleet_ids]
         dto = await w.fake.get_auction(auction_id)
-        assert dto.status == "Finished"
+        assert dto.status == "Closed"
         if not bids:
             continue
         engaged += 1

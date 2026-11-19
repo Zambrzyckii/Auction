@@ -107,7 +107,7 @@ class _FakeWar:
     true_value: Decimal
     estimate_min: Decimal
     estimate_max: Decimal
-    status: str = "Filling"
+    status: str = "Open"
     current: Decimal = Decimal(0)
     leader: UUID | None = None
     participants: dict[UUID, str] = field(default_factory=dict)
@@ -272,7 +272,7 @@ class FakeMarket:
             raise NotFound(404, "item not found")
         if item.status != "Available":
             raise BadRequest(400, "item is not available")
-        item.status = "Listed"
+        item.status = "LockedForAuction"
         auction = _FakeAuction(
             auction_id=uuid4(),
             seller=account.user_id,
@@ -332,7 +332,7 @@ class FakeMarket:
 
     # warehouses
 
-    def open_warehouse(self, *, prices: list[int], variant: int = 0) -> UUID:
+    def open_warehouse(self, *, prices: list[int], variant: int = 0, status: str = "Open") -> UUID:
         manifest = [
             _Item(item_id=uuid4(), name="Crate Find", rarity=Rarity.Common, official=Decimal(p))
             for p in prices
@@ -345,6 +345,7 @@ class FakeMarket:
             true_value=true_value,
             estimate_min=_tens(true_value * Decimal(str(low))),
             estimate_max=_tens(true_value * Decimal(str(high))),
+            status=status,
         )
         self._wars[war.warehouse_id] = war
         return war.warehouse_id
@@ -385,13 +386,13 @@ class FakeMarket:
     async def join_warehouse(self, token: str, warehouse_id: UUID) -> None:
         account = self._account(token)
         war = self._war(warehouse_id)
-        if war.status != "Filling":
+        if war.status != "Open":
             self._fail(account, BadRequest(400, "warehouse is not filling"))
         if account.user_id in war.participants:
             self._fail(account, BadRequest(400, "already joined"))
         if len(war.participants) >= WAR_MAX_PLAYERS:
             self._fail(account, BadRequest(400, "lobby is full"))
-        war.participants[account.user_id] = "Pending"
+        war.participants[account.user_id] = "PendingLock"
         delay = self._rng.uniform(*WAR_LOCK_DELAY_S)
         when = self._scheduler.now() + timedelta(seconds=delay)
         self._scheduler.call_at(when, lambda u=account.user_id: self._confirm_join(war, u))
@@ -404,7 +405,7 @@ class FakeMarket:
     async def leave_warehouse(self, token: str, warehouse_id: UUID) -> None:
         account = self._account(token)
         war = self._war(warehouse_id)
-        if war.status != "Filling":
+        if war.status != "Open":
             self._fail(account, BadRequest(400, "cannot leave now"))
         state = war.participants.pop(account.user_id, None)
         if state == "Active":
@@ -454,7 +455,7 @@ class FakeMarket:
         )
 
     def _confirm_join(self, war: _FakeWar, user_id: UUID) -> None:
-        if war.participants.get(user_id) != "Pending":
+        if war.participants.get(user_id) != "PendingLock":
             return
         account = self._by_user[user_id]
         if account.available < WAR_ENTRY_FEE:
@@ -465,7 +466,7 @@ class FakeMarket:
         war.participants[user_id] = "Active"
 
     def _start_bidding(self, war: _FakeWar) -> None:
-        if war.status != "Filling":
+        if war.status != "Open":
             return
         war.status = "Bidding"
         war.window_ends_on = self._scheduler.now() + timedelta(seconds=WAR_RAISE_WINDOW_S)
@@ -582,7 +583,7 @@ class FakeMarket:
         self._schedule_closer()
 
     def _finish(self, auction: _FakeAuction) -> None:
-        auction.status = "Finished"
+        auction.status = "Closed"
         seller = self._by_user[auction.seller]
         final: Decimal | None = None
         if auction.leader is not None:

@@ -160,7 +160,7 @@ async def test_own_pending_joins_count_as_fleet_seats() -> None:
     members = e.watcher.wars[warehouse_id].members
     states = e.fake.participant_states(warehouse_id)
     assert 2 <= len(members) <= 3
-    assert all(states[member] == "Pending" for member in members)
+    assert all(states[member] == "PendingLock" for member in members)
     assert e.fake.war_players(warehouse_id) == 1 + len(members)
 
 
@@ -236,3 +236,19 @@ async def test_only_one_bot_only_war_runs_at_a_time() -> None:
 
     assert len(e.fake.participant_states(first)) == 3
     assert e.fake.participant_states(second) == {}
+
+
+async def test_only_open_lobbies_get_bots() -> None:
+    e = env()
+    stocking = e.fake.open_warehouse(prices=[400], status="Stocking")
+
+    await e.watcher.poll_once()
+
+    assert e.fake.participant_states(stocking) == {}
+
+    opened = e.fake.open_warehouse(prices=[400])
+    await run_for(e, 4.0)
+
+    await e.watcher.poll_once()
+
+    assert len(e.fake.participant_states(opened)) == 3

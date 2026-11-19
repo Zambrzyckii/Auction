@@ -58,7 +58,7 @@ def war(
     return WarehouseSummaryDto(
         public_warehouse_id=UUID(int=7),
         tier="Standard",
-        status="Filling",
+        status="Open",
         estimate_min=Decimal(estimate_min),
         estimate_max=Decimal(estimate_max),
         entry_fee=Decimal(entry_fee),

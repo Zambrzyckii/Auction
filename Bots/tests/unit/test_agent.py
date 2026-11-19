@@ -371,8 +371,8 @@ async def test_tick_lists_only_available_items() -> None:
     mine = await h.fake.my_auctions(h.token)
     assert len(mine) == 2
     inventory = {item.public_item_id: item.status for item in await h.fake.get_inventory(h.token)}
-    assert inventory[fresh] == "Listed"
-    assert inventory[busy] == "Listed"
+    assert inventory[fresh] == "LockedForAuction"
+    assert inventory[busy] == "LockedForAuction"
 
 
 async def two_listings(h: SimpleNamespace, seller: str) -> tuple[UUID, UUID]:

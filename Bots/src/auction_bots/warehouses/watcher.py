@@ -94,7 +94,7 @@ class WarehouseWatcher:
             war = self.wars.setdefault(summary.public_warehouse_id, WarState())
             if summary.players > len(war.members):
                 war.humans_seen = True
-            if summary.status == "Filling":
+            if summary.status == "Open":
                 await self._fill(summary, war)
 
     async def _fill(self, summary: WarehouseSummaryDto, war: WarState) -> None:
