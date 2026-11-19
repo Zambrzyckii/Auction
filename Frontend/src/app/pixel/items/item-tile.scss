@@ -1,0 +1,42 @@
+@use '../skin/tools';
+
+:host {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  box-sizing: content-box;
+  width: 64px;
+  height: 64px;
+  border: var(--u) solid var(--m-ink);
+  background: var(--m-common);
+  @include tools.cut-corners;
+}
+
+:host([data-rarity='Rare']) {
+  background: var(--m-rare);
+}
+
+:host([data-rarity='Epic']) {
+  background: var(--m-epic);
+}
+
+:host([data-rarity='Legendary']) {
+  background: var(--m-legend);
+}
+
+:host(.lot) {
+  width: 96px;
+  height: 96px;
+}
+
+canvas {
+  display: block;
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
+:host(.lot) canvas {
+  width: 96px;
+  height: 96px;
+}
