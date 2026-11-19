@@ -1,0 +1,23 @@
+@use 'tools';
+@use 'panels';
+
+@include tools.inside {
+  app-avatar-section,
+  app-friends-section,
+  app-social-links-section {
+    @include panels.panel;
+  }
+
+  app-profile-avatar {
+    display: block;
+  }
+
+  img.avatar {
+    display: block;
+    width: calc(var(--u) * 32);
+    height: calc(var(--u) * 32);
+    object-fit: cover;
+    border: var(--u) solid var(--m-ink);
+    background: var(--m-panel2);
+  }
+}
