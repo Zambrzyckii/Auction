@@ -41,7 +41,7 @@ describe('item catalog', () => {
     vi.restoreAllMocks();
   });
 
-  const cells = (s: Sprite) => {
+  const stats = (s: Sprite) => {
     const colours = new Set<string>();
     let opaque = 0;
     s.each((_x, _y, c) => {
@@ -51,6 +51,7 @@ describe('item catalog', () => {
     });
     return { opaque, colours: [...colours].sort() };
   };
+  const cells = (s: Sprite) => s.c;
 
   it('has 83 names, 80 from the bots and 3 starters', () => {
     expect(names.BOT_NAMES).toHaveLength(80);
@@ -71,13 +72,25 @@ describe('item catalog', () => {
     ];
     for (const [name, draw] of drawings) {
       const s = draw();
-      const { opaque, colours } = cells(s);
+      const { opaque, colours } = stats(s);
       expect([name, s.w, s.h]).toEqual([name, 32, 32]);
       expect(opaque, name).toBeGreaterThanOrEqual(200);
       expect(opaque, name).toBeLessThanOrEqual(900);
       expect(colours.length, name).toBeLessThanOrEqual(12);
       for (const c of colours) expect(PALETTE.has(c), `${name} uses ${c}`).toBe(true);
     }
+  });
+
+  it('routes the backend families by name and rarity', () => {
+    expect(cells(icon.iconFor('Warehouse Epic Find', 'Epic'))).toEqual(
+      cells(catalog.FAMILY_ART['Warehouse Find']('Epic')),
+    );
+    expect(cells(icon.iconFor('Pawned Rare Good', 'Rare'))).toEqual(
+      cells(catalog.FAMILY_ART['Pawned Good']('Rare')),
+    );
+    expect(cells(icon.iconFor('Crafted Legendary Item', 'Legendary'))).toEqual(
+      cells(catalog.FAMILY_ART['Crafted Item']('Legendary')),
+    );
   });
 
   it('falls back to mystery for a null name and for an unknown name', () => {

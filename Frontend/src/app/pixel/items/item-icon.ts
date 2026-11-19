@@ -20,7 +20,7 @@ export function makeIconFor(catalog: IconCatalog): (name: string | null, rarity:
   };
 
   return (name, rarity) => {
-    const key = `${name ?? ''}|${rarity}`;
+    const key = `${name}|${rarity}`;
     let sprite = cache.get(key);
     if (!sprite) {
       try {
