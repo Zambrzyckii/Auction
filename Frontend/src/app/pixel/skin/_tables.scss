@@ -36,7 +36,7 @@
   td {
     padding: calc(var(--u) * 2);
     border-bottom: var(--u) solid var(--m-panel2);
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 
   table:has(> tr > th + td) td {
