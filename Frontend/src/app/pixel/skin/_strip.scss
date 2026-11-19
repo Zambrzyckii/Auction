@@ -42,10 +42,10 @@
       &:hover {
         color: var(--m-taxi-hi);
       }
-    }
 
-    nav a:focus-visible {
-      outline-offset: calc(var(--u) * -2);
+      &:focus-visible {
+        outline-offset: calc(var(--u) * -2);
+      }
     }
 
     nav a.active {

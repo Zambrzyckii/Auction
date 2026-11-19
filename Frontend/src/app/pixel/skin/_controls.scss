@@ -35,17 +35,21 @@
     @include tag;
   }
 
-  button:hover {
+  button:hover,
+  nav.games a:hover {
     transform: translateY(calc(var(--u) * -1));
   }
 
-  button:active {
+  button:active,
+  nav.games a:active {
     transform: translateY(var(--u));
     box-shadow: inset 0 calc(var(--u) * 2) 0 var(--m-taxi-lo);
   }
 
-  button:focus-visible {
+  button:focus-visible,
+  nav.games a:focus-visible {
     outline-color: var(--m-text);
+    outline-offset: calc(var(--u) * -2);
   }
 
   button[type='submit']::before,
