@@ -221,3 +221,25 @@ def test_sniper_waits_until_the_final_window_against_bots() -> None:
         assert decision.action is BidAction.BID
         assert decision.amount is not None
         assert 701 <= decision.amount <= 800
+
+
+def test_a_human_bidding_the_ceiling_always_wins() -> None:
+    amounts = []
+
+    for current in (700, 740, 790):
+        auction = view(OTHER_BOT, HUMAN, current, human_bids=1)
+        for seed in range(1000):
+            decision = decide(auction, seed)
+            if decision.action is BidAction.BID:
+                assert decision.amount is not None
+                amounts.append(decision.amount)
+
+    assert amounts
+    assert max(amounts) < BUY_CAP_LIMIT
+
+    rounded = view(OTHER_BOT, HUMAN, 740, official=919, human_bids=1)
+    for seed in range(1000):
+        decision = decide(rounded, seed)
+        if decision.action is BidAction.BID:
+            assert decision.amount is not None
+            assert decision.amount < int(919 * 0.815)

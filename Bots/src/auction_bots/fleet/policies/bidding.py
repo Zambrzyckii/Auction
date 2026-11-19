@@ -82,7 +82,8 @@ def decide_bid(
     cap = value
 
     if human_leader or not is_human(auction.seller_id):
-        cap = min(cap, Decimal(round(float(auction.official_price) * knobs.buy_cap)))
+        ceiling = int(round(float(auction.official_price) * knobs.buy_cap, 6))
+        cap = min(cap, Decimal(ceiling - 1))
 
     amount = int(min(bid, cap, wallet_available))
 
