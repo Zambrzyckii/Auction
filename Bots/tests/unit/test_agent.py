@@ -436,3 +436,27 @@ async def test_saga_latency_counts_from_the_confirmation_event() -> None:
     assert h.agent.saga_latencies == reported
     assert len(reported) == 1
     assert 3.0 <= reported[0] <= 9.0
+
+
+async def test_reactions_start_before_the_first_tick() -> None:
+    h = harness(persona_of(reaction_delay_s=5.0))
+    seller = h.fake.register_human(ALICE, 10_000)
+    ticks = 0
+    original = h.fake.my_auctions
+
+    async def counting(token: str):
+        nonlocal ticks
+        ticks += 1
+        return await original(token)
+
+    h.fake.my_auctions = counting
+    stop = asyncio.Event()
+    task = asyncio.ensure_future(h.agent.run(stop, first_tick_delay_s=600.0))
+    await two_listings(h, seller)
+
+    await run_for(h, 20.0)
+
+    assert len(fleet_bids(h)) == 2
+    assert ticks == 0
+    stop.set()
+    await task

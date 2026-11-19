@@ -154,7 +154,7 @@ class BotAgent:
         except ApiError as error:
             log.warning("tick failed", extra={"status": error.status, "bot": self._persona.index})
 
-    async def run(self, stop: asyncio.Event) -> None:
+    async def run(self, stop: asyncio.Event, *, first_tick_delay_s: float = 0.0) -> None:
         queue = self._state.subscribe()
         reactions: set[asyncio.Task[None]] = set()
 
@@ -169,6 +169,8 @@ class BotAgent:
                     reaction.add_done_callback(reactions.discard)
 
         async def ticks() -> None:
+            if first_tick_delay_s > 0:
+                await self._sleep(first_tick_delay_s)
             while True:
                 await self._sleep(self._persona.tick_s)
                 await self.tick()

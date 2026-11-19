@@ -229,15 +229,6 @@ async def run(
                 except ApiError as error:
                     log.warning("resync failed", extra={"status": error.status})
 
-    async def start_agent(agent: BotAgent, delay: float) -> None:
-        if delay > 0:
-            try:
-                await asyncio.wait_for(stop.wait(), timeout=delay)
-                return
-            except TimeoutError:
-                pass
-        await agent.run(stop)
-
     tasks = [
         asyncio.ensure_future(consumer.run(stop)),
         asyncio.ensure_future(director.run(stop)),
@@ -248,7 +239,7 @@ async def run(
     count = max(len(agents), 1)
     for position, agent in enumerate(agents.values()):
         delay = settings.fleet.startup_ramp_s * position / count
-        tasks.append(asyncio.ensure_future(start_agent(agent, delay)))
+        tasks.append(asyncio.ensure_future(agent.run(stop, first_tick_delay_s=delay)))
     log.info("fleet started", extra={"agents": len(agents)})
 
     await stop.wait()
