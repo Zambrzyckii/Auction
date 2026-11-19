@@ -1,6 +1,7 @@
 import json
 import logging
 import sys
+import traceback
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
@@ -22,6 +23,10 @@ class RedactingFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.msg = self._redact(record.getMessage())
         record.args = None
+        if record.exc_info:
+            rendered = "".join(traceback.format_exception(*record.exc_info))
+            record.exc = self._redact(rendered)
+            record.exc_info = None
         for key, value in _extra_of(record).items():
             record.__dict__[key] = self._redact_value(value)
         return True

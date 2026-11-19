@@ -46,3 +46,18 @@ def test_extra_values_are_redacted(capsys: pytest.CaptureFixture[str]) -> None:
     line = capsys.readouterr().out.strip()
     assert "hunter2-very-secret" not in line
     assert json.loads(line)["extra"] == {"token": "***"}
+
+
+def test_tracebacks_are_rendered_and_redacted(capsys: pytest.CaptureFixture[str]) -> None:
+    configure_logging("INFO", secrets=["hunter2-very-secret"])
+
+    try:
+        raise ValueError("boom with hunter2-very-secret inside")
+    except ValueError:
+        logging.getLogger("fleet").exception("tick crashed")
+
+    line = capsys.readouterr().out.strip()
+    payload = json.loads(line)
+    assert "ValueError" in payload["extra"]["exc"]
+    assert "test_logging" in payload["extra"]["exc"]
+    assert "hunter2-very-secret" not in line

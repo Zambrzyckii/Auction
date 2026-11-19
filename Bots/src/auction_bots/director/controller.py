@@ -88,7 +88,10 @@ class Director:
             try:
                 await asyncio.wait_for(stop.wait(), timeout=interval)
             except TimeoutError:
-                self.step()
+                try:
+                    self.step()
+                except Exception:
+                    log.exception("director step crashed")
 
     def step(self) -> None:
         director = self._settings.director

@@ -277,3 +277,33 @@ async def test_rejected_joins_are_not_retried() -> None:
     assert e.watcher.wars[warehouse_id].rejected == {e.bot_ids[0]}
     assert first_round == 3
     assert len(attempts) == first_round
+
+
+async def test_a_bot_win_is_not_recorded_as_a_human_outcome() -> None:
+    e = env()
+    warehouse_id = await bidding_war(e, prices=[400])
+    await e.fake.raise_warehouse(e.human, warehouse_id, 100)
+
+    for _ in range(4):
+        await e.watcher.poll_once()
+        await run_for(e, 1.0)
+
+    bot_raises = [record for record in e.fake.raises if record.user_id != HUMAN]
+    assert bot_raises
+    war = e.watcher.wars[warehouse_id]
+    war.human_leads = True
+    await run_for(e, 12.0)
+    await e.watcher.poll_once()
+
+    assert e.ledger.recent(5) == []
+
+
+async def test_poll_survives_unexpected_errors() -> None:
+    e = env()
+
+    async def boom(token: str, limit: int) -> None:
+        raise RuntimeError("boom")
+
+    e.fake.list_warehouses = boom
+
+    await e.watcher.poll_once()

@@ -78,6 +78,8 @@ class WarehouseWatcher:
                 await self._poll_list()
             except ApiError as error:
                 log.warning("warehouse list failed", extra={"status": error.status})
+            except Exception:
+                log.exception("warehouse list crashed")
             self._last_list = now
         await self._poll_details()
 
@@ -145,6 +147,8 @@ class WarehouseWatcher:
                 await self._visit(warehouse_id, war)
             except ApiError as error:
                 log.warning("warehouse detail failed", extra={"status": error.status})
+            except Exception:
+                log.exception("warehouse detail crashed")
 
     async def _visit(self, warehouse_id: UUID, war: WarState) -> None:
         reader = self._agents[min(war.members, key=str)]
@@ -156,7 +160,7 @@ class WarehouseWatcher:
         if detail.status == "Bidding":
             await self._consider_raise(warehouse_id, war, detail)
         elif detail.status in ("Settled", "Cancelled"):
-            self._record_outcome(warehouse_id, war, detail)
+            await self._record_outcome(warehouse_id, war, detail)
             war.settled = True
 
     async def _consider_raise(self, warehouse_id: UUID, war: WarState, detail) -> None:
@@ -195,9 +199,18 @@ class WarehouseWatcher:
         war.last_own_raiser = raiser.session.user_id
         war.human_leads = False
 
-    def _record_outcome(self, warehouse_id: UUID, war: WarState, detail) -> None:
+    async def _record_outcome(self, warehouse_id: UUID, war: WarState, detail) -> None:
         if detail.status != "Settled" or not war.human_leads:
             return
+        for member in sorted(war.members, key=str):
+            try:
+                mine = await self._api.get_warehouse(
+                    self._agents[member].session.token, warehouse_id
+                )
+            except ApiError:
+                continue
+            if mine.is_leader:
+                return
         official = sum((item.price for item in detail.manifest or []), Decimal(0))
         if official <= 0:
             return
