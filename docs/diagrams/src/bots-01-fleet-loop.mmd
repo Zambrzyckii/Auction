@@ -1,0 +1,17 @@
+flowchart LR
+
+    Rmq["RabbitMQ<br/>exchange auctionserver.market"]:::shared --> Feed["FeedConsumer<br/>own durable queue, dedupe on MessageId"]:::client
+    Feed --> State["MarketState<br/>auction views, OutcomeLedger"]:::client
+    State -->|"changes per auction"| Agents["100 BotAgents<br/>persona, reaction delay, pure policies"]:::client
+    State -->|"human outcomes"| Director["Director<br/>generosity, listing rate, saga rate"]:::client
+    Director -->|"knobs"| Agents
+    Director -->|"knobs"| Watcher["WarehouseWatcher<br/>lobbies, raises, war outcomes"]:::client
+    Agents --> Client["GatewayClient<br/>one TokenBucket at 45 r/s, saga bucket at 0.5 r/s"]:::client
+    Watcher --> Client
+    Client --> Gw["nginx gateway<br/>60 r/s per address"]:::host --> Api["AuctionServer.Api"]:::host
+    Api -.->|"GET /api/auctions every 60 s (resync)"| State
+    Api -.->|"outbox, publisher confirms"| Rmq
+
+    classDef client    fill:#FFEDD5,stroke:#EA580C,stroke-width:2px,color:#7C2D12
+    classDef host      fill:#E0E7FF,stroke:#4F46E5,stroke-width:2px,color:#1E1B4B
+    classDef shared    fill:#E2E8F0,stroke:#475569,stroke-width:2px,color:#0F172A

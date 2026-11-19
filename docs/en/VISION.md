@@ -48,7 +48,7 @@ The original target comes from the project's design note (`AGENTS.md`, deleted o
 - the **backend API**, the modular monolith that exists today, kept as one deployable and instrumented with OpenTelemetry;
 - a **data plane** reachable only inside the Compose network: PostgreSQL behind PgBouncer (transaction pooling, migrations through the pooler too, cron `pg_dump` backups), Redis as the distributed level of the hot-auction-read cache, SeaweedFS for avatars and OpenBao for secrets;
 - **RabbitMQ** as the transport for integration events leaving the monolith, plugged into the `IIntegrationEventPublisher` seam and feeding the same host-side delivery dispatcher (shipped 2026-11-04, in-process by default and on RabbitMQ in the Compose stack), which already keeps per-recipient retries and dead letters;
-- **AI bots** written in Python that listen to market events on their own RabbitMQ queue and act through the gateway;
+- **AI bots** written in Python that listen to market events on their own RabbitMQ queue and act through the gateway, shipped on 2026-11-19 as the scripted fleet of [ADR-018](adr/018-scripted-market-bots.md);
 - an **observability stack** (OTel Collector, Prometheus, Tempo, Grafana) fed over OTLP, with k6 load tests as the measurement tool for every performance change;
 - at the back of the head and deliberately not planned yet: **Kubernetes** (Deployments with HPA, an Ingress, Postgres and RabbitMQ operators) and an optional **Keycloak/OIDC** issuer replacing the hand-rolled JWT.
 
@@ -58,7 +58,7 @@ The original target comes from the project's design note (`AGENTS.md`, deleted o
 - Wallets: automatic wallet with configured starting funds, bot-only top-up, lock, unlock and spend of funds, player-to-player transfers with an append-only history, settlement with an inbox and an outbox.
 - Auctions: creation as `Pending` until Inventory locks the item, listing, detail and bid history through Dapper, bidding with anti-sniping, background closing, outbox with retry and dead letters, inbox.
 - Inventory: items with rarity-based prices, crafting, selling to the shop, a configurable starter pack on registration, locking and transferring items for auctions, inbox and outbox.
-- Warehouses: warehouse wars stocked by a background pool, hidden manifests priced by Inventory, deliberately misleading estimates, an entry fee locked through Wallets that is also the bid budget, 5-10 s raise windows with fixed increments, settlement that mints the manifest for the winner and removes the final price from the economy, inbox and outbox.
+- Warehouses: warehouse wars stocked by a background pool, hidden manifests priced by Inventory, deliberately misleading estimates, an entry fee locked through Wallets that is also the bid budget, 10 s raise windows with fixed increments, settlement that mints the manifest for the winner and removes the final price from the economy, inbox and outbox.
 - Banking: fixed loan offers gated by the lifetime wallet turnover, asynchronous grant and collection sagas with Wallets, a single repayment at maturity pulled by a keeper, partial collection with a one-time penalty and automatic retries, early manual repayment, inbox and outbox.
 - Pawnshop: premises gated by the lifetime wallet turnover, a configured bot ladder with one bot slot, goods spawned by the bot and priced by Inventory, a withdrawal window followed by an automatic sale for a fixed share of the price, payment and payout events exchanged with Wallets, inbox and outbox.
 - Casino: chips exchanged 1:1 with the wallet through a purchase saga and cash-out events, european roulette and blackjack played synchronously on the chip balance with the house edge guaranteed by domain constants, a keeper that expires stale purchases and auto-stands abandoned hands, cash-outs excluded from the lifetime turnover, inbox and outbox.
@@ -80,7 +80,7 @@ Later the same day the owner decided to keep growing the backend with gameplay f
 
 Still planned after these:
 
-- The AI market bots on `main` and, since 2026-11-17, the UI/UX pass over the deliberately bare frontend on branch `ui-ux` alongside them, with the owner alternating between the two.
+- The AI market bots shipped on `main` on 2026-11-19 ([ADR-018](adr/018-scripted-market-bots.md)), and since 2026-11-17 the UI/UX pass over the deliberately bare frontend continues on branch `ui-ux`.
 
 RabbitMQ, listed here until 2026-11-04, shipped that day as the event transport behind `IIntegrationEventPublisher` with the consume-only market exchange for the bots (see [ADR-013](adr/013-rabbitmq-transport.md)). The Angular frontend, listed here until 2026-11-10, shipped that day as the MVP views over the existing API (see [frontend.md](frontend.md)). The views for the remaining modules, listed here until 2026-11-14, shipped that day on the same API (see [frontend.md](frontend.md)). The API gaps with the push channel over Server-Sent Events, listed here until 2026-11-15, shipped that day with the Angular client consuming them (see [frontend.md](frontend.md) and [ADR-016](adr/016-server-sent-events-push.md)). The real UI/UX pass no longer waits for the bots and runs on its own branch since 2026-11-17 (see [DECISIONS.md](DECISIONS.md)).
 

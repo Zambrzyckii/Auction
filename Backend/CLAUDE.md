@@ -214,7 +214,7 @@ AuctionServer.Modules.Auctions     auctions & bidding, item-lock and funds-lock 
 AuctionServer.Modules.Wallets      virtual funds with a per-bid lock ledger and player transfers with an append-only history, settlement inbox + outbox; CQS — EF Core for both
 AuctionServer.Modules.Identity     register/login/refresh/logout/bot provisioning (BCrypt, JWT with name/id/role claims, rotated refresh tokens, 24 h bot tokens)
 AuctionServer.Modules.Inventory    items/crafting/shop + bot-only mint and a config-driven starter pack on registration; locks items for auctions, transfers them to the winner
-AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 5-10 s raise windows, settlement burns the final price; CQS — EF Core for both
+AuctionServer.Modules.Warehouses   warehouse wars: server-stocked pool, hidden manifest, entry-fee lock saga, 10 s raise windows, settlement burns the final price; CQS — EF Core for both
 AuctionServer.Modules.Banking      bank loans: fixed offers gated by lifetime wallet turnover, grant and collection sagas with Wallets, one repayment at maturity pulled by BankKeeper, one-time overdue penalty with retries; CQS — EF Core for both
 AuctionServer.Modules.Pawnshop     pawnshop: turnover-gated premises, one bot slot on an upgrade-only ladder, goods spawned through Inventory quotes, auto-sold for a share of the price by PawnshopKeeper or withdrawn to Inventory at full price, CQS with EF Core for both
 AuctionServer.Modules.Casino       casino: wallet money exchanged 1:1 for chips through a purchase saga, european roulette and blackjack played synchronously on the chip balance, cash-outs excluded from turnover, CQS with EF Core for both

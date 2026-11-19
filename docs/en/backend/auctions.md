@@ -100,6 +100,7 @@ The two anonymous DTOs carry the same ten fields, `PublicAuctionId`, `SellerUser
 | `InvalidAuctionEndDateException` | 400 | `End date must be at least one minute in the future` |
 | `AuctionNotActiveException` | 400 | `Auction is not active, current status: {status}` |
 | `AuctionNotFoundException` | 404 | `Auction {id} not found` |
+| `BidInProgressException` | 409 | `Another bid is already being processed` |
 | `AuctionAlreadyExistException` | 409 | `Auction already exist` (unique violation on insert, in practice the open-auction-per-item index) |
 | `InvalidAuctionStateTransitionException` | 409 | `Cannot {action} an auction in status {status}` |
 
@@ -120,7 +121,7 @@ The consistency promise this buys: the three anonymous reads may be up to one TT
 | Direction | Event | Where |
 |---|---|---|
 | published | `ItemLockRequestedEvent` | `CreateAuctionCommandHandler`, in the same `SaveChangesAsync` as the new auction |
-| published | `BidPlacedEvent` | `PlaceBidCommandHandler`, with the previous winner and price for the unlock |
+| published | `BidPlacedEvent` | `FundsLockedEventHandler`, once the funds are locked, with the previous winner and price for the unlock |
 | published | `AuctionActivatedEvent` | `ItemLockedEventHandler`; registered but consumed by nobody |
 | published | `AuctionFinishedEvent` | `AuctionCloser` |
 | consumed | `ItemLockedEvent` | `ItemLockedEventHandler`, inbox `AuctionsProcessedMessages`, calls `Activate` |

@@ -14,6 +14,7 @@ Started on 2026-10-14 with the Compose file. On 2026-10-23 the Compose stack gre
 |---|---|---|---|
 | gateway | nginx:1.28.3-alpine | 8080 | the only entry point, described in [Gateway](#gateway) |
 | api | build `Backend/` | none (127.0.0.1:8081 with `compose.debug.yaml`) | the host, telemetry enabled through the `Observability` section, forwarded headers trusted from the `edge` network, non-root on a read-only filesystem |
+| bots | build `Bots/` (`python:3.14-slim`) | none | the market bot fleet behind the `bots` profile, 100 scripted accounts on the market feed and the gateway, 256 MB, read-only ([bots.md](bots.md)) |
 | postgres | postgres:16-alpine | 5436 | the one database |
 | pgbouncer | edoburu/pgbouncer:v1.26.1-p0 | none | transaction pooling between the api and postgres, described in [Connection pooling](#connection-pooling) |
 | pgbackup | prodrigestivill/postgres-backup-local:16-alpine | none | daily `pg_dump` straight to postgres with three-bucket rotation, see [Backups](#backups) |

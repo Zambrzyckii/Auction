@@ -48,7 +48,7 @@ Pierwotny cel pochodzi z notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15
 - **backend API**, czyli istniejący dziś modular monolith, utrzymany jako jeden artefakt wdrożeniowy i oprzyrządowany OpenTelemetry;
 - **warstwa danych** osiągalna tylko wewnątrz sieci Compose: PostgreSQL za PgBouncerem (pooling transakcyjny, migracje też przez poolera, kopie `pg_dump` z crona), Redis jako rozproszony poziom cache gorących odczytów aukcji, SeaweedFS na awatary i OpenBao na sekrety;
 - **RabbitMQ** jako transport zdarzeń integracyjnych opuszczających monolit, wpięty w szew `IIntegrationEventPublisher` i zasilający tego samego dyżurnego doręczania po stronie hosta (weszło 2026-11-04, domyślnie in-process, a w stacku Compose na RabbitMQ), który już prowadzi ponowienia i martwe listy per adresat;
-- **boty AI** napisane w Pythonie, które nasłuchują zdarzeń rynkowych na własnej kolejce RabbitMQ i działają przez gateway;
+- **boty AI** napisane w Pythonie, które nasłuchują zdarzeń rynkowych na własnej kolejce RabbitMQ i działają przez gateway, dowiezione 2026-11-19 jako skryptowa flota z [ADR-018](adr/018-scripted-market-bots.md);
 - **stack obserwowalności** (OTel Collector, Prometheus, Tempo, Grafana) zasilany po OTLP, z testami obciążeniowymi k6 jako narzędziem pomiaru każdej zmiany wydajnościowej;
 - z tyłu głowy i celowo jeszcze nieplanowane: **Kubernetes** (Deploymenty z HPA, Ingress, operatory Postgresa i RabbitMQ) oraz opcjonalny **Keycloak/OIDC** zastępujący własnoręczne wydawanie JWT.
 
@@ -58,7 +58,7 @@ Pierwotny cel pochodzi z notatki projektowej (`AGENTS.md`, usuniętej 2026-08-15
 - Wallets: automatyczny portfel ze skonfigurowanymi środkami startowymi, doładowanie tylko dla botów, blokowanie, odblokowywanie i wydawanie środków, przelewy między graczami z append-only historią, rozliczenie z inboxem i outboxem.
 - Auctions: tworzenie jako `Pending` do czasu blokady przedmiotu przez Inventory, lista, szczegóły i historia ofert przez Dapper, licytacja z ochroną anty-snajperską, zamykanie w tle, outbox z ponowieniami i martwymi wiadomościami, inbox.
 - Inventory: przedmioty z cenami zależnymi od rzadkości, crafting, sprzedaż do sklepu, konfigurowalny pakiet startowy przy rejestracji, blokowanie i przenoszenie przedmiotów dla aukcji, inbox i outbox.
-- Warehouses: wojny magazynowe zasilane pulą w tle, ukryte manifesty wyceniane przez Inventory, celowo zwodnicze widełki, wpisowe blokowane przez Wallets będące zarazem budżetem podbić, okna podbić 5-10 s ze stałymi kwotami, rozliczenie mintujące manifest dla zwycięzcy i usuwające cenę końcową z obiegu, inbox i outbox.
+- Warehouses: wojny magazynowe zasilane pulą w tle, ukryte manifesty wyceniane przez Inventory, celowo zwodnicze widełki, wpisowe blokowane przez Wallets będące zarazem budżetem podbić, okna podbić 10 s ze stałymi kwotami, rozliczenie mintujące manifest dla zwycięzcy i usuwające cenę końcową z obiegu, inbox i outbox.
 - Banking: stałe oferty pożyczek bramkowane skumulowanym obrotem portfela, asynchroniczne sagi udzielenia i pobrania z Wallets, jedna spłata w terminie zapadalności ściągana przez keepera, częściowe pobranie z jednorazową karą i automatycznymi ponowieniami, wcześniejsza ręczna spłata, inbox i outbox.
 - Pawnshop: lokal bramkowany skumulowanym obrotem portfela, skonfigurowana drabinka botów z jednym miejscem na bota, towar tworzony przez bota i wyceniany przez Inventory, okno wycofania, po którym następuje automatyczna sprzedaż za stały ułamek ceny, zdarzenia płatności i wypłat wymieniane z Wallets, inbox i outbox.
 - Casino: żetony wymieniane 1:1 z portfelem przez sagę zakupu i zdarzenia wypłat, ruletka europejska i blackjack grane synchronicznie na saldzie żetonów z przewagą kasyna gwarantowaną stałymi domeny, keeper wygaszający przeterminowane zakupy i pasujący porzucone rozdania, wypłaty wyłączone ze skumulowanego obrotu, inbox i outbox.
@@ -80,7 +80,7 @@ Tego samego dnia właściciel zdecydował, że przed startem frontendu Angular b
 
 Planowane nadal po nich:
 
-- Boty rynkowe AI na `main` oraz, od 2026-11-17, przejście UI/UX nad celowo surowym frontendem na gałęzi `ui-ux` równolegle z nimi, a właściciel przełącza się między nimi.
+- Boty rynkowe AI weszły na `main` 2026-11-19 ([ADR-018](adr/018-scripted-market-bots.md)), a od 2026-11-17 przejście UI/UX nad celowo surowym frontendem trwa na gałęzi `ui-ux`.
 
 RabbitMQ, wymieniany tu do 2026-11-04, wszedł tego dnia jako transport zdarzeń za `IIntegrationEventPublisher` z rynkowym exchange'em tylko do konsumpcji dla botów (zobacz [ADR-013](adr/013-rabbitmq-transport.md)). Frontend Angular, wymieniany tu do 2026-11-10, wszedł tego dnia jako widoki MVP na istniejącym API (zobacz [frontend.md](frontend.md)). Widoki dla pozostałych modułów, wymieniane tu do 2026-11-14, weszły tego dnia na tym samym API (zobacz [frontend.md](frontend.md)). Braki API z kanałem push na Server-Sent Events, wymieniane tu do 2026-11-15, weszły tego dnia z klientem Angular, który je konsumuje (zobacz [frontend.md](frontend.md) i [ADR-016](adr/016-server-sent-events-push.md)). Właściwe przejście UI/UX nie czeka już na boty i od 2026-11-17 biegnie na własnej gałęzi (zobacz [DECISIONS.md](DECISIONS.md)).
 

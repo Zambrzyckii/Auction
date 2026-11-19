@@ -77,6 +77,10 @@ WHERE "IsDead";
 
 The eight outbox tables are `OutboxMessages` (Auctions), `IdentityOutboxMessages`, `WalletsOutboxMessages`, `InventoryOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` and `CasinoOutboxMessages`. A dead letter on the delivery side lives per recipient in `DeliveryMessages` and is revived with the same UPDATE against that table. The `Errors` column keeps the failure history, so read it before reviving.
 
+## Running the bot fleet
+
+The market bot fleet is the Compose service `bots` behind the `bots` profile, so a plain `docker compose up -d` never starts it. `docker compose --profile bots up -d --build bots` builds `Bots/Dockerfile` and starts 100 bots, `BOTS_FLEET_SIZE=10 docker compose --profile bots up -d bots` starts a smaller fleet for a laptop, `docker compose logs -f bots` shows JSON lines with one `fleet summary` a minute, and `docker compose --profile bots stop bots` stops it. The fleet mounts the same `bots-api-key.secret` the api reads as `Bots:ApiKey` and the `rabbitmq-password.secret`. Rerunning `gen-secrets.sh` rotates the key, and the next start provisions a new fleet of accounts because the identities embed the key's fingerprint, while the old accounts stay in the database with their wallets and items. Do not run the `bots` and `loadtest` profiles together: both share the gateway's per-address budget and the k6 thresholds were measured without the fleet. The live probe `Bots/scripts/live_probe.py` checks a running fleet end to end, see [bots.md](bots.md#running-the-fleet).
+
 ## Troubleshooting
 
 | Symptom | Meaning | Fix |
@@ -86,3 +90,4 @@ The eight outbox tables are `OutboxMessages` (Auctions), `IdentityOutboxMessages
 | api logs `has no secret at ...` | vault up but never seeded | `docker compose up -d` so `vault-init` reruns |
 | `vault-init` exits 2 with a 403 on `sys/internal/ui/mounts` | KV engine missing on a fresh persistent vault | already handled in the script (`bao secrets enable`), rerun it |
 | RabbitMQ management UI rejects the login | the password is generated now | user `auction`, password in `rabbitmq-password.secret` |
+| api restarts in a loop with `Vault AppRole login failed with status 403` after a host reboot | the dev-mode vault came back empty and the one-shot `vault-init` did not rerun | `docker compose up -d` reruns `vault-init`, after which the api's own restarts succeed (issue #24) |

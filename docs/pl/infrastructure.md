@@ -14,6 +14,7 @@ Start 2026-10-14 plikiem Compose. 2026-10-23 stack Compose urósł z trzech usł
 |---|---|---|---|
 | gateway | nginx:1.28.3-alpine | 8080 | jedyne wejście, opisane w [Gateway](#gateway) |
 | api | build `Backend/` | brak (127.0.0.1:8081 z `compose.debug.yaml`) | host, telemetria włączana sekcją `Observability`, nagłówki forwarded zaufane z sieci `edge`, nieroot na systemie plików tylko do odczytu |
+| bots | build `Bots/` (`python:3.14-slim`) | brak | flota botów rynkowych za profilem `bots`, 100 skryptowych kont na rynkowym feedzie i gatewayu, 256 MB, tylko do odczytu ([bots.md](bots.md)) |
 | postgres | postgres:16-alpine | 5436 | jedyna baza |
 | pgbouncer | edoburu/pgbouncer:v1.26.1-p0 | brak | transaction pooling między api a postgresem, opisany w [Pooling połączeń](#pooling-połączeń) |
 | pgbackup | prodrigestivill/postgres-backup-local:16-alpine | brak | codzienny `pg_dump` prosto do postgresa z trzykoszykową rotacją, zob. [Backupy](#backupy) |

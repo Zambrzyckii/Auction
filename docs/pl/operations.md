@@ -77,6 +77,10 @@ WHERE "IsDead";
 
 Osiem tabel outboxa to `OutboxMessages` (Auctions), `IdentityOutboxMessages`, `WalletsOutboxMessages`, `InventoryOutboxMessages`, `WarehousesOutboxMessages`, `BankingOutboxMessages`, `PawnshopOutboxMessages` i `CasinoOutboxMessages`. Martwy list po stronie doręczania żyje per odbiorca w `DeliveryMessages` i ożywia go ten sam UPDATE na tej tabeli. Kolumna `Errors` trzyma historię błędów, przeczytaj ją przed ożywieniem.
 
+## Uruchamianie floty botów
+
+Flota botów rynkowych to usługa Compose `bots` za profilem `bots`, więc zwykłe `docker compose up -d` nigdy jej nie startuje. `docker compose --profile bots up -d --build bots` buduje `Bots/Dockerfile` i startuje 100 botów, `BOTS_FLEET_SIZE=10 docker compose --profile bots up -d bots` startuje mniejszą flotę na laptop, `docker compose logs -f bots` pokazuje linie JSON z jednym `fleet summary` na minutę, a `docker compose --profile bots stop bots` ją zatrzymuje. Flota montuje ten sam `bots-api-key.secret`, który api czyta jako `Bots:ApiKey`, oraz `rabbitmq-password.secret`. Ponowne uruchomienie `gen-secrets.sh` rotuje klucz, a następny start provisionuje nową flotę kont, bo tożsamości zawierają fingerprint klucza, podczas gdy stare konta zostają w bazie z portfelami i przedmiotami. Nie uruchamiaj razem profili `bots` i `loadtest`: oba dzielą budżet gatewaya na adres, a progi k6 były mierzone bez floty. Sonda na żywo `Bots/scripts/live_probe.py` sprawdza działającą flotę od początku do końca, zobacz [bots.md](bots.md#uruchamianie-floty).
+
 ## Rozwiązywanie problemów
 
 | Objaw | Znaczenie | Naprawa |
@@ -86,3 +90,4 @@ Osiem tabel outboxa to `OutboxMessages` (Auctions), `IdentityOutboxMessages`, `W
 | api loguje `has no secret at ...` | vault działa, ale nie zseedowany | `docker compose up -d`, aby `vault-init` wykonał się ponownie |
 | `vault-init` kończy się kodem 2 i 403 na `sys/internal/ui/mounts` | brak silnika KV na świeżym trwałym vaulcie | obsłużone w skrypcie (`bao secrets enable`), uruchom ponownie |
 | UI RabbitMQ odrzuca logowanie | hasło jest teraz generowane | użytkownik `auction`, hasło w `rabbitmq-password.secret` |
+| api restartuje się w pętli z `Vault AppRole login failed with status 403` po restarcie hosta | deweloperski vault wrócił pusty, a jednorazowy `vault-init` nie wykonał się ponownie | `docker compose up -d` uruchamia `vault-init` ponownie, po czym własne restarty api się udają (issue #24) |

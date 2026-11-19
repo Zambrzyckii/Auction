@@ -100,6 +100,7 @@ Oba anonimowe DTO niosą te same dziesięć pól, `PublicAuctionId`, `SellerUser
 | `InvalidAuctionEndDateException` | 400 | `End date must be at least one minute in the future` |
 | `AuctionNotActiveException` | 400 | `Auction is not active, current status: {status}` |
 | `AuctionNotFoundException` | 404 | `Auction {id} not found` |
+| `BidInProgressException` | 409 | `Another bid is already being processed` |
 | `AuctionAlreadyExistException` | 409 | `Auction already exist` (naruszenie unikalności przy wstawianiu, w praktyce indeks jednej otwartej aukcji na przedmiot) |
 | `InvalidAuctionStateTransitionException` | 409 | `Cannot {action} an auction in status {status}` |
 
@@ -120,7 +121,7 @@ Obietnica spójności, którą to kupuje: trzy anonimowe odczyty mogą być do j
 | Kierunek | Zdarzenie | Gdzie |
 |---|---|---|
 | publikowane | `ItemLockRequestedEvent` | `CreateAuctionCommandHandler`, w tym samym `SaveChangesAsync` co nowa aukcja |
-| publikowane | `BidPlacedEvent` | `PlaceBidCommandHandler`, z poprzednim zwycięzcą i ceną do odblokowania |
+| publikowane | `BidPlacedEvent` | `FundsLockedEventHandler`, po zablokowaniu środków, z poprzednim zwycięzcą i ceną do odblokowania |
 | publikowane | `AuctionActivatedEvent` | `ItemLockedEventHandler`; zarejestrowane, ale przez nikogo niekonsumowane |
 | publikowane | `AuctionFinishedEvent` | `AuctionCloser` |
 | konsumowane | `ItemLockedEvent` | `ItemLockedEventHandler`, inbox `AuctionsProcessedMessages`, woła `Activate` |
