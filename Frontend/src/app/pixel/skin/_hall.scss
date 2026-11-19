@@ -1,0 +1,42 @@
+@use 'tools';
+
+@include tools.inside {
+  td.lot {
+    font: 27px/27px var(--m-head);
+    vertical-align: middle;
+  }
+
+  td.lot app-item-tile {
+    margin-right: calc(var(--u) * 4);
+  }
+
+  .rarity {
+    display: inline-block;
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+    padding: var(--u) calc(var(--u) * 2);
+    background: var(--m-common);
+    @include tools.cut-corners;
+  }
+
+  .rarity[data-rarity='Rare'] {
+    background: var(--m-rare);
+  }
+
+  .rarity[data-rarity='Epic'] {
+    background: var(--m-epic);
+  }
+
+  .rarity[data-rarity='Legendary'] {
+    background: var(--m-legend);
+  }
+
+  tr.leading > td:first-child {
+    box-shadow: inset calc(var(--u) * 2) 0 0 var(--m-green);
+  }
+
+  td.lot .rarity {
+    vertical-align: middle;
+  }
+}

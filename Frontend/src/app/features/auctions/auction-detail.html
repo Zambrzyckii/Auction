@@ -3,7 +3,12 @@
   <table>
     <tr>
       <th>Item</th>
-      <td>{{ auction.itemName }} ({{ auction.itemRarity }})</td>
+      <td class="lot">
+        <app-item-tile size="lot" [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+          auction.itemName
+        }}
+        <span class="rarity" [attr.data-rarity]="auction.itemRarity">{{ auction.itemRarity }}</span>
+      </td>
     </tr>
     <tr>
       <th>Status</th>
@@ -11,11 +16,17 @@
     </tr>
     <tr>
       <th>Current price</th>
-      <td>{{ auction.currentPrice | number }}</td>
+      <td class="current-price">{{ auction.currentPrice | number }}</td>
     </tr>
     <tr>
       <th>Ends in</th>
-      <td>{{ auction.status === 'Active' ? timeLeft(auction.endsOn) : '—' }}</td>
+      <td>
+        @if (auction.status === 'Active') {
+          <app-countdown [endsOn]="auction.endsOn" [format]="timeLeft" />
+        } @else {
+          —
+        }
+      </td>
     </tr>
   </table>
   @if (auction.status === 'Pending') {
@@ -56,7 +67,12 @@
           <th>Placed</th>
         </tr>
         @for (bid of bids; track bid.placedOn) {
-          <tr>
+          <tr
+            [class.leading]="
+              bid.bidderUserId === auction.currentWinningUserId &&
+              bid.amount === auction.currentPrice
+            "
+          >
             <td>
               @if (session.isLoggedIn() && bid.bidderUserId !== session.userId()) {
                 <a [routerLink]="['/profiles', bid.bidderUserId]">{{ bidderLabel(bid) }}</a>
