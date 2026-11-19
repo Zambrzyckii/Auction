@@ -77,6 +77,17 @@ rules bind every change it makes.
 - Firefox keeps a text field at least as tall as the normal line height of its font and ignores a
   smaller `line-height`, so the door sheet inputs set `height: calc(27px + var(--u) * 6)`. Without
   it every field grows by about 5 px in Firefox and /register scrolls at 1906x917.
+- The inner pages, everything but `/welcome`, `/login` and `/register`, get their look from the
+  global skin in `src/app/pixel/skin/` (`_skin.scss` forwards one partial per concern), which
+  `styles.scss` loads as its last line through `meta.load-css`, so the skin wins over the old base
+  rules at `styles.scss:4-74` by order. A rule added below that `@include` would beat the skin. Every
+  skin rule sits under `body:not(:has(app-welcome, app-door-page))` through the `tools.inside` mixin
+  and hooks only onto elements and classes the templates already have, so a new page gets the look
+  without a template change and the three frame pages stay untouched.
+- The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
+  fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
+  and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
+  its panel (`overflow-x: auto`), the document itself never scrolls sideways.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
