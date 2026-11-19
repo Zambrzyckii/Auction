@@ -25,6 +25,7 @@ from auction_bots.market.state import MarketChange, MarketState
 OPEN_BID_TTL_S = 70.0
 BID_GAP_S = 8.0
 LIVE_STATUSES = ("Pending", "Active")
+TERMINAL_CHANGES = ("finished", "cancelled")
 
 T = TypeVar("T")
 
@@ -103,6 +104,8 @@ class BotAgent:
         self._tracked: dict[UUID, tuple[UUID, int]] = {}
         self._failed: dict[UUID, int] = {}
         self._last_price: dict[UUID, int] = {}
+        self._sleeping: set[UUID] = set()
+        self._placing = 0
 
     @property
     def persona(self) -> Persona:
@@ -122,10 +125,16 @@ class BotAgent:
         return len(self._tracked)
 
     async def react(self, change: MarketChange) -> None:
-        if change.kind in ("finished", "cancelled"):
+        if change.kind in TERMINAL_CHANGES:
             self._forget(change.auction_id)
             return
-        await self._sleep(self._persona.reaction_delay_s)
+        if change.auction_id in self._sleeping:
+            return
+        self._sleeping.add(change.auction_id)
+        try:
+            await self._sleep(self._persona.reaction_delay_s)
+        finally:
+            self._sleeping.discard(change.auction_id)
         try:
             await self._consider(change.auction_id)
         except ApiError as error:
@@ -144,22 +153,29 @@ class BotAgent:
 
     async def run(self, stop: asyncio.Event) -> None:
         queue = self._state.subscribe()
+        reactions: set[asyncio.Task[None]] = set()
 
-        async def reactions() -> None:
+        async def dispatch() -> None:
             while True:
                 change = await queue.get()
-                await self.react(change)
+                if change.kind in TERMINAL_CHANGES:
+                    self._forget(change.auction_id)
+                elif change.auction_id not in self._sleeping:
+                    reaction = asyncio.ensure_future(self.react(change))
+                    reactions.add(reaction)
+                    reaction.add_done_callback(reactions.discard)
 
         async def ticks() -> None:
             while True:
                 await self._sleep(self._persona.tick_s)
                 await self.tick()
 
-        tasks = [asyncio.ensure_future(reactions()), asyncio.ensure_future(ticks())]
+        loops = [asyncio.ensure_future(dispatch()), asyncio.ensure_future(ticks())]
         await stop.wait()
-        for task in tasks:
+        pending = [*loops, *reactions]
+        for task in pending:
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*pending, return_exceptions=True)
 
     async def _consider(self, auction_id: UUID) -> None:
         view = self._state.get(auction_id)
@@ -179,7 +195,8 @@ class BotAgent:
             await self._refresh_wallet()
         if view.official_price is None:
             return
-        if auction_id not in self.open_bids and len(self.open_bids) >= self._persona.max_open_bids:
+        committed = len(self.open_bids) + self._placing
+        if auction_id not in self.open_bids and committed >= self._persona.max_open_bids:
             return
         valuation = self._valuations.get(auction_id)
         if valuation is None:
@@ -207,14 +224,17 @@ class BotAgent:
             return
         if not self._gate.try_claim(auction_id, now):
             return
-        await self._saga_bucket.acquire()
         amount = decision.amount
+        self._placing += 1
         try:
+            await self._saga_bucket.acquire()
             await self._authorized(lambda token: self._api.place_bid(token, auction_id, amount))
         except ApiError as error:
             self._gate.release(auction_id, None)
             log.warning("bid rejected", extra={"status": error.status, "bot": self._persona.index})
             return
+        finally:
+            self._placing -= 1
         self.bids_placed += 1
         self.open_bids[auction_id] = OpenBid(auction_id, amount, valuation, self._clock())
 

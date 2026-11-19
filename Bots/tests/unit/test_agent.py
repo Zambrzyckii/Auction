@@ -1,5 +1,6 @@
 import asyncio
 import random
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -372,3 +373,48 @@ async def test_tick_lists_only_available_items() -> None:
     inventory = {item.public_item_id: item.status for item in await h.fake.get_inventory(h.token)}
     assert inventory[fresh] == "Listed"
     assert inventory[busy] == "Listed"
+
+
+async def two_listings(h: SimpleNamespace, seller: str) -> tuple[UUID, UUID]:
+    ends = h.scheduler.now() + timedelta(seconds=600)
+    first_item = await h.fake.mint_item(seller, "Pocket TV", Rarity.Epic)
+    second_item = await h.fake.mint_item(seller, "Chipped Pager", Rarity.Epic)
+    first = await h.fake.create_auction(seller, first_item, 100, ends)
+    second = await h.fake.create_auction(seller, second_item, 100, ends)
+    return first, second
+
+
+async def test_reactions_to_different_auctions_overlap() -> None:
+    h = harness(persona_of(reaction_delay_s=10.0))
+    seller = h.fake.register_human(ALICE, 10_000)
+    stop = asyncio.Event()
+    task = asyncio.ensure_future(h.agent.run(stop))
+    await two_listings(h, seller)
+
+    await run_for(h, 21.0)
+
+    assert len(fleet_bids(h)) == 2
+    stop.set()
+    await task
+
+
+async def test_concurrent_reactions_respect_max_open_bids() -> None:
+    persona = replace(persona_of(reaction_delay_s=10.0), max_open_bids=1)
+    h = harness(persona)
+    seller = h.fake.register_human(ALICE, 10_000)
+    original = h.fake.place_bid
+
+    async def slow(token: str, auction_id: UUID, amount: int) -> None:
+        await h.scheduler.sleep(5.0)
+        await original(token, auction_id, amount)
+
+    h.fake.place_bid = slow
+    stop = asyncio.Event()
+    task = asyncio.ensure_future(h.agent.run(stop))
+    await two_listings(h, seller)
+
+    await run_for(h, 30.0)
+
+    assert len(fleet_bids(h)) == 1
+    stop.set()
+    await task
