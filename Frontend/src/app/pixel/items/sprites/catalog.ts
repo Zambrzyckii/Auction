@@ -4,7 +4,7 @@ import { AUDIO } from './audio';
 import { CAR } from './car';
 import { COLLECTIBLES } from './collectibles';
 import { COMPUTERS } from './computers';
-import { FAMILY_ART, STARTERS, mystery } from './families';
+import { FAMILY_ART, STARTERS, craftedItem, mystery, pawnedGood, warehouseFind } from './families';
 import { MUSIC } from './music';
 import { PHONES } from './phones';
 import { STREET } from './street';
@@ -26,6 +26,10 @@ export const EXACT: Readonly<Record<string, () => Sprite>> = {
   ...STARTERS,
 };
 
-export const FAMILIES: readonly (readonly [RegExp, (rarity: Rarity) => Sprite])[] = [];
+export const FAMILIES: readonly (readonly [RegExp, (rarity: Rarity) => Sprite])[] = [
+  [/^Warehouse \w+ Find$/, warehouseFind],
+  [/^Pawned \w+ Good$/, pawnedGood],
+  [/^Crafted \w+ Item$/, craftedItem],
+];
 
 export { FAMILY_ART, mystery };

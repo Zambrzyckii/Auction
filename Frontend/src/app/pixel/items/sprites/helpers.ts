@@ -33,6 +33,14 @@ export function poly(s: Sprite, pts: readonly Point[], col: Col): void {
     for (let x = 0; x < s.w; x++) if (inside(pts, x, y)) s.set(x, y, col);
 }
 
+export function cylTone(f: number): 0 | 1 | 2 | 3 {
+  if (f < 0.12) return 2;
+  if (f < 0.4) return 3;
+  if (f < 0.72) return 2;
+  if (f < 0.9) return 1;
+  return 0;
+}
+
 export function lightTone(dx: number, dy: number, d: number): 0 | 1 | 2 | 3 {
   const l = (-dx - dy) / (d * 1.414);
   if (l > 0.55) return 3;
@@ -69,11 +77,13 @@ const DIGITS: Readonly<Record<string, readonly string[]>> = {
 };
 
 export function digits(s: Sprite, str: string, x: number, y: number, col: Col): void {
-  [...str].forEach((ch, n) =>
-    DIGITS[ch]?.forEach((row, j) =>
+  [...str].forEach((ch, n) => {
+    const glyph = DIGITS[ch];
+    if (!glyph) throw new Error(`digits: unsupported character "${ch}"`);
+    glyph.forEach((row, j) =>
       [...row].forEach((v, i) => {
         if (v === '1') s.set(x + n * 4 + i, y + j, col);
       }),
-    ),
-  );
+    );
+  });
 }
