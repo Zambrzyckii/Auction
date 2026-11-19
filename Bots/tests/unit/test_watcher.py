@@ -252,3 +252,28 @@ async def test_only_open_lobbies_get_bots() -> None:
     await e.watcher.poll_once()
 
     assert len(e.fake.participant_states(opened)) == 3
+
+
+async def test_rejected_joins_are_not_retried() -> None:
+    e = env()
+    warehouse_id = e.fake.open_warehouse(prices=[400])
+    await e.fake.join_warehouse(e.tokens[e.bot_ids[0]], warehouse_id)
+    await e.fake.join_warehouse(e.human, warehouse_id)
+    await run_for(e, 4.0)
+    attempts: list[str] = []
+    original = e.fake.join_warehouse
+
+    async def counting(token: str, wid: UUID) -> None:
+        attempts.append(token)
+        await original(token, wid)
+
+    e.fake.join_warehouse = counting
+
+    await e.watcher.poll_once()
+    first_round = len(attempts)
+    await run_for(e, 4.0)
+    await e.watcher.poll_once()
+
+    assert e.watcher.wars[warehouse_id].rejected == {e.bot_ids[0]}
+    assert first_round == 3
+    assert len(attempts) == first_round

@@ -35,6 +35,7 @@ log = logging.getLogger("auction_bots.watcher")
 @dataclass
 class WarState:
     members: set[UUID] = field(default_factory=set)
+    rejected: set[UUID] = field(default_factory=set)
     humans_seen: bool = False
     human_raises: int = 0
     human_leads: bool = False
@@ -109,7 +110,7 @@ class WarehouseWatcher:
             and not other.settled
         )
         for user_id in sorted(self._agents, key=str):
-            if user_id in war.members:
+            if user_id in war.members or user_id in war.rejected:
                 continue
             if not war.humans_seen and players >= MIN_PLAYERS:
                 break
@@ -130,6 +131,8 @@ class WarehouseWatcher:
                 await self._api.join_warehouse(agent.session.token, warehouse_id)
             except ApiError as error:
                 log.warning("join failed", extra={"status": error.status})
+                if error.status == 409:
+                    war.rejected.add(user_id)
                 continue
             war.members.add(user_id)
             players += 1

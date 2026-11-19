@@ -387,11 +387,11 @@ class FakeMarket:
         account = self._account(token)
         war = self._war(warehouse_id)
         if war.status != "Open":
-            self._fail(account, BadRequest(400, "warehouse is not filling"))
+            self._fail(account, Conflict(409, "Warehouse war is not open"))
         if account.user_id in war.participants:
-            self._fail(account, BadRequest(400, "already joined"))
+            self._fail(account, Conflict(409, "User already joined this warehouse war"))
         if len(war.participants) >= WAR_MAX_PLAYERS:
-            self._fail(account, BadRequest(400, "lobby is full"))
+            self._fail(account, Conflict(409, "Warehouse war lobby is full"))
         war.participants[account.user_id] = "PendingLock"
         delay = self._rng.uniform(*WAR_LOCK_DELAY_S)
         when = self._scheduler.now() + timedelta(seconds=delay)
@@ -416,7 +416,7 @@ class FakeMarket:
         account = self._account(token)
         war = self._war(warehouse_id)
         if war.status != "Bidding":
-            self._fail(account, BadRequest(400, "warehouse is not bidding"))
+            self._fail(account, Conflict(409, "Warehouse war is not in bidding"))
         if war.participants.get(account.user_id) != "Active":
             self._fail(account, BadRequest(400, "not an active participant"))
         if war.leader == account.user_id:
