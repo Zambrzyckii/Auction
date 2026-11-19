@@ -1,0 +1,103 @@
+@use 'tools';
+
+@mixin tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--u) * 2);
+  font: 16px/16px var(--m-pixel);
+  text-transform: uppercase;
+  color: var(--m-ink);
+  background: var(--m-taxi);
+  border: var(--u) solid var(--m-ink);
+  border-radius: 0;
+  padding: calc(var(--u) * 3) calc(var(--u) * 5);
+  box-shadow:
+    inset 0 var(--u) 0 var(--m-taxi-hi),
+    inset 0 calc(var(--u) * -2) 0 var(--m-taxi-lo);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.14s var(--m-ease);
+  @include tools.cut-corners;
+}
+
+@mixin ghost {
+  color: var(--m-text);
+  background: var(--m-panel2);
+  box-shadow:
+    inset 0 var(--u) 0 #4a4452,
+    inset 0 calc(var(--u) * -2) 0 var(--m-ink);
+}
+
+@include tools.inside {
+  button {
+    @include tag;
+  }
+
+  button:hover {
+    transform: translateY(calc(var(--u) * -1));
+  }
+
+  button:active {
+    transform: translateY(var(--u));
+    box-shadow: inset 0 calc(var(--u) * 2) 0 var(--m-taxi-lo);
+  }
+
+  button:focus-visible {
+    outline-color: var(--m-text);
+  }
+
+  button[type='submit']::before,
+  button.spin::before,
+  button.join::before,
+  button.buy-premises::before,
+  button.craft::before {
+    content: '';
+    width: calc(var(--u) * 2);
+    height: calc(var(--u) * 2);
+    background: var(--m-ink);
+    box-shadow: 0 0 0 var(--u) var(--m-taxi-lo);
+  }
+
+  button.remove-bet,
+  button.remove-friend,
+  button.remove-link,
+  button.cancel-request,
+  button.decline,
+  button.delete-avatar,
+  button.leave {
+    @include ghost;
+  }
+
+  button:disabled {
+    @include ghost;
+    color: var(--m-mute);
+    transform: none;
+    cursor: not-allowed;
+  }
+
+  td button,
+  li button {
+    padding: var(--u) calc(var(--u) * 3);
+  }
+
+  nav.games {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 3);
+  }
+
+  nav.games a {
+    @include tag;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @include tools.inside {
+    button,
+    nav.games a {
+      transition: none;
+    }
+  }
+}
