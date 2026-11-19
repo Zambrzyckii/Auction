@@ -99,6 +99,7 @@ def join(
     *,
     wallet: int = 1000,
     bot_only_wars: int = 0,
+    third_bot: bool = False,
 ) -> bool:
     return decide_join(
         lobby,
@@ -106,8 +107,8 @@ def join(
         persona_of(),
         Decimal(wallet),
         KNOBS,
-        random.Random(seed),
         bot_only_wars=bot_only_wars,
+        third_bot=third_bot,
     )
 
 
@@ -147,13 +148,13 @@ def test_ambiguous_ratio_falls_back_below_true_value() -> None:
     assert cap == Decimal(str(KNOBS.buy_cap)) * Decimal(10) / Decimal("1.3")
 
 
-def test_human_lobby_gets_two_bots_and_maybe_a_third() -> None:
+def test_human_lobby_gets_two_bots_and_only_the_rolled_third() -> None:
     for members, expected in ((0, True), (1, True), (3, False)):
         for seed in range(200):
             assert join(war(players=1 + members), members, seed) is expected
 
-    third = sum(join(war(players=3), 2, seed) for seed in range(1000))
-    assert 450 <= third <= 550
+    assert join(war(players=3), 2, 0, third_bot=True) is True
+    assert join(war(players=3), 2, 0, third_bot=False) is False
 
 
 def test_only_one_bot_only_war_at_a_time() -> None:

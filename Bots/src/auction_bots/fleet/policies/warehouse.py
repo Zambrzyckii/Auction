@@ -48,16 +48,16 @@ def decide_join(
     persona: Persona,
     wallet_available: Decimal,
     knobs: Knobs,
-    rng: random.Random,
     *,
     bot_only_wars: int,
+    third_bot: bool,
 ) -> bool:
     if wallet_available < war.entry_fee or war.players >= war.max_players:
         return False
     if war.players > fleet_members_in_war:
         if fleet_members_in_war < HUMAN_LOBBY_BOTS:
             return True
-        return fleet_members_in_war == HUMAN_LOBBY_BOTS and rng.random() < THIRD_BOT_P
+        return fleet_members_in_war == HUMAN_LOBBY_BOTS and third_bot
     return bot_only_wars == 0
 
 

@@ -50,7 +50,7 @@ def persona_of(index: int) -> Persona:
     )
 
 
-def env(bot_count: int = 3) -> SimpleNamespace:
+def env(bot_count: int = 3, seed: int = 9) -> SimpleNamespace:
     scheduler = Scheduler()
     bot_ids = [UUID(int=i + 1) for i in range(bot_count)]
     registry = FleetRegistry(expected=bot_count)
@@ -84,7 +84,7 @@ def env(bot_count: int = 3) -> SimpleNamespace:
         ledger,
         registry,
         SETTINGS,
-        random.Random(9),
+        random.Random(seed),
         scheduler.now,
     )
     return SimpleNamespace(
@@ -307,3 +307,19 @@ async def test_poll_survives_unexpected_errors() -> None:
     e.fake.list_warehouses = boom
 
     await e.watcher.poll_once()
+
+
+async def test_the_third_bot_coin_is_rolled_once_per_war() -> None:
+    sizes = []
+    for seed in range(12):
+        e = env(bot_count=8, seed=seed)
+        warehouse_id = e.fake.open_warehouse(prices=[400])
+        await e.fake.join_warehouse(e.human, warehouse_id)
+        await run_for(e, 4.0)
+
+        await e.watcher.poll_once()
+
+        war = e.watcher.wars[warehouse_id]
+        assert len(war.members) == (3 if war.third_bot else 2)
+        sizes.append(len(war.members))
+    assert 2 in sizes

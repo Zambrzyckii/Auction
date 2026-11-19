@@ -14,6 +14,7 @@ from auction_bots.director.controller import Director
 from auction_bots.fleet.agent import BotAgent
 from auction_bots.fleet.identity import BotSession
 from auction_bots.fleet.policies.warehouse import (
+    THIRD_BOT_P,
     EstimateVariant,
     decide_join,
     decide_raise,
@@ -42,6 +43,7 @@ class WarState:
     last_price: Decimal = Decimal(0)
     last_own_raiser: UUID | None = None
     bot_war_target: Decimal | None = None
+    third_bot: bool | None = None
     settled: bool = False
 
 
@@ -103,6 +105,8 @@ class WarehouseWatcher:
     async def _fill(self, summary: WarehouseSummaryDto, war: WarState) -> None:
         players = summary.players
         warehouse_id = summary.public_warehouse_id
+        if war.third_bot is None:
+            war.third_bot = self._rng.random() < THIRD_BOT_P
         bot_only_elsewhere = sum(
             1
             for other_id, other in self.wars.items()
@@ -124,8 +128,8 @@ class WarehouseWatcher:
                 agent.persona,
                 agent.wallet_hint(),
                 self._director.knobs,
-                self._rng,
                 bot_only_wars=bot_only_elsewhere,
+                third_bot=war.third_bot,
             )
             if not joins:
                 continue
