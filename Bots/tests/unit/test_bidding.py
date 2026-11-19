@@ -19,6 +19,7 @@ SELF = UUID(int=1)
 OTHER_BOT = UUID(int=2)
 THIRD_BOT = UUID(int=3)
 HUMAN = UUID(int=4)
+BUYER = UUID(int=5)
 FLEET = {SELF, OTHER_BOT, THIRD_BOT}
 
 
@@ -243,3 +244,26 @@ def test_a_human_bidding_the_ceiling_always_wins() -> None:
         if decision.action is BidAction.BID:
             assert decision.amount is not None
             assert decision.amount < int(919 * 0.815)
+
+
+def test_a_human_led_human_listing_is_still_opened_at_official() -> None:
+    led_below = view(HUMAN, BUYER, 500, human_bids=1)
+    led_at = view(HUMAN, BUYER, 1000, human_bids=1)
+    final = view(HUMAN, BUYER, 500, ends_in_s=35.0, human_bids=1)
+    amounts = []
+
+    for seed in range(1000):
+        decision = decide(led_below, seed)
+        if decision.action is BidAction.BID:
+            assert decision.amount is not None
+            amounts.append(decision.amount)
+    assert amounts
+    assert all(amount >= 1000 for amount in amounts)
+
+    for seed in range(1000):
+        decision = decide(led_at, seed)
+        if decision.action is BidAction.BID:
+            assert decision.amount is not None
+            assert decision.amount >= 1001
+    for seed in range(100):
+        assert decide(final, seed).action is not BidAction.BID

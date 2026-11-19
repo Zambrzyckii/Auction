@@ -71,8 +71,12 @@ def decide_bid(
     step = next_step(auction.current_price, persona, rng)
     bid = value if persona.single_bid else auction.current_price + step
 
-    fresh_human_listing = auction.leader_id is None and is_human(auction.seller_id)
-    if fresh_human_listing and auction.current_price <= auction.official_price:
+    opening_floor = (
+        is_human(auction.seller_id)
+        and (auction.leader_id is None or human_leader)
+        and auction.current_price <= auction.official_price
+    )
+    if opening_floor:
         floor = max(auction.official_price, auction.current_price + 1)
         if wallet_available < floor:
             return BidDecision(BidAction.WAIT)
@@ -81,7 +85,7 @@ def decide_bid(
 
     cap = value
 
-    if human_leader or not is_human(auction.seller_id):
+    if (human_leader and not opening_floor) or not is_human(auction.seller_id):
         ceiling = int(round(float(auction.official_price) * knobs.buy_cap, 6))
         cap = min(cap, Decimal(ceiling - 1))
 
