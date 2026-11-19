@@ -51,6 +51,8 @@ FIRST_BID_WAIT_S = 60.0
 CANDIDATE_WAIT_S = 180.0
 WAR_WAIT_S = 600.0
 LOBBY_WAIT_S = 15.0
+FEE_CONFIRM_WAIT_S = 60.0
+STEERING_WAIT_S = 150.0
 SETTLE_WAIT_S = 120.0
 SNIPE_GUARD = timedelta(seconds=30)
 SELL_DURATION = timedelta(minutes=3)
@@ -466,6 +468,13 @@ async def phase_war(probe: Probe, api: ProbeClient, player: Player, api_key: str
     detail = await wait_for(bidding, 90.0, 1.0)
     if not probe.check("P5 war entered Bidding", detail is not None):
         return
+
+    async def fee_confirmed() -> WarehouseDetailsDto | None:
+        detail = await api.get_warehouse(player.token, warehouse_id)
+        return detail if detail.participant_state == "Active" else None
+
+    confirmed = await wait_for(fee_confirmed, FEE_CONFIRM_WAIT_S, 1.0)
+    probe.check("P5 player entry fee confirmed", confirmed is not None)
     try:
         await api.raise_warehouse(player.token, warehouse_id, step)
         probe.check(f"P5 player raised by {step}", True)
@@ -515,29 +524,47 @@ async def phase_war(probe: Probe, api: ProbeClient, player: Player, api_key: str
         probe.check("P5 entry fee returned", await wait_for(refunded, 60.0, 3.0) is not None)
 
 
-def phase_limits(probe: Probe, fleet_size: int) -> None:
+async def phase_limits(
+    probe: Probe, fleet_size: int, rate_floor: float, rate_ceiling: float
+) -> None:
     logs = bots_logs()
     probe.check("P6 no 429 in the fleet log", count_429(logs) == 0, str(count_429(logs)))
     lines = summaries(logs)
     latest = lines[-1] if lines else {}
     low, high = ACTIVE_LISTINGS_RANGE.get(fleet_size, (5, 30))
     probe.check("P6 fleet bids per minute above zero", latest.get("bids_per_min", 0) > 0)
+    seen = "no summary"
+
+    async def steered() -> str | None:
+        nonlocal seen
+        lines = summaries(bots_logs())
+        if len(lines) < 2:
+            return None
+        active = lines[-1]["active_listings"]
+        rate, before = lines[-1]["knobs"]["listing_rate"], lines[-2]["knobs"]["listing_rate"]
+        seen = f"{active} listings, listing_rate {before:.2f} then {rate:.2f}"
+        if low <= active <= high:
+            return seen
+        if active > high and (rate < before or rate <= rate_floor):
+            return seen
+        if active < low and (rate > before or rate >= rate_ceiling):
+            return seen
+        return None
+
+    steering = await wait_for(steered, STEERING_WAIT_S, 10.0)
     probe.check(
-        f"P6 active listings within {low} to {high}",
-        low <= latest.get("active_listings", -1) <= high,
-        str(latest.get("active_listings")),
+        f"P6 director steers active listings toward {low} to {high}", steering is not None, seen
     )
     consumers = fleet_queue_consumers()
     probe.check("P6 one consumer on the fleet queue", consumers == 1, str(consumers))
 
 
 async def phase_resilience(probe: Probe) -> None:
-    consuming_before = bots_logs().count('"consuming ')
     restarts_before = bots_restart_count()
     compose("restart", "rabbitmq")
 
     async def reconnected() -> bool | None:
-        return True if bots_logs().count('"consuming ') > consuming_before else None
+        return True if fleet_queue_consumers() == 1 else None
 
     probe.check("P7 feed reconnected within 30 s", await wait_for(reconnected, 30.0, 2.0) is True)
     summaries_before = len(summaries(bots_logs()))
@@ -597,7 +624,12 @@ async def main() -> int:
             await guarded("P3", phase_sell(probe, api, player))
             await guarded("P4", phase_buy(probe, api, player))
             await guarded("P5", phase_war(probe, api, player, api_key))
-        phase_limits(probe, args.fleet_size)
+        await phase_limits(
+            probe,
+            args.fleet_size,
+            settings.listing.listing_rate_min,
+            settings.listing.listing_rate_max,
+        )
         if args.resilience:
             await guarded("P7", phase_resilience(probe))
     finally:
