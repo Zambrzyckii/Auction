@@ -24,7 +24,7 @@ from auction_bots.config import load_settings
 from auction_bots.director.knobs import Knobs
 from auction_bots.feed.dedupe import RecentIds
 from auction_bots.feed.events import BidPlaced
-from auction_bots.fleet.agent import AuctionGate, BotAgent
+from auction_bots.fleet.agent import AuctionGate, BotAgent, OpenBid
 from auction_bots.fleet.archetypes import ArchetypeName
 from auction_bots.fleet.identity import BotSession
 from auction_bots.fleet.persona import Persona
@@ -460,3 +460,52 @@ async def test_reactions_start_before_the_first_tick() -> None:
     assert ticks == 0
     stop.set()
     await task
+
+
+async def test_the_decision_is_rechecked_after_the_saga_wait() -> None:
+    h = harness(persona_of(reaction_delay_s=1.0))
+    seller = h.fake.register_human(ALICE, 10_000)
+    buyer = h.fake.register_human(UUID(int=7), 10_000)
+    item = await h.fake.mint_item(seller, "Pocket TV", Rarity.Epic)
+    ends = h.scheduler.now() + timedelta(seconds=60.0)
+    auction_id = await h.fake.create_auction(seller, item, 100, ends)
+    await run_for(h, 10.0)
+    slow = TokenBucket(
+        0.05, 1, clock=lambda: (h.scheduler.now() - START).total_seconds(), sleep=h.scheduler.sleep
+    )
+    await slow.acquire()
+    h.agent._saga_bucket = slow
+
+    reaction = asyncio.ensure_future(h.agent.react(MarketChange(auction_id, "activated")))
+    await run_for(h, 2.0)
+    await h.fake.place_bid(buyer, auction_id, 102)
+    await run_for(h, 40.0)
+    await reaction
+
+    assert fleet_bids(h) == []
+
+
+async def test_confirmed_bid_without_a_view_frees_the_slot() -> None:
+    h = harness()
+    seller = h.fake.register_human(ALICE, 10_000)
+    live_id = await listed(h, seller)
+    gone_id = uuid4()
+    now = h.scheduler.now()
+    h.agent.open_bids[live_id] = OpenBid(live_id, 100, Decimal(100), now, confirmed=True)
+    h.agent.open_bids[gone_id] = OpenBid(gone_id, 100, Decimal(100), now, confirmed=True)
+
+    await h.agent.tick()
+
+    assert live_id in h.agent.open_bids
+    assert gone_id not in h.agent.open_bids
+
+
+async def test_tick_survives_unexpected_errors() -> None:
+    h = harness()
+
+    async def boom() -> None:
+        raise RuntimeError("boom")
+
+    h.agent._relist = boom
+
+    await h.agent.tick()

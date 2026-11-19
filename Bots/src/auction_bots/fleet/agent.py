@@ -142,6 +142,8 @@ class BotAgent:
             await self._consider(change.auction_id)
         except ApiError as error:
             log.warning("react failed", extra={"status": error.status, "bot": self._persona.index})
+        except Exception:
+            log.exception("react crashed", extra={"bot": self._persona.index})
 
     async def tick(self) -> None:
         self._expire_open_bids(self._clock())
@@ -153,6 +155,8 @@ class BotAgent:
             await self._relist()
         except ApiError as error:
             log.warning("tick failed", extra={"status": error.status, "bot": self._persona.index})
+        except Exception:
+            log.exception("tick crashed", extra={"bot": self._persona.index})
 
     async def run(self, stop: asyncio.Event, *, first_tick_delay_s: float = 0.0) -> None:
         queue = self._state.subscribe()
@@ -233,10 +237,29 @@ class BotAgent:
             return
         if not self._gate.try_claim(auction_id, now):
             return
-        amount = decision.amount
         self._placing += 1
         try:
             await self._saga_bucket.acquire()
+            view = self._state.get(auction_id)
+            if view is None:
+                self._gate.release(auction_id, None)
+                return
+            decision = decide_bid(
+                view,
+                self._persona,
+                await self._available(),
+                self._knobs(),
+                self._registry.is_human,
+                self._clock(),
+                self._rng,
+                self_id=me,
+                valuation=valuation,
+            )
+            if decision.action is not BidAction.BID or decision.amount is None:
+                self._gate.release(auction_id, None)
+                return
+            amount = decision.amount
+            placed_at = self._clock()
             await self._authorized(lambda token: self._api.place_bid(token, auction_id, amount))
         except ApiError as error:
             self._gate.release(auction_id, None)
@@ -245,7 +268,7 @@ class BotAgent:
         finally:
             self._placing -= 1
         self.bids_placed += 1
-        self.open_bids[auction_id] = OpenBid(auction_id, amount, valuation, self._clock())
+        self.open_bids[auction_id] = OpenBid(auction_id, amount, valuation, placed_at)
 
     def _forget(self, auction_id: UUID) -> None:
         self._valuations.pop(auction_id, None)
@@ -256,6 +279,10 @@ class BotAgent:
     def _expire_open_bids(self, now: datetime) -> None:
         for auction_id, open_bid in list(self.open_bids.items()):
             if open_bid.confirmed:
+                if self._state.get(auction_id) is None:
+                    del self.open_bids[auction_id]
+                    self._gate.release(auction_id, None)
+                    self._wallet = None
                 continue
             if (now - open_bid.placed_at).total_seconds() > OPEN_BID_TTL_S:
                 del self.open_bids[auction_id]
