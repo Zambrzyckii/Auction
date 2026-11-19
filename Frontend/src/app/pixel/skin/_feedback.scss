@@ -1,0 +1,112 @@
+@use 'tools';
+
+@include tools.inside {
+  .error,
+  .bot-rejection,
+  .shop-rejection,
+  .entry-rejected,
+  .cancellation,
+  td.rejection,
+  td.overdue-note {
+    color: var(--m-red-hi);
+  }
+
+  .error {
+    display: flex;
+    gap: calc(var(--u) * 3);
+    align-items: start;
+    margin: 0;
+    font: 16px/24px var(--m-pixel);
+
+    &::before {
+      content: '!';
+      flex: none;
+      width: calc(var(--u) * 8);
+      height: calc(var(--u) * 8);
+      display: grid;
+      place-items: center;
+      background: var(--m-red-hi);
+      color: var(--m-ink);
+      font: 16px/16px var(--m-pixel);
+    }
+  }
+
+  .notice,
+  .bank-notice,
+  .loan-notice,
+  .purchase-notice,
+  .cash-out-notice,
+  .table-notice,
+  .buy-error,
+  .spin-error,
+  .shop-notice,
+  .bot-notice,
+  .stock-notice,
+  .avatar-notice,
+  .friend-notice,
+  .social-notice,
+  .send-notice,
+  .invite-notice,
+  .war-notice {
+    margin: 0;
+    padding: calc(var(--u) * 2) calc(var(--u) * 3);
+    color: var(--m-text);
+    background: var(--m-panel2);
+    border-left: calc(var(--u) * 2) solid var(--m-taxi);
+  }
+
+  .buy-problem,
+  .cash-out-problem,
+  .deal-problem,
+  .bet-problem,
+  .spin-problem,
+  .join-problem,
+  .raise-problem,
+  .premises-problem,
+  .friend-problem,
+  .link-problem,
+  .send-problem,
+  .avatar-problem,
+  .offer-problem,
+  .withdraw-problem,
+  .repay-hint,
+  .recipient-preview,
+  .private,
+  .bot-none,
+  .bot-pending,
+  .payment-pending,
+  .pending-lock,
+  .refund,
+  .auto-stand,
+  .auto-stood,
+  .invite-expiry,
+  .next-spawn,
+  .dealer-total,
+  .player-total {
+    color: var(--m-mute);
+  }
+
+  .shop-active,
+  .leading,
+  .won {
+    color: var(--m-green);
+  }
+
+  .someone-leads,
+  .recipient-warning,
+  .current-price,
+  p.outcome,
+  .net {
+    color: var(--m-taxi-hi);
+  }
+
+  .current-price,
+  .starts-in,
+  .closes-in,
+  .pocket,
+  .net,
+  .hand-stake,
+  p.outcome {
+    font: 27px/27px var(--m-head);
+  }
+}
