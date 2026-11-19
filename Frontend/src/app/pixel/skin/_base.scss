@@ -1,0 +1,80 @@
+@use 'tools';
+
+@include tools.inside {
+  & {
+    background: var(--m-night);
+    color: var(--m-text);
+    font: 16px/24px var(--m-pixel);
+    font-synthesis: none;
+    letter-spacing: 0;
+    color-scheme: dark;
+    margin: 0;
+  }
+
+  main {
+    max-width: calc(var(--u) * 320);
+    margin: 0 auto;
+    padding: calc(var(--u) * 8) max(16px, calc(var(--u) * 6));
+
+    > :not(router-outlet) {
+      display: grid;
+      gap: calc(var(--u) * 6);
+      align-content: start;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    p {
+      margin: 0;
+    }
+
+    a {
+      color: var(--m-taxi-hi);
+      text-transform: uppercase;
+      text-decoration: underline;
+      text-decoration-thickness: var(--u);
+      text-underline-offset: calc(var(--u) * 2);
+
+      &:hover {
+        color: var(--m-text);
+      }
+    }
+  }
+
+  h1,
+  h2 {
+    font: 54px/54px var(--m-head);
+    font-weight: 400;
+    text-transform: uppercase;
+    color: var(--m-text);
+  }
+
+  h3 {
+    font: 27px/27px var(--m-head);
+    font-weight: 400;
+    text-transform: uppercase;
+    color: var(--m-text);
+  }
+
+  h4 {
+    font: 16px/16px var(--m-pixel);
+    font-weight: 400;
+    text-transform: uppercase;
+    color: var(--m-mute);
+  }
+
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible {
+    outline: var(--u) solid var(--m-taxi-hi);
+    outline-offset: var(--u);
+  }
+
+  ::selection {
+    background: var(--m-taxi);
+    color: var(--m-ink);
+  }
+}

@@ -1,5 +1,6 @@
 @use './app/pixel/street/street-theme';
 @use './app/pixel/auth/door-sheet';
+@use 'sass:meta';
 
 * {
   box-sizing: border-box;
@@ -72,3 +73,5 @@ label {
 .error {
   color: #b00020;
 }
+
+@include meta.load-css('./app/pixel/skin/skin');
