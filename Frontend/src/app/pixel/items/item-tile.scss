@@ -25,6 +25,11 @@
   background: var(--m-legend);
 }
 
+:host([data-rarity='Epic']),
+:host([data-rarity='Legendary']) {
+  overflow: hidden;
+}
+
 :host([data-rarity='Epic'])::after,
 :host([data-rarity='Legendary'])::after {
   content: '';
