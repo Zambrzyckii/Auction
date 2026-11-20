@@ -10,7 +10,9 @@ import { HOME } from './home';
 import { KITCHEN } from './kitchen';
 import { MUSIC } from './music';
 import { OFFICE } from './office';
+import { PETS } from './pets';
 import { PHONES } from './phones';
+import { PHOTO } from './photo';
 import { SPORTS } from './sports';
 import { STREET } from './street';
 import { TOOLS } from './tools';
@@ -35,6 +37,8 @@ export const EXACT: Readonly<Record<string, () => Sprite>> = {
   ...HOME,
   ...CAMPING,
   ...WORKSHOP,
+  ...PHOTO,
+  ...PETS,
   ...STARTERS,
 };
 
