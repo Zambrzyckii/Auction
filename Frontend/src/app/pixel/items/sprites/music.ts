@@ -92,16 +92,14 @@ export function rustyTrumpet(): Sprite {
   for (const [x, y, w] of [
     [9, 27, 3],
     [15, 28, 2],
-    [26, 9, 1],
-    [24, 17, 2],
+    [25, 10, 2],
     [8, 12, 2],
-    [12, 14, 2],
-    [18, 12, 1],
+    [10, 14, 3],
   ])
     s.hline(x, y, w, R.rust[1]);
   for (const [x, y] of [
     [10, 27],
-    [25, 10],
+    [26, 10],
     [11, 14],
   ])
     s.set(x, y, R.rust[2]);
