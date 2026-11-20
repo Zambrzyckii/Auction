@@ -31,7 +31,7 @@ export function workshopDeps(): StreetBootDeps<SceneOpts, WorkshopScene> {
 
 interface Run {
   readonly ids: readonly string[];
-  readonly spent: readonly string[];
+  readonly picked: readonly string[];
   readonly expected: Rarity;
   readonly viaScene: boolean;
 }
@@ -121,6 +121,7 @@ export class Workshop {
   private readonly run = signal<Run | null>(null);
   protected readonly result = signal<Result | null>(null);
   protected readonly revealed = signal(false);
+  private readonly spent = signal<readonly string[]>([]);
   private readonly crafting = computed(
     () => this.pending() || (this.result() !== null && !this.revealed()),
   );
@@ -130,9 +131,8 @@ export class Workshop {
   });
 
   readonly hidden = computed<readonly string[]>(() => {
-    const run = this.run();
-    if (!run) return [];
-    const spent = this.result() ? run.spent : [];
+    const held = this.items().map((i) => i.publicItemId);
+    const spent = this.spent().filter((id) => held.includes(id));
     const landed = this.landed();
     return landed && !this.revealed() ? [...spent, landed] : spent;
   });
@@ -278,7 +278,7 @@ export class Workshop {
     this.clearResult();
     this.run.set({
       ids: this.items().map((i) => i.publicItemId),
-      spent: picked,
+      picked,
       expected,
       viaScene,
     });
@@ -289,6 +289,8 @@ export class Workshop {
     const run = this.run();
     if (!run) return;
     const result = { name: `Crafted ${run.expected} Item`, rarity: run.expected };
+    const held = this.items().map((i) => i.publicItemId);
+    this.spent.update((spent) => [...spent.filter((id) => held.includes(id)), ...run.picked]);
     this.result.set(result);
     this.revealed.set(false);
     const scene = this.scene();

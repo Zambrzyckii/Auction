@@ -210,6 +210,21 @@ describe('Workshop', () => {
     expect(why()).toBe('2 more Common items to go.');
   });
 
+  it('keeps the spent cards hidden after a pick until the poll drops them', () => {
+    pressAndCraft();
+    set(() => {
+      host.pending.set(false);
+      host.picked.set([]);
+    });
+    set(() => host.picked.set(['d']));
+    expect(ws.hidden()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
+    expect(ws.fresh()).toBeNull();
+    set(() => host.items.set([c('d'), crafted]));
+    expect(ws.hidden()).not.toContain('a');
+    expect(ws.hidden()).not.toContain('b');
+    expect(ws.hidden()).not.toContain('c');
+  });
+
   it('renders no notice or error', () => {
     pressAndCraft();
     set(() => {
