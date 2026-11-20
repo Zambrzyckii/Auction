@@ -208,6 +208,7 @@ describe('Inventory', () => {
       const boxes = () => [
         ...el().querySelectorAll<HTMLInputElement>('li.card input[type="checkbox"]'),
       ];
+      expect(boxes().length).toBe(3);
       expect(boxes().every((b) => b.disabled)).toBe(true);
       http
         .expectOne('/api/inventory/craft')
@@ -227,16 +228,14 @@ describe('Inventory', () => {
         .flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
       fixture.detectChanges();
       fixture.componentInstance.poller.refresh();
-      http
-        .expectOne('/api/inventory')
-        .flush([
-          item({
-            publicItemId: 'new',
-            name: 'Crafted Rare Item',
-            rarity: 'Rare',
-            officialPrice: 1234,
-          }),
-        ]);
+      http.expectOne('/api/inventory').flush([
+        item({
+          publicItemId: 'new',
+          name: 'Crafted Rare Item',
+          rarity: 'Rare',
+          officialPrice: 1234,
+        }),
+      ]);
       fixture.detectChanges();
       const cards = el().querySelectorAll('li.card');
       expect(cards.length).toBe(1);
