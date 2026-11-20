@@ -127,6 +127,22 @@ export const BOT_NAMES: readonly string[] = [
   'Dented Oil Can',
   'Workbench Vise',
   'Gold-Plated Hammer',
+  'Disposable Camera',
+  'Cracked Instant Camera',
+  'Slide Projector',
+  'Reel of Home Movies',
+  'VHS Rewinder',
+  'Bootleg Movie Tape',
+  'Marquee Letter R',
+  "Director's Megaphone",
+  'Chewed Leash',
+  'Squeaky Rubber Chicken',
+  'Hamster Wheel',
+  'Aquarium Castle',
+  'Dog Bowl Engraved KING',
+  'Birdcage Missing a Door',
+  'Lizard Heat Lamp',
+  'Cat Tree Leaning Left',
 ];
 
 export const STARTER_NAMES: readonly string[] = ['Rusty Toolbox', 'Old Radio', 'Worn Backpack'];
