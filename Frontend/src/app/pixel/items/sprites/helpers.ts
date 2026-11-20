@@ -1,4 +1,4 @@
-import { R, type Col, type Ramp, type Sprite } from '../../street/pix';
+import { INK, R, Sprite, type Col, type Ramp } from '../../street/pix';
 import type { Rarity } from '../rarity';
 
 const ACCENT: Readonly<Record<Rarity, Ramp>> = {
@@ -86,6 +86,12 @@ export function digits(s: Sprite, str: string, x: number, y: number, col: Col): 
       }),
     );
   });
+}
+
+export function mask(pts: readonly Point[]): (x: number, y: number) => boolean {
+  const m = new Sprite(32, 32);
+  poly(m, pts, INK);
+  return (x, y) => m.get(x, y) !== null;
 }
 
 export function flat(s: Sprite, test: (x: number, y: number) => boolean, col: Col): void {
