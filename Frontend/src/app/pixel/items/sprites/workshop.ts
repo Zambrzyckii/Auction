@@ -77,7 +77,7 @@ export function crackedSpiritLevel(): Sprite {
   box(s, 11, 20, 10, 6, R.black, {});
   s.rect(12, 21, 8, 4, R.sign[3]);
   s.rect(14, 22, 3, 2, R.white[3]);
-  s.line(21, 28, 23, 22, R.black[0]);
+  s.line(21, 27, 23, 22, R.black[0]);
   s.line(23, 22, 22, 18, R.black[0]);
   s.line(23, 22, 27, 21, R.black[0]);
   s.line(18, 20, 17, 25, R.black[0]);
@@ -87,13 +87,35 @@ export function crackedSpiritLevel(): Sprite {
 export function bentNailPuller(): Sprite {
   const s = new Sprite(32, 32);
   box(s, 2, 22, 27, 7, R.wood, { band: 1 });
-  const bar = bezier([3, 3], [10, 3], [17, 5], [20, 15], 16);
-  shape(s, sweep(bar, 2.4, 1.8), R.grey, { band: 1 });
-  box(s, 18, 15, 9, 3, R.grey, { band: 1 });
-  s.rect(23, 15, 2, 3, null);
-  s.vline(23, 14, 8, R.white[3]);
-  s.vline(24, 14, 8, R.white[1]);
-  s.rect(21, 11, 6, 2, R.white[3]);
+  s.vline(8, 14, 8, R.white[3]);
+  s.vline(9, 14, 8, R.white[1]);
+  s.rect(6, 12, 6, 2, R.white[3]);
+  const bar = sweep(
+    [
+      [28, 3],
+      [23, 6],
+      [19, 12],
+      [14, 17],
+    ],
+    1.6,
+  );
+  const prongs = [
+    sweep(
+      [
+        [14, 17],
+        [10, 14],
+      ],
+      1.5,
+    ),
+    sweep(
+      [
+        [14, 17],
+        [10, 20],
+      ],
+      1.5,
+    ),
+  ];
+  shape(s, (x, y) => bar(x, y) || prongs.some((p) => p(x, y)), R.grey, { band: 1 });
   return s.outline();
 }
 
