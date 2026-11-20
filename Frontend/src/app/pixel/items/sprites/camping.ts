@@ -72,8 +72,8 @@ export function rustyPocketKnife(): Sprite {
 export function bentFishingRod(): Sprite {
   const s = new Sprite(32, 32);
   const rod = bezier([4, 27], [9, 13], [20, 0], [28, 9], 24);
-  shape(s, sweep(rod, 1.5, 0.6), R.wood, {});
-  shape(s, thick(3.5, 28.5, 10.5, 20.5, 2), R.wood, {});
+  shape(s, sweep(rod, 1.5, 0.6), R.wood);
+  shape(s, thick(3.5, 28.5, 10.5, 20.5, 2), R.wood);
   shape(s, ell(12, 20, 4, 3.5), R.steel, { band: 1 });
   s.set(12, 20, R.steel[0]);
   for (const [x, y] of bezier([28, 9], [29, 14], [25, 19], [27, 24], 14)) s.set(x, y, R.paper[3]);

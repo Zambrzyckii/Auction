@@ -1,5 +1,5 @@
 import { R, Sprite, box, cylH, cylV, shape } from '../../street/pix';
-import { bezier, ell, flat, poly, sweep, thick } from './helpers';
+import { bezier, ell, flat, poly, sparkle, sweep, thick } from './helpers';
 
 export function jarOfLooseScrews(): Sprite {
   const s = new Sprite(32, 32);
@@ -41,7 +41,7 @@ export function jarOfLooseScrews(): Sprite {
   s.set(19, 15, null);
   s.line(13, 13, 17, 12, R.paper[0]);
   s.line(13, 15, 16, 14, R.paper[0]);
-  shape(s, thick(8.5, 5.5, 23.5, 7.5, 1.9), R.grey, {});
+  shape(s, thick(8.5, 5.5, 23.5, 7.5, 1.9), R.grey);
   return s.outline();
 }
 
@@ -74,7 +74,7 @@ export function crackedSpiritLevel(): Sprite {
   box(s, 2, 17, 28, 12, R.taxi, { band: 1 });
   flat(s, ell(7, 23, 2.4, 2.4), null);
   flat(s, ell(25, 23, 2.4, 2.4), null);
-  box(s, 11, 20, 10, 6, R.black, {});
+  box(s, 11, 20, 10, 6, R.black);
   s.rect(12, 21, 8, 4, R.sign[3]);
   s.rect(14, 22, 3, 2, R.white[3]);
   s.line(21, 27, 23, 22, R.black[0]);
@@ -140,10 +140,10 @@ export function chromeBlowtorch(): Sprite {
 export function dentedOilCan(): Sprite {
   const s = new Sprite(32, 32);
   const loop = (x: number, y: number) => ell(6.5, 19, 4.5, 6)(x, y) && !ell(6.5, 19, 2.5, 4)(x, y);
-  shape(s, loop, R.steel, {});
+  shape(s, loop, R.steel);
   shape(s, ell(14, 22, 8, 6.5), R.red, { band: 1 });
-  shape(s, thick(18.5, 17.5, 29.5, 4.5, 1.9, 0.9), R.steel, {});
-  shape(s, thick(5, 9.5, 14, 11, 1.4), R.steel, {});
+  shape(s, thick(18.5, 17.5, 29.5, 4.5, 1.9, 0.9), R.steel);
+  shape(s, thick(5, 9.5, 14, 11, 1.4), R.steel);
   s.rect(10, 12, 2, 4, R.steel[2]);
   s.rect(10, 22, 3, 2, R.red[0]);
   s.hline(10, 24, 3, R.red[3]);
@@ -182,10 +182,9 @@ export function goldPlatedHammer(): Sprite {
       band: 1,
     },
   );
-  shape(s, (x, y) => x >= 3 && x <= 6 && y >= 3 && y <= 12, R.gold, {});
+  shape(s, (x, y) => x >= 3 && x <= 6 && y >= 3 && y <= 12, R.gold);
   s.hline(8, 5, 8, R.white[3]);
-  s.hline(12, 3, 3, R.white[3]);
-  s.vline(13, 2, 3, R.white[3]);
+  sparkle(s, 13, 3, R.white[3]);
   return s.outline();
 }
 

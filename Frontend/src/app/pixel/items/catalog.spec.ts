@@ -59,6 +59,34 @@ describe('item catalog', () => {
     expect(names.NAMES).toHaveLength(163);
   });
 
+  it('has no key shared between theme files', async () => {
+    const records = await Promise.all([
+      import('./sprites/audio').then((m) => m.AUDIO),
+      import('./sprites/phones').then((m) => m.PHONES),
+      import('./sprites/computers').then((m) => m.COMPUTERS),
+      import('./sprites/wear').then((m) => m.WEAR),
+      import('./sprites/collectibles').then((m) => m.COLLECTIBLES),
+      import('./sprites/car').then((m) => m.CAR),
+      import('./sprites/toys').then((m) => m.TOYS),
+      import('./sprites/street').then((m) => m.STREET),
+      import('./sprites/tools').then((m) => m.TOOLS),
+      import('./sprites/music').then((m) => m.MUSIC),
+      import('./sprites/kitchen').then((m) => m.KITCHEN),
+      import('./sprites/sports').then((m) => m.SPORTS),
+      import('./sprites/office').then((m) => m.OFFICE),
+      import('./sprites/home').then((m) => m.HOME),
+      import('./sprites/camping').then((m) => m.CAMPING),
+      import('./sprites/workshop').then((m) => m.WORKSHOP),
+      import('./sprites/photo').then((m) => m.PHOTO),
+      import('./sprites/pets').then((m) => m.PETS),
+      import('./sprites/bling').then((m) => m.BLING),
+      import('./sprites/odd').then((m) => m.ODD),
+      import('./sprites/families').then((m) => m.STARTERS),
+    ]);
+    const total = records.reduce((sum, record) => sum + Object.keys(record).length, 0);
+    expect(total).toBe(Object.keys(catalog.EXACT).length);
+  });
+
   it('registers only names from the list', () => {
     for (const key of Object.keys(catalog.EXACT)) expect(names.NAMES).toContain(key);
   });

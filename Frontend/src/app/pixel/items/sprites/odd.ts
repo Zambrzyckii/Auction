@@ -6,12 +6,12 @@ type Test = (x: number, y: number) => boolean;
 export function snakeInACan(): Sprite {
   const s = new Sprite(32, 32);
   cylV(s, 6, 17, 14, 12, R.grey);
-  shape(s, ell(13, 17, 7, 2.4), R.grey, {});
+  shape(s, ell(13, 17, 7, 2.4), R.grey);
   flat(s, ell(13, 17, 5.6, 1.6), R.grey[0]);
   s.rect(6, 21, 14, 6, R.white[3]);
   s.hline(8, 23, 8, R.grey[1]);
   s.hline(8, 25, 5, R.grey[1]);
-  shape(s, ell(6, 10, 3.2, 1.4), R.grey, {});
+  shape(s, ell(6, 10, 3.2, 1.4), R.grey);
   const coils: [number, number][] = [
     [21, 5.5],
     [16, 6.5],
@@ -20,8 +20,8 @@ export function snakeInACan(): Sprite {
     [11, 14.5],
     [12, 17],
   ];
-  for (const [x, y] of coils) shape(s, ell(x, y, 4.5, 1.9), R.green, {});
-  shape(s, ell(24, 6, 4.4, 3.2), R.green, {});
+  for (const [x, y] of coils) shape(s, ell(x, y, 4.5, 1.9), R.green);
+  shape(s, ell(24, 6, 4.4, 3.2), R.green);
   s.rect(23, 4, 2, 2, R.white[3]);
   s.set(24, 5, R.grey[0]);
   s.hline(27, 7, 3, R.red[2]);
@@ -69,14 +69,14 @@ export function luckyRabbitFoot(): Sprite {
   }
   shape(s, thick(9.5, 6, 12, 10.5, 3.8), R.gold, { band: 1 });
   const loop: Test = (x, y) => ell(8, 4, 2.6, 2.6)(x, y) && !ell(8, 4, 1.2, 1.2)(x, y);
-  shape(s, loop, R.gold, {});
+  shape(s, loop, R.gold);
   const chain = bezier([10, 3], [16, 0], [22, 3], [24, 9], 8);
   flat(s, sweep(chain, 0.9), R.gold[2]);
   chain.forEach(([x, y], i) => {
     if (i % 2 === 0) s.set(x, y, R.gold[0]);
   });
   const key: Test = (x, y) => ell(25, 13, 3, 3)(x, y) && !ell(25, 13, 1.4, 1.4)(x, y);
-  shape(s, key, R.gold, {});
+  shape(s, key, R.gold);
   return s.outline();
 }
 
@@ -130,7 +130,7 @@ export function chatteringTeeth(): Sprite {
 export function fortuneTellingBall(): Sprite {
   const s = new Sprite(32, 32);
   sphere(s, 16, 16.5, 13, R.black, R.white[2]);
-  shape(s, ell(14.5, 14.5, 6.3, 6.3), R.white, {});
+  shape(s, ell(14.5, 14.5, 6.3, 6.3), R.white);
   blit(s, ['01110', '10001', '10001', '01110', '10001', '10001', '01110'], 12, 11, R.black[0]);
   return s.outline();
 }
@@ -148,7 +148,7 @@ export function petRockWithAFace(): Sprite {
   s.set(20, 11, R.black[0]);
   const smile = bezier([10, 16], [12, 20], [18, 20], [21, 15], 6);
   smile.slice(1).forEach(([x, y], i) => s.line(smile[i][0], smile[i][1], x, y, R.black[0]));
-  shape(s, ell(16, 25, 13, 4.5), R.taxi, {});
+  shape(s, ell(16, 25, 13, 4.5), R.taxi);
   for (const [x0, y0, x1, y1] of [
     [5, 22, 3, 19],
     [27, 22, 29, 19],
@@ -209,12 +209,12 @@ export function jackalopeMount(): Sprite {
     [25, 10],
     [28, 12],
   ]);
-  shape(s, thick(13.5, 16, 12.5, 5.5, 2.1, 1.6), R.paper, {});
-  shape(s, thick(18.5, 16, 19.5, 4.5, 2.1, 1.6), R.paper, {});
+  shape(s, thick(13.5, 16, 12.5, 5.5, 2.1, 1.6), R.paper);
+  shape(s, thick(18.5, 16, 19.5, 4.5, 2.1, 1.6), R.paper);
   flat(s, thick(13.3, 15, 12.7, 8, 0.6), R.paper[1]);
   flat(s, thick(18.7, 15, 19.3, 7, 0.6), R.paper[1]);
-  shape(s, ell(16, 20, 6.3, 6.3), R.paper, {});
-  shape(s, ell(16, 24, 3.6, 2.6), R.paper, {});
+  shape(s, ell(16, 20, 6.3, 6.3), R.paper);
+  shape(s, ell(16, 24, 3.6, 2.6), R.paper);
   s.set(12, 19, R.black[0]);
   s.set(19, 19, R.black[0]);
   s.hline(15, 22, 3, R.black[0]);
@@ -277,7 +277,6 @@ export function singingFishPlaque(): Sprite {
       1.8,
     ),
     R.green,
-    {},
   );
   flat(fish, ell(14, 23, 3.5, 1.3), R.green[3]);
   poly(

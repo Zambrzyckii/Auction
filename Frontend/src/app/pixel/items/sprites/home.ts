@@ -172,12 +172,7 @@ export function velvetCroonerPainting(): Sprite {
     [26, 26],
   ])
     s.rect(x, y, 2, 2, R.gold[3]);
-  shape(
-    s,
-    (x, y) => y >= 19 && y <= 25 && Math.abs(x + 0.5 - 14) <= 6 + (y - 19) * 0.6,
-    R.black,
-    {},
-  );
+  shape(s, (x, y) => y >= 19 && y <= 25 && Math.abs(x + 0.5 - 14) <= 6 + (y - 19) * 0.6, R.black);
   s.rect(12, 19, 5, 6, R.white[3]);
   s.rect(12, 19, 5, 2, R.red[2]);
   flat(s, ell(14, 13.5, 3.6, 4.4), R.skinC[2]);

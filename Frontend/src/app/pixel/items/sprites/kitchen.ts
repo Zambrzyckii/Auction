@@ -1,5 +1,5 @@
 import { INK, R, Sprite, box, cylV, shape, sphere, text } from '../../street/pix';
-import { ell, flat } from './helpers';
+import { ell, flat, thick } from './helpers';
 
 export function chippedDinerMug(): Sprite {
   const s = new Sprite(32, 32);
@@ -63,18 +63,6 @@ export function rustyWaffleIron(): Sprite {
 
 const LABEL = [R.green[1], R.green[1], R.green[2], R.green[1]];
 
-const limb =
-  (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number) =>
-  (x: number, y: number): boolean => {
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const f = Math.max(
-      0,
-      Math.min(1, ((x + 0.5 - x0) * dx + (y + 0.5 - y0) * dy) / (dx * dx + dy * dy)),
-    );
-    return Math.hypot(x + 0.5 - (x0 + f * dx), y + 0.5 - (y0 + f * dy)) <= r0 + (r1 - r0) * f;
-  };
-
 export function handCrankCanOpener(): Sprite {
   const s = new Sprite(32, 32);
   shape(s, (x, y) => ell(12, 27, 8, 2.2)(x, y) && y >= 27, R.steel);
@@ -89,13 +77,13 @@ export function handCrankCanOpener(): Sprite {
     [18, 14, 8, 4],
     [20, 13, 13, 2],
   ]) {
-    shape(s, limb(x0, y0, x1, y1, 1.1, 1.1), R.steel, { band: 1 });
-    shape(s, limb(x0 + (x1 - x0) * 0.4, y0 + (y1 - y0) * 0.4, x1, y1, 1.6, 1.6), R.red);
+    shape(s, thick(x0, y0, x1, y1, 1.1, 1.1), R.steel, { band: 1 });
+    shape(s, thick(x0 + (x1 - x0) * 0.4, y0 + (y1 - y0) * 0.4, x1, y1, 1.6, 1.6), R.red);
   }
   box(s, 18, 13, 5, 6, R.steel, { band: 1 });
   s.rect(23, 16, 2, 2, R.steel[2]);
-  const upper = limb(25.5, 16.5, 26.5, 12, 1, 2.3);
-  const lower = limb(25.5, 16.5, 26.5, 21, 1, 2.3);
+  const upper = thick(25.5, 16.5, 26.5, 12, 1, 2.3);
+  const lower = thick(25.5, 16.5, 26.5, 21, 1, 2.3);
   shape(s, (x, y) => upper(x, y) || lower(x, y), R.steel, { band: 1 });
   flat(s, ell(26, 16.5, 1.2, 1.2), R.steel[0]);
   return s.outline();

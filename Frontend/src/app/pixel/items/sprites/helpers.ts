@@ -118,7 +118,7 @@ export const thick =
   };
 
 export const sweep = (
-  pts: readonly (readonly [number, number])[],
+  pts: readonly Point[],
   r0: number,
   r1 = r0,
 ): ((x: number, y: number) => boolean) => {
@@ -137,6 +137,14 @@ export const sweep = (
     );
   return (x, y) => parts.some((f) => f(x, y));
 };
+
+export function starPoints(cx: number, cy: number, ro: number, ri: number): Point[] {
+  return Array.from({ length: 10 }, (_, i) => {
+    const a = (i * Math.PI) / 5 - Math.PI / 2;
+    const r = i % 2 ? ri : ro;
+    return [cx + Math.cos(a) * r, cy + Math.sin(a) * r] as const;
+  });
+}
 
 export function sparkle(s: Sprite, x: number, y: number, col: string): void {
   s.set(x, y, col);

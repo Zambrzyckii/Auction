@@ -1,5 +1,5 @@
 import { R, Sprite, box, disc, shape, text } from '../../street/pix';
-import { blit, ell, poly } from './helpers';
+import { blit, ell, poly, starPoints } from './helpers';
 
 // Flat paper: lit top left, a darker edge on the bottom and right, no tone 3 on the silhouette.
 function sheet(
@@ -14,16 +14,6 @@ function sheet(
   s.rect(x, y, w, h, fill);
   s.hline(x, y + h - 1, w, shade);
   s.vline(x + w - 1, y, h, shade);
-}
-
-type Pt = readonly [number, number];
-
-function starPoints(cx: number, cy: number, ro: number, ri: number): Pt[] {
-  return Array.from({ length: 10 }, (_, i) => {
-    const a = (i * Math.PI) / 5 - Math.PI / 2;
-    const r = i % 2 ? ri : ro;
-    return [cx + Math.cos(a) * r, cy + Math.sin(a) * r] as const;
-  });
 }
 
 export function bentTradingCard(): Sprite {

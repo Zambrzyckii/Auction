@@ -180,9 +180,9 @@ export function birdcageMissingADoor(): Sprite {
   s.hline(14, 14, 13, R.gold[2]);
   const dome = (x: number, y: number) =>
     y <= 18 && ell(16, 18, 11.5, 10)(x, y) && !ell(16, 18, 10, 8.5)(x, y);
-  shape(s, dome, R.gold, {});
+  shape(s, dome, R.gold);
   s.vline(5, 18, 7, R.gold[2]);
-  shape(s, (x, y) => ell(16, 5, 3, 3)(x, y) && !ell(16, 5, 1.4, 1.4)(x, y), R.gold, {});
+  shape(s, (x, y) => ell(16, 5, 3, 3)(x, y) && !ell(16, 5, 1.4, 1.4)(x, y), R.gold);
   s.hline(6, 20, 9, R.gold[1]);
   box(s, 4, 25, 24, 4, R.gold, { band: 1 });
   shape(s, ell(9.5, 16.5, 3.6, 3), R.denim, { band: 1 });
@@ -228,7 +228,6 @@ export function lizardHeatLamp(): Sprite {
       1,
     ),
     R.steel,
-    {},
   );
   box(s, 2, 22, 7, 7, R.steel, { band: 1 });
   s.rect(4, 24, 3, 3, R.steel[0]);
@@ -274,7 +273,7 @@ export function catTreeLeaningLeft(): Sprite {
   );
   s.set(7, 6, INK);
   s.set(10, 6, INK);
-  shape(s, sweep(bezier([16, 9], [20, 10], [21, 6], [19, 3], 8), 0.9), R.rust, {});
+  shape(s, sweep(bezier([16, 9], [20, 10], [21, 6], [19, 3], 8), 0.9), R.rust);
   return s.outline();
 }
 
