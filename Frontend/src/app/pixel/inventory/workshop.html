@@ -1,0 +1,55 @@
+<button
+  type="button"
+  class="door"
+  [attr.aria-expanded]="open()"
+  aria-controls="workshop-room"
+  (click)="toggle()"
+>
+  <span class="door-sign">Workshop</span>
+  <span class="door-hint">Three items of one rarity go in, one of the next rarity comes out</span>
+  <span class="door-pull">{{ open() ? 'Roll the door down' : 'Roll the door up' }}</span>
+</button>
+<div class="room" id="workshop-room" [hidden]="!open()">
+  <div class="stage" #stage [attr.data-scale]="layout()?.scale">
+    <canvas class="scene" #canvas aria-hidden="true"></canvas>
+    <div
+      class="slots"
+      [style.left.px]="layout()?.left"
+      [style.width.px]="layout()?.width"
+      [style.height.px]="layout()?.height"
+    >
+      @if (!pending()) {
+        @for (item of belt(); track item.publicItemId; let i = $index) {
+          <button
+            type="button"
+            class="slot"
+            [style.left.px]="layout()?.rects?.[i]?.x"
+            [style.top.px]="layout()?.rects?.[i]?.y"
+            [style.width.px]="layout()?.rects?.[i]?.w"
+            [style.height.px]="layout()?.rects?.[i]?.h"
+            [attr.aria-label]="'Take ' + item.name + ' off the belt'"
+            (click)="takeOffItem(item.publicItemId)"
+          ></button>
+        }
+      }
+    </div>
+    @for (b of burst(); track b.n) {
+      <span class="burst" aria-hidden="true" [style.left.px]="b.x" [style.top.px]="b.y">Bam!</span>
+    }
+    <div class="reveal" #reveal aria-hidden="true">
+      @if (revealed() && result(); as r) {
+        <span class="stamp" [attr.data-rarity]="r.rarity">{{ r.rarity }}!</span>
+      }
+    </div>
+    <div class="shutter" #shutter aria-hidden="true" [hidden]="shutterHidden()"></div>
+  </div>
+  <div class="desk">
+    <ng-content />
+    <p class="why" aria-live="polite">
+      {{ why().text }}
+      @if (why().price !== undefined) {
+        Official price {{ why().price | number }}.
+      }
+    </p>
+  </div>
+</div>
