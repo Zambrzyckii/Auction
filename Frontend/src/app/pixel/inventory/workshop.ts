@@ -61,6 +61,7 @@ interface Why {
   readonly price?: number;
 }
 
+const REVEAL_WATCHDOG_MS = 4000;
 const ROLL_UP = [{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }];
 const ROLL_DOWN = [{ transform: 'translateY(-100%)' }, { transform: 'translateY(0)' }];
 const ROLL_OPTS: KeyframeAnimationOptions = {
@@ -163,6 +164,7 @@ export class Workshop {
   private rolling = false;
   private visible = true;
   private alive = true;
+  private watchdog: ReturnType<typeof setTimeout> | undefined;
   private resizeObserver: ResizeObserver | null = null;
   private intersectionObserver: IntersectionObserver | null = null;
   private readonly onWindowResize = () => this.fitIfOpen();
@@ -185,6 +187,7 @@ export class Workshop {
       const scene = this.scene();
       if (!scene) return;
       if (!this.open()) {
+        untracked(() => this.revealNow());
         scene.pause();
         return;
       }
@@ -227,7 +230,10 @@ export class Workshop {
 
   private rollDown(): void {
     this.revealNow();
-    this.roll(ROLL_DOWN, () => this.openSignal.set(false));
+    this.roll(ROLL_DOWN, () => {
+      this.revealNow();
+      this.openSignal.set(false);
+    });
   }
 
   private roll(frames: Keyframe[], done: () => void): void {
@@ -245,7 +251,9 @@ export class Workshop {
   }
 
   private revealNow(): void {
-    if (this.result() && !this.revealed()) this.revealed.set(true);
+    if (!this.result() || this.revealed()) return;
+    clearTimeout(this.watchdog);
+    this.revealed.set(true);
   }
 
   private benchItems(): BenchItem[] {
@@ -297,6 +305,7 @@ export class Workshop {
     if (run.viaScene && scene) {
       scene.setBench([]);
       scene.succeed({ id: 'crafted', name: result.name, rarity: result.rarity });
+      this.watchdog = setTimeout(() => this.revealNow(), REVEAL_WATCHDOG_MS);
     }
     if (!run.viaScene || !scene || !this.open()) this.revealed.set(true);
   }
@@ -308,6 +317,7 @@ export class Workshop {
   }
 
   private clearResult(): void {
+    clearTimeout(this.watchdog);
     this.result.set(null);
     this.revealed.set(false);
     this.run.set(null);
@@ -363,8 +373,12 @@ export class Workshop {
   }
 
   private syncLoop(scene: WorkshopScene): void {
-    if (this.visible && this.open()) scene.resume();
-    else scene.pause();
+    if (this.visible && this.open()) {
+      scene.resume();
+      return;
+    }
+    this.revealNow();
+    scene.pause();
   }
 
   private bam(): void {
@@ -378,6 +392,7 @@ export class Workshop {
 
   private stop(): void {
     this.alive = false;
+    clearTimeout(this.watchdog);
     this.resizeObserver?.disconnect();
     this.intersectionObserver?.disconnect();
     window.removeEventListener('resize', this.onWindowResize);
