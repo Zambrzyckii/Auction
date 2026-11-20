@@ -1,5 +1,5 @@
-import { R, Sprite, box, shape, sphere } from '../../street/pix';
-import { digits, ell, poly } from './helpers';
+import { R, Sprite, box, disc, shape, sphere, type Ramp } from '../../street/pix';
+import { digits, ell } from './helpers';
 
 // One chain link at (cx, cy). Round links face the viewer, flat ones are turned edge-on along the tangent.
 function link(s: Sprite, cx: number, cy: number, angle: number, flat: boolean): void {
@@ -66,6 +66,12 @@ const tilted =
     return (u / rx) ** 2 + (v / ry) ** 2 <= 1;
   };
 
+function stoneRamp(shift: number): Ramp {
+  if (shift < 21) return R.purple;
+  if (shift < 25) return R.denim;
+  return R.sign;
+}
+
 export function moodRing(): Sprite {
   const s = new Sprite(32, 32);
   const outer = ell(16, 20, 10.5, 10);
@@ -77,7 +83,7 @@ export function moodRing(): Sprite {
     for (let x = 5; x < 27; x++) {
       if (!stone(x, y)) continue;
       const shift = x + y * 0.5;
-      const ramp = shift < 21 ? R.purple : shift < 25 ? R.denim : R.sign;
+      const ramp = stoneRamp(shift);
       const dark = !stone(x + 1, y) || !stone(x, y + 1);
       s.set(x, y, ramp[dark ? 1 : 2]);
     }
@@ -112,30 +118,33 @@ export function calculatorWatch(): Sprite {
   return s.outline();
 }
 
-// A tiny wristwatch seen from above: two strap stubs and a gold square dial.
-function miniWatch(s: Sprite, x: number, y: number): void {
-  s.rect(x + 1, y, 2, 6, R.black[2]);
-  s.rect(x, y + 1, 4, 4, R.gold[2]);
-  s.hline(x, y + 1, 4, R.gold[3]);
-  s.rect(x + 1, y + 2, 2, 2, R.white[3]);
+// A wristwatch seen from above, lying on its strap: an oval gold dial with a white face.
+function caseWatch(s: Sprite, x: number, y: number): void {
+  s.rect(x + 1, y, 4, 8, R.black[2]);
+  shape(s, ell(x + 3, y + 4, 3, 2.2), R.gold, { x0: x, x1: x + 6, y0: y + 1, y1: y + 7 });
+  s.rect(x + 2, y + 3, 2, 2, R.white[3]);
 }
 
 export function streetCornerWatchCase(): Sprite {
   const s = new Sprite(32, 32);
-  box(s, 4, 2, 24, 11, R.tan, { band: 1 });
-  s.rect(6, 4, 20, 7, R.red[1]);
-  box(s, 3, 13, 26, 17, R.tan, { band: 1 });
-  s.rect(5, 15, 22, 13, R.red[1]);
-  for (let col = 0; col < 4; col++) {
-    miniWatch(s, 7 + col * 5, 4);
-    if (col !== 2) miniWatch(s, 7 + col * 5, 15);
-    miniWatch(s, 7 + col * 5, 22);
-  }
-  s.rect(2, 11, 2, 5, R.gold[2]);
-  s.rect(28, 11, 2, 5, R.gold[2]);
-  s.rect(26, 23, 3, 7, R.paper[2]);
-  s.line(4, 23, 6, 21, R.tan[3]);
-  s.line(24, 5, 26, 3, R.tan[3]);
+  const lidLeft = (y: number) => Math.round(8 - ((y - 2) * 4) / 10);
+  const lidRight = (y: number) => Math.round(23 + ((y - 2) * 4) / 10);
+  const baseLeft = (y: number) => Math.round(4 - ((y - 13) * 2) / 16);
+  const baseRight = (y: number) => Math.round(27 + ((y - 13) * 2) / 16);
+  const lid = (x: number, y: number) => y >= 2 && y <= 12 && x >= lidLeft(y) && x <= lidRight(y);
+  const base = (x: number, y: number) =>
+    y >= 13 && y <= 29 && x >= baseLeft(y) && x <= baseRight(y);
+  shape(s, lid, R.tan, { band: 1 });
+  shape(s, base, R.tan, { band: 1 });
+  for (let y = 4; y <= 11; y++) s.hline(lidLeft(y) + 2, y, lidRight(y) - lidLeft(y) - 3, R.red[1]);
+  for (let y = 15; y <= 27; y++)
+    s.hline(baseLeft(y) + 2, y, baseRight(y) - baseLeft(y) - 3, R.red[1]);
+  for (const x of [9, 16]) caseWatch(s, x, 4);
+  for (const x of [6, 13, 20]) caseWatch(s, x, 16);
+  s.rect(12, 25, 6, 3, R.paper[2]);
+  s.rect(26, 25, 3, 5, R.paper[2]);
+  s.line(3, 25, 4, 22, R.tan[3]);
+  s.line(7, 4, 9, 2, R.tan[3]);
   return s.outline();
 }
 
@@ -182,61 +191,74 @@ export function garageAmp(): Sprite {
   return s.outline();
 }
 
-// Pole, windscreen and grip all run along this diagonal: up and to the right.
-const MIC_DX = Math.SQRT1_2;
-const MIC_DY = -Math.SQRT1_2;
+type Pt = readonly [number, number];
+
+// Distance from p to the segment a-b.
+function segmentDistance(p: Pt, a: Pt, b: Pt): number {
+  const abx = b[0] - a[0];
+  const aby = b[1] - a[1];
+  const k = ((p[0] - a[0]) * abx + (p[1] - a[1]) * aby) / (abx * abx + aby * aby);
+  const t = Math.min(Math.max(k, 0), 1);
+  return Math.hypot(p[0] - a[0] - t * abx, p[1] - a[1] - t * aby);
+}
+
+// across is the signed distance from the axis, positive towards the lower right, so the far side goes dark.
+function furTone(across: number): number {
+  if (across < -1.6) return 3;
+  if (across < 1.6) return 2;
+  return 1;
+}
+
+function poleTone(across: number): number {
+  return across < -0.3 ? 2 : 1;
+}
 
 export function beatUpBoomMic(): Sprite {
   const s = new Sprite(32, 32);
-  s.line(13, 19, 6, 26, R.steel[2]);
-  s.line(14, 19, 7, 26, R.steel[2]);
-  s.line(13, 20, 6, 27, R.steel[1]);
-  poly(
-    s,
-    [
-      [8, 22],
-      [10, 24],
-      [5, 29],
-      [3, 27],
-    ],
-    R.black[2],
-  );
+  const head: Pt = [23.5, 8.5];
+  const neck: Pt = [20.4, 11.6];
+  const pole: Pt = [17, 15];
+  const grip: Pt = [8.5, 23.5];
+  const end: Pt = [4.3, 27.7];
   for (let y = 0; y < 32; y++)
     for (let x = 0; x < 32; x++) {
-      const dx = x + 0.5 - 14.5;
-      const dy = y + 0.5 - 17.5;
-      const along = Math.min(Math.max(dx * MIC_DX + dy * MIC_DY, 0), 14.1);
-      const px = dx - along * MIC_DX;
-      const py = dy - along * MIC_DY;
+      const p: Pt = [x + 0.5, y + 0.5];
+      const across = (p[0] - head[0] + p[1] - head[1]) * Math.SQRT1_2;
+      const along = (head[0] - p[0] + p[1] - head[1]) * Math.SQRT1_2;
       const edge = ((x * 7 + y * 3) % 4) * 0.12;
-      if (Math.hypot(px, py) > 5.2 + edge) continue;
-      const across = (px + py) * MIC_DX;
-      let tone = across < -1.8 ? 3 : across < 1.8 ? 2 : 1;
-      if ((x * 5 + y * 3) % 7 === 0) tone = Math.max(tone - 1, 0);
-      const band = Math.abs(along - 2) < 0.9 || Math.abs(along - 12) < 0.9;
-      s.set(x, y, band ? R.black[1] : R.grey[tone]);
+      if (segmentDistance(p, head, neck) <= 4.8 + edge) {
+        const clamp = Math.abs(along - 5.2) < 0.8;
+        s.set(x, y, clamp ? R.black[1] : R.grey[furTone(across)]);
+      } else if (segmentDistance(p, grip, end) <= 1.9) {
+        s.set(x, y, R.black[across < 0 ? 2 : 1]);
+      } else if (segmentDistance(p, pole, grip) <= 1.1) {
+        const tape = along > 12.2 && along < 13.6;
+        s.set(x, y, tape ? R.grey[3] : R.steel[poleTone(across)]);
+      }
     }
-  s.rect(19, 12, 2, 2, R.steel[1]);
-  s.rect(21, 7, 2, 1, R.steel[1]);
-  s.line(9, 25, 7, 27, R.paper[2]);
-  s.line(10, 24, 8, 26, R.paper[2]);
-  s.line(6, 27, 5, 28, R.grey[2]);
+  s.rect(19, 10, 2, 2, R.steel[1]);
+  s.rect(22, 6, 2, 1, R.steel[1]);
+  s.line(7, 25, 6, 26, R.grey[2]);
   return s.outline();
 }
 
 export function dentedHarmonica(): Sprite {
   const s = new Sprite(32, 32);
-  // The top edge is pressed in by up to three rows around x = 20..26.
-  const dent = (x: number): number => [1, 2, 3, 3, 3, 2, 1][x - 20] ?? 0;
   const body = (x: number, y: number) =>
-    x >= 2 && x <= 29 && y >= 13 + dent(x) && y <= 29 && !((x < 4 || x > 27) && (y < 15 || y > 27));
+    x >= 2 && x <= 29 && y >= 13 && y <= 29 && !((x < 4 || x > 27) && (y < 15 || y > 27));
   shape(s, body, R.steel, { band: 1 });
   s.rect(4, 18, 24, 8, R.wood[2]);
   s.hline(4, 18, 24, R.wood[3]);
   s.hline(4, 25, 24, R.wood[1]);
   for (let n = 0; n < 8; n++) s.rect(5 + n * 3, 19, 2, 6, R.black[0]);
-  s.hline(21, 17, 5, R.steel[0]);
-  s.hline(22, 18, 3, R.steel[1]);
+  const dent = ell(23, 16, 3.6, 1.9);
+  for (let y = 13; y < 18; y++)
+    for (let x = 18; x < 29; x++) {
+      if (!dent(x, y)) continue;
+      if (!dent(x - 1, y) || !dent(x, y - 1)) s.set(x, y, R.steel[0]);
+      else if (!dent(x + 1, y) || !dent(x, y + 1)) s.set(x, y, R.steel[3]);
+      else s.set(x, y, R.steel[1]);
+    }
   s.line(7, 28, 12, 28, R.steel[3]);
   s.line(14, 14, 15, 15, R.steel[3]);
   return s.outline();
