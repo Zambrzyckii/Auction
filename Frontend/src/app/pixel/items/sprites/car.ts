@@ -139,27 +139,27 @@ function strip(s: Sprite, path: readonly (readonly [number, number])[], w: numbe
     }
 }
 
+function bumperTone(d: number, wrapped: boolean): string {
+  if (d === 0) return R.black[1];
+  if (wrapped) return d < 0 ? R.steel[2] : R.steel[1];
+  if (d === -3) return R.steel[3];
+  if (d === -2) return R.white[2];
+  if (d === -1) return R.steel[2];
+  if (d === 1) return R.steel[2];
+  if (d === 2) return R.steel[1];
+  return R.steel[0];
+}
+
 export function chromeBumperPiece(): Sprite {
   const s = new Sprite(32, 32);
   for (let x = 2; x <= 29; x++) {
-    const edge = Math.min(x - 2, 29 - x);
-    const curl = Math.max(0, 3 - edge) / 3;
-    const yc = 23.5 - 2.5 * curl * curl;
-    const half = 4 - 0.8 * curl;
-    for (let y = Math.floor(yc - half); y <= Math.ceil(yc + half); y++) {
-      const f = (y + 0.5 - yc) / half;
-      if (Math.abs(f) > 1) continue;
-      let tone = R.steel[1];
-      if (f < -0.5) tone = R.steel[3];
-      else if (f < -0.1) tone = x > 20 ? R.steel[3] : R.white[2];
-      else if (f < 0.4) tone = R.steel[2];
-      s.set(x, y, tone);
-    }
+    const wrapped = Math.min(x - 2, 29 - x) < 4;
+    const reach = wrapped ? 2 : 3;
+    for (let d = -reach; d <= reach; d++) s.set(x, 24 + d, bumperTone(d, wrapped));
   }
-  s.rect(6, 26, 20, 2, R.black[1]);
-  for (const x of [7, 23]) {
+  for (const x of [8, 22]) {
     s.rect(x, 22, 2, 2, R.steel[0]);
-    s.set(x, 24, R.steel[3]);
+    s.set(x, 22, R.steel[3]);
   }
   return s.outline();
 }
