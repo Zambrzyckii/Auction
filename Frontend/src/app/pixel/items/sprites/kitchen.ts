@@ -61,8 +61,8 @@ export function rustyWaffleIron(): Sprite {
   return s.outline();
 }
 
-const wing =
-  (x0: number, y0: number, x1: number, y1: number) =>
+const limb =
+  (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number) =>
   (x: number, y: number): boolean => {
     const dx = x1 - x0;
     const dy = y1 - y0;
@@ -70,20 +70,20 @@ const wing =
       0,
       Math.min(1, ((x + 0.5 - x0) * dx + (y + 0.5 - y0) * dy) / (dx * dx + dy * dy)),
     );
-    return Math.hypot(x + 0.5 - (x0 + f * dx), y + 0.5 - (y0 + f * dy)) <= 1 + 2.4 * f;
+    return Math.hypot(x + 0.5 - (x0 + f * dx), y + 0.5 - (y0 + f * dy)) <= r0 + (r1 - r0) * f;
   };
 
 export function handCrankCanOpener(): Sprite {
   const s = new Sprite(32, 32);
-  box(s, 5, 15, 4, 14, R.red, { band: 1 });
-  box(s, 11, 15, 4, 14, R.red, { band: 1 });
-  box(s, 4, 10, 12, 6, R.steel, { band: 1 });
-  s.set(9, 13, R.steel[0]);
-  s.set(10, 13, R.steel[0]);
+  shape(s, limb(12, 13, 7, 28, 1.9, 1.9), R.red, { band: 1 });
+  shape(s, limb(12, 13, 17, 28, 1.9, 1.9), R.red, { band: 1 });
+  box(s, 8, 9, 8, 7, R.steel, { band: 1 });
+  s.set(11, 12, R.steel[0]);
+  s.set(12, 12, R.steel[0]);
   s.rect(16, 12, 7, 2, R.steel[3]);
   s.hline(16, 14, 7, R.steel[1]);
-  const upper = wing(22, 13, 26, 5);
-  const lower = wing(22, 13, 26, 21);
+  const upper = limb(22, 13, 26, 5, 1, 3.4);
+  const lower = limb(22, 13, 26, 21, 1, 3.4);
   shape(s, (x, y) => upper(x, y) || lower(x, y), R.red, { band: 1 });
   flat(s, ell(22.5, 13, 2, 2), R.steel[3]);
   s.set(22, 13, R.steel[0]);
