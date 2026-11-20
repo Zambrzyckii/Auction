@@ -129,9 +129,11 @@ rules bind every change it makes.
   rows and wallet rows, the hover lift, the stamped notices and the tile hop. The tile shine lives
   in `pixel/items/item-tile.scss`. The entrance `x-drop` fills `backwards`, never `both`, because a
   held end frame with `opacity: 1` would beat the dimming of unfit cards while picking, as
-  animation values outrank normal declarations. Every animation and transition sits inside
+  animation values outrank normal declarations. Every animation and transition in `_alive.scss`,
+  `_inventory.scss`, `_workshop.scss` and `item-tile.scss` sits inside
   `prefers-reduced-motion: no-preference`, so the hover lift itself stays and only its transition
-  goes.
+  goes. The button and games link transition in `_controls.scss` sits outside it, and a
+  `prefers-reduced-motion: reduce` block there switches it off.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
