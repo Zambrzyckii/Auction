@@ -86,9 +86,21 @@ rules bind every change it makes.
   by specificity, not by order. A later rule overrides the skin only when it reaches that
   specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
   elements and classes the templates already have, so a new page gets the look without a template
-  change and the three frame pages stay untouched. The one exception is `pixel/skin/_hall.scss`,
-  which styles the `td.lot`, `.rarity` and `tr.leading` hooks that the three auction templates
-  gained for the item tiles.
+  change and the three frame pages stay untouched. The exception is the item templates, which
+  gained these hooks for the item tiles and the shelf, styled by `_hall.scss`, `_forms.scss`,
+  `_inventory.scss` and `_workshop.scss`.
+  - `auction-list.html` has `td.lot`, `span.lot-row` and `.rarity`.
+  - `my-auctions.html` has `td.lot` and `span.lot-row` in both tables, and no `.rarity`.
+  - `auction-detail.html` has `td.lot`, `span.lot-row`, `.rarity` and `tr.leading`, the only auction
+    template with the leading row.
+  - `warehouse-detail.html` (the manifest) and `stock-section.html` have `td.lot`, `span.lot-row`
+    and `.rarity`.
+  - `pawnshop.html` (the tier table) has `.rarity`.
+  - `create-auction.html` has `app-item-preview` in the listing form.
+  - `inventory.html` has `app-workshop`, `app-shelf-sort` and `ul.shelf` (with `.picking` while the
+    workshop is open) of `li.card` (with `.fresh` on the crafted card). A card holds `.pick`, `.name`,
+    `.rarity`, `.price`, `.cue`, `.status`, `.fit` and `.sell`. Its checkbox is `[disabled]` while a
+    craft is pending.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
@@ -97,6 +109,29 @@ rules bind every change it makes.
   starters. The catalog and `pix.ts` load lazily through `bootStreet` behind the `ResizeObserver`
   guard, so jsdom specs never touch a 2d context. A new item name shows the mystery sprite until
   it gets a function, and `catalog.spec.ts` fails when `names.ts` lists a name without one.
+- `pixel/inventory/` is the inventory frame. It holds the `sortItems` and `benchFit` pipes (sort
+  ties fall to name, then id), `craft-watch.ts`, the sort bar `app-shelf-sort`, the workshop
+  `app-workshop` and its press scene `workshop-scene.ts`, which loads lazily through `bootStreet`
+  behind the same guard as the item art. Its components carry no stylesheet, because the
+  workshop's rules would pass the 4 kB component warning, so `_inventory.scss` and
+  `_workshop.scss` dress them. The workshop reads the craft only from its `pending` and `picked`
+  inputs. A spent card stays hidden until a poll drops it, and the crafted card stays hidden until
+  the press reveals it. The reveal comes at once when no scene ran, when the door rolls down and
+  when the press loop pauses off screen, and in any case 4000 ms after the craft succeeds. A pick
+  after the craft clears the result, so the crafted card shows at once. The card's pick banner
+  (`li.card::before`) passes clicks through to the label.
+- The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
+  `4u` top padding and a `4u` gap between its children, and panels have a `4u` padding and a `3u`
+  gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
+  at 56rem outside the skin, so deleting the declaration narrows every inner page to 896 px.
+  `_wallet.scss` turns the three wallet rows into counters with the icons from
+  `public/pixel/wallet/`. `_alive.scss` holds the neon titles, the entrance of shelf cards, table
+  rows and wallet rows, the hover lift, the stamped notices and the tile hop. The tile shine lives
+  in `pixel/items/item-tile.scss`. The entrance `x-drop` fills `backwards`, never `both`, because a
+  held end frame with `opacity: 1` would beat the dimming of unfit cards while picking, as
+  animation values outrank normal declarations. Every animation and transition sits inside
+  `prefers-reduced-motion: no-preference`, so the hover lift itself stays and only its transition
+  goes.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session
