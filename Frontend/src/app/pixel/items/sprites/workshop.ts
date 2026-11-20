@@ -122,18 +122,36 @@ export function bentNailPuller(): Sprite {
 export function chromeBlowtorch(): Sprite {
   const s = new Sprite(32, 32);
   cylV(s, 3, 12, 10, 16, R.white);
-  s.hline(3, 18, 10, R.white[0]);
-  s.hline(3, 19, 10, R.white[3]);
+  s.hline(4, 18, 8, R.white[0]);
+  s.hline(4, 19, 8, R.white[3]);
   s.rect(6, 9, 4, 3, R.red[2]);
-  cylH(s, 12, 11, 10, 4, R.white);
-  s.rect(22, 9, 4, 7, R.steel[2]);
-  s.vline(22, 9, 7, R.steel[3]);
-  s.hline(26, 10, 4, R.denim[3]);
-  s.hline(26, 11, 5, R.denim[3]);
-  s.hline(26, 12, 4, R.denim[3]);
-  s.hline(26, 11, 3, R.white[3]);
-  s.set(27, 9, R.denim[3]);
-  s.set(28, 13, R.denim[3]);
+  cylH(s, 12, 11, 8, 4, R.white);
+  poly(
+    s,
+    [
+      [23, 10],
+      [27, 10.5],
+      [30, 13.5],
+      [30, 18],
+      [27, 15],
+      [23, 15],
+    ],
+    R.taxi[2],
+  );
+  poly(
+    s,
+    [
+      [23, 11.5],
+      [26.5, 11.5],
+      [28.5, 14],
+      [26.5, 14],
+      [23, 14],
+    ],
+    R.taxi[3],
+  );
+  s.rect(20, 9, 4, 7, R.steel[2]);
+  s.vline(20, 9, 7, R.white[2]);
+  s.set(25, 12, R.white[3]);
   return s.outline();
 }
 

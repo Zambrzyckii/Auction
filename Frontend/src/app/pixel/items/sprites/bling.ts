@@ -116,13 +116,9 @@ export function pearlNecklaceWithAKnot(): Sprite {
     const [x, y] = spot(start + (i * (end - start)) / (n - 1));
     sphere(s, x, y, 2.5, R.white);
   }
-  for (const [px, py] of [
-    [ax, ay],
-    [bx, by],
-  ]) {
-    sphere(s, kx, ky, 2.5, R.white);
-    sphere(s, 2 * kx - px, 2 * ky - py, 2.5, R.white);
-  }
+  sphere(s, 2 * kx - ax, 2 * ky - ay, 2.5, R.white);
+  sphere(s, kx, ky, 2.5, R.white);
+  sphere(s, 2 * kx - bx, 2 * ky - by, 2.5, R.white);
   s.rect(Math.round(kx) - 1, Math.round(ky) - 1, 3, 3, R.red[2]);
   s.set(Math.round(kx) - 1, Math.round(ky) - 1, R.red[3]);
   return s.outline();

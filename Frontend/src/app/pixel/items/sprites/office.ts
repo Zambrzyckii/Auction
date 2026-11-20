@@ -21,6 +21,11 @@ export function overdueLibraryBook(): Sprite {
   s.set(5, 4, R.paper[1]);
   s.set(24, 25, R.paper[1]);
   s.set(6, 25, R.paper[1]);
+  s.rect(6, 11, 3, 7, R.green[2]);
+  s.hline(23, 4, 2, R.paper[1]);
+  s.set(24, 5, R.paper[1]);
+  s.hline(12, 25, 2, R.green[3]);
+  s.set(16, 25, R.green[3]);
   return s.outline();
 }
 
