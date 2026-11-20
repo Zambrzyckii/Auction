@@ -19,9 +19,11 @@
         @for (auction of groups().running; track auction.publicAuctionId) {
           <tr>
             <td class="lot">
-              <app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
-                auction.itemName
-              }}
+              <span class="lot-row"
+                ><app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+                  auction.itemName
+                }}</span
+              >
             </td>
             <td>{{ auction.status }}</td>
             <td>{{ auction.currentPrice | number }}</td>
@@ -46,9 +48,11 @@
         @for (auction of groups().finished; track auction.publicAuctionId) {
           <tr>
             <td class="lot">
-              <app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
-                auction.itemName
-              }}
+              <span class="lot-row"
+                ><app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+                  auction.itemName
+                }}</span
+              >
             </td>
             <td>{{ auction.status }}</td>
             <td>{{ auction.currentPrice | number }}</td>

@@ -4,9 +4,11 @@
     <tr>
       <th>Item</th>
       <td class="lot">
-        <app-item-tile size="lot" [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
-          auction.itemName
-        }}
+        <span class="lot-row"
+          ><app-item-tile size="lot" [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+            auction.itemName
+          }}</span
+        >
         <span class="rarity" [attr.data-rarity]="auction.itemRarity">{{ auction.itemRarity }}</span>
       </td>
     </tr>

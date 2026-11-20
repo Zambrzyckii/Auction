@@ -134,6 +134,7 @@ describe('Pawnshop', () => {
     expect(text).toContain('Premises price: 100,000');
     expect(text).toContain('Pawn Clerk');
     expect(text).toContain('Appraiser');
+    expect(el().querySelectorAll('table.tiers span.rarity').length).toBe(2);
   });
 
   it('maps the 404 onto the none state and offers the purchase', () => {
@@ -277,6 +278,7 @@ describe('Pawnshop', () => {
     );
     const rows = el().querySelectorAll('table.stock tr');
     expect(rows.length).toBe(3);
+    expect(el().querySelectorAll('table.stock td.lot app-item-tile').length).toBe(2);
     expect(rows[1].textContent).toContain('Rusty Kettle');
     expect(rows[1].textContent).toContain('50.5');
     expect(rows[1].textContent).toContain('in 2 min 0 s');

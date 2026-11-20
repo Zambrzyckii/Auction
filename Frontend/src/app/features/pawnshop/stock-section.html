@@ -14,8 +14,14 @@
     </tr>
     @for (item of stock(); track item.publicStockItemId) {
       <tr>
-        <td>{{ item.name }}</td>
-        <td>{{ item.rarity }}</td>
+        <td class="lot">
+          <span class="lot-row"
+            ><app-item-tile [name]="item.name" [rarity]="item.rarity" />{{ item.name }}</span
+          >
+        </td>
+        <td>
+          <span class="rarity" [attr.data-rarity]="item.rarity">{{ item.rarity }}</span>
+        </td>
         <td>{{ item.price | number }}</td>
         <td>{{ stockPayout(item) | number }}</td>
         <td>{{ item.status }}</td>

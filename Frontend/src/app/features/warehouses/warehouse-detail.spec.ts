@@ -193,6 +193,7 @@ describe('WarehouseDetail', () => {
     const rows = el().querySelectorAll('table.manifest tr');
     expect(rows.length).toBe(2);
     expect(rows[1].textContent).toContain('Warehouse Small Find');
+    expect(el().querySelectorAll('table.manifest td.lot app-item-tile').length).toBe(1);
 
     vi.advanceTimersByTime(20_000);
     http.expectNone(WAR_URL);
