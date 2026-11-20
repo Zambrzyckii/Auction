@@ -53,10 +53,10 @@ describe('item catalog', () => {
   };
   const cells = (s: Sprite) => s.c;
 
-  it('has 99 names, 96 from the bots and 3 starters', () => {
-    expect(names.BOT_NAMES).toHaveLength(96);
+  it('has 115 names, 112 from the bots and 3 starters', () => {
+    expect(names.BOT_NAMES).toHaveLength(112);
     expect(names.STARTER_NAMES).toHaveLength(3);
-    expect(names.NAMES).toHaveLength(99);
+    expect(names.NAMES).toHaveLength(115);
   });
 
   it('registers only names from the list', () => {

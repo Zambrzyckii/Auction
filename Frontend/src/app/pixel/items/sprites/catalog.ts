@@ -5,8 +5,10 @@ import { CAR } from './car';
 import { COLLECTIBLES } from './collectibles';
 import { COMPUTERS } from './computers';
 import { FAMILY_ART, STARTERS, craftedItem, mystery, pawnedGood, warehouseFind } from './families';
+import { HOME } from './home';
 import { KITCHEN } from './kitchen';
 import { MUSIC } from './music';
+import { OFFICE } from './office';
 import { PHONES } from './phones';
 import { SPORTS } from './sports';
 import { STREET } from './street';
@@ -27,6 +29,8 @@ export const EXACT: Readonly<Record<string, () => Sprite>> = {
   ...MUSIC,
   ...KITCHEN,
   ...SPORTS,
+  ...OFFICE,
+  ...HOME,
   ...STARTERS,
 };
 
