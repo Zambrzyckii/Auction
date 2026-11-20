@@ -4,6 +4,7 @@
     <p>No available items to list. Craft one or wait for the starter pack.</p>
   } @else {
     <form (submit)="$event.preventDefault(); submitForm()">
+      <app-item-preview [items]="available" [picked]="createForm.itemId().value()" />
       <label>
         Item
         <select [formField]="createForm.itemId">
