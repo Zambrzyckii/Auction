@@ -121,8 +121,8 @@ rules bind every change it makes.
   after the craft clears the result, so the crafted card shows at once. The card's pick banner
   (`li.card::before`) passes clicks through to the label.
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
-  `4u` top padding and a `4u` gap between its children, and panels have a `4u` padding and a `3u`
-  gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
+  `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
+  `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
   at 56rem outside the skin, so deleting the declaration narrows every inner page to 896 px.
   `_wallet.scss` turns the three wallet rows into counters with the icons from
   `public/pixel/wallet/`. `_alive.scss` holds the neon titles, the entrance of shelf cards, table
