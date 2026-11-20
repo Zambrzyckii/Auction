@@ -200,7 +200,9 @@ catalog item the player holds fewer than `Copies` times. `AddFunds` counts towar
 `compose.tester.yaml` lifts the account to level 100 on the first start. `TestAccountCatalog` mirrors the 160 bot item
 names with their 20 rarity locks (`Bots/src/auction_bots/fleet/archetypes.py` and `policies/stock.py`), spreads the
 other 140 names evenly over the four rarities and adds the eleven `Warehouse`, `Pawned` and `Crafted` family names,
-171 items in all. A failed seed is logged and never stops the host. Only `compose.tester.yaml` enables the section.
+171 items in all. A failed seed is logged, never stops the host and is retried only on the next start.
+`RegisterCommandValidator` checks the credentials only at seeding, so invalid ones show up as that log entry rather
+than as a startup failure. Only `compose.tester.yaml` enables the section.
 
 The legacy `Backend/.env` / `.env.example` pair (`DB_USER`, `DB_PASSWORD`) was deleted in phase six: nothing
 ever read it. Secrets for the Compose services now come from the gitignored `Infrastructure/secrets/` files
