@@ -28,26 +28,37 @@ export function glowYoYo(): Sprite {
   return s.outline();
 }
 
-// A bracelet curled into a short ring, seen from above: top ring with a dark mouth, then a thin wall.
-function band(s: Sprite, cx: number, ty: number, ramp: readonly string[]): void {
-  const top = ell(cx, ty, 8, 4);
-  const low = ell(cx, ty + 3, 8, 4);
-  const mouth = ell(cx, ty, 6, 3);
-  for (let y = ty - 4; y <= ty + 7; y++)
-    for (let x = cx - 8; x < cx + 8; x++) {
-      const wall = y >= ty && y < ty + 3;
-      if (!top(x, y) && !low(x, y) && !wall) continue;
-      if (mouth(x, y)) s.set(x, y, ramp[0]);
-      else s.set(x, y, x >= cx + 4 || (y >= ty + 6 && low(x, y)) ? ramp[1] : ramp[2]);
+type Pt = readonly [number, number];
+
+// A flat strip with a printed cross-bar pattern, shaded on the side that faces down and right.
+function strip(s: Sprite, a: Pt, b: Pt, w: number, ramp: readonly string[]): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const dx = (b[0] - a[0]) / len;
+  const dy = (b[1] - a[1]) / len;
+  const sign = dy - dx >= 0 ? 1 : -1;
+  const nx = -dy * sign;
+  const ny = dx * sign;
+  for (let y = 0; y < s.h; y++)
+    for (let x = 0; x < s.w; x++) {
+      const px = x + 0.5 - a[0];
+      const py = y + 0.5 - a[1];
+      const along = px * dx + py * dy;
+      const across = px * nx + py * ny;
+      if (along < 0 || along > len || Math.abs(across) > w / 2) continue;
+      const bar = Math.floor(along) % 5 === 2 && Math.abs(across) < w / 2 - 1.2;
+      if (bar) s.set(x, y, R.white[3]);
+      else s.set(x, y, across > w / 2 - 1 ? ramp[1] : ramp[2]);
     }
-  for (const dx of [-6, -2, 2]) s.rect(cx + dx, ty + 4, 2, 2, R.white[3]);
 }
 
 export function slapBraceletBundle(): Sprite {
   const s = new Sprite(32, 32);
-  band(s, 16, 12, R.sign);
-  band(s, 10, 22, R.red);
-  band(s, 22, 22, R.taxi);
+  strip(s, [3, 17], [27, 5], 5, R.red);
+  strip(s, [3, 23], [27, 11], 5, R.taxi);
+  strip(s, [3, 28], [21, 26], 4, R.sign);
+  shape(s, ell(24, 23, 5, 5), R.sign);
+  shape(s, ell(24, 23, 3, 3), R.sign, { band: 1 });
+  disc(s, 24, 23, 1.5, R.sign[0]);
   return s.outline();
 }
 
@@ -147,21 +158,21 @@ export function oneEyedCarnivalPlush(): Sprite {
 
 export function clawMachinePrize(): Sprite {
   const s = new Sprite(32, 32);
-  sphere(s, 16, 19, 10, R.red);
-  shape(s, (x, y) => ell(16, 19, 10, 10)(x, y) && y < 18, R.steel, { band: 1 });
-  disc(s, 16, 15, 4, R.sign[2]);
-  disc(s, 12, 11, 1.6, R.sign[2]);
-  disc(s, 20, 11, 1.6, R.sign[2]);
-  s.set(14, 14, R.steel[0]);
-  s.set(17, 14, R.steel[0]);
+  sphere(s, 16, 21, 8, R.red);
+  shape(s, (x, y) => ell(16, 21, 8, 8)(x, y) && y < 20, R.steel, { band: 1 });
+  disc(s, 16, 18, 3.4, R.sign[2]);
+  disc(s, 14, 16, 1.4, R.sign[2]);
+  disc(s, 18, 16, 1.4, R.sign[2]);
+  s.set(14, 17, R.steel[0]);
+  s.set(17, 17, R.steel[0]);
   s.rect(15, 1, 2, 4, R.grey[1]);
   s.rect(13, 5, 6, 3, R.grey[1]);
   for (const [x0, y0, x1, y1] of [
-    [13, 7, 8, 9],
-    [8, 9, 4, 13],
-    [4, 13, 3, 18],
-    [3, 18, 4, 22],
-    [4, 22, 7, 24],
+    [13, 7, 6, 9],
+    [6, 9, 3, 13],
+    [3, 13, 2, 18],
+    [2, 18, 2, 22],
+    [2, 22, 4, 25],
   ]) {
     s.line(x0, y0, x1, y1, R.grey[1]);
     s.line(x0 + 1, y0, x1 + 1, y1, R.grey[1]);
