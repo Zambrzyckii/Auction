@@ -1,6 +1,7 @@
 import type { Sprite } from '../../street/pix';
 import type { Rarity } from '../rarity';
 import { AUDIO } from './audio';
+import { CAMPING } from './camping';
 import { CAR } from './car';
 import { COLLECTIBLES } from './collectibles';
 import { COMPUTERS } from './computers';
@@ -15,6 +16,7 @@ import { STREET } from './street';
 import { TOOLS } from './tools';
 import { TOYS } from './toys';
 import { WEAR } from './wear';
+import { WORKSHOP } from './workshop';
 
 export const EXACT: Readonly<Record<string, () => Sprite>> = {
   ...AUDIO,
@@ -31,6 +33,8 @@ export const EXACT: Readonly<Record<string, () => Sprite>> = {
   ...SPORTS,
   ...OFFICE,
   ...HOME,
+  ...CAMPING,
+  ...WORKSHOP,
   ...STARTERS,
 };
 

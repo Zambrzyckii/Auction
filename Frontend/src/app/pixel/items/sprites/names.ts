@@ -111,6 +111,22 @@ export const BOT_NAMES: readonly string[] = [
   'Ceramic Dog Doorstop',
   'Grandfather Clock Missing Pendulum',
   'Velvet Crooner Painting',
+  'Leaky Canteen',
+  'Patched Tent',
+  'Rusty Pocket Knife',
+  'Bent Fishing Rod',
+  'Dented Camp Lantern',
+  'Compass That Points South',
+  'Army Surplus Boots',
+  'Taxidermy Bass',
+  'Jar of Loose Screws',
+  'Rusty Hand Saw',
+  'Cracked Spirit Level',
+  'Bent Nail Puller',
+  'Chrome Blowtorch',
+  'Dented Oil Can',
+  'Workbench Vise',
+  'Gold-Plated Hammer',
 ];
 
 export const STARTER_NAMES: readonly string[] = ['Rusty Toolbox', 'Old Radio', 'Worn Backpack'];
