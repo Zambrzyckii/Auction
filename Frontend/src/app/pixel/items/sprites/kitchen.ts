@@ -1,4 +1,4 @@
-import { R, Sprite, box, cylV, shape, sphere, text } from '../../street/pix';
+import { INK, R, Sprite, box, cylV, shape, sphere, text } from '../../street/pix';
 import { ell, flat } from './helpers';
 
 export function chippedDinerMug(): Sprite {
@@ -61,6 +61,8 @@ export function rustyWaffleIron(): Sprite {
   return s.outline();
 }
 
+const LABEL = [R.green[1], R.green[1], R.green[2], R.green[1]];
+
 const limb =
   (x0: number, y0: number, x1: number, y1: number, r0: number, r1: number) =>
   (x: number, y: number): boolean => {
@@ -75,22 +77,27 @@ const limb =
 
 export function handCrankCanOpener(): Sprite {
   const s = new Sprite(32, 32);
-  for (const [x, y] of [
-    [4, 24],
-    [8, 28],
+  shape(s, (x, y) => ell(12, 27, 8, 2.2)(x, y) && y >= 27, R.steel);
+  cylV(s, 4, 17, 16, 11, R.steel);
+  cylV(s, 4, 20, 16, 6, LABEL);
+  s.hline(4, 19, 16, R.steel[1]);
+  s.hline(4, 26, 16, R.steel[1]);
+  shape(s, ell(12, 17, 8, 3), R.steel);
+  flat(s, ell(12, 17.2, 6.6, 2), INK);
+  flat(s, ell(10.5, 23, 3, 1.8), R.steel[3]);
+  for (const [x0, y0, x1, y1] of [
+    [18, 14, 8, 4],
+    [20, 13, 13, 2],
   ]) {
-    shape(s, limb(18, 11, x, y, 1.1, 1.1), R.steel, { band: 1 });
-    shape(s, limb(18 + (x - 18) * 0.5, 11 + (y - 11) * 0.5, x, y, 1.6, 1.6), R.red, { band: 1 });
+    shape(s, limb(x0, y0, x1, y1, 1.1, 1.1), R.steel, { band: 1 });
+    shape(s, limb(x0 + (x1 - x0) * 0.4, y0 + (y1 - y0) * 0.4, x1, y1, 1.6, 1.6), R.red);
   }
-  shape(s, ell(18.5, 11, 3, 3), R.steel, { band: 1 });
-  s.rect(21, 10, 4, 2, R.steel[3]);
-  s.hline(21, 12, 4, R.steel[1]);
-  const upper = limb(25, 11, 27.5, 5, 1, 2.7);
-  const lower = limb(25, 11, 27.5, 17, 1, 2.7);
+  box(s, 18, 13, 5, 6, R.steel, { band: 1 });
+  s.rect(23, 16, 2, 2, R.steel[2]);
+  const upper = limb(25.5, 16.5, 26.5, 12, 1, 2.3);
+  const lower = limb(25.5, 16.5, 26.5, 21, 1, 2.3);
   shape(s, (x, y) => upper(x, y) || lower(x, y), R.steel, { band: 1 });
-  flat(s, ell(25.5, 11, 1.4, 1.4), R.steel[1]);
-  s.set(25, 11, R.steel[0]);
-  flat(s, ell(18.5, 11, 1.1, 1.1), R.steel[0]);
+  flat(s, ell(26, 16.5, 1.2, 1.2), R.steel[0]);
   return s.outline();
 }
 
