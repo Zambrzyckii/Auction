@@ -35,7 +35,7 @@ function strip(s: Sprite, a: Pt, b: Pt, w: number, ramp: readonly string[]): voi
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const dx = (b[0] - a[0]) / len;
   const dy = (b[1] - a[1]) / len;
-  const sign = dy - dx >= 0 ? 1 : -1;
+  const sign = dx - dy >= 0 ? 1 : -1;
   const nx = -dy * sign;
   const ny = dx * sign;
   for (let y = 0; y < s.h; y++)
