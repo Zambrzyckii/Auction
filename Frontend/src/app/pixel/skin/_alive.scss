@@ -33,7 +33,7 @@
     }
 
     :is(ul.shelf > li, main table tr:has(> td), app-wallet tr) {
-      animation: x-drop 0.28s var(--m-ease) both;
+      animation: x-drop 0.28s var(--m-ease) backwards;
     }
 
     :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(2) {
