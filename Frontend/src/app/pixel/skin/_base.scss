@@ -15,6 +15,7 @@
   }
 
   main {
+    max-width: none;
     margin: 0 auto;
     padding: calc(var(--u) * 4) max(16px, calc(var(--u) * 6)) calc(var(--u) * 10);
 
