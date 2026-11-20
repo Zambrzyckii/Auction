@@ -1,0 +1,9 @@
+services:
+  api:
+    environment:
+      TestAccount__Enabled: "true"
+      TestAccount__Email: "tester@example.com"
+      TestAccount__Username: "Tester"
+      TestAccount__Password: "Tester123!"
+      TestAccount__Funds: "10000000"
+      TestAccount__Copies: "1"
