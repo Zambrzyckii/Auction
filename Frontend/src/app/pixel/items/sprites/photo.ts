@@ -1,5 +1,5 @@
 import { R, Sprite, box, cylH, disc, shape } from '../../street/pix';
-import { bezier, ell, flat, poly, sweep, thick } from './helpers';
+import { bezier, ell, flat, mask, poly, sweep, thick } from './helpers';
 
 export function disposableCamera(): Sprite {
   const s = new Sprite(32, 32);
@@ -104,22 +104,29 @@ export function vhsRewinder(): Sprite {
 
 export function bootlegMovieTape(): Sprite {
   const s = new Sprite(32, 32);
-  box(s, 3, 3, 26, 16, R.black, { band: 1 });
-  s.rect(5, 5, 22, 5, R.paper[2]);
-  s.hline(6, 7, 6, R.red[2]);
-  s.hline(14, 8, 9, R.black[0]);
-  s.rect(8, 12, 16, 4, R.black[0]);
-  for (const x of [11, 20]) {
-    disc(s, x, 14, 1.8, R.paper[2]);
-    s.set(x, 14, R.black[0]);
-  }
-  box(s, 5, 17, 22, 12, R.tan, { band: 1 });
-  s.rect(8, 19, 16, 8, R.paper[3]);
-  s.line(9, 24, 12, 20, R.red[2]);
-  s.line(12, 20, 15, 25, R.red[2]);
-  s.line(15, 25, 18, 21, R.red[2]);
-  s.hline(19, 25, 4, R.black[0]);
-  s.hline(19, 21, 3, R.black[0]);
+  box(s, 10, 4, 13, 10, R.black, { band: 1 });
+  s.rect(12, 6, 9, 4, R.paper[3]);
+  s.hline(13, 8, 5, R.black[0]);
+  const sleeve = mask([
+    [5, 12],
+    [24, 10],
+    [27, 29],
+    [8, 30],
+  ]);
+  shape(s, sleeve, R.tan, { band: 1 });
+  poly(
+    s,
+    [
+      [8, 18],
+      [17, 17],
+      [18, 26],
+      [9, 27],
+    ],
+    R.paper[3],
+  );
+  s.line(10, 21, 16, 20, R.black[0]);
+  s.line(10, 24, 13, 23, R.black[0]);
+  s.rect(19, 21, 5, 2, R.red[2]);
   return s.outline();
 }
 
@@ -152,15 +159,9 @@ export function marqueeLetterR(): Sprite {
   return s.outline();
 }
 
-const hull = (pts: readonly (readonly [number, number])[]) => {
-  const mask = new Sprite(32, 32);
-  poly(mask, pts, R.red[0]);
-  return (x: number, y: number) => mask.get(x, y) !== null;
-};
-
 export function directorsMegaphone(): Sprite {
   const s = new Sprite(32, 32);
-  const cone = hull([
+  const cone = mask([
     [7, 27],
     [4, 24],
     [20, 4],

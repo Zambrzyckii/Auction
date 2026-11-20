@@ -3,22 +3,23 @@ import { bezier, blit, ell, flat, poly, sweep } from './helpers';
 
 export function chewedLeash(): Sprite {
   const s = new Sprite(32, 32);
-  const loop = (x: number, y: number) => ell(21, 7, 7, 5)(x, y) && !ell(21, 7, 4.2, 2.6)(x, y);
-  shape(s, loop, R.tan, { band: 1 });
-  const strap = bezier([17, 10], [8, 14], [22, 20], [9, 26], 16);
-  shape(s, sweep(strap, 1.6), R.tan, { band: 1 });
+  const loop = (x: number, y: number) => ell(20, 8, 8, 6.5)(x, y) && !ell(20, 8, 4, 3.2)(x, y);
+  flat(s, loop, R.red[2]);
+  const strap = bezier([15, 11], [10, 13], [14, 17], [11, 20], 12);
+  flat(s, sweep(strap, 1.5), R.red[2]);
+  s.rect(25, 7, 2, 2, R.red[1]);
+  s.rect(13, 7, 2, 2, R.red[1]);
   for (const [x, y] of [
+    [14, 13],
     [13, 14],
-    [17, 18],
-    [14, 21],
+    [15, 14],
   ])
-    s.rect(x, y, 2, 1, R.tan[0]);
-  s.set(12, 24, R.tan[3]);
-  s.set(13, 25, R.tan[3]);
-  shape(s, (x, y) => ell(8, 27, 4, 3.4)(x, y) && !ell(8, 27.5, 1.6, 1.3)(x, y), R.grey, {
-    band: 1,
-  });
-  s.rect(10, 24, 3, 2, R.grey[2]);
+    s.set(x, y, R.red[3]);
+  shape(s, (x, y) => x >= 9 && x <= 13 && y >= 19 && y <= 23, R.steel, { band: 1 });
+  const hook = (x: number, y: number) =>
+    ell(11.5, 26.5, 4.5, 3.6)(x, y) && !ell(11.5, 26.5, 2.3, 1.9)(x, y) && !(x >= 13 && y <= 25);
+  shape(s, hook, R.steel, { band: 1 });
+  s.vline(15, 23, 3, R.steel[3]);
   return s.outline();
 }
 

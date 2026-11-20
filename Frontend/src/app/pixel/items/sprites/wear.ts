@@ -1,14 +1,7 @@
-import { R, INK, Sprite, disc, shape, text } from '../../street/pix';
-import { digits, ell, poly } from './helpers';
+import { R, Sprite, disc, shape, text } from '../../street/pix';
+import { digits, ell, mask, poly } from './helpers';
 
 type Pt = readonly [number, number];
-
-// Membership test for a polygon, so poly shapes can be bevelled by shape().
-function mask(pts: readonly Pt[]): (x: number, y: number) => boolean {
-  const m = new Sprite(32, 32);
-  poly(m, pts, INK);
-  return (x, y) => m.get(x, y) !== null;
-}
 
 const mirror = (pts: readonly Pt[]): Pt[] => pts.map(([x, y]): Pt => [32 - x, y]);
 
