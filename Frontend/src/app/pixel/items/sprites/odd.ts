@@ -83,24 +83,47 @@ export function luckyRabbitFoot(): Sprite {
 export function chatteringTeeth(): Sprite {
   const s = new Sprite(32, 32);
   for (const [x, y] of [
-    [4, 26],
-    [13, 27],
+    [8, 27.7],
+    [17.5, 27],
   ])
-    shape(s, ell(x + 4, y + 1.5, 4.5, 2.5), R.gold, { band: 1 });
-  s.rect(2, 5, 20, 21, R.red[2]);
-  s.hline(2, 25, 20, R.red[1]);
-  s.rect(3, 9, 18, 6, R.white[2]);
-  s.rect(3, 17, 18, 5, R.white[2]);
-  s.rect(3, 15, 18, 2, R.black[0]);
-  for (let i = 0; i < 6; i++) {
-    s.vline(3 + i * 3, 9, 6, R.white[3]);
-    s.vline(5 + i * 3, 9, 6, R.white[1]);
-    s.vline(3 + i * 3, 17, 5, R.white[3]);
-    s.vline(5 + i * 3, 17, 5, R.white[1]);
+    shape(s, ell(x, y, 4.2, 2.2), R.gold, { band: 1 });
+  s.rect(2, 8, 23, 14, R.black[0]);
+  const upper = mask([
+    [3, 4],
+    [21, 4],
+    [22, 5],
+    [22, 8],
+    [2, 8],
+    [2, 5],
+  ]);
+  const lower = mask([
+    [4, 22],
+    [23, 22],
+    [24, 23],
+    [24, 25],
+    [23, 26],
+    [4, 26],
+    [3, 25],
+    [3, 23],
+  ]);
+  for (let i = 0; i < 4; i++) {
+    s.vline(6 + i * 4, 8, 6, R.red[1]);
+    s.vline(7 + i * 4, 17, 5, R.red[1]);
   }
-  const bow: Test = (x, y) => ell(26.5, 15, 3, 3.8)(x, y) && !ell(26.5, 15, 1.3, 2)(x, y);
+  for (let i = 0; i < 5; i++) {
+    for (const [x0, y0, h] of [
+      [3 + i * 4, 8, 6],
+      [4 + i * 4, 17, 5],
+    ]) {
+      s.rect(x0, y0, 3, h, R.white[2]);
+      s.vline(x0, y0, h, R.white[3]);
+    }
+  }
+  shape(s, upper, R.red, { band: 1 });
+  shape(s, lower, R.red, { band: 1 });
+  const bow: Test = (x, y) => ell(27.5, 16, 2.8, 3.6)(x, y) && !ell(27.5, 16, 1.2, 1.8)(x, y);
   shape(s, bow, R.gold, { band: 1 });
-  s.hline(22, 15, 3, R.gold[2]);
+  s.hline(24, 16, 2, R.gold[2]);
   return s.outline();
 }
 
@@ -163,36 +186,41 @@ export function jackalopeMount(): Sprite {
     [5, 24],
   ]);
   shape(s, plaque, R.purple, { band: 1 });
-  shape(s, thick(11, 17, 6, 11, 2.2, 1.5), R.paper, {});
-  shape(s, thick(21, 17, 26, 12, 2.2, 1.5), R.paper, {});
-  shape(s, ell(16, 19, 6, 6.5), R.paper, {});
-  shape(s, ell(16, 22, 3.5, 2.5), R.paper, {});
-  s.set(12, 17, R.black[0]);
-  s.set(19, 17, R.black[0]);
-  s.rect(15, 21, 2, 1, R.black[0]);
   const antler = (pts: [number, number][]) => flat(s, sweep(pts, 0.8), R.tan[3]);
   antler([
-    [14, 13],
-    [13, 8],
-    [11, 2],
+    [10, 15],
+    [7, 11],
+    [4, 8],
   ]);
   antler([
-    [13, 8],
-    [9, 6],
+    [7, 11],
+    [4, 12],
   ]);
   antler([
-    [18, 13],
-    [18, 7],
-    [20, 1],
+    [6, 9.5],
+    [6, 6],
   ]);
   antler([
-    [18, 8],
-    [23, 6],
+    [22, 15],
+    [25, 10],
+    [28, 8],
   ]);
   antler([
-    [19, 4],
-    [24, 2],
+    [25, 10],
+    [28, 12],
   ]);
+  shape(s, thick(13.5, 16, 12.5, 5.5, 2.1, 1.6), R.paper, {});
+  shape(s, thick(18.5, 16, 19.5, 4.5, 2.1, 1.6), R.paper, {});
+  flat(s, thick(13.3, 15, 12.7, 8, 0.6), R.paper[1]);
+  flat(s, thick(18.7, 15, 19.3, 7, 0.6), R.paper[1]);
+  shape(s, ell(16, 20, 6.3, 6.3), R.paper, {});
+  shape(s, ell(16, 24, 3.6, 2.6), R.paper, {});
+  s.set(12, 19, R.black[0]);
+  s.set(19, 19, R.black[0]);
+  s.hline(15, 22, 3, R.black[0]);
+  s.vline(16, 23, 2, R.black[0]);
+  s.set(15, 25, R.black[0]);
+  s.set(17, 25, R.black[0]);
   s.rect(12, 26, 9, 2, R.paper[2]);
   s.hline(13, 26, 7, R.paper[3]);
   return s.outline();
