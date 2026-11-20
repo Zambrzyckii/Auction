@@ -79,6 +79,22 @@ export const BOT_NAMES: readonly string[] = [
   'One-Speaker Karaoke Machine',
   'Chipped Disco Ball',
   'Milk Crate Nightstand',
+  'Chipped Diner Mug',
+  'Dented Lunch Thermos',
+  'Rusty Waffle Iron',
+  'Hand-Crank Can Opener',
+  'Cracked Cookie Jar',
+  'Mismatched Salt Shakers',
+  'Burnt Popcorn Maker',
+  'Neon Diner Sign',
+  'Deflated Basketball',
+  'Scuffed Boxing Gloves',
+  'Cracked Hockey Stick',
+  'Lopsided Bowling Ball',
+  'Taped Baseball Bat',
+  'Trophy Missing Its Plate',
+  'Signed Game Ball',
+  'Faded Wrestling Belt',
 ];
 
 export const STARTER_NAMES: readonly string[] = ['Rusty Toolbox', 'Old Radio', 'Worn Backpack'];
