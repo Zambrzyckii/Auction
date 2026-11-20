@@ -91,6 +91,10 @@ rules bind every change it makes.
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
   its panel (`overflow-x: auto`), the document itself never scrolls sideways.
+- `pixel/items/` holds the item art. `sprites/names.ts` mirrors the bots' `ITEM_NAMES` plus the
+  starters. The catalog and `pix.ts` load lazily through `bootStreet` behind the `ResizeObserver`
+  guard, so jsdom specs never touch a 2d context. A new item name shows the mystery sprite until
+  it gets a function, and `catalog.spec.ts` fails when `names.ts` lists a name without one.
 - The budgets in `angular.json` stay as they are unless the owner decides otherwise.
 
 ## Session

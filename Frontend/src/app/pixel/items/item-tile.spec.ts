@@ -38,6 +38,8 @@ describe('ItemTile', () => {
 
   it('asks for no 2d context without ResizeObserver', async () => {
     vi.stubGlobal('ResizeObserver', undefined);
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('IntersectionObserver', class {});
     const getContext = vi.spyOn(HTMLCanvasElement.prototype, 'getContext');
     fixture.componentRef.setInput('name', 'Old Radio');
     fixture.detectChanges();
