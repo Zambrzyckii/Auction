@@ -9,29 +9,57 @@
   @if (items.length === 0) {
     <p>No items yet. The starter pack arrives shortly after registration.</p>
   } @else {
-    <table>
-      <tr>
-        <th></th>
-        <th>Name</th>
-        <th>Rarity</th>
-        <th>Status</th>
-        <th>Official price</th>
-        <th></th>
-      </tr>
-      @for (item of items; track item.publicItemId) {
-        <tr>
-          <td>
-            <input
-              type="checkbox"
-              [checked]="selection().includes(item.publicItemId)"
-              (change)="toggle(item.publicItemId)"
-            />
-          </td>
-          <td>{{ item.name }}</td>
-          <td>{{ item.rarity }}</td>
-          <td>{{ item.status }}</td>
-          <td>{{ item.officialPrice | number }}</td>
-          <td>
+    <app-workshop
+      #bench
+      [items]="items"
+      [picked]="selection()"
+      [pending]="crafting.pending()"
+      [ready]="canCraft()"
+      (takeOff)="toggle($event)"
+    >
+      <p>
+        Craft three available items of one rarity into one of the next. Selected:
+        {{ selection().length }}/3
+        <button
+          type="button"
+          class="craft"
+          [disabled]="crafting.pending() || !canCraft()"
+          (click)="craft()"
+        >
+          Craft
+        </button>
+      </p>
+    </app-workshop>
+    <app-shelf-sort #order [items]="items" />
+    <ul class="shelf" [class.picking]="bench.open()">
+      @for (item of items | sortItems: order.key() : order.dir(); track item.publicItemId) {
+        @if (!bench.hidden().includes(item.publicItemId)) {
+          <li
+            class="card"
+            [class.fresh]="bench.fresh() === item.publicItemId"
+            [attr.data-rarity]="item.rarity"
+            [attr.data-status]="item.status"
+          >
+            <label class="pick">
+              <input
+                type="checkbox"
+                [checked]="selection().includes(item.publicItemId)"
+                [disabled]="crafting.pending()"
+                (change)="toggle(item.publicItemId)"
+              />
+              <app-item-tile size="lot" [name]="item.name" [rarity]="item.rarity" />
+              <span class="name">{{ item.name }}</span>
+            </label>
+            <span class="rarity" [attr.data-rarity]="item.rarity">{{ item.rarity }}</span>
+            <span class="price"
+              ><span class="cue">Official price </span>{{ item.officialPrice | number }}</span
+            >
+            <span class="status">{{ item.status }}</span>
+            @if (bench.open()) {
+              @if (item | benchFit: bench.belt(); as reason) {
+                <span class="fit">{{ reason }}</span>
+              }
+            }
             <button
               type="button"
               class="sell"
@@ -40,22 +68,10 @@
             >
               Sell to shop
             </button>
-          </td>
-        </tr>
+          </li>
+        }
       }
-    </table>
-    <p>
-      Craft three available items of one rarity into one of the next. Selected:
-      {{ selection().length }}/3
-      <button
-        type="button"
-        class="craft"
-        [disabled]="crafting.pending() || !canCraft()"
-        (click)="craft()"
-      >
-        Craft
-      </button>
-    </p>
+    </ul>
   }
 } @else if (poller.error(); as error) {
   <p class="error">{{ error.message }}</p>

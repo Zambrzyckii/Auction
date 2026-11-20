@@ -4,12 +4,17 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { actionState } from '../../core/actions/action-state';
 import { InventoryItem } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
+import { BenchFitPipe } from '../../pixel/inventory/bench-fit';
+import { ShelfSort } from '../../pixel/inventory/shelf-sort';
+import { SortItemsPipe } from '../../pixel/inventory/sort-items';
+import { Workshop } from '../../pixel/inventory/workshop';
+import { ItemTile } from '../../pixel/items/item-tile';
 
 const POLL_MS = 5000;
 
 @Component({
   selector: 'app-inventory',
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, Workshop, ShelfSort, ItemTile, SortItemsPipe, BenchFitPipe],
   templateUrl: './inventory.html',
 })
 export class Inventory {

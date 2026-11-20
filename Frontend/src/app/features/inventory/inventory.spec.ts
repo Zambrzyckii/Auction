@@ -89,6 +89,39 @@ describe('Inventory', () => {
     expect(el().querySelector('.notice')?.textContent).toContain('not available');
   });
 
+  it('renders one card with a tile per item', () => {
+    http
+      .expectOne('/api/inventory')
+      .flush([item({ publicItemId: 'a' }), item({ publicItemId: 'b' })]);
+    fixture.detectChanges();
+    expect(el().querySelectorAll('li.card app-item-tile').length).toBe(2);
+  });
+
+  it('keeps the craft button in the DOM while the workshop is closed (jsdom has no matchMedia or IntersectionObserver)', () => {
+    http.expectOne('/api/inventory').flush([item({})]);
+    fixture.detectChanges();
+    expect(el().querySelector('button.door')?.getAttribute('aria-expanded')).toBe('false');
+    expect(el().querySelector('button.craft')).not.toBeNull();
+  });
+
+  it('orders the cards by name when Name is pressed', () => {
+    http
+      .expectOne('/api/inventory')
+      .flush([
+        item({ publicItemId: 'b', name: 'Banjo', rarity: 'Common' }),
+        item({ publicItemId: 'z', name: 'Zippo', rarity: 'Legendary' }),
+      ]);
+    fixture.detectChanges();
+    const names = () =>
+      [...el().querySelectorAll('li.card .name')].map((n) => n.textContent?.trim());
+    expect(names()).toEqual(['Zippo', 'Banjo']);
+    [...el().querySelectorAll<HTMLButtonElement>('app-shelf-sort button')]
+      .find((b) => b.textContent?.trim() === 'Name')!
+      .click();
+    fixture.detectChanges();
+    expect(names()).toEqual(['Banjo', 'Zippo']);
+  });
+
   describe('crafting', () => {
     const trio = [
       item({ publicItemId: 'a' }),
@@ -164,6 +197,51 @@ describe('Inventory', () => {
       http
         .expectOne('/api/inventory/craft')
         .flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
+    });
+
+    it('locks the picks while the craft is pending', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c']);
+      fixture.detectChanges();
+      fixture.componentInstance.craft();
+      fixture.detectChanges();
+      const boxes = () => [
+        ...el().querySelectorAll<HTMLInputElement>('li.card input[type="checkbox"]'),
+      ];
+      expect(boxes().every((b) => b.disabled)).toBe(true);
+      http
+        .expectOne('/api/inventory/craft')
+        .flush({ error: 'Item is not available' }, { status: 400, statusText: 'Bad Request' });
+      fixture.detectChanges();
+      expect(boxes().some((b) => b.disabled)).toBe(false);
+    });
+
+    it('shows the crafted card after the next poll', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c']);
+      fixture.detectChanges();
+      fixture.componentInstance.craft();
+      fixture.detectChanges();
+      http
+        .expectOne('/api/inventory/craft')
+        .flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
+      fixture.detectChanges();
+      fixture.componentInstance.poller.refresh();
+      http
+        .expectOne('/api/inventory')
+        .flush([
+          item({
+            publicItemId: 'new',
+            name: 'Crafted Rare Item',
+            rarity: 'Rare',
+            officialPrice: 1234,
+          }),
+        ]);
+      fixture.detectChanges();
+      const cards = el().querySelectorAll('li.card');
+      expect(cards.length).toBe(1);
+      expect(cards[0].classList.contains('fresh')).toBe(true);
+      expect(cards[0].textContent).toContain('Crafted Rare Item');
     });
   });
 });
