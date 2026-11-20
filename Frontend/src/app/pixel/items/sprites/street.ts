@@ -3,16 +3,19 @@ import { ell, poly } from './helpers';
 
 export function graffitiMarkerSet(): Sprite {
   const s = new Sprite(32, 32);
-  const caps = [R.red[2], R.taxi[2], R.sign[2], R.denim[2]];
+  const caps = [R.red, R.taxi, R.sign, R.denim];
   caps.forEach((cap, k) => {
     const x = k % 2 ? 4 : 2;
     const y = 6 + k * 6;
-    s.rect(x, y, 8, 5, cap);
+    s.rect(x, y, 8, 5, cap[2]);
+    s.hline(x, y + 4, 8, cap[0]);
     s.rect(x + 8, y, 13, 5, R.black[2]);
+    s.hline(x + 8, y + 4, 13, R.black[0]);
     s.rect(x + 11, y + 1, 6, 3, R.white[3]);
-    s.rect(x + 21, y + 1, 2, 3, cap);
-    s.rect(x + 23, y + 2, 3, 1, cap);
-    s.vline(x + 7, y, 5, R.black[0]);
+    s.rect(x + 21, y + 1, 2, 3, cap[2]);
+    s.hline(x + 21, y + 3, 2, cap[0]);
+    s.rect(x + 23, y + 2, 3, 1, cap[2]);
+    s.vline(x + 7, y, 4, R.black[0]);
   });
   return s.outline();
 }
@@ -83,7 +86,7 @@ export function tapedUpSkateboard(): Sprite {
   for (const y of [8, 23]) {
     s.rect(6, y, 20, 2, R.steel[1]);
     for (const x of [5, 24]) s.rect(x, y - 2, 3, 6, R.red[2]);
-    for (const x of [5, 24]) s.vline(x, y + 1, 3, R.red[1]);
+    for (const x of [5, 24]) s.vline(x + 2, y + 1, 3, R.red[1]);
   }
   shape(s, deck, R.wood, { band: 1 });
   for (const y of [8, 23]) s.rect(13, y, 6, 2, R.steel[1]);
@@ -128,12 +131,16 @@ export function wobblyRollerblades(): Sprite {
 export function milkCrateNightstand(): Sprite {
   const s = new Sprite(32, 32);
   box(s, 4, 14, 24, 15, R.denim, { band: 1 });
-  s.rect(9, 19, 14, 8, R.denim[0]);
-  s.hline(9, 26, 14, R.denim[1]);
-  for (const x of [6, 11, 16, 21]) s.rect(x, 15, 3, 2, R.denim[0]);
-  for (const y of [20, 24]) for (const x of [5, 24]) s.rect(x, y, 3, 2, R.denim[0]);
-  s.rect(11, 22, 10, 4, R.paper[2]);
-  s.hline(11, 24, 10, R.denim[0]);
+  s.rect(11, 18, 10, 9, R.denim[0]);
+  for (const x of [7, 12, 17, 22]) s.rect(x, 15, 3, 2, R.denim[0]);
+  for (const y of [19, 23]) for (const x of [7, 22]) s.rect(x, y, 3, 2, R.denim[0]);
+  for (const [x, w, y, col] of [
+    [11, 2, 20, R.paper[2]],
+    [13, 2, 19, R.red[2]],
+    [15, 3, 21, R.taxi[2]],
+    [18, 2, 20, R.paper[2]],
+  ] as const)
+    s.rect(x, y, w, 27 - y, col);
   s.rect(15, 8, 2, 5, R.lit[1]);
   s.rect(12, 12, 8, 2, R.lit[1]);
   poly(
@@ -211,9 +218,16 @@ export function brassPaperweight(): Sprite {
   );
   s.line(16, 6, 8, 20, R.gold[3]);
   s.line(16, 6, 14, 21, R.gold[3]);
-  box(s, 4, 22, 24, 7, R.gold, { band: 1 });
-  s.hline(7, 25, 6, R.gold[0]);
-  s.hline(7, 26, 4, R.gold[0]);
+  for (const [x, y] of [
+    [20, 15],
+    [21, 16],
+    [23, 19],
+  ])
+    s.set(x, y, R.green[2]);
+  box(s, 4, 22, 24, 6, R.gold, { band: 1 });
+  s.hline(7, 24, 6, R.gold[0]);
+  s.hline(7, 25, 4, R.gold[0]);
+  s.rect(6, 28, 20, 2, R.green[1]);
   return s.outline();
 }
 

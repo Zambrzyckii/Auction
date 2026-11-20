@@ -28,26 +28,26 @@ export function glowYoYo(): Sprite {
   return s.outline();
 }
 
-// A bracelet curled into a short tube, seen from above: top ring with a dark mouth, then the wall.
+// A bracelet curled into a short ring, seen from above: top ring with a dark mouth, then a thin wall.
 function band(s: Sprite, cx: number, ty: number, ramp: readonly string[]): void {
-  const top = ell(cx, ty, 8, 3);
-  const low = ell(cx, ty + 5, 8, 3);
-  const mouth = ell(cx, ty, 6, 2);
-  for (let y = ty - 3; y <= ty + 8; y++)
+  const top = ell(cx, ty, 8, 4);
+  const low = ell(cx, ty + 3, 8, 4);
+  const mouth = ell(cx, ty, 6, 3);
+  for (let y = ty - 4; y <= ty + 7; y++)
     for (let x = cx - 8; x < cx + 8; x++) {
-      const wall = x >= cx - 8 && x < cx + 8 && y >= ty && y < ty + 5;
+      const wall = y >= ty && y < ty + 3;
       if (!top(x, y) && !low(x, y) && !wall) continue;
       if (mouth(x, y)) s.set(x, y, ramp[0]);
-      else s.set(x, y, x >= cx + 4 || (y >= ty + 7 && low(x, y)) ? ramp[1] : ramp[2]);
+      else s.set(x, y, x >= cx + 4 || (y >= ty + 6 && low(x, y)) ? ramp[1] : ramp[2]);
     }
-  for (const dx of [-6, -2, 2]) s.rect(cx + dx, ty + 3, 2, 2, R.white[3]);
+  for (const dx of [-6, -2, 2]) s.rect(cx + dx, ty + 4, 2, 2, R.white[3]);
 }
 
 export function slapBraceletBundle(): Sprite {
   const s = new Sprite(32, 32);
-  band(s, 16, 8, R.sign);
-  band(s, 10, 20, R.red);
-  band(s, 22, 20, R.taxi);
+  band(s, 16, 12, R.sign);
+  band(s, 10, 22, R.red);
+  band(s, 22, 22, R.taxi);
   return s.outline();
 }
 
@@ -108,15 +108,19 @@ export function chippedBobblehead(): Sprite {
   s.hline(14, 14, 4, R.skinC[0]);
   s.set(13, 13, R.skinC[0]);
   s.set(18, 13, R.skinC[0]);
+  for (let i = 0; i < 4; i++) s.hline(i % 2 ? 15 : 14, 17 + i, i % 2 ? 2 : 4, R.red[3]);
+  box(s, 11, 21, 10, 6, R.red, { band: 1 });
+  for (const x of [9, 21]) {
+    box(s, x, 22, 2, 3, R.red);
+    s.rect(x, 25, 2, 1, R.skinC[2]);
+  }
+  box(s, 8, 27, 16, 2, R.red);
   for (const [x, y, w, h] of [
     [20, 7, 2, 2],
     [10, 12, 2, 2],
     [14, 23, 2, 1],
   ])
     s.rect(x, y, w, h, R.white[3]);
-  for (let i = 0; i < 4; i++) s.hline(i % 2 ? 15 : 14, 17 + i, i % 2 ? 2 : 4, R.red[3]);
-  box(s, 11, 21, 10, 6, R.red, { band: 1 });
-  box(s, 8, 27, 16, 2, R.red);
   return s.outline();
 }
 
@@ -151,11 +155,13 @@ export function clawMachinePrize(): Sprite {
   s.set(14, 14, R.steel[0]);
   s.set(17, 14, R.steel[0]);
   s.rect(15, 1, 2, 4, R.grey[1]);
-  s.rect(11, 5, 10, 4, R.grey[1]);
+  s.rect(13, 5, 6, 3, R.grey[1]);
   for (const [x0, y0, x1, y1] of [
-    [12, 9, 6, 11],
-    [6, 11, 5, 16],
-    [5, 16, 8, 19],
+    [13, 7, 8, 9],
+    [8, 9, 4, 13],
+    [4, 13, 3, 18],
+    [3, 18, 4, 22],
+    [4, 22, 7, 24],
   ]) {
     s.line(x0, y0, x1, y1, R.grey[1]);
     s.line(x0 + 1, y0, x1 + 1, y1, R.grey[1]);
@@ -217,34 +223,37 @@ export function shipInABottle(): Sprite {
 export function chippedDiscoBall(): Sprite {
   const s = new Sprite(32, 32);
   sphere(s, 16, 19, 10, R.grey);
-  for (let y = 10; y < 30; y += 3) s.hline(7, y, 18, R.grey[1]);
+  for (let y = 10; y < 30; y += 3)
+    for (let x = 6; x < 26; x++) if (ell(16, 19, 10, 10)(x, y)) s.set(x, y, R.grey[1]);
   for (let y = 9; y < 29; y++) {
     const half = Math.sqrt(100 - (y + 0.5 - 19) ** 2);
     for (const m of [-0.75, -0.4, 0, 0.4, 0.75])
       s.set(Math.round(16 + m * half - 0.5), y, R.grey[1]);
   }
   for (const [x, y] of [
-    [11, 12],
-    [14, 15],
+    [15, 12],
+    [14, 16],
     [18, 12],
-    [10, 18],
+    [14, 18],
     [14, 21],
     [19, 17],
   ])
     s.set(x, y, R.white[3]);
   for (const [x, y] of [
-    [21, 15],
-    [22, 15],
-    [21, 16],
-    [22, 16],
-    [23, 16],
-    [22, 17],
-    [12, 24],
-    [13, 24],
-    [13, 25],
+    [20, 12],
+    [21, 12],
+    [21, 13],
+    [22, 13],
+    [22, 14],
+    [21, 14],
+    [10, 18],
+    [11, 18],
+    [11, 19],
+    [12, 19],
+    [11, 20],
   ])
     s.set(x, y, R.black[1]);
-  s.set(20, 16, R.black[0]);
+  s.set(20, 13, R.black[0]);
   s.vline(16, 4, 5, R.steel[1]);
   s.vline(15, 3, 3, R.steel[3]);
   s.vline(15, 6, 3, R.steel[2]);
