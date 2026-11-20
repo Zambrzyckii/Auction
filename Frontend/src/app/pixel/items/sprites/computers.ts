@@ -14,7 +14,7 @@ function bar(s: Sprite, a: Pt, b: Pt, w: number, ramp: readonly string[]): void 
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const dx = (b[0] - a[0]) / len;
   const dy = (b[1] - a[1]) / len;
-  const flip = -dy - dx < 0 ? -1 : 1;
+  const flip = dy - dx < 0 ? -1 : 1;
   const lx = -dy * flip;
   const ly = dx * flip;
   for (let y = 0; y < s.h; y++)
@@ -154,9 +154,9 @@ export function keyboardMissingEscape(): Sprite {
 export function mouseWithABall(): Sprite {
   const s = new Sprite(32, 32);
   const dome = ell(17, 22, 12.5, 13);
-  const cable = bezier([6, 18], [0, 18], [0, 6], [8, 4], 24);
+  const cable = bezier([6, 18], [0, 18], [0, 6], [8, 5], 24);
   cable.forEach(([x, y]) => s.set(x, y, R.black[1]));
-  s.rect(7, 1, 3, 4, R.black[3]);
+  s.rect(7, 2, 3, 3, R.black[3]);
   shape(s, (i, j) => j <= 22 && dome(i, j), R.paper, { band: 1 });
   s.vline(14, 12, 10, R.paper[0]);
   s.hline(7, 16, 7, R.paper[0]);

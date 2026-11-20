@@ -87,8 +87,6 @@ export function fadedDenimJacket(): Sprite {
     [11, 20, 4],
     [12, 21, 4],
     [11, 22, 3],
-    [18, 21, 3],
-    [19, 22, 4],
   ];
   for (const [x, y, w] of wash)
     for (let i = 0; i < w; i++) if (s.get(x + i, y) === R.denim[2]) s.set(x + i, y, R.steel[3]);
@@ -98,23 +96,30 @@ export function fadedDenimJacket(): Sprite {
 export function handPaintedVest(): Sprite {
   const s = new Sprite(32, 32);
   const left: Pt[] = [
-    [9, 5],
-    [12, 5],
-    [16, 14],
+    [8, 5],
+    [13, 5],
+    [16, 12],
   ];
   const vest = mask([
     ...left,
     ...mirror(left).reverse(),
-    [26, 12],
+    [26, 8],
+    [24.5, 10],
+    [23.5, 12.5],
+    [24.5, 15],
+    [26, 16.5],
     [26, 27],
     [21, 29],
     [16, 28],
     [11, 29],
     [6, 27],
-    [6, 12],
+    [6, 16.5],
+    [7.5, 15],
+    [8.5, 12.5],
+    [7.5, 10],
+    [6, 8],
   ]);
   shape(s, vest, R.plum, { band: 1 });
-  s.vline(16, 14, 14, R.plum[0]);
   for (const y of [16, 20, 24]) s.set(15, y, R.plum[3]);
   for (const x of [8, 19]) s.hline(x, 24, 5, R.plum[3]);
   poly(
@@ -133,10 +138,10 @@ export function handPaintedVest(): Sprite {
   disc(s, 21.5, 19, 3, R.red[2]);
   s.set(20, 22, R.red[2]);
   s.set(22, 23, R.red[2]);
-  s.set(23, 12, R.sign[3]);
+  s.set(21, 13, R.sign[3]);
   s.set(24, 16, R.sign[3]);
   s.set(19, 26, R.sign[3]);
-  s.set(8, 15, R.sign[3]);
+  s.set(10, 13, R.sign[3]);
   s.hline(18, 11, 4, R.taxi[3]);
   return s.outline();
 }
@@ -224,16 +229,16 @@ export function flannelWithBurnHole(): Sprite {
       else if (x % 6 === 4) s.set(x, y, R.rust[3]);
     }
   for (const y of [16, 20, 24, 28]) s.set(16, y, R.paper[2]);
-  const ring = ell(20, 20, 3, 2.8);
-  const hole = ell(20, 20, 1.6, 1.4);
+  const ring = ell(20, 20, 2.8, 2.6);
+  const hole = ell(20, 20, 1.4, 1.2);
   for (let y = 15; y < 25; y++)
     for (let x = 15; x < 25; x++) {
-      if (hole(x, y)) s.set(x, y, R.paper[2]);
-      else if (ring(x, y)) s.set(x, y, R.black[1]);
+      if (hole(x, y)) s.set(x, y, null);
+      else if (ring(x, y)) s.set(x, y, R.black[3]);
     }
-  s.set(24, 17, R.rust[0]);
-  s.set(16, 22, R.rust[0]);
-  s.set(21, 24, R.rust[0]);
+  s.set(24, 17, R.black[2]);
+  s.set(16, 22, R.black[2]);
+  s.set(21, 24, R.black[2]);
   return s.outline();
 }
 
@@ -241,24 +246,23 @@ export function lightUpSneakers(): Sprite {
   const s = new Sprite(32, 32);
   const upper = mask([
     [3, 25],
-    [2, 21],
-    [4, 17],
-    [9, 15],
-    [12, 13],
-    [13, 7],
-    [17, 7],
-    [18, 11],
-    [23, 10],
-    [25, 8],
-    [29, 9],
+    [2, 22],
+    [4, 19],
+    [9, 17],
+    [12, 15],
+    [13, 13],
+    [17, 13],
+    [18, 15],
+    [23, 15],
+    [25, 13],
+    [29, 14],
     [29, 25],
   ]);
   shape(s, upper, R.denim, { band: 1 });
-  box(s, 13, 7, 5, 5, R.denim);
-  s.rect(19, 11, 8, 2, R.denim[0]);
+  s.rect(19, 15, 6, 2, R.denim[0]);
   for (const [x, y] of [
-    [9, 15],
-    [11, 13],
+    [10, 17],
+    [12, 15],
   ]) {
     s.line(x, y, x + 2, y + 2, R.lit[3]);
     s.line(x + 2, y, x, y + 2, R.lit[3]);
