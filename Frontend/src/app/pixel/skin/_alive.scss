@@ -1,0 +1,156 @@
+@use 'tools';
+
+@include tools.inside {
+  main h2 {
+    justify-self: start;
+    color: var(--m-neon);
+    text-shadow:
+      3px 0 0 var(--m-neon-glow),
+      -3px 0 0 var(--m-neon-glow),
+      0 3px 0 var(--m-neon-glow),
+      0 -3px 0 var(--m-neon-glow),
+      6px 0 0 var(--m-neon-haze),
+      -6px 0 0 var(--m-neon-haze),
+      0 6px 0 var(--m-neon-haze),
+      0 -6px 0 var(--m-neon-haze);
+  }
+
+  ul.shelf:not(.picking) > li.card:hover,
+  app-wallet tr:hover {
+    translate: 0 calc(var(--u) * -1);
+    box-shadow:
+      inset 0 var(--u) 0 var(--m-panel2),
+      0 var(--u) 0 var(--m-ink);
+  }
+
+  :is(.notice, .error, .stock-notice) {
+    transform-origin: left center;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    main h2 {
+      animation: x-neon 7s steps(1, end) infinite;
+    }
+
+    :is(ul.shelf > li, main table tr:has(> td), app-wallet tr) {
+      animation: x-drop 0.28s var(--m-ease) both;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(2) {
+      animation-delay: 30ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(3) {
+      animation-delay: 60ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(4) {
+      animation-delay: 90ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(5) {
+      animation-delay: 120ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(6) {
+      animation-delay: 150ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(7) {
+      animation-delay: 180ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(8) {
+      animation-delay: 210ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(9) {
+      animation-delay: 240ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(10) {
+      animation-delay: 270ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(11) {
+      animation-delay: 300ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(12) {
+      animation-delay: 330ms;
+    }
+
+    :is(ul.shelf > li, main table tr, app-wallet tr):nth-child(n + 13) {
+      animation-delay: 360ms;
+    }
+
+    app-wallet tr {
+      transition: translate 0.14s var(--m-ease);
+    }
+
+    :is(tr:hover, li.card:hover) app-item-tile canvas {
+      animation: x-hop 0.36s steps(1, end);
+    }
+
+    :is(.notice, .error, .stock-notice) {
+      animation: x-stamp 0.34s steps(1, end) both;
+    }
+
+    @keyframes x-neon {
+      0%,
+      90%,
+      100% {
+        opacity: 1;
+      }
+      91% {
+        opacity: 0.4;
+      }
+      92% {
+        opacity: 1;
+      }
+      94% {
+        opacity: 0.6;
+      }
+      95% {
+        opacity: 1;
+      }
+    }
+
+    @keyframes x-drop {
+      from {
+        opacity: 0;
+        transform: translateY(calc(var(--u) * -4));
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @keyframes x-hop {
+      0% {
+        transform: translateY(-2px);
+      }
+      50% {
+        transform: none;
+      }
+    }
+
+    @keyframes x-stamp {
+      0% {
+        opacity: 0;
+        transform: scale(2);
+      }
+      25% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        transform: translateY(calc(var(--u) * -1));
+      }
+      75% {
+        transform: none;
+      }
+    }
+  }
+}

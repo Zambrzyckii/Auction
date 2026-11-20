@@ -1,6 +1,7 @@
 @use '../skin/tools';
 
 :host {
+  position: relative;
   display: inline-grid;
   place-items: center;
   vertical-align: middle;
@@ -22,6 +23,44 @@
 
 :host([data-rarity='Legendary']) {
   background: var(--m-legend);
+}
+
+:host([data-rarity='Epic'])::after,
+:host([data-rarity='Legendary'])::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 0 38%,
+    var(--m-glint) 38% 44%,
+    transparent 44% 50%,
+    var(--m-glint-soft) 50% 53%,
+    transparent 53%
+  );
+  transform: translateX(-120%);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :host([data-rarity='Epic'])::after,
+  :host([data-rarity='Legendary'])::after {
+    animation: shine 4.6s steps(14, end) infinite;
+  }
+
+  :host([data-rarity='Legendary'])::after {
+    animation-duration: 3.2s;
+  }
+
+  @keyframes shine {
+    0% {
+      transform: translateX(-120%);
+    }
+    24%,
+    100% {
+      transform: translateX(120%);
+    }
+  }
 }
 
 :host(.lot) {
