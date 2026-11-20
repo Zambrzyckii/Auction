@@ -63,4 +63,257 @@
   app-shelf-sort button.dir[data-dir='asc']::after {
     transform: rotate(180deg);
   }
+
+  ul.shelf .cue,
+  ul.shelf > li[data-status='Available'] > .status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  ul.shelf {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: calc(var(--u) * 3);
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--u) * 50), 1fr));
+  }
+
+  ul.shelf > li.card {
+    position: relative;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--u) * 2) calc(var(--u) * 2);
+    padding: calc(var(--u) * 2) calc(var(--u) * 2) calc(var(--u) * 3);
+    background: var(--m-panel);
+    border: var(--u) solid var(--m-ink);
+    box-shadow: inset 0 var(--u) 0 var(--m-panel2);
+  }
+
+  ul.shelf > li.card > .pick {
+    flex: 1 0 100%;
+    display: grid;
+    gap: calc(var(--u) * 2);
+    min-width: 0;
+    text-transform: none;
+  }
+
+  ul.shelf app-item-tile.lot {
+    width: auto;
+    display: grid;
+    height: 96px;
+  }
+
+  ul.shelf .name {
+    font: 27px/24px var(--m-head);
+    color: var(--m-text);
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    min-height: 48px;
+  }
+
+  ul.shelf .price {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--u) * 2);
+    font: 16px/16px var(--m-pixel);
+    color: var(--m-taxi-hi);
+    font-variant-numeric: tabular-nums;
+  }
+
+  ul.shelf .price::before {
+    content: '';
+    width: 15px;
+    height: 15px;
+    flex: none;
+    background:
+      linear-gradient(var(--m-taxi-hi), var(--m-taxi-hi)) 3px 3px / 6px 6px no-repeat,
+      var(--m-taxi-lo);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath d='M1 0h3v1H1zM0 1h5v3H0zM1 4h3v1H1z'/%3E%3C/svg%3E")
+      center / 15px 15px no-repeat;
+  }
+
+  ul.shelf .sell {
+    flex: 1 0 100%;
+  }
+
+  ul.shelf > li[data-status='LockedForAuction'] > .status {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(var(--u) * 2 + 58px);
+    z-index: 1;
+    padding: calc(var(--u) * 3) 0;
+    text-align: center;
+    font: 16px/16px var(--m-pixel);
+    color: var(--m-ink);
+    background:
+      repeating-linear-gradient(90deg, var(--m-ink) 0 9px, transparent 9px 18px) 0 0 / 100% var(--u)
+        no-repeat,
+      repeating-linear-gradient(
+          90deg,
+          transparent 0 3px,
+          var(--m-ink) 3px 12px,
+          transparent 12px 18px
+        )
+        0 var(--u) / 100% var(--u) no-repeat,
+      repeating-linear-gradient(90deg, var(--m-ink) 0 9px, transparent 9px 18px) 0
+        calc(100% - var(--u)) / 100% var(--u) no-repeat,
+      repeating-linear-gradient(
+          90deg,
+          transparent 0 3px,
+          var(--m-ink) 3px 12px,
+          transparent 12px 18px
+        )
+        0 100% / 100% var(--u) no-repeat,
+      var(--m-taxi);
+    box-shadow: 0 var(--u) 0 var(--m-ink);
+  }
+
+  ul.shelf > li.fresh::after {
+    content: 'New';
+    position: absolute;
+    top: calc(var(--u) * 3);
+    right: calc(var(--u) * 3);
+    z-index: 2;
+    padding: var(--u) calc(var(--u) * 2);
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+    background: var(--m-pink);
+    border: var(--u) solid var(--m-ink);
+  }
+
+  ul.shelf:not(.picking) .pick {
+    pointer-events: none;
+  }
+
+  ul.shelf:not(.picking) input[type='checkbox'] {
+    display: none;
+  }
+
+  ul.shelf.picking .sell {
+    display: none;
+  }
+
+  ul.shelf.picking > li.card {
+    cursor: pointer;
+  }
+
+  ul.shelf.picking .pick {
+    cursor: pointer;
+  }
+
+  ul.shelf.picking .pick::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  ul.shelf.picking input[type='checkbox'] {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+  }
+
+  ul.shelf.picking > li.card:has(:focus-visible) {
+    outline: var(--u) solid var(--m-taxi-hi);
+    outline-offset: var(--u);
+  }
+
+  ul.shelf.picking > li.card:not(:has(.fit)):not(:has(input:checked)):hover {
+    background: var(--m-panel2);
+  }
+
+  ul.shelf.picking > li.card:not(:has(.fit)):not(:has(input:checked)):hover::before,
+  ul.shelf.picking > li.card:has(input:checked)::before {
+    position: absolute;
+    left: calc(var(--u) * 2);
+    right: calc(var(--u) * 2);
+    top: calc(var(--u) * 2 + 36px);
+    z-index: 1;
+    padding: calc(var(--u) * 2) 0;
+    text-align: center;
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    border: var(--u) solid var(--m-ink);
+  }
+
+  ul.shelf.picking > li.card:not(:has(.fit)):not(:has(input:checked)):hover::before {
+    content: 'Put on the belt';
+    color: var(--m-ink);
+    background: var(--m-taxi-hi);
+  }
+
+  ul.shelf.picking > li.card:has(input:checked) {
+    border-color: var(--m-taxi);
+    background: var(--m-picked);
+    translate: 0 calc(var(--u) * -1);
+  }
+
+  ul.shelf.picking > li.card:has(input:checked)::before {
+    content: 'On the belt';
+    color: var(--m-taxi-hi);
+    background: var(--m-ink);
+  }
+
+  ul.shelf.picking > li.card:has(input:checked) app-item-tile {
+    opacity: 0.35;
+  }
+
+  ul.shelf.picking > li.card:has(.fit) {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  ul.shelf.picking > li.card:has(.fit) app-item-tile {
+    filter: grayscale(0.85);
+  }
+
+  ul.shelf .fit {
+    position: absolute;
+    top: calc(var(--u) * 3);
+    left: calc(var(--u) * 3);
+    z-index: 1;
+    padding: var(--u) calc(var(--u) * 2);
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-text);
+    background: var(--m-ink);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    ul.shelf > li.card {
+      transition:
+        translate 0.14s var(--m-ease),
+        background-color 0.14s;
+    }
+
+    ul.shelf > li.fresh::after {
+      animation: x-new 0.5s steps(1, end) both;
+    }
+
+    @keyframes x-new {
+      0% {
+        transform: scale(2);
+      }
+      30% {
+        transform: scale(1);
+      }
+    }
+  }
 }
