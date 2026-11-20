@@ -1,4 +1,4 @@
-import { R, Sprite, box, cylV, shape, sphere, text, type Col } from '../../street/pix';
+import { R, Sprite, box, cylV, shape, sphere, text } from '../../street/pix';
 import { ell, flat } from './helpers';
 
 export function chippedDinerMug(): Sprite {
@@ -63,22 +63,19 @@ export function rustyWaffleIron(): Sprite {
 
 export function handCrankCanOpener(): Sprite {
   const s = new Sprite(32, 32);
-  box(s, 5, 15, 4, 14, R.red, { band: 1 });
-  box(s, 11, 15, 4, 14, R.red, { band: 1 });
-  box(s, 4, 10, 12, 6, R.steel, { band: 1 });
-  s.set(9, 13, R.steel[0]);
-  s.set(10, 13, R.steel[0]);
-  const cog = (x: number, y: number): boolean => {
-    const dx = x + 0.5 - 10;
-    const dy = y + 0.5 - 6;
-    const bump = Math.cos(8 * Math.atan2(dy, dx)) > 0.3 ? 1.2 : 0;
-    return Math.hypot(dx, dy) <= 3.6 + bump;
-  };
-  shape(s, cog, R.steel, { band: 1 });
-  flat(s, ell(10, 6, 1.6, 1.6), R.steel[0]);
-  s.rect(11, 6, 12, 2, R.steel[3]);
-  s.hline(11, 8, 12, R.steel[1]);
-  sphere(s, 25, 7, 3, R.red);
+  cylV(s, 14, 17, 14, 12, R.steel);
+  s.hline(14, 20, 14, R.steel[1]);
+  s.hline(14, 24, 14, R.steel[1]);
+  s.hline(14, 28, 14, R.steel[0]);
+  shape(s, ell(21, 17, 7, 2.4), R.steel, { band: 1 });
+  const arm = (lo: number, hi: number) => (x: number, y: number) =>
+    x >= 4 && x <= 12 && x - y >= lo && x - y <= hi;
+  shape(s, arm(-11, -6), R.red, { band: 1 });
+  shape(s, arm(-2, 3), R.red, { band: 1 });
+  box(s, 9, 11, 6, 10, R.steel, { band: 1 });
+  shape(s, ell(16.5, 16.5, 4, 4), R.steel, { band: 1 });
+  s.rect(15, 15, 3, 3, R.red[2]);
+  s.set(16, 16, R.red[0]);
   return s.outline();
 }
 

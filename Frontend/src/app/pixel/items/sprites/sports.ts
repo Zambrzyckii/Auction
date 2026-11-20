@@ -1,4 +1,4 @@
-import { R, Sprite, box, shape, sphere, type Col } from '../../street/pix';
+import { R, Sprite, box, shape, sphere } from '../../street/pix';
 import { bezier, ell, flat, lightTone, poly } from './helpers';
 
 // Distance along (u) and across (v, positive towards the lower right) a segment drawn from (x0, y0) to (x1, y1).
