@@ -1,0 +1,75 @@
+@use 'tools';
+
+@include tools.inside {
+  app-wallet table {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--u) * 100)), 1fr));
+    gap: calc(var(--u) * 3);
+  }
+
+  app-wallet tbody {
+    display: contents;
+  }
+
+  app-wallet tr {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: calc(var(--u) * 4);
+    row-gap: var(--u);
+    align-items: center;
+    padding: calc(var(--u) * 4);
+    background: var(--m-panel);
+    border: var(--u) solid var(--m-ink);
+    box-shadow: inset 0 var(--u) 0 var(--m-panel2);
+  }
+
+  app-wallet tr::before {
+    content: '';
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 64px;
+    height: 64px;
+    image-rendering: pixelated;
+    background: center / 64px 64px no-repeat;
+  }
+
+  app-wallet tr:nth-child(1)::before {
+    background-image: url('/pixel/wallet/cash.png');
+  }
+
+  app-wallet tr:nth-child(2)::before {
+    background-image: url('/pixel/wallet/lock.png');
+  }
+
+  app-wallet tr:nth-child(3)::before {
+    background-image: url('/pixel/wallet/receipt.png');
+  }
+
+  app-wallet tr > th {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0;
+    border: 0;
+    width: auto;
+    white-space: normal;
+  }
+
+  app-wallet table tr:has(> th + td) > td {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 0;
+    border: 0;
+    font: 54px/48px var(--m-head);
+    color: var(--m-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  app-wallet tr:first-child > td {
+    color: var(--m-green);
+  }
+
+  app-wallet tr:nth-child(2) > td {
+    color: var(--m-mute);
+  }
+}

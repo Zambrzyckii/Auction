@@ -15,13 +15,12 @@
   }
 
   main {
-    max-width: calc(var(--u) * 320);
     margin: 0 auto;
-    padding: calc(var(--u) * 8) max(16px, calc(var(--u) * 6));
+    padding: calc(var(--u) * 4) max(16px, calc(var(--u) * 6)) calc(var(--u) * 10);
 
     > :not(router-outlet) {
       display: grid;
-      gap: calc(var(--u) * 6);
+      gap: calc(var(--u) * 4);
       align-content: start;
       grid-template-columns: minmax(0, 1fr);
     }
