@@ -78,15 +78,16 @@ export function rolodexOfStrangers(): Sprite {
   const s = new Sprite(32, 32);
   for (let x = 6; x <= 25; x++)
     s.vline(x, cardTop(x), 25 - cardTop(x), x % 2 === 0 ? R.paper[2] : R.paper[1]);
-  s.rect(8, cardTop(8) - 2, 2, 2, R.denim[2]);
-  s.rect(21, cardTop(21) - 2, 2, 2, R.red[2]);
-  s.rect(10, cardTop(10) - 1, 1, 1, R.denim[2]);
-  box(s, 12, 3, 8, 10, R.paper, { band: 1 });
-  s.hline(14, 6, 4, R.black[1]);
-  s.hline(14, 9, 3, R.black[1]);
+  s.rect(19, cardTop(19) - 2, 2, 2, R.red[2]);
+  s.rect(23, cardTop(23) - 2, 2, 2, R.denim[2]);
+  box(s, 7, 6, 7, 9, R.paper, { band: 1 });
+  s.hline(9, 9, 4, R.black[1]);
+  s.rect(4, 18, 2, 7, R.black[1]);
+  s.set(4, 18, R.black[2]);
+  s.set(5, 18, R.black[2]);
   s.rect(5, 25, 22, 4, R.black[1]);
   s.hline(5, 25, 22, R.black[2]);
-  for (const cx of [3.5, 28]) flat(s, ell(cx, 19, 1.7, 1.7), R.red[2]);
+  flat(s, ell(28, 19, 1.7, 1.7), R.red[2]);
   return s.outline();
 }
 
