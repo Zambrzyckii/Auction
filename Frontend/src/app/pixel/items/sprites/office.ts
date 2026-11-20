@@ -74,31 +74,28 @@ export function dotMatrixPrinter(): Sprite {
 
 export function rolodexOfStrangers(): Sprite {
   const s = new Sprite(32, 32);
-  for (let y = 0; y < 32; y++)
+  for (let y = 0; y < 22; y++)
     for (let x = 0; x < 32; x++) {
       const dx = x + 0.5 - 16;
-      const dy = y + 0.5 - 14;
+      const dy = y + 0.5 - 18;
       if (Math.hypot(dx, dy) > 12.5) continue;
-      const slice = Math.atan2(dy, dx) / (Math.PI / 9);
-      const edge = slice - Math.floor(slice) < 0.2;
-      const card = Math.floor(slice) % 2 === 0 ? R.paper[2] : R.paper[1];
+      const slice = Math.atan2(dy, dx) / (Math.PI / 8);
+      const edge = slice - Math.floor(slice) < 0.3;
+      const card = Math.floor(slice) % 2 === 0 ? R.paper[3] : R.paper[2];
       s.set(x, y, edge ? R.paper[0] : card);
     }
-  box(s, 5, 9, 3, 18, R.black, { band: 1 });
-  box(s, 24, 9, 3, 18, R.black, { band: 1 });
+  flat(s, ell(16, 18, 4.5, 4.5), R.black[2]);
+  flat(s, ell(16, 18, 1.5, 1.5), R.black[0]);
+  box(s, 5, 12, 3, 12, R.black, { band: 1 });
+  box(s, 24, 12, 3, 12, R.black, { band: 1 });
   for (const cx of [3.8, 28.2]) {
-    flat(s, ell(cx, 16, 2.2, 2.2), R.red[2]);
-    s.set(Math.floor(cx) - 1, 15, R.red[3]);
+    flat(s, ell(cx, 18, 2.2, 2.2), R.red[2]);
+    s.set(Math.floor(cx) - 1, 17, R.red[3]);
   }
-  box(s, 10, 11, 12, 12, R.paper, { band: 1 });
-  box(s, 12, 8, 7, 4, R.paper, { band: 1 });
-  text(s, '?', 14, 8, R.red[2], 'micro', { alignTop: true });
-  flat(s, ell(13.5, 15, 1.6, 1.6), R.black[0]);
-  s.rect(12, 18, 4, 3, R.black[0]);
-  s.hline(17, 14, 4, R.black[0]);
-  s.hline(17, 17, 4, R.black[0]);
-  s.hline(17, 20, 3, R.black[0]);
-  box(s, 5, 23, 22, 6, R.black, { band: 1 });
+  box(s, 12, 2, 8, 10, R.paper, { band: 1 });
+  s.hline(14, 5, 5, R.black[0]);
+  s.hline(14, 8, 3, R.black[0]);
+  box(s, 5, 22, 22, 7, R.black, { band: 1 });
   return s.outline();
 }
 
