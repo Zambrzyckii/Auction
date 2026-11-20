@@ -99,3 +99,35 @@ export function blit(s: Sprite, rows: readonly string[], x: number, y: number, c
     }),
   );
 }
+
+export const thick =
+  (x0: number, y0: number, x1: number, y1: number, r0: number, r1 = r0) =>
+  (x: number, y: number): boolean => {
+    const px = x + 0.5 - x0;
+    const py = y + 0.5 - y0;
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const t = Math.max(0, Math.min(1, (px * dx + py * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(px - t * dx, py - t * dy) <= r0 + (r1 - r0) * t;
+  };
+
+export const sweep = (
+  pts: readonly (readonly [number, number])[],
+  r0: number,
+  r1 = r0,
+): ((x: number, y: number) => boolean) => {
+  const last = pts.length - 1;
+  const parts = pts
+    .slice(1)
+    .map((p, i) =>
+      thick(
+        pts[i][0] + 0.5,
+        pts[i][1] + 0.5,
+        p[0] + 0.5,
+        p[1] + 0.5,
+        r0 + ((r1 - r0) * i) / last,
+        r0 + ((r1 - r0) * (i + 1)) / last,
+      ),
+    );
+  return (x, y) => parts.some((f) => f(x, y));
+};
