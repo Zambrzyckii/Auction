@@ -1,0 +1,344 @@
+@use 'tools';
+
+@include tools.inside {
+  app-workshop {
+    display: grid;
+    min-width: 0;
+  }
+
+  app-workshop[data-open='true'] {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    box-shadow: 0 calc(var(--u) * 2) 0 var(--m-night);
+  }
+
+  app-workshop button.door {
+    position: relative;
+    justify-self: stretch;
+    width: 100%;
+    min-height: calc(var(--u) * 18);
+    white-space: normal;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--u) * 2) calc(var(--u) * 5);
+    padding: calc(var(--u) * 3) calc(var(--u) * 5) calc(var(--u) * 4);
+    text-align: left;
+    text-transform: none;
+    color: var(--m-text);
+    background: repeating-linear-gradient(
+      180deg,
+      var(--m-panel-hi) 0 3px,
+      var(--m-slat) 3px 6px,
+      var(--m-slat-lo) 6px 9px
+    );
+    border: var(--u) solid var(--m-ink);
+    box-shadow: inset 0 calc(var(--u) * -2) 0 var(--m-slat-edge);
+    clip-path: none;
+  }
+
+  app-workshop button.door::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--u) * 4);
+    right: calc(var(--u) * 4);
+    bottom: calc(var(--u) * -2);
+    height: var(--u);
+    background: var(--m-lamp);
+    opacity: 0.55;
+  }
+
+  app-workshop button.door:hover::after {
+    height: calc(var(--u) * 2);
+    opacity: 0.8;
+  }
+
+  app-workshop .door-sign {
+    font: 54px/48px var(--m-head);
+    text-transform: uppercase;
+    color: var(--m-taxi);
+    text-shadow: 3px 3px 0 var(--m-ink);
+  }
+
+  app-workshop .door-hint {
+    flex: 1 1 calc(var(--u) * 60);
+    min-width: 0;
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-text);
+    text-shadow: 3px 3px 0 var(--m-ink);
+  }
+
+  app-workshop .door-pull {
+    margin-left: auto;
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+    background: var(--m-taxi);
+    padding: calc(var(--u) * 2) calc(var(--u) * 3);
+    border: var(--u) solid var(--m-ink);
+    box-shadow: inset 0 var(--u) 0 var(--m-taxi-hi);
+  }
+
+  app-workshop[data-open='true'] button.door {
+    min-height: 0;
+    padding-block: calc(var(--u) * 2);
+  }
+
+  app-workshop[data-open='true'] button.door::after {
+    display: none;
+  }
+
+  app-workshop[data-open='true'] .door-sign {
+    font-size: 27px;
+    line-height: 24px;
+  }
+
+  app-workshop[data-open='true'] .door-hint {
+    display: none;
+  }
+
+  app-workshop .room:not([hidden]) {
+    display: grid;
+    border: var(--u) solid var(--m-ink);
+    border-top: 0;
+    background: var(--m-panel);
+    min-width: 0;
+  }
+
+  app-workshop .stage {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    justify-items: center;
+    min-width: 0;
+  }
+
+  app-workshop canvas.scene {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  app-workshop .slots {
+    position: absolute;
+    top: 0;
+    pointer-events: none;
+  }
+
+  app-workshop button.slot {
+    position: absolute;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    clip-path: none;
+    transform: none;
+    border: var(--u) dashed transparent;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  app-workshop button.slot:hover,
+  app-workshop button.slot:focus-visible {
+    border-color: var(--m-taxi-hi);
+    transform: none;
+  }
+
+  app-workshop button.slot:hover::after {
+    content: 'Take off';
+    position: absolute;
+    left: 50%;
+    top: calc(var(--u) * -2);
+    transform: translate(-50%, -100%);
+    white-space: nowrap;
+    padding: var(--u) calc(var(--u) * 2);
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-ink);
+    background: var(--m-taxi-hi);
+  }
+
+  app-workshop .burst {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    font: 54px/54px var(--m-head);
+    text-transform: uppercase;
+    color: var(--m-taxi-hi);
+    text-shadow:
+      3px 0 0 var(--m-ink),
+      -3px 0 0 var(--m-ink),
+      0 3px 0 var(--m-ink),
+      0 -3px 0 var(--m-ink),
+      6px 6px 0 var(--m-red);
+    transform: translate(-50%, -50%);
+  }
+
+  app-workshop .reveal {
+    position: absolute;
+    top: calc(var(--u) * 2);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  app-workshop .stamp {
+    display: block;
+    font: 54px/48px var(--m-head);
+    text-transform: uppercase;
+    color: var(--m-common);
+    text-shadow:
+      3px 0 0 var(--m-ink),
+      -3px 0 0 var(--m-ink),
+      0 3px 0 var(--m-ink),
+      0 -3px 0 var(--m-ink),
+      6px 6px 0 var(--m-ink);
+  }
+
+  app-workshop .stage[data-scale='1'] .stamp {
+    font-size: 27px;
+    line-height: 24px;
+  }
+
+  app-workshop .stamp[data-rarity='Rare'] {
+    color: var(--m-rare);
+  }
+
+  app-workshop .stamp[data-rarity='Epic'] {
+    color: var(--m-epic);
+  }
+
+  app-workshop .stamp[data-rarity='Legendary'] {
+    color: var(--m-legend);
+  }
+
+  app-workshop .shutter {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--m-panel-hi) 0 3px,
+      var(--m-slat) 3px 6px,
+      var(--m-slat-lo) 6px 9px
+    );
+    border-bottom: calc(var(--u) * 2) solid var(--m-ink);
+  }
+
+  app-workshop .shutter[hidden] {
+    display: none;
+  }
+
+  app-workshop .desk {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--u) * 2) calc(var(--u) * 5);
+    padding: calc(var(--u) * 3) calc(var(--u) * 4);
+    background: var(--m-panel);
+    border-top: var(--u) solid var(--m-ink);
+  }
+
+  app-workshop .desk > p:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: calc(var(--u) * 2) calc(var(--u) * 4);
+    min-width: 0;
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-mute);
+  }
+
+  app-workshop .desk .why {
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-text);
+    text-transform: uppercase;
+  }
+
+  app-workshop button.craft {
+    order: -1;
+    font: 27px/24px var(--m-head);
+    text-transform: uppercase;
+    padding: calc(var(--u) * 3) calc(var(--u) * 8);
+    color: var(--m-text);
+    background: var(--m-red);
+    box-shadow:
+      inset 0 var(--u) 0 var(--m-red-hi),
+      inset 0 calc(var(--u) * -2) 0 var(--m-red-lo);
+  }
+
+  app-workshop button.craft:disabled {
+    color: var(--m-mute);
+    background: var(--m-panel2);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow:
+      inset 0 var(--u) 0 var(--m-panel-hi),
+      inset 0 calc(var(--u) * -2) 0 var(--m-ink);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    app-workshop .burst {
+      animation: x-bam 0.95s steps(1, end) both;
+    }
+
+    app-workshop .stamp {
+      animation: x-stamp-big 0.45s steps(1, end) both;
+    }
+
+    app-workshop button.craft:not(:disabled) {
+      animation: x-ready 0.42s steps(1, end) both;
+    }
+
+    @keyframes x-bam {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(2);
+      }
+      12% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+      20% {
+        transform: translate(-50%, calc(-50% - 3px)) scale(1);
+      }
+      28% {
+        transform: translate(-50%, -50%) scale(1);
+      }
+      85% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    @keyframes x-stamp-big {
+      0% {
+        transform: scale(2);
+        opacity: 0;
+      }
+      15% {
+        opacity: 1;
+      }
+      30% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes x-ready {
+      0% {
+        transform: translateY(calc(var(--u) * -2));
+      }
+      25% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(calc(var(--u) * -1));
+      }
+      75% {
+        transform: none;
+      }
+    }
+  }
+}
