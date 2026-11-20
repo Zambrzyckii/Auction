@@ -1,6 +1,7 @@
 import type { Sprite } from '../../street/pix';
 import type { Rarity } from '../rarity';
 import { AUDIO } from './audio';
+import { BLING } from './bling';
 import { CAMPING } from './camping';
 import { CAR } from './car';
 import { COLLECTIBLES } from './collectibles';
@@ -9,6 +10,7 @@ import { FAMILY_ART, STARTERS, craftedItem, mystery, pawnedGood, warehouseFind }
 import { HOME } from './home';
 import { KITCHEN } from './kitchen';
 import { MUSIC } from './music';
+import { ODD } from './odd';
 import { OFFICE } from './office';
 import { PETS } from './pets';
 import { PHONES } from './phones';
@@ -39,6 +41,8 @@ export const EXACT: Readonly<Record<string, () => Sprite>> = {
   ...WORKSHOP,
   ...PHOTO,
   ...PETS,
+  ...BLING,
+  ...ODD,
   ...STARTERS,
 };
 
