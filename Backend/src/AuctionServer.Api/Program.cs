@@ -27,6 +27,7 @@ using AuctionServer.Api.Infrastructure.Push;
 using AuctionServer.Api.Infrastructure.Observability;
 using AuctionServer.Api.Infrastructure.RateLimiting;
 using AuctionServer.Api.Infrastructure.Secrets;
+using AuctionServer.Api.Infrastructure.TestAccount;
 using AuctionServer.Modules.Identity;
 using AuctionServer.Modules.Identity.Infrastructure.Persistence;
 using AuctionServer.Modules.Identity.Presentation;
@@ -212,6 +213,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.AddObservability();
 builder.AddGateway();
+builder.AddTestAccount();
 builder.AddApiRateLimiting(rateLimitingOptions);
 
 var app = builder.Build();
