@@ -27,7 +27,7 @@ docker compose up -d                              # from the repo ROOT: nginx ga
 
 ### Tests
 
-Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox, inbox and delivery (the entity offline; the couriers, the dispatcher, the apply-once inbox operation and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints, the `Vault` options and the vault configuration provider on a fake `HttpMessageHandler`) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well, and under `IntegrationTests/Secrets/` it proves the real AppRole login and policy contract on an `openbao/openbao` Testcontainer. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests on `SagaStage` (below):
+Eleven test projects: one per module (`tests/AuctionServer.Modules.<Module>.Tests`), `tests/AuctionServer.Shared.Infrastructure.Tests` for the shared outbox, inbox and delivery (the entity offline; the couriers, the dispatcher, the apply-once inbox operation and the delivery processor on Testcontainers) plus `tests/AuctionServer.Api.Tests`, which covers the host itself (observability options, the orphan-span sampler, the publisher decorator, outbox metrics, host smoke tests, the `Gateway` options and forwarded headers, the health endpoints, the `Vault` options and the vault configuration provider on a fake `HttpMessageHandler`, the `TestAccount` options, item catalog and registration) and, under `IntegrationTests/Gateway/`, runs the real `Infrastructure/gateway/nginx.conf` in an nginx container in front of a traefik/whoami stand-in, so it needs Docker as well, and under `IntegrationTests/Secrets/` it proves the real AppRole login and policy contract on an `openbao/openbao` Testcontainer. Under `IntegrationTests/Sagas/` it also runs the two cross-module saga tests and the test-account seeder test on `SagaStage` (below):
 
 - All nine mix offline unit tests (domain, validators) with Testcontainers integration tests under
   `IntegrationTests/` (repositories, event handlers, command and query handlers), each driven by a
@@ -190,6 +190,17 @@ Redis configured, `AddStackExchangeRedisCache` (`AbortOnConnectFail=false`, 500/
 `auctionserver:`). `Auctions:ReadCache` (three TTLs, default 2 s each) binds without fail-fast — the on/off switch
 lives in `Cache` — but `AddAuctionModule` rejects TTLs outside 1-60 s. The root `compose.yaml` sets both keys and
 runs `redis:7.2-alpine` without an api dependency, because a missing Redis only degrades read latency (fail-open).
+The optional `TestAccount` section is off when absent, and `appsettings.json` has none. Enabled, `TestAccountOptions.Load`
+fails fast on an empty `Email`, `Username` or `Password`, on `Funds` at or below zero and on `Copies` outside 1-5.
+`AddTestAccount` (`Program.cs:216`) then registers `TestAccountSeeder`, a one-shot `BackgroundService` in
+`Api/Infrastructure/TestAccount/`. It sends `GetUserIdByEmailQuery` and registers the player through `RegisterCommand`
+when the e-mail is unknown, waits up to two minutes for the wallet that `UserRegisteredEvent` creates, sends
+`AddFundsCommand` with `Funds` whenever `AvailableFunds` is below `Funds` and grants through `GrantItemCommand` every
+catalog item the player holds fewer than `Copies` times. `AddFunds` counts toward turnover, so the 10,000,000 in
+`compose.tester.yaml` lifts the account to level 100 on the first start. `TestAccountCatalog` mirrors the 160 bot item
+names with their 20 rarity locks (`Bots/src/auction_bots/fleet/archetypes.py` and `policies/stock.py`), spreads the
+other 140 names evenly over the four rarities and adds the eleven `Warehouse`, `Pawned` and `Crafted` family names,
+171 items in all. A failed seed is logged and never stops the host. Only `compose.tester.yaml` enables the section.
 
 The legacy `Backend/.env` / `.env.example` pair (`DB_USER`, `DB_PASSWORD`) was deleted in phase six: nothing
 ever read it. Secrets for the Compose services now come from the gitignored `Infrastructure/secrets/` files

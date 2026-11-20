@@ -138,6 +138,7 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-11-18 | Udokumentowany rozjazd docs kontra kod (okna podbić 10 s, wiersz `BidInProgressException`, wydawca `BidPlacedEvent`, mintowane ceny z magazynu i lombardu) jest naprawiany razem z botami | właściciel | kod wygrywa z dokumentacją |
 | 2026-11-18 | Test brokera na Testcontainers biegnie w CI, sonda na żywo nie | właściciel | runner ma Dockera, ale nie stack Compose |
 | 2026-11-20 | Flota mintuje ze 160 nazw przedmiotów, 20 z nich zablokowanych do jednej rzadkości ze stałym udziałem w mintach tej rzadkości (Legendary i Epic połowa, Common jedna dziesiąta) | właściciel | złoty kafel ma czasem pokazać nazwę niewidzianą na szarym, a blokada żyje w botach, bo API przyjmuje każdą nazwę w każdej rzadkości |
+| 2026-11-20 | Stałe konto testowe pochodzi z seedera w tle hosta za opcjonalną sekcją `TestAccount`, włączaną tylko przez `compose.tester.yaml`, domyślnie z 10 000 000 środków liczonych do obrotu i po jednej sztuce każdego ze 171 przedmiotów katalogu | właściciel | prawdziwy gracz z refresh tokenem, którego pieniądze, poziom i przedmioty przechodzą przez własne komendy domeny, podczas gdy wstawki SQL omijałyby domenę, a konto z rolą `Bot` nigdy nie odświeża sesji |
 
 ## Powiązane dokumenty
 

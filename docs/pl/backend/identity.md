@@ -10,6 +10,7 @@
 |---|---|
 | Endpointy | [`Presentation/IdentityEndpoints.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Presentation/IdentityEndpoints.cs), rekordy żądań `RegisterRequest`, `LoginRequest`, `RefreshTokenRequest`, `RegisterBotRequest` |
 | Komendy | `Application/Commands/Register/`, `Application/Commands/Login/`, `Application/Commands/RefreshSession/`, `Application/Commands/Logout/`, `Application/Commands/RegisterBot/` (komenda, handler oraz, dla każdej komendy poza logowaniem, walidator) i `Application/Tokens/` (`JwtTokenFactory`, `RefreshTokenSecret`, `SessionTokensDto`) |
+| Zapytania | `Application/Queries/GetUserIdByEmail/` (zapytanie i handler, wysyłane tylko przez seeder konta testowego w hoście) |
 | Domena | [`Domain/Entities/User.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/User.cs), [`Domain/Entities/Role.cs`](../../../Backend/src/AuctionServer.Modules.Identity/Domain/Entities/Role.cs), `Domain/Entities/RefreshToken.cs`, `Domain/Exceptions/IdentityException.cs` |
 | Infrastruktura | `Persistence/` (`IdentityDbContext`, `AuthRepository`, `RefreshTokenRepository`, `Migrations/`), `Configuration/` (`IdentityConfiguration`, `RefreshTokenConfiguration`, `OutboxMessageConfiguration`) |
 

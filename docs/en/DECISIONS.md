@@ -138,6 +138,7 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-11-18 | The documented drift between docs and code (10 s raise windows, the `BidInProgressException` row, the `BidPlacedEvent` publisher, the minted warehouse and pawnshop prices) is fixed together with the bots | owner | the code wins over the docs |
 | 2026-11-18 | The broker test on Testcontainers runs in CI, the live probe does not | owner | the runner has Docker but no Compose stack |
 | 2026-11-20 | The fleet mints from 160 item names, 20 of them locked to one rarity with a fixed share of that rarity's mints (Legendary and Epic one half, Common one tenth) | owner | a gold tile should sometimes show a name never seen on a grey one, and the lock lives in the bots because the API takes any name at any rarity |
+| 2026-11-20 | A permanent test account comes from a host background seeder behind the optional `TestAccount` section, enabled only by `compose.tester.yaml`, with 10,000,000 in turnover-counting funds and one copy of each of the 171 catalog items by default | owner | a real player with a refresh token whose money, level and items go through the domain's own commands, where SQL inserts would bypass the domain and a `Bot`-role account never refreshes its session |
 
 ## Related documents
 
