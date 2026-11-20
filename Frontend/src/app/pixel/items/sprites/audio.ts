@@ -1,5 +1,5 @@
 import { R, Sprite, box, disc, shape, sphere, text } from '../../street/pix';
-import { bezier, poly } from './helpers';
+import { bezier, lightTone, poly } from './helpers';
 
 export function scratchedTapePlayer(): Sprite {
   const s = new Sprite(32, 32);
@@ -96,22 +96,39 @@ export function staticCbRadio(): Sprite {
   return s.outline();
 }
 
+// Draws a cassette seen face-on and tilted by `a` radians around its centre.
+function tape(s: Sprite, cx: number, cy: number, a: number, body: string): void {
+  const cos = Math.cos(a);
+  const sin = Math.sin(a);
+  const local = (x: number, y: number): [number, number] => {
+    const dx = x + 0.5 - cx;
+    const dy = y + 0.5 - cy;
+    return [dx * cos + dy * sin, -dx * sin + dy * cos];
+  };
+  for (let y = 0; y < s.h; y++)
+    for (let x = 0; x < s.w; x++) {
+      const [u, v] = local(x, y);
+      if (Math.abs(u) > 7 || Math.abs(v) > 6) continue;
+      if (Math.abs(u) <= 5.5 && v >= -4.5 && v <= -1) s.set(x, y, R.paper[3]);
+      else if (Math.abs(u) <= 5.5 && v > -1 && v <= 4.5) s.set(x, y, R.black[0]);
+      else s.set(x, y, body);
+    }
+  for (const du of [-2.5, 2.5]) {
+    const x = cx + du * cos - 1.5 * sin;
+    const y = cy + du * sin + 1.5 * cos;
+    disc(s, Math.floor(x), Math.floor(y), 1.5, R.paper[2]);
+  }
+}
+
 export function crateOfMixtapes(): Sprite {
   const s = new Sprite(32, 32);
-  const spines = [R.red[2], R.denim[2], R.gold[2], R.red[2], R.denim[2]];
-  spines.forEach((col, k) => {
-    const x = 4 + k * 5;
-    const top = [6, 4, 8, 5, 7][k];
-    s.rect(x, top, 4, 18, col);
-    s.rect(x + 1, top + 2, 2, 5, R.paper[3]);
-    s.set(x + 1, top + 4, R.wood[0]);
-    s.set(x + 2, top + 5, R.wood[0]);
-  });
+  tape(s, 10, 9, 0, R.black[1]);
+  tape(s, 21, 9, 0.3, R.red[2]);
   box(s, 2, 14, 28, 15, R.wood, { band: 1 });
   s.hline(3, 18, 26, R.wood[1]);
   s.hline(3, 24, 26, R.wood[1]);
-  s.rect(12, 20, 8, 2, R.wood[0]);
-  s.hline(13, 20, 6, R.wood[1]);
+  s.rect(10, 20, 12, 3, R.paper[3]);
+  s.hline(11, 21, 7, R.wood[0]);
   for (const [x, y] of [
     [4, 16],
     [27, 16],
@@ -186,8 +203,10 @@ export function chewedCassetteDeck(): Sprite {
   );
   s.rect(5, 11, 14, 8, R.black[0]);
   s.rect(6, 12, 12, 6, R.grey[1]);
-  s.set(9, 15, R.black[0]);
-  s.set(15, 15, R.black[0]);
+  for (const cx of [9, 15]) {
+    disc(s, cx, 15, 1.9, R.grey[3]);
+    s.set(cx, 15, R.black[0]);
+  }
   s.rect(21, 11, 6, 2, R.black[0]);
   s.hline(22, 11, 3, R.sign[2]);
   s.hline(25, 11, 1, R.red[2]);
@@ -234,11 +253,17 @@ export function bootlegConcertTape(): Sprite {
 
 export function oneSpeakerKaraokeMachine(): Sprite {
   const s = new Sprite(32, 32);
-  s.line(24, 8, 21, 14, R.black[0]);
-  s.line(25, 8, 22, 14, R.black[0]);
-  disc(s, 25, 5, 3.4, R.grey[1]);
-  s.set(23, 3, R.grey[3]);
-  s.set(24, 3, R.grey[3]);
+  bezier([17, 12], [12, 2], [5, 2], [4, 14], 24).forEach(([x, y], i) =>
+    s.set(x, y, i % 2 ? R.black[0] : R.grey[1]),
+  );
+  s.line(23, 9, 18, 13, R.black[0]);
+  s.line(24, 10, 19, 14, R.black[0]);
+  disc(s, 25, 6, 3.6, R.grey[1]);
+  for (let y = 2; y < 10; y++)
+    for (let x = 21; x < 30; x++)
+      if ((x + y) % 2 === 0 && s.get(x, y) === R.grey[1]) s.set(x, y, R.black[0]);
+  s.set(23, 4, R.grey[3]);
+  s.hline(23, 9, 4, R.grey[3]);
   shape(
     s,
     (i, j) =>
@@ -266,22 +291,29 @@ export function oneSpeakerKaraokeMachine(): Sprite {
 
 export function miniDiscNobodyCanPlay(): Sprite {
   const s = new Sprite(32, 32);
-  shape(s, (i, j) => i >= 4 && i <= 27 && j >= 5 && j <= 28 && !(i <= 5 && j <= 6), R.denim, {
-    band: 1,
-  });
-  s.rect(10, 5, 13, 9, R.steel[2]);
+  const rounded = (i: number, j: number) => {
+    if (i < 4 || i > 27 || j < 5 || j > 28) return false;
+    const dx = Math.max(8 - i, i - 23, 0);
+    const dy = j - 24;
+    return dy <= 0 || dx * dx + dy * dy <= 20;
+  };
+  shape(s, rounded, R.denim, { band: 1 });
+  disc(s, 16, 13, 6.5, R.black[0]);
+  for (let y = 6; y < 21; y++)
+    for (let x = 9; x < 24; x++) {
+      const dx = x + 0.5 - 16;
+      const dy = y + 0.5 - 13;
+      const d = Math.hypot(dx, dy);
+      if (d <= 5.7 && d >= 1.6) s.set(x, y, R.steel[lightTone(dx, dy, d)]);
+    }
+  s.rect(10, 5, 13, 4, R.steel[2]);
   s.hline(10, 5, 13, R.steel[3]);
-  s.vline(10, 5, 9, R.steel[3]);
-  s.vline(22, 5, 9, R.steel[1]);
-  s.hline(10, 13, 13, R.steel[1]);
-  s.rect(13, 7, 7, 4, R.black[0]);
-  s.hline(14, 8, 5, R.steel[3]);
-  s.rect(7, 16, 18, 10, R.paper[3]);
-  s.rect(7, 16, 18, 2, R.red[2]);
-  text(s, 'MD', 9, 23, R.denim[1], 'micro');
-  text(s, '?', 20, 23, R.red[2], 'micro');
-  s.line(21, 6, 26, 11, R.denim[3]);
-  s.set(5, 27, R.denim[0]);
+  s.hline(10, 8, 13, R.steel[1]);
+  s.rect(7, 20, 18, 8, R.paper[3]);
+  text(s, 'MD', 9, 26, R.denim[0], 'micro');
+  text(s, '?', 20, 26, R.red[2], 'micro');
+  s.line(5, 10, 5, 15, R.denim[3]);
+  s.line(26, 20, 26, 22, R.denim[0]);
   return s.outline();
 }
 
