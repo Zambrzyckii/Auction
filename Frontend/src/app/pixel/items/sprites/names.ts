@@ -143,6 +143,22 @@ export const BOT_NAMES: readonly string[] = [
   'Birdcage Missing a Door',
   'Lizard Heat Lamp',
   'Cat Tree Leaning Left',
+  'Cubic Zirconia Earrings',
+  'Tarnished Silver Spoon Set',
+  'Class Ring from Nowhere',
+  'Pearl Necklace with a Knot',
+  'Chrome Pinky Ring',
+  'Solid Gold Pocket Watch',
+  'Knockoff Diamond Watch',
+  'Belt Buckle the Size of a Plate',
+  'Snake in a Can',
+  'Lucky Rabbit Foot',
+  'Chattering Teeth',
+  'Fortune Telling Ball',
+  'Pet Rock with a Face',
+  'Jackalope Mount',
+  'Singing Fish Plaque',
+  'Genuine Fake Moon Rock',
 ];
 
 export const STARTER_NAMES: readonly string[] = ['Rusty Toolbox', 'Old Radio', 'Worn Backpack'];

@@ -137,3 +137,14 @@ export const sweep = (
     );
   return (x, y) => parts.some((f) => f(x, y));
 };
+
+export function sparkle(s: Sprite, x: number, y: number, col: string): void {
+  s.set(x, y, col);
+  for (const [dx, dy] of [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ])
+    s.set(x + dx, y + dy, col);
+}
