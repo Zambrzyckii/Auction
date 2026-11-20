@@ -95,6 +95,22 @@ export const BOT_NAMES: readonly string[] = [
   'Trophy Missing Its Plate',
   'Signed Game Ball',
   'Faded Wrestling Belt',
+  'Overdue Library Book',
+  'Jammed Stapler',
+  'Dot-Matrix Printer',
+  'Rolodex of Strangers',
+  'Clicky Typewriter',
+  'Cracked World Globe',
+  'Vintage Desk Fan',
+  'Executive Nameplate',
+  'Lumpy Bean Bag',
+  'Beaded Door Curtain',
+  'Plastic Lawn Flamingo',
+  'Glow Star Ceiling Kit',
+  'Hand-Me-Down Quilt',
+  'Ceramic Dog Doorstop',
+  'Grandfather Clock Missing Pendulum',
+  'Velvet Crooner Painting',
 ];
 
 export const STARTER_NAMES: readonly string[] = ['Rusty Toolbox', 'Old Radio', 'Worn Backpack'];
