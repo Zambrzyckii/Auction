@@ -1,5 +1,5 @@
-import { R, Sprite, box, shape, text } from '../../street/pix';
-import { bezier, ell, flat, poly, sweep, thick } from './helpers';
+import { R, Sprite, box, shape } from '../../street/pix';
+import { bezier, blit, ell, flat, poly, sweep, thick } from './helpers';
 
 export function leakyCanteen(): Sprite {
   const s = new Sprite(32, 32);
@@ -106,29 +106,29 @@ export function compassThatPointsSouth(): Sprite {
   s.line(18, 6, 22, 5, R.grey[3]);
   shape(s, ell(14, 18.5, 11, 10.5), R.grey, { band: 1 });
   flat(s, ell(14, 18.5, 8.5, 8.5), R.paper[3]);
-  text(s, 'S', 12, 11, R.red[1], 'micro', { alignTop: true });
+  blit(s, ['011', '100', '010', '001', '110'], 12, 11, R.red[1]);
+  blit(s, ['1001', '1101', '1011', '1001', '1001'], 11, 22, R.paper[0]);
   s.set(6, 19, R.paper[0]);
   s.set(21, 19, R.paper[0]);
-  s.set(13, 26, R.paper[0]);
   poly(
     s,
     [
-      [13, 17],
-      [16, 22],
-      [11, 22],
+      [13, 16],
+      [15, 19],
+      [11, 19],
     ],
     R.red[2],
   );
   poly(
     s,
     [
-      [11, 22],
-      [16, 22],
-      [13, 27],
+      [11, 19],
+      [15, 19],
+      [13, 21],
     ],
     R.white[0],
   );
-  s.set(13, 22, R.gold[2]);
+  s.set(13, 19, R.gold[2]);
   return s.outline();
 }
 
