@@ -1,13 +1,5 @@
 import { R, Sprite, box, cylH, shape, sphere } from '../../street/pix';
-import { bezier, ell, lightTone, poly } from './helpers';
-
-function blit(s: Sprite, rows: readonly string[], x: number, y: number, col: string): void {
-  rows.forEach((row, j) =>
-    [...row].forEach((v, i) => {
-      if (v === '1') s.set(x + i, y + j, col);
-    }),
-  );
-}
+import { blit, ell, lightTone, poly } from './helpers';
 
 export function beadedCarSeatCover(): Sprite {
   const s = new Sprite(32, 32);
@@ -111,32 +103,6 @@ export function spinningHubcap(): Sprite {
     }
   sphere(s, cx, cy, 3.2, R.gold);
   return s.outline();
-}
-
-// Chrome strip along a path, shaded across its width so the lit side faces the top left.
-function strip(s: Sprite, path: readonly (readonly [number, number])[], w: number): void {
-  for (let y = 0; y < s.h; y++)
-    for (let x = 0; x < s.w; x++) {
-      let best = Infinity;
-      let side = 0;
-      for (const [px, py] of path) {
-        const dx = x + 0.5 - px;
-        const dy = y + 0.5 - py;
-        const d = Math.hypot(dx, dy);
-        if (d < best) {
-          best = d;
-          side = (-dx - dy) / (d * 1.414 || 1);
-        }
-      }
-      if (best > w / 2) continue;
-      const f = (side * best) / (w / 2);
-      let tone = R.steel[1];
-      if (f > 0.55) tone = R.steel[3];
-      else if (f > 0.15) tone = R.white[2];
-      else if (f > -0.25) tone = R.steel[2];
-      else if (f > -0.6) tone = R.steel[0];
-      s.set(x, y, tone);
-    }
 }
 
 function bumperTone(d: number, wrapped: boolean): string {

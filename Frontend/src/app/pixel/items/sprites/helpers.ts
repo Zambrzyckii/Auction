@@ -87,3 +87,11 @@ export function digits(s: Sprite, str: string, x: number, y: number, col: Col): 
     );
   });
 }
+
+export function blit(s: Sprite, rows: readonly string[], x: number, y: number, col: string): void {
+  rows.forEach((row, j) =>
+    [...row].forEach((v, i) => {
+      if (v === '1') s.set(x + i, y + j, col);
+    }),
+  );
+}

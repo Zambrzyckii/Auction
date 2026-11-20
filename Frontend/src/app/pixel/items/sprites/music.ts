@@ -60,7 +60,6 @@ export function threeStringBanjo(): Sprite {
   shape(s, ell(16.5, 21.5, 8, 8), R.wood, { band: 1 });
   const head = ell(16.5, 21.5, 6.2, 6.2);
   shape(s, head, R.paper, { band: 1 });
-  s.rect(13, 9, 7, 6, R.wood[2]);
   s.vline(13, 9, 6, R.wood[3]);
   s.vline(19, 9, 6, R.wood[1]);
   s.rect(14, 9, 5, 6, R.black[0]);

@@ -1,4 +1,4 @@
-import { R, INK, Sprite, box, disc, shape, text } from '../../street/pix';
+import { R, INK, Sprite, disc, shape, text } from '../../street/pix';
 import { digits, ell, poly } from './helpers';
 
 type Pt = readonly [number, number];

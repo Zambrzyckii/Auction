@@ -1,4 +1,4 @@
-import { R, Sprite, box, disc, shape, sphere, type Ramp } from '../../street/pix';
+import { R, Sprite, box, shape, sphere, type Ramp } from '../../street/pix';
 import { digits, ell } from './helpers';
 
 // One chain link at (cx, cy). Round links face the viewer, flat ones are turned edge-on along the tangent.
@@ -144,7 +144,6 @@ export function streetCornerWatchCase(): Sprite {
   s.rect(12, 25, 6, 3, R.paper[2]);
   s.rect(26, 25, 3, 5, R.paper[2]);
   s.line(3, 25, 4, 22, R.tan[3]);
-  s.line(7, 4, 9, 2, R.tan[3]);
   return s.outline();
 }
 
@@ -193,7 +192,6 @@ export function garageAmp(): Sprite {
 
 type Pt = readonly [number, number];
 
-// Distance from p to the segment a-b.
 function segmentDistance(p: Pt, a: Pt, b: Pt): number {
   const abx = b[0] - a[0];
   const aby = b[1] - a[1];

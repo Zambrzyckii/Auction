@@ -6,6 +6,10 @@
     vertical-align: middle;
   }
 
+  tr:has(> td.lot) > td {
+    vertical-align: middle;
+  }
+
   td.lot app-item-tile {
     margin-right: calc(var(--u) * 4);
   }
@@ -18,6 +22,10 @@
     padding: var(--u) calc(var(--u) * 2);
     background: var(--m-common);
     @include tools.cut-corners;
+  }
+
+  .rarity:not([data-rarity]) {
+    display: none;
   }
 
   .rarity[data-rarity='Rare'] {

@@ -288,12 +288,10 @@ export function dustyCamcorder(): Sprite {
     [16, 12],
     [20, 11],
     [25, 12],
-    [27, 13],
     [14, 6],
   ])
     s.set(x, y, R.grey[3]);
   s.dither(4, 21, 5, 3, R.steel[2], R.grey[3], 4);
-  s.line(4, 15, 8, 17, R.grey[3]);
   return s.outline();
 }
 

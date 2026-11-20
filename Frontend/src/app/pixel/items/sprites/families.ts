@@ -251,7 +251,6 @@ export function oldRadio(): Sprite {
 }
 
 export function wornBackpack(): Sprite {
-  srand(83);
   const s = new Sprite(32, 32);
   s.line(13, 4, 18, 4, R.black[2]);
   s.vline(12, 5, 3, R.black[2]);
