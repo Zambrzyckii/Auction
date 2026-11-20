@@ -1,5 +1,5 @@
 import { R, Sprite, box, disc, shape, sphere } from '../../street/pix';
-import { bezier, ell, flat, mask, poly, sparkle, sweep, thick } from './helpers';
+import { bezier, blit, digits, ell, flat, mask, sparkle, sweep, thick } from './helpers';
 
 type Test = (x: number, y: number) => boolean;
 
@@ -81,30 +81,19 @@ const turn =
     );
   };
 
-const octagon =
-  (cx: number, cy: number, h: number): Test =>
-  (x, y) => {
-    const dx = Math.abs(x + 0.5 - cx);
-    const dy = Math.abs(y + 0.5 - cy);
-    return dx <= h && dy <= h && dx + dy <= h * 1.5;
-  };
-
 export function classRingFromNowhere(): Sprite {
   const s = new Sprite(32, 32);
-  const tilt = turn(16, 16, 0.3);
-  const band: Test = (x, y) => ell(16, 19, 10, 9.3)(x, y) && !ell(16, 20.2, 6, 5.8)(x, y);
-  shape(s, tilt(band), R.gold, { band: 1 });
-  shape(s, tilt(octagon(16, 8.5, 7.4)), R.gold, { band: 1 });
-  const stone = tilt(octagon(16, 8.5, 5.6));
-  const table = tilt(octagon(16, 8.5, 3.2));
-  for (let y = 0; y < 32; y++)
-    for (let x = 0; x < 32; x++) {
-      if (!stone(x, y)) continue;
-      if (table(x, y)) s.set(x, y, R.red[3]);
-      else s.set(x, y, x + y < 20 ? R.red[2] : R.red[1]);
-    }
-  s.set(14, 6, R.white[3]);
-  s.set(15, 5, R.white[3]);
+  const band: Test = (x, y) => ell(16, 23.5, 11.5, 5.7)(x, y) && !ell(16, 24, 7.5, 2.6)(x, y);
+  shape(s, band, R.gold, { band: 1 });
+  box(s, 4, 13, 24, 6, R.gold, { band: 1 });
+  box(s, 7, 2, 12, 12, R.gold, { band: 1 });
+  const cut: Test = (x, y) => x >= 9 && x <= 17 && y >= 4 && y <= 11 && !(x + y < 14 || x + y > 27);
+  shape(s, cut, R.red, { band: 1 });
+  s.rect(11, 6, 4, 3, R.red[3]);
+  s.set(10, 5, R.white[3]);
+  s.set(11, 4, R.white[3]);
+  digits(s, '98', 20, 14, R.gold[0]);
+  s.vline(5, 14, 4, R.gold[0]);
   return s.outline();
 }
 
@@ -139,18 +128,28 @@ export function pearlNecklaceWithAKnot(): Sprite {
   return s.outline();
 }
 
+function chrome(s: Sprite, test: Test, shade: string): void {
+  for (let y = 0; y < s.h; y++)
+    for (let x = 0; x < s.w; x++) {
+      if (!test(x, y)) continue;
+      if (!test(x - 1, y) || !test(x, y - 1)) s.set(x, y, R.white[2]);
+      else if (!test(x + 1, y) || !test(x, y + 1)) s.set(x, y, shade);
+      else if (!test(x - 2, y) || !test(x, y - 2)) s.set(x, y, R.white[3]);
+      else s.set(x, y, R.white[2]);
+    }
+}
+
 export function chromePinkyRing(): Sprite {
   const s = new Sprite(32, 32);
   const tilt = turn(16, 14, -0.28);
   const band: Test = (x, y) => ell(16, 14.5, 9.2, 9.2)(x, y) && !ell(16, 15.5, 5, 5.2)(x, y);
-  shape(s, tilt(band), R.steel, { band: 1 });
-  shape(
+  chrome(s, tilt(band), R.white[1]);
+  chrome(
     s,
-    tilt((x, y) => x >= 10 && x <= 21 && y >= 3 && y <= 8),
-    R.white,
-    { band: 1 },
+    tilt((x, y) => x >= 11 && x <= 21 && y >= 3 && y <= 8),
+    R.white[0],
   );
-  s.line(7, 12, 7, 17, R.white[3]);
+  sparkle(s, 27, 6, R.white[3]);
   const cushion = ell(15.5, 27, 11.5, 3.6);
   flat(s, cushion, R.plum[2]);
   flat(s, (x, y) => cushion(x, y) && !cushion(x, y + 1), R.plum[1]);
@@ -220,33 +219,53 @@ export function knockoffDiamondWatch(): Sprite {
 
 export function beltBuckleTheSizeOfAPlate(): Sprite {
   const s = new Sprite(32, 32);
+  const outer = mask([
+    [7, 5],
+    [21, 5],
+    [24, 8],
+    [24, 25],
+    [21, 28],
+    [7, 28],
+    [4, 25],
+    [4, 8],
+  ]);
+  const inner = mask([
+    [9, 8],
+    [19, 8],
+    [21, 10],
+    [21, 23],
+    [19, 25],
+    [9, 25],
+    [7, 23],
+    [7, 10],
+  ]);
+  shape(s, (x, y) => outer(x, y) && !inner(x, y), R.gold, { band: 1 });
+  blit(
+    s,
+    ['11000011', '11000011', '11000011', '11000011', '11100111', '01111110', '00111100'],
+    10,
+    8,
+    R.gold[1],
+  );
+  s.set(10, 8, R.gold[3]);
+  s.set(10, 10, R.gold[3]);
   const tip = mask([
-    [22, 14],
-    [26, 14],
-    [29, 16.5],
-    [26, 19],
-    [22, 19],
+    [22, 17],
+    [27, 17],
+    [30, 20],
+    [27, 23],
+    [22, 23],
   ]);
   shape(s, tip, R.brick, {});
-  shape(s, (x, y) => x >= 2 && x <= 6 && y >= 14 && y <= 18, R.brick, {});
-  s.set(27, 16, R.brick[0]);
-  s.rect(24, 13, 2, 7, R.brick[1]);
-  s.hline(2, 15, 4, R.brick[1]);
-  s.hline(2, 17, 4, R.brick[1]);
-  shape(s, ell(14, 17, 10.5, 11), R.gold, { band: 1 });
-  flat(s, ell(14, 17, 8.4, 8.8), R.gold[1]);
-  flat(s, ell(14, 17, 7.6, 8), R.gold[2]);
-  const star = Array.from({ length: 10 }, (_, k): [number, number] => {
-    const a = -Math.PI / 2 + (k * Math.PI) / 5;
-    const r = k % 2 === 0 ? 6.6 : 2.9;
-    return [14 + r * Math.cos(a), 17.8 + r * Math.sin(a)];
-  });
-  poly(s, star, R.gold[3]);
-  s.line(18, 19, 19, 24, R.gold[1]);
-  s.set(7, 12, R.white[3]);
-  s.set(8, 11, R.white[3]);
-  s.set(6, 13, R.white[3]);
-  sparkle(s, 4, 5, R.white[3]);
+  shape(s, (x, y) => x >= 1 && x <= 23 && y >= 17 && y <= 23, R.brick, {});
+  s.set(26, 20, R.brick[0]);
+  s.set(22, 20, R.brick[0]);
+  s.hline(3, 18, 18, R.brick[1]);
+  s.hline(3, 22, 18, R.brick[1]);
+  s.rect(8, 19, 11, 2, R.gold[2]);
+  s.hline(8, 19, 11, R.gold[3]);
+  disc(s, 8, 20, 1.6, R.gold[3]);
+  sparkle(s, 3, 3, R.white[3]);
   return s.outline();
 }
 
