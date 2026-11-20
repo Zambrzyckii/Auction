@@ -63,6 +63,10 @@ describe('item catalog', () => {
     for (const key of Object.keys(catalog.EXACT)) expect(names.NAMES).toContain(key);
   });
 
+  it('draws every name on the list', () => {
+    for (const name of names.NAMES) expect(Object.keys(catalog.EXACT), name).toContain(name);
+  });
+
   it('draws every registered sprite inside the rules', () => {
     const drawings = [
       ...Object.entries(catalog.EXACT).map(([n, fn]) => [n, fn] as const),

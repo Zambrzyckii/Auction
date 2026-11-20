@@ -48,4 +48,13 @@ describe('ItemView', () => {
     expect(clearRect).toHaveBeenCalled();
     expect(drawImage).toHaveBeenCalledTimes(2);
   });
+
+  it('draws the mystery icon for a null name', async () => {
+    const { ItemView } = await import('./item-view');
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    new ItemView(canvas, { name: null, rarity: 'Common' });
+    expect(drawImage).toHaveBeenCalledTimes(1);
+  });
 });
