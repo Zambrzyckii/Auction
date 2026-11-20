@@ -60,6 +60,12 @@ describe('CreateAuction', () => {
     expect(options.some((t) => t?.includes('Old Shield'))).toBe(false);
   });
 
+  it('puts the display case first in the form', async () => {
+    http.expectOne('/api/inventory').flush([item({ publicItemId: 'a' })]);
+    await fixture.whenStable();
+    expect(el().querySelector('form > app-item-preview:first-child')).not.toBeNull();
+  });
+
   it('does not post while the form is invalid', async () => {
     http.expectOne('/api/inventory').flush([item({})]);
     await fixture.whenStable();

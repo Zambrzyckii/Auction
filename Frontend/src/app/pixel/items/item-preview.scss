@@ -1,0 +1,45 @@
+@use '../skin/tools';
+
+:host {
+  display: block;
+}
+
+.case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 3) calc(var(--u) * 4);
+  background: var(--m-panel);
+  border: var(--u) solid var(--m-ink);
+  box-shadow: inset 0 var(--u) 0 var(--m-panel-hi);
+  @include tools.cut-corners;
+}
+
+.label {
+  display: grid;
+  gap: calc(var(--u) * 2);
+  justify-items: start;
+  min-width: 0;
+}
+
+.name {
+  font: 27px/27px var(--m-head);
+  color: var(--m-text);
+  overflow-wrap: anywhere;
+}
+
+.price,
+.hint {
+  font: 16px/16px var(--m-pixel);
+  color: var(--m-mute);
+  text-transform: uppercase;
+}
+
+.slot {
+  display: block;
+  box-sizing: content-box;
+  width: 96px;
+  height: 96px;
+  border: var(--u) dashed var(--m-line);
+}

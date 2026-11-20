@@ -1,0 +1,13 @@
+<div class="case">
+  @if (item(); as chosen) {
+    <app-item-tile size="lot" [name]="chosen.name" [rarity]="chosen.rarity" />
+    <div class="label">
+      <span class="name">{{ chosen.name }}</span>
+      <span class="rarity" [attr.data-rarity]="chosen.rarity">{{ chosen.rarity }}</span>
+      <span class="price">Official price {{ chosen.officialPrice | number }}</span>
+    </div>
+  } @else {
+    <span class="slot" aria-hidden="true"></span>
+    <span class="hint">No item picked yet</span>
+  }
+</div>

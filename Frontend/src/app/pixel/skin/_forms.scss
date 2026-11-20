@@ -90,4 +90,14 @@
   app-profile-picker {
     display: grid;
   }
+
+  app-create-auction form:has(app-item-preview) {
+    max-width: calc(var(--u) * 300);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(var(--u) * 100)), 1fr));
+    align-items: start;
+  }
+
+  app-create-auction form > app-item-preview {
+    grid-row: span 4;
+  }
 }

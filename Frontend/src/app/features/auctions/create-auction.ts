@@ -13,11 +13,12 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { toApiError } from '../../core/api/api-error';
 import { InventoryItem } from '../../core/api/models';
+import { ItemPreview } from '../../pixel/items/item-preview';
 import { endsOnUtc } from './auction-rules';
 
 @Component({
   selector: 'app-create-auction',
-  imports: [FormField],
+  imports: [FormField, ItemPreview],
   templateUrl: './create-auction.html',
 })
 export class CreateAuction {
