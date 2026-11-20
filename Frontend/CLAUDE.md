@@ -86,7 +86,9 @@ rules bind every change it makes.
   by specificity, not by order. A later rule overrides the skin only when it reaches that
   specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
   elements and classes the templates already have, so a new page gets the look without a template
-  change and the three frame pages stay untouched.
+  change and the three frame pages stay untouched. The one exception is `pixel/skin/_hall.scss`,
+  which styles the `td.lot`, `.rarity` and `tr.leading` hooks that the three auction templates
+  gained for the item tiles.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside

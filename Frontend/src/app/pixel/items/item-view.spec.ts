@@ -49,6 +49,17 @@ describe('ItemView', () => {
     expect(drawImage).toHaveBeenCalledTimes(2);
   });
 
+  it('reuses the cached canvas when the same icon is drawn again', async () => {
+    const { ItemView } = await import('./item-view');
+    const canvas = document.createElement('canvas');
+    canvas.width = 32;
+    canvas.height = 32;
+    const view = new ItemView(canvas, { name: 'Old Radio', rarity: 'Common' });
+    view.update('Old Radio', 'Common');
+    expect(drawImage).toHaveBeenCalledTimes(2);
+    expect(drawImage.mock.calls[1][0]).toBe(drawImage.mock.calls[0][0]);
+  });
+
   it('draws the mystery icon for a null name', async () => {
     const { ItemView } = await import('./item-view');
     const canvas = document.createElement('canvas');

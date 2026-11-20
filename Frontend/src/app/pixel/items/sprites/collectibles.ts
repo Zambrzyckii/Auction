@@ -1,5 +1,5 @@
 import { R, Sprite, box, disc, shape, text } from '../../street/pix';
-import { ell, poly } from './helpers';
+import { blit, ell, poly } from './helpers';
 
 // Flat paper: lit top left, a darker edge on the bottom and right, no tone 3 on the silhouette.
 function sheet(
@@ -14,14 +14,6 @@ function sheet(
   s.rect(x, y, w, h, fill);
   s.hline(x, y + h - 1, w, shade);
   s.vline(x + w - 1, y, h, shade);
-}
-
-function blit(s: Sprite, rows: readonly string[], x: number, y: number, col: string): void {
-  rows.forEach((row, j) =>
-    [...row].forEach((v, i) => {
-      if (v === '1') s.set(x + i, y + j, col);
-    }),
-  );
 }
 
 type Pt = readonly [number, number];
