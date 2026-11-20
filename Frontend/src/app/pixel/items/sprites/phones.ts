@@ -162,25 +162,24 @@ export function blinkingAnsweringMachine(): Sprite {
 
 export function transparentLandline(): Sprite {
   const s = new Sprite(32, 32);
-  const clear = [R.steel[1], R.steel[2], R.steel[3], R.steel[3]];
   shape(
     s,
     (i, j) =>
       (i >= 2 && i <= 9 && j >= 3 && j <= 10) ||
       (i >= 22 && i <= 29 && j >= 3 && j <= 10) ||
       (i >= 8 && i <= 23 && j >= 5 && j <= 8),
-    clear,
+    R.steel,
     { band: 1 },
   );
   s.hline(10, 6, 12, R.red[2]);
   s.rect(4, 5, 4, 3, R.black[0]);
   s.rect(24, 5, 4, 3, R.black[0]);
-  shape(s, (i, j) => (i === 6 || i === 25) && j >= 11 && j <= 14, clear, {});
+  shape(s, (i, j) => (i === 6 || i === 25) && j >= 11 && j <= 14, R.steel, {});
   shape(
     s,
     (i, j) =>
       i >= 2 && i <= 29 && j >= 14 && j <= 29 && !((i === 2 || i === 29) && (j === 14 || j === 29)),
-    clear,
+    R.steel,
     { band: 1 },
   );
   for (let r = 0; r < 3; r++)
