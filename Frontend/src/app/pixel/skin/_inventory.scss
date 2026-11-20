@@ -246,6 +246,7 @@
     right: calc(var(--u) * 2);
     top: calc(var(--u) * 2 + 36px);
     z-index: 1;
+    pointer-events: none;
     padding: calc(var(--u) * 2) 0;
     text-align: center;
     font: 16px/16px var(--m-pixel);
