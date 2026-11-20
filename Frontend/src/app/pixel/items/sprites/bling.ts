@@ -47,7 +47,7 @@ function spoon(s: Sprite, x0: number, y0: number, angle: number): void {
   const end = thick(x0, y0, x0 + ux * 2, y0 + uy * 2, 1.9);
   const bowl = thick(hx + ux * 2, hy + uy * 2, bx, by, 3);
   const body: Test = (x, y) => handle(x, y) || end(x, y) || bowl(x, y);
-  shape(s, body, R.grey, {});
+  shape(s, body, R.grey);
   const [mx, my] = at(0.9);
   s.set(Math.round(mx), Math.round(my), R.steel[1]);
 }
@@ -168,10 +168,10 @@ export function solidGoldPocketWatch(): Sprite {
     if (i % 2 === 0) s.set(x, y, R.gold[0]);
   });
   const bow: Test = (x, y) => ell(13.5, 4.5, 3.5, 3)(x, y) && !ell(13.5, 4.8, 1.8, 1.4)(x, y);
-  shape(s, bow, R.gold, {});
+  shape(s, bow, R.gold);
   box(s, 12, 7, 3, 3, R.gold);
   shape(s, ell(13.5, 19, 9.5, 9.5), R.gold, { band: 1 });
-  shape(s, ell(13.5, 19, 7.2, 7.2), R.paper, {});
+  shape(s, ell(13.5, 19, 7.2, 7.2), R.paper);
   for (const [x, y] of [
     [13, 13],
     [13, 24],
@@ -256,8 +256,8 @@ export function beltBuckleTheSizeOfAPlate(): Sprite {
     [27, 23],
     [22, 23],
   ]);
-  shape(s, tip, R.brick, {});
-  shape(s, (x, y) => x >= 1 && x <= 23 && y >= 17 && y <= 23, R.brick, {});
+  shape(s, tip, R.brick);
+  shape(s, (x, y) => x >= 1 && x <= 23 && y >= 17 && y <= 23, R.brick);
   s.set(26, 20, R.brick[0]);
   s.set(22, 20, R.brick[0]);
   s.hline(3, 18, 18, R.brick[1]);

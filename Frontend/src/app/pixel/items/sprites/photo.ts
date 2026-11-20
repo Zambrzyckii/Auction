@@ -64,7 +64,7 @@ export function slideProjector(): Sprite {
 export function reelOfHomeMovies(): Sprite {
   const s = new Sprite(32, 32);
   const film = bezier([21, 19], [29, 17], [31, 26], [24, 28], 14);
-  shape(s, sweep(film, 1.8), R.black, {});
+  shape(s, sweep(film, 1.8), R.black);
   film.forEach(([x, y], i) => {
     if (i % 3 === 1) s.set(x, y, R.paper[3]);
   });
@@ -170,7 +170,7 @@ export function directorsMegaphone(): Sprite {
   shape(s, cone, R.purple, { band: 1 });
   s.line(25, 16, 17, 7, R.white[2]);
   s.line(24, 17, 16, 8, R.white[2]);
-  shape(s, thick(5.5, 25.5, 9.5, 21.5, 2.3), R.white, {});
+  shape(s, thick(5.5, 25.5, 9.5, 21.5, 2.3), R.white);
   flat(s, thick(20.6, 4.2, 28.4, 13.2, 2.9), R.purple[3]);
   flat(s, thick(21.2, 4.9, 27.8, 12.5, 1.7), R.purple[0]);
   s.rect(14, 22, 3, 5, R.black[1]);

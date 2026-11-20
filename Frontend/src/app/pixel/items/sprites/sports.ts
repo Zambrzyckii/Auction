@@ -1,5 +1,5 @@
 import { R, Sprite, box, shape, sphere } from '../../street/pix';
-import { bezier, ell, flat, lightTone, poly } from './helpers';
+import { bezier, ell, flat, lightTone, poly, starPoints } from './helpers';
 
 // Distance along (u) and across (v, positive towards the lower right) a segment drawn from (x0, y0) to (x1, y1).
 const along = (x0: number, y0: number, x1: number, y1: number) => {
@@ -196,13 +196,7 @@ export function fadedWrestlingBelt(): Sprite {
   box(s, 26, 15, 4, 10, R.gold, { band: 1 });
   shape(s, ell(16, 19, 8.5, 10), R.gold, { band: 1 });
   flat(s, ell(16, 19, 6, 7.5), R.gold[1]);
-  const star: [number, number][] = [];
-  for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    const r = i % 2 === 0 ? 5 : 2.2;
-    star.push([16 + r * Math.cos(a), 19.5 + r * Math.sin(a)]);
-  }
-  poly(s, star, R.gold[3]);
+  poly(s, starPoints(16, 19.5, 5, 2.2), R.gold[3]);
   s.set(12, 14, R.gold[1]);
   s.set(20, 25, R.gold[0]);
   return s.outline();
