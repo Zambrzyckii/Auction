@@ -1,9 +1,5 @@
 import { R, Sprite, box, cylV, shape, sphere, text, type Col } from '../../street/pix';
-import { ell } from './helpers';
-
-function flat(s: Sprite, test: (x: number, y: number) => boolean, col: Col): void {
-  for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) if (test(x, y)) s.set(x, y, col);
-}
+import { ell, flat } from './helpers';
 
 export function chippedDinerMug(): Sprite {
   const s = new Sprite(32, 32);
@@ -67,50 +63,56 @@ export function rustyWaffleIron(): Sprite {
 
 export function handCrankCanOpener(): Sprite {
   const s = new Sprite(32, 32);
-  const arm = (lo: number, hi: number, x0: number, x1: number) => (x: number, y: number) =>
-    x >= x0 && x <= x1 && y <= 28 && x + y >= lo && x + y <= hi;
-  shape(s, arm(29, 33, 4, 17), R.red, { band: 1 });
-  shape(s, arm(21, 25, 3, 14), R.red, { band: 1 });
+  box(s, 5, 15, 4, 14, R.red, { band: 1 });
+  box(s, 11, 15, 4, 14, R.red, { band: 1 });
+  box(s, 4, 10, 12, 6, R.steel, { band: 1 });
+  s.set(9, 13, R.steel[0]);
+  s.set(10, 13, R.steel[0]);
   const cog = (x: number, y: number): boolean => {
-    const dx = x + 0.5 - 18;
-    const dy = y + 0.5 - 13;
-    const bump = Math.cos(8 * Math.atan2(dy, dx)) > 0.3 ? 1.3 : 0;
-    return Math.hypot(dx, dy) <= 5 + bump;
+    const dx = x + 0.5 - 10;
+    const dy = y + 0.5 - 6;
+    const bump = Math.cos(8 * Math.atan2(dy, dx)) > 0.3 ? 1.2 : 0;
+    return Math.hypot(dx, dy) <= 3.6 + bump;
   };
   shape(s, cog, R.steel, { band: 1 });
-  flat(s, ell(18, 13, 2.2, 2.2), R.steel[0]);
-  s.line(19, 12, 25, 6, R.steel[1]);
-  s.line(20, 12, 26, 6, R.steel[3]);
-  sphere(s, 26.5, 5, 2.8, R.red);
+  flat(s, ell(10, 6, 1.6, 1.6), R.steel[0]);
+  s.rect(11, 6, 12, 2, R.steel[3]);
+  s.hline(11, 8, 12, R.steel[1]);
+  sphere(s, 25, 7, 3, R.red);
   return s.outline();
 }
 
 export function crackedCookieJar(): Sprite {
   const s = new Sprite(32, 32);
-  shape(s, (x, y) => ell(16, 20, 10.5, 9)(x, y) && y <= 28, R.red, { band: 1 });
-  shape(s, ell(16, 10, 7, 4.5), R.red, { band: 1 });
-  s.hline(9, 12, 14, R.red[0]);
-  sphere(s, 16, 4.5, 2.5, R.tan);
-  sphere(s, 15, 21, 4.6, R.tan);
-  s.set(13, 20, R.tan[0]);
-  s.set(16, 19, R.tan[0]);
-  s.set(15, 23, R.tan[0]);
-  s.set(18, 22, R.tan[0]);
+  cylV(s, 6, 11, 20, 18, R.denim);
   for (const [x, y] of [
-    [19, 12],
-    [20, 13],
-    [20, 14],
-    [20, 15],
-    [19, 16],
-    [19, 17],
-    [20, 18],
-    [20, 19],
-    [21, 20],
-    [21, 21],
+    [6, 11],
+    [25, 11],
+    [6, 28],
+    [25, 28],
+  ])
+    s.set(x, y, null);
+  s.rect(9, 8, 14, 3, R.denim[1]);
+  s.rect(7, 6, 18, 2, R.tan[2]);
+  s.hline(7, 6, 18, R.tan[3]);
+  sphere(s, 16, 3.5, 2.5, R.tan);
+  sphere(s, 16.5, 20, 5.5, R.tan);
+  for (const [x, y] of [
+    [14, 18],
+    [18, 17],
+    [17, 21],
+    [14, 22],
+  ])
+    s.set(x, y, R.tan[0]);
+  for (const [x, y] of [
+    [9, 13],
+    [8, 14],
+    [9, 15],
+    [8, 16],
+    [9, 17],
+    [8, 18],
   ])
     s.set(x, y, R.black[0]);
-  s.set(18, 17, R.black[0]);
-  s.set(21, 22, R.black[0]);
   return s.outline();
 }
 

@@ -88,6 +88,10 @@ export function digits(s: Sprite, str: string, x: number, y: number, col: Col): 
   });
 }
 
+export function flat(s: Sprite, test: (x: number, y: number) => boolean, col: Col): void {
+  for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) if (test(x, y)) s.set(x, y, col);
+}
+
 export function blit(s: Sprite, rows: readonly string[], x: number, y: number, col: string): void {
   rows.forEach((row, j) =>
     [...row].forEach((v, i) => {

@@ -1,9 +1,5 @@
 import { R, Sprite, box, shape, sphere, type Col } from '../../street/pix';
-import { bezier, ell, lightTone, poly } from './helpers';
-
-function flat(s: Sprite, test: (x: number, y: number) => boolean, col: Col): void {
-  for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) if (test(x, y)) s.set(x, y, col);
-}
+import { bezier, ell, flat, lightTone, poly } from './helpers';
 
 // Distance along (u) and across (v, positive towards the lower right) a segment drawn from (x0, y0) to (x1, y1).
 const along = (x0: number, y0: number, x1: number, y1: number) => {
