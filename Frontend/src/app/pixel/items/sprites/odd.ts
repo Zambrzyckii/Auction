@@ -11,6 +11,10 @@ export function snakeInACan(): Sprite {
   s.rect(6, 21, 14, 6, R.white[3]);
   s.hline(8, 23, 8, R.grey[1]);
   s.hline(8, 25, 5, R.grey[1]);
+  s.rect(7, 18, 3, 2, R.grey[1]);
+  s.hline(7, 20, 3, R.grey[3]);
+  s.hline(13, 27, 3, R.grey[0]);
+  s.hline(13, 28, 3, R.grey[3]);
   shape(s, ell(6, 10, 3.2, 1.4), R.grey);
   const coils: [number, number][] = [
     [21, 5.5],

@@ -35,7 +35,7 @@ export function crackedInstantCamera(): Sprite {
   s.set(11, 15, R.white[3]);
   s.line(6, 10, 8, 14, R.black[0]);
   s.line(8, 14, 5, 17, R.black[0]);
-  s.line(13, 15, 11, 19, R.white[3]);
+  s.line(13, 16, 11, 19, R.white[3]);
   return s.outline();
 }
 
@@ -89,9 +89,12 @@ export function vhsRewinder(): Sprite {
   box(s, 2, 15, 28, 10, R.red, { band: 1 });
   s.rect(11, 10, 4, 4, R.glass[2]);
   s.rect(17, 10, 4, 4, R.glass[2]);
-  s.rect(6, 17, 15, 5, R.black[0]);
-  s.rect(8, 18, 11, 3, R.black[2]);
-  for (const x of [10, 16]) disc(s, x, 19, 1.4, R.paper[3]);
+  s.rect(13, 3, 10, 6, R.black[2]);
+  s.hline(13, 3, 10, R.black[3]);
+  s.rect(14, 6, 3, 2, R.black[0]);
+  s.rect(19, 6, 3, 2, R.black[0]);
+  s.rect(15, 4, 6, 2, R.paper[2]);
+  s.hline(12, 9, 12, R.black[0]);
   s.rect(26, 17, 3, 2, R.taxi[3]);
   s.rect(3, 17, 2, 2, R.red[3]);
   s.hline(23, 22, 4, R.taxi[3]);
