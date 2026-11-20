@@ -14,25 +14,24 @@ export function beadedCarSeatCover(): Sprite {
   const head = (x: number, y: number) =>
     x >= 10 && x <= 21 && y >= 3 && y <= 8 && !((x < 11 || x > 20) && (y < 4 || y > 7));
   const back = (x: number, y: number) =>
-    x >= 6 &&
-    x <= 25 &&
-    y >= 11 &&
-    y <= 28 &&
-    !((x < 8 || x > 23) && y < 13) &&
-    !((x < 7 || x > 24) && y < 12);
+    x >= 9 && x <= 22 && y >= 11 && y <= 25 && !((x < 10 || x > 21) && y < 12);
+  const cushion = (x: number, y: number) =>
+    x >= 5 && x <= 26 && y >= 24 && y <= 28 && !((x < 7 || x > 24) && y > 26);
   for (const x of [12, 18]) {
-    s.rect(x, 9, 2, 2, R.tan[2]);
+    s.rect(x, 9, 2, 3, R.tan[2]);
     s.set(x, 9, R.tan[3]);
     s.set(x + 1, 10, R.tan[1]);
+    s.set(x + 1, 11, R.tan[1]);
   }
-  for (const part of [head, back]) {
+  shape(s, head, R.wood, { band: 1 });
+  for (const part of [back, cushion]) {
     shape(s, part, R.wood, { band: 1 });
     const inner = (x: number, y: number) =>
       [-1, 0, 1].every((dy) => [-1, 0, 1].every((dx) => part(x + dx, y + dy)));
     for (let y = 0; y < 32; y++)
       for (let x = 0; x < 32; x++) if (inner(x, y)) s.set(x, y, R.wood[0]);
-    for (let by = 3; by < 28; by += 3)
-      for (let bx = 6 + ((by / 3) % 2); bx < 26; bx += 3) {
+    for (let by = 13; by < 28; by += 3)
+      for (let bx = (part === back ? 10 : 6) + ((by / 3) % 2); bx < 26; bx += 3) {
         const cells = [
           [bx, by],
           [bx + 1, by],
@@ -40,11 +39,11 @@ export function beadedCarSeatCover(): Sprite {
           [bx + 1, by + 1],
         ];
         if (!cells.every(([x, y]) => inner(x, y))) continue;
-        const ramp = bx < 10 || bx > 21 ? R.tan : R.wood;
-        s.set(bx, by, ramp[3]);
-        s.set(bx + 1, by, ramp[2]);
-        s.set(bx, by + 1, ramp[2]);
-        s.set(bx + 1, by + 1, ramp[1]);
+        const bolster = part === back && (bx < 13 || bx > 18);
+        s.set(bx, by, bolster ? R.wood[2] : R.tan[3]);
+        s.set(bx + 1, by, bolster ? R.wood[1] : R.tan[2]);
+        s.set(bx, by + 1, bolster ? R.wood[1] : R.tan[2]);
+        s.set(bx + 1, by + 1, R.wood[1]);
       }
   }
   return s.outline();
@@ -144,27 +143,23 @@ export function chromeBumperPiece(): Sprite {
   const s = new Sprite(32, 32);
   for (let x = 2; x <= 29; x++) {
     const edge = Math.min(x - 2, 29 - x);
-    const wrap = Math.max(0, 6 - edge) / 6;
-    const yc = 22 + 2 * wrap;
-    const half = 5.5 - 2.5 * wrap;
+    const curl = Math.max(0, 3 - edge) / 3;
+    const yc = 23.5 - 2.5 * curl * curl;
+    const half = 4 - 0.8 * curl;
     for (let y = Math.floor(yc - half); y <= Math.ceil(yc + half); y++) {
       const f = (y + 0.5 - yc) / half;
       if (Math.abs(f) > 1) continue;
       let tone = R.steel[1];
-      if (f < -0.6) tone = R.steel[3];
-      else if (f < -0.2) tone = x > 20 ? R.steel[3] : R.white[2];
-      else if (f < 0.15) tone = R.steel[2];
-      else if (f < 0.5) tone = R.steel[0];
+      if (f < -0.5) tone = R.steel[3];
+      else if (f < -0.1) tone = x > 20 ? R.steel[3] : R.white[2];
+      else if (f < 0.4) tone = R.steel[2];
       s.set(x, y, tone);
     }
   }
-  s.rect(8, 26, 16, 2, R.black[1]);
-  s.hline(8, 26, 16, R.black[3]);
-  s.rect(13, 20, 6, 3, R.steel[0]);
-  s.hline(13, 23, 6, R.steel[3]);
-  for (const x of [5, 25]) {
-    s.rect(x, 21, 2, 2, R.steel[0]);
-    s.set(x, 23, R.steel[3]);
+  s.rect(6, 26, 20, 2, R.black[1]);
+  for (const x of [7, 23]) {
+    s.rect(x, 22, 2, 2, R.steel[0]);
+    s.set(x, 24, R.steel[3]);
   }
   return s.outline();
 }
