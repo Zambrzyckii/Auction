@@ -1,0 +1,14 @@
+<p class="tally">
+  <b>{{ items().length }}</b> {{ noun() }} · {{ lockedCount() }} locked
+</p>
+<div class="sort" role="group" aria-label="Sort the shelf">
+  <span class="label">Sort by</span>
+  @for (k of keys; track k.key) {
+    <button type="button" [attr.aria-pressed]="key() === k.key" (click)="pick(k.key)">
+      {{ k.text }}
+    </button>
+  }
+  <button type="button" class="dir" [attr.data-dir]="dir()" (click)="flip()">
+    {{ dirLabel() }}
+  </button>
+</div>

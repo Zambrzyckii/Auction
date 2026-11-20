@@ -1,0 +1,66 @@
+@use 'tools';
+@use 'controls';
+
+@include tools.inside {
+  app-shelf-sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--u) * 2) calc(var(--u) * 4);
+  }
+
+  app-shelf-sort .tally {
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-mute);
+    text-transform: uppercase;
+  }
+
+  app-shelf-sort .tally b {
+    font: 27px/24px var(--m-head);
+    font-weight: 400;
+    color: var(--m-text);
+    margin-right: var(--u);
+  }
+
+  app-shelf-sort .sort {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--u);
+  }
+
+  app-shelf-sort .label {
+    font: 16px/16px var(--m-pixel);
+    color: var(--m-mute);
+    text-transform: uppercase;
+    margin-right: calc(var(--u) * 2);
+  }
+
+  app-shelf-sort button {
+    padding: calc(var(--u) * 2) calc(var(--u) * 3);
+  }
+
+  app-shelf-sort button[aria-pressed='false'],
+  app-shelf-sort button.dir {
+    @include controls.ghost;
+  }
+
+  app-shelf-sort button.dir {
+    margin-left: calc(var(--u) * 2);
+  }
+
+  app-shelf-sort button.dir::after {
+    content: '';
+    width: 15px;
+    height: 9px;
+    image-rendering: pixelated;
+    background-color: var(--m-taxi-hi);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 3' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h5v1H0zM1 1h3v1H1zM2 2h1v1H2z'/%3E%3C/svg%3E")
+      center / 15px 9px no-repeat;
+  }
+
+  app-shelf-sort button.dir[data-dir='asc']::after {
+    transform: rotate(180deg);
+  }
+}
