@@ -137,6 +137,7 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-11-18 | Bot identities derive from the API key, so rotating the key with `gen-secrets.sh` creates a new fleet with a new fingerprint in the emails and leaves the old accounts dead | owner | stateless provisioning without a registry file |
 | 2026-11-18 | The documented drift between docs and code (10 s raise windows, the `BidInProgressException` row, the `BidPlacedEvent` publisher, the minted warehouse and pawnshop prices) is fixed together with the bots | owner | the code wins over the docs |
 | 2026-11-18 | The broker test on Testcontainers runs in CI, the live probe does not | owner | the runner has Docker but no Compose stack |
+| 2026-11-20 | The fleet mints from 160 item names, 20 of them locked to one rarity with a fixed share of that rarity's mints (Legendary and Epic one half, Common one tenth) | owner | a gold tile should sometimes show a name never seen on a grey one, and the lock lives in the bots because the API takes any name at any rarity |
 
 ## Related documents
 

@@ -137,6 +137,7 @@ Rejestr decyzji tylko do dopisywania, od najstarszych, z datą dnia podjęcia de
 | 2026-11-18 | Tożsamości botów pochodzą z klucza API, więc rotacja klucza przez `gen-secrets.sh` tworzy nową flotę z nowym odciskiem w adresach e-mail i zostawia stare konta martwe | właściciel | bezstanowy provisioning bez pliku rejestru |
 | 2026-11-18 | Udokumentowany rozjazd docs kontra kod (okna podbić 10 s, wiersz `BidInProgressException`, wydawca `BidPlacedEvent`, mintowane ceny z magazynu i lombardu) jest naprawiany razem z botami | właściciel | kod wygrywa z dokumentacją |
 | 2026-11-18 | Test brokera na Testcontainers biegnie w CI, sonda na żywo nie | właściciel | runner ma Dockera, ale nie stack Compose |
+| 2026-11-20 | Flota mintuje ze 160 nazw przedmiotów, 20 z nich zablokowanych do jednej rzadkości ze stałym udziałem w mintach tej rzadkości (Legendary i Epic połowa, Common jedna dziesiąta) | właściciel | złoty kafel ma czasem pokazać nazwę niewidzianą na szarym, a blokada żyje w botach, bo API przyjmuje każdą nazwę w każdej rzadkości |
 
 ## Powiązane dokumenty
 

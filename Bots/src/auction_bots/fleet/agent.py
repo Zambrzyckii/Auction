@@ -13,11 +13,11 @@ from auction_bots.api.client import ApiError, MarketApi, Unauthorized
 from auction_bots.api.models import UserItemDto
 from auction_bots.config import Settings
 from auction_bots.director.knobs import Knobs
-from auction_bots.fleet.archetypes import ITEM_NAMES
 from auction_bots.fleet.identity import BotSession
 from auction_bots.fleet.persona import Persona
 from auction_bots.fleet.policies.bidding import BidAction, decide_bid
 from auction_bots.fleet.policies.listing import OwnedItem, decide_listing
+from auction_bots.fleet.policies.stock import pick_name
 from auction_bots.fleet.policies.valuation import value_of
 from auction_bots.fleet.registry import FleetRegistry
 from auction_bots.market.state import MarketChange, MarketState
@@ -324,7 +324,7 @@ class BotAgent:
             self._persona, owned, len(live), self._knobs(), self._rng, allowance=self._allowance()
         )
         for rarity in decision.mint:
-            name = self._rng.choice(ITEM_NAMES)
+            name = pick_name(rarity, self._rng)
             await self._authorized(lambda token, n=name, r=rarity: self._api.mint_item(token, n, r))
         for listing in decision.listings:
             await self._saga_bucket.acquire()
