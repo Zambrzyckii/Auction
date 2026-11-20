@@ -1,33 +1,52 @@
-import { R, Sprite, box, cylV, disc, shape, sphere } from '../../street/pix';
+import { R, Sprite, box, cylH, shape, sphere } from '../../street/pix';
 import { bezier, ell, lightTone, poly } from './helpers';
+
+function blit(s: Sprite, rows: readonly string[], x: number, y: number, col: string): void {
+  rows.forEach((row, j) =>
+    [...row].forEach((v, i) => {
+      if (v === '1') s.set(x + i, y + j, col);
+    }),
+  );
+}
 
 export function beadedCarSeatCover(): Sprite {
   const s = new Sprite(32, 32);
   const head = (x: number, y: number) =>
-    x >= 4 && x <= 14 && y >= 3 && y <= 8 && !((x < 6 || x > 12) && y < 5);
-  const post = (x: number, y: number) => (x === 7 || x === 11) && y >= 8 && y <= 10;
-  const back = (x: number, y: number) => x >= 3 && x <= 14 && y >= 10 && y <= 20;
-  const base = (x: number, y: number) =>
-    x >= 3 && x <= 28 && y >= 19 && y <= 28 && !(x > 25 && (y < 21 || y > 26));
-  const seat = (x: number, y: number) => head(x, y) || post(x, y) || back(x, y) || base(x, y);
-  shape(s, seat, R.wood, { band: 1 });
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if (seat(x, y)) s.set(x, y, R.wood[0]);
-  let n = 0;
-  for (let by = 3; by < 28; by += 3)
-    for (let bx = 3 + ((by / 3) % 2); bx < 28; bx += 3) {
-      const cells = [
-        [bx, by],
-        [bx + 1, by],
-        [bx, by + 1],
-        [bx + 1, by + 1],
-      ];
-      if (!cells.every(([x, y]) => seat(x, y) && !post(x, y))) continue;
-      const ramp = n++ % 3 === 2 ? R.tan : R.wood;
-      s.set(bx, by, ramp[3]);
-      s.set(bx + 1, by, ramp[2]);
-      s.set(bx, by + 1, ramp[2]);
-      s.set(bx + 1, by + 1, ramp[1]);
-    }
+    x >= 10 && x <= 21 && y >= 3 && y <= 8 && !((x < 11 || x > 20) && (y < 4 || y > 7));
+  const back = (x: number, y: number) =>
+    x >= 6 &&
+    x <= 25 &&
+    y >= 11 &&
+    y <= 28 &&
+    !((x < 8 || x > 23) && y < 13) &&
+    !((x < 7 || x > 24) && y < 12);
+  for (const x of [12, 18]) {
+    s.rect(x, 9, 2, 2, R.tan[2]);
+    s.set(x, 9, R.tan[3]);
+    s.set(x + 1, 10, R.tan[1]);
+  }
+  for (const part of [head, back]) {
+    shape(s, part, R.wood, { band: 1 });
+    const inner = (x: number, y: number) =>
+      [-1, 0, 1].every((dy) => [-1, 0, 1].every((dx) => part(x + dx, y + dy)));
+    for (let y = 0; y < 32; y++)
+      for (let x = 0; x < 32; x++) if (inner(x, y)) s.set(x, y, R.wood[0]);
+    for (let by = 3; by < 28; by += 3)
+      for (let bx = 6 + ((by / 3) % 2); bx < 26; bx += 3) {
+        const cells = [
+          [bx, by],
+          [bx + 1, by],
+          [bx, by + 1],
+          [bx + 1, by + 1],
+        ];
+        if (!cells.every(([x, y]) => inner(x, y))) continue;
+        const ramp = bx < 10 || bx > 21 ? R.tan : R.wood;
+        s.set(bx, by, ramp[3]);
+        s.set(bx + 1, by, ramp[2]);
+        s.set(bx, by + 1, ramp[2]);
+        s.set(bx + 1, by + 1, ramp[1]);
+      }
+  }
   return s.outline();
 }
 
@@ -123,17 +142,29 @@ function strip(s: Sprite, path: readonly (readonly [number, number])[], w: numbe
 
 export function chromeBumperPiece(): Sprite {
   const s = new Sprite(32, 32);
-  const path = [
-    ...Array.from({ length: 13 }, (_, i) => [25 - i, 12] as const),
-    ...bezier([13, 12], [7, 12], [7, 17], [7, 24], 24),
-  ];
-  strip(s, path, 10);
-  for (const [x, y] of [
-    [6, 19],
-    [18, 11],
-  ]) {
-    s.rect(x, y, 2, 2, R.steel[0]);
-    s.set(x, y + 2, R.steel[3]);
+  for (let x = 2; x <= 29; x++) {
+    const edge = Math.min(x - 2, 29 - x);
+    const wrap = Math.max(0, 6 - edge) / 6;
+    const yc = 22 + 2 * wrap;
+    const half = 5.5 - 2.5 * wrap;
+    for (let y = Math.floor(yc - half); y <= Math.ceil(yc + half); y++) {
+      const f = (y + 0.5 - yc) / half;
+      if (Math.abs(f) > 1) continue;
+      let tone = R.steel[1];
+      if (f < -0.6) tone = R.steel[3];
+      else if (f < -0.2) tone = x > 20 ? R.steel[3] : R.white[2];
+      else if (f < 0.15) tone = R.steel[2];
+      else if (f < 0.5) tone = R.steel[0];
+      s.set(x, y, tone);
+    }
+  }
+  s.rect(8, 26, 16, 2, R.black[1]);
+  s.hline(8, 26, 16, R.black[3]);
+  s.rect(13, 20, 6, 3, R.steel[0]);
+  s.hline(13, 23, 6, R.steel[3]);
+  for (const x of [5, 25]) {
+    s.rect(x, 21, 2, 2, R.steel[0]);
+    s.set(x, 23, R.steel[3]);
   }
   return s.outline();
 }
@@ -171,15 +202,14 @@ export function toolboxWithStuckDrawer(): Sprite {
 
 export function subwayTokenRoll(): Sprite {
   const s = new Sprite(32, 32);
-  cylV(s, 9, 14, 14, 14, R.paper);
-  s.rect(9, 19, 14, 5, R.denim[2]);
-  s.hline(9, 14, 14, R.paper[1]);
-  cylV(s, 10, 8, 12, 7, R.gold);
-  for (const y of [10, 12]) s.hline(10, y, 12, R.gold[1]);
-  shape(s, ell(16, 6.5, 6, 3.5), R.gold, { band: 1 });
-  s.vline(15, 6, 2, R.gold[0]);
-  s.set(14, 5, R.gold[0]);
-  s.set(16, 5, R.gold[0]);
+  cylH(s, 2, 15, 18, 13, R.paper);
+  s.rect(8, 15, 5, 13, R.denim[2]);
+  s.vline(3, 15, 13, R.paper[1]);
+  for (let y = 15; y < 28; y += 2) s.set(2, y, null);
+  cylH(s, 20, 16, 4, 11, R.gold);
+  s.vline(22, 16, 11, R.gold[1]);
+  shape(s, ell(24.5, 21.5, 3.6, 6.5), R.gold, { band: 1 });
+  blit(s, ['10001', '01010', '00100', '00100', '00100'], 22, 19, R.gold[0]);
   return s.outline();
 }
 
@@ -221,9 +251,15 @@ export function suspiciousLuckyDice(): Sprite {
   };
   die(15, 11);
   die(2, 17);
-  disc(s, 10, 25, 1.8, R.steel[1]);
-  s.set(9, 24, R.steel[3]);
+  s.rect(13, 24, 2, 2, R.steel[1]);
+  s.set(13, 24, R.steel[3]);
   return s.outline();
+}
+
+function coinTone(lx: number, ly: number): string {
+  if (ly === 0) return R.gold[3];
+  if (ly === 2 || lx === 3) return R.gold[1];
+  return R.gold[2];
 }
 
 export function arcadeTokenJar(): Sprite {
@@ -236,9 +272,7 @@ export function arcadeTokenJar(): Sprite {
     for (let x = 6; x < 26; x++) {
       if (!body(x, y) || !body(x - 1, y - 1) || !body(x + 1, y + 1)) continue;
       const row = Math.floor((y - 10) / 3);
-      const lx = (x - 6 - (row % 2) * 2) % 4;
-      const ly = (y - 10) % 3;
-      s.set(x, y, ly === 0 ? R.gold[3] : ly === 2 || lx === 3 ? R.gold[1] : R.gold[2]);
+      s.set(x, y, coinTone((x - 6 - (row % 2) * 2) % 4, (y - 10) % 3));
     }
   box(s, 7, 3, 18, 4, R.red, { band: 1 });
   s.vline(7, 11, 10, R.steel[3]);

@@ -38,7 +38,6 @@ export function bentTradingCard(): Sprite {
   const s = new Sprite(32, 32);
   box(s, 8, 3, 16, 26, R.red, { band: 1 });
   s.rect(10, 5, 12, 12, R.denim[0]);
-  s.rect(11, 6, 10, 10, R.denim[1]);
   disc(s, 16, 10, 3.2, R.taxi[2]);
   s.hline(13, 7, 7, R.red[2]);
   s.set(13, 8, R.red[2]);
@@ -57,18 +56,16 @@ export function bentTradingCard(): Sprite {
   s.hline(11, 21, 5, R.paper[1]);
   s.rect(10, 23, 12, 4, R.paper[1]);
   for (const x of [11, 14, 17, 20]) s.set(x, 25, R.red[0]);
-  for (let y = 3; y <= 8; y++)
-    for (let x = 18; x <= 23; x++) {
-      if (x - y > 15) s.set(x, y, null);
-      else if (x >= 18) s.set(x, y, x - y === 15 ? R.paper[1] : R.paper[2]);
-    }
+  s.line(9, 23, 22, 10, R.paper[3]);
+  s.set(8, 22, null);
+  s.set(23, 10, null);
   for (const [x, y] of [
     [8, 25],
     [8, 26],
     [9, 28],
     [12, 28],
   ])
-    s.set(x, y, R.paper[2]);
+    s.set(x, y, R.paper[3]);
   return s.outline();
 }
 
@@ -141,6 +138,11 @@ export function dogEaredComic(): Sprite {
     R.red[1],
   );
   for (const y of [11, 23]) s.set(8, y, R.steel[3]);
+  for (let y = 4; y <= 6; y++) for (let x = 21; x <= 24; x++) if (x - y > 17) s.set(x, y, null);
+  for (let y = 4; y <= 7; y++)
+    for (let x = 21; x <= 24; x++)
+      if (x - y <= 17) s.set(x, y, x - y === 17 ? R.paper[0] : R.paper[2]);
+  for (const x of [9, 10, 12]) s.set(x, 28, R.paper[2]);
   for (let y = 22; y <= 28; y++) for (let x = 18; x <= 24; x++) if (x + y > 46) s.set(x, y, null);
   for (let y = 22; y <= 28; y++)
     for (let x = 18; x <= 24; x++)
