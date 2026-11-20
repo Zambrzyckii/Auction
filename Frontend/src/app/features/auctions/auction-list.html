@@ -20,9 +20,11 @@
       @for (auction of auctions; track auction.publicAuctionId) {
         <tr>
           <td class="lot">
-            <app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
-              auction.itemName
-            }}
+            <span class="lot-row"
+              ><app-item-tile [name]="auction.itemName" [rarity]="auction.itemRarity" />{{
+                auction.itemName
+              }}</span
+            >
           </td>
           <td>
             <span class="rarity" [attr.data-rarity]="auction.itemRarity">{{

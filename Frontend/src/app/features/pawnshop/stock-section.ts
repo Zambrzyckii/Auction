@@ -5,11 +5,12 @@ import { actionState } from '../../core/actions/action-state';
 import { StockItem } from '../../core/api/models';
 import { timeLeft } from '../../core/format/time-left';
 import { clock } from '../../core/time/clock';
+import { ItemTile } from '../../pixel/items/item-tile';
 import { stockPayout, withdrawBlockReason } from './pawnshop-rules';
 
 @Component({
   selector: 'app-stock-section',
-  imports: [DatePipe, DecimalPipe],
+  imports: [DatePipe, DecimalPipe, ItemTile],
   templateUrl: './stock-section.html',
 })
 export class StockSection {

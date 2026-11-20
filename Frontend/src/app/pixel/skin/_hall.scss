@@ -44,6 +44,11 @@
     box-shadow: inset calc(var(--u) * 2) 0 0 var(--m-green);
   }
 
+  td.lot .lot-row {
+    display: inline-flex;
+    align-items: center;
+  }
+
   td.lot .rarity {
     vertical-align: middle;
   }

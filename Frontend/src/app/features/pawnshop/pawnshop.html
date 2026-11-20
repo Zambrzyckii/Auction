@@ -15,7 +15,9 @@
     @for (tier of catalog.botTiers; track tier.name) {
       <tr>
         <td>{{ tier.name }}</td>
-        <td>{{ tier.rarity }}</td>
+        <td>
+          <span class="rarity" [attr.data-rarity]="tier.rarity">{{ tier.rarity }}</span>
+        </td>
         <td>{{ tier.price | number }}</td>
         <td>{{ tier.spawnInterval }}</td>
         <td>{{ tier.payoutRate | number }}</td>
