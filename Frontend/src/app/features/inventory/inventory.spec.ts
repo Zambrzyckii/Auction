@@ -193,6 +193,21 @@ describe('Inventory', () => {
       req.flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
     });
 
+    it('marks picked and unfit cards with the classes the skin styles', () => {
+      flushItems([trio[0], trio[1], item({ publicItemId: 'r', rarity: 'Rare', name: 'Odd One' })]);
+      el().querySelector<HTMLButtonElement>('button.door')!.click();
+      fixture.detectChanges();
+      fixture.componentInstance.toggle('a');
+      fixture.detectChanges();
+      const card = (name: string) =>
+        [...el().querySelectorAll<HTMLElement>('li.card')].find((c) =>
+          c.textContent!.includes(name),
+        )!;
+      expect(card('Rusty Sword').classList.contains('picked')).toBe(true);
+      expect(card('Odd One').classList.contains('unfit')).toBe(true);
+      expect(card('Odd One').classList.contains('picked')).toBe(false);
+    });
+
     it('disables the checkboxes of cards that do not fit the belt', () => {
       flushItems([
         trio[0],
