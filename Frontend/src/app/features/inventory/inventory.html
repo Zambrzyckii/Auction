@@ -34,6 +34,7 @@
     <ul class="shelf" [class.picking]="bench.open()">
       @for (item of items | sortItems: order.key() : order.dir(); track item.publicItemId) {
         @if (!bench.hidden().includes(item.publicItemId)) {
+          @let fit = bench.open() ? (item | benchFit: bench.belt()) : null;
           <li
             class="card"
             [class.fresh]="bench.fresh() === item.publicItemId"
@@ -44,7 +45,7 @@
               <input
                 type="checkbox"
                 [checked]="selection().includes(item.publicItemId)"
-                [disabled]="crafting.pending()"
+                [disabled]="crafting.pending() || fit !== null"
                 (change)="toggle(item.publicItemId)"
               />
               <app-item-tile size="lot" [name]="item.name" [rarity]="item.rarity" />
@@ -55,10 +56,8 @@
               ><span class="cue">Official price </span>{{ item.officialPrice | number }}</span
             >
             <span class="status">{{ item.status }}</span>
-            @if (bench.open()) {
-              @if (item | benchFit: bench.belt(); as reason) {
-                <span class="fit">{{ reason }}</span>
-              }
+            @if (fit) {
+              <span class="fit">{{ fit }}</span>
             }
             <button
               type="button"
