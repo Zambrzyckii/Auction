@@ -183,6 +183,24 @@ describe('Inventory', () => {
       expect(el().querySelector('.notice')?.textContent).toContain('Crafted');
     });
 
+    it('posts only the ids of items still on the shelf', () => {
+      flushItems(trio);
+      selectAll(['ghost', 'a', 'b', 'c']);
+      fixture.componentInstance.craft();
+
+      const req = http.expectOne('/api/inventory/craft');
+      expect(req.request.body).toEqual({ ingredientsIds: ['a', 'b', 'c'] });
+      req.flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
+    });
+
+    it('drops a sold item from the selection', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c']);
+      fixture.componentInstance.sell('b');
+      http.expectOne('/api/inventory/b/sell').flush(null);
+      expect(fixture.componentInstance.selection()).toEqual(['a', 'c']);
+    });
+
     it('disables the craft button while the craft is pending', () => {
       flushItems(trio);
       selectAll(['a', 'b', 'c']);

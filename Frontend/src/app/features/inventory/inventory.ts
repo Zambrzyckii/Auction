@@ -46,7 +46,7 @@ export class Inventory {
   craft(): void {
     this.crafting.run(
       this.http.post<{ publicItemId: string }>('/api/inventory/craft', {
-        ingredientsIds: this.selection(),
+        ingredientsIds: this.selectedItems().map((i) => i.publicItemId),
       }),
       () => {
         this.selection.set([]);
@@ -57,6 +57,7 @@ export class Inventory {
 
   sell(id: string): void {
     this.sale.run(this.http.post(`/api/inventory/${id}/sell`, null), () => {
+      this.selection.update((ids) => ids.filter((x) => x !== id));
       this.sale.notice.set('Sold to the shop. The funds arrive in a few seconds.');
     });
   }
