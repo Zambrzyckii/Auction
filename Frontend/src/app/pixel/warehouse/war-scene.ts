@@ -128,7 +128,7 @@ export class WarScene {
     if (!move && stateKey(state) === this.applied) return;
     this.drive(scene, state, move);
     this.applied = stateKey(state);
-    if (this.visible) scene.resume();
+    this.syncLoop(scene);
   }
 
   private drive(scene: WarYard, state: WarYardState, move: WarMove): void {
