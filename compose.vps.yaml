@@ -1,0 +1,25 @@
+services:
+  postgres:
+    ports: !reset []
+
+  gateway:
+    ports: !override
+      - "127.0.0.1:8080:80"
+
+  api:
+    build: !reset null
+    image: ghcr.io/zambrzyckii/auction:${IMAGE_TAG:?IMAGE_TAG is required}
+    environment:
+      Observability__Enabled: "false"
+
+  otel-collector:
+    profiles: [observability]
+
+  prometheus:
+    profiles: [observability]
+
+  tempo:
+    profiles: [observability]
+
+  grafana:
+    profiles: [observability]
