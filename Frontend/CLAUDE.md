@@ -100,7 +100,11 @@ rules bind every change it makes.
   - `inventory.html` has `app-workshop`, `app-shelf-sort` and `ul.shelf` (with `.picking` while the
     workshop is open) of `li.card` (with `.fresh` on the crafted card). A card holds `.pick`, `.name`,
     `.rarity`, `.price`, `.cue`, `.status`, `.fit` and `.sell`. Its checkbox is `[disabled]` while a
-    craft is pending.
+    craft is pending or the card shows a fit reason, so an unfit card cannot be picked. A picked card
+    carries `.picked`, a card with a fit reason `.unfit` and a card whose entrance has played
+    `.dropped`. `_inventory.scss` styles the picked and unfit states through those classes instead of
+    per-card `:has()`, and gives `li.card` `content-visibility: auto` with
+    `contain-intrinsic-size: auto 260px`, which keeps Firefox style time flat at 174 cards.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
@@ -110,7 +114,8 @@ rules bind every change it makes.
   guard, so jsdom specs never touch a 2d context. A new item name shows the mystery sprite until
   it gets a function, and `catalog.spec.ts` fails when `names.ts` lists a name without one.
 - `pixel/inventory/` is the inventory frame. It holds the `sortItems` and `benchFit` pipes (sort
-  ties fall to name, then id), `craft-watch.ts`, the sort bar `app-shelf-sort`, the workshop
+  ties fall to name, then id), `craft-watch.ts`, the `appDropOnce` directive, the sort bar
+  `app-shelf-sort`, the workshop
   `app-workshop` and its press scene `workshop-scene.ts`, which loads lazily through `bootStreet`
   behind the same guard as the item art. Its components carry no stylesheet, because the
   workshop's rules would pass the 4 kB component warning, so `_inventory.scss` and
@@ -129,7 +134,9 @@ rules bind every change it makes.
   rows and wallet rows, the hover lift, the stamped notices and the tile hop. The tile shine lives
   in `pixel/items/item-tile.scss`. The entrance `x-drop` fills `backwards`, never `both`, because a
   held end frame with `opacity: 1` would beat the dimming of unfit cards while picking, as
-  animation values outrank normal declarations. Every animation and transition in `_alive.scss`,
+  animation values outrank normal declarations. A shelf card drops once. `appDropOnce` marks it
+  `.dropped` on the drop's `animationend` and the entrance selector skips `.dropped`, because a sort
+  press moves the `@for` nodes and a moved node restarts its CSS animation. Every animation and transition in `_alive.scss`,
   `_inventory.scss`, `_workshop.scss` and `item-tile.scss` sits inside
   `prefers-reduced-motion: no-preference`, so the hover lift itself stays and only its transition
   goes. The button and games link transition in `_controls.scss` sits outside it, and a
