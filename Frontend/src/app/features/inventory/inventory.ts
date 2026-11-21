@@ -5,6 +5,7 @@ import { actionState } from '../../core/actions/action-state';
 import { InventoryItem } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { BenchFitPipe } from '../../pixel/inventory/bench-fit';
+import { DropOnce } from '../../pixel/inventory/drop-once';
 import { ShelfSort } from '../../pixel/inventory/shelf-sort';
 import { SortItemsPipe } from '../../pixel/inventory/sort-items';
 import { Workshop } from '../../pixel/inventory/workshop';
@@ -14,7 +15,7 @@ const POLL_MS = 5000;
 
 @Component({
   selector: 'app-inventory',
-  imports: [DecimalPipe, Workshop, ShelfSort, ItemTile, SortItemsPipe, BenchFitPipe],
+  imports: [DecimalPipe, Workshop, ShelfSort, ItemTile, SortItemsPipe, BenchFitPipe, DropOnce],
   templateUrl: './inventory.html',
 })
 export class Inventory {
