@@ -1,0 +1,13 @@
+<section class="hub" aria-label="Street">
+  <header class="hub-top">
+    <span class="wordmark">AuctionServer</span>
+    <span class="who">{{ email() }}</span>
+    <button type="button" class="out" (click)="loggedOut.emit()">Log out</button>
+  </header>
+  <app-street-scene (picked)="picked.emit($event)" [hud]="hud()" />
+  <nav class="sr" aria-label="Street buildings">
+    @for (link of links(); track link.id) {
+      <a [routerLink]="paths()[link.id]">{{ link.name }}</a>
+    }
+  </nav>
+</section>

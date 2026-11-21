@@ -1,0 +1,8 @@
+<app-hub-page
+  [links]="links"
+  [paths]="paths"
+  [hud]="hud()"
+  [email]="email()"
+  (picked)="open($event)"
+  (loggedOut)="logout()"
+/>

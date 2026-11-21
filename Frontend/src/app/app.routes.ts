@@ -1,8 +1,14 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { Session } from './core/auth/session';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'auctions' },
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: () => (inject(Session).isLoggedIn() ? 'hub' : 'welcome'),
+  },
   {
     path: 'auctions',
     loadComponent: () => import('./features/auctions/auction-list').then((m) => m.AuctionList),
@@ -96,6 +102,11 @@ export const routes: Routes = [
     path: 'profiles/:id',
     canActivate: [authGuard],
     loadComponent: () => import('./features/profiles/player-profile').then((m) => m.PlayerProfile),
+  },
+  {
+    path: 'hub',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/hub/hub').then((m) => m.Hub),
   },
   {
     path: 'welcome',

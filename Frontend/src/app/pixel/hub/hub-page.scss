@@ -1,0 +1,97 @@
+:host {
+  display: block;
+  position: absolute;
+  inset-inline: 0;
+  margin-top: -1rem;
+  min-height: 100dvh;
+  background: var(--m-night);
+  color-scheme: dark;
+}
+
+@media (width < 700px) {
+  :host {
+    --u: 2px;
+  }
+}
+
+.hub {
+  background: var(--m-night);
+  color: var(--m-text);
+  font: 16px/24px var(--m-pixel);
+  font-synthesis: none;
+}
+
+.hub-top {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 2) max(16px, calc(var(--u) * 8));
+  background: var(--m-top);
+  border-bottom: var(--u) solid var(--m-ink);
+}
+
+.wordmark {
+  margin-inline-end: auto;
+  font: 32px/32px var(--m-logo);
+  color: var(--m-taxi-hi);
+}
+
+.who {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--m-mute);
+}
+
+.out {
+  font: 16px/16px var(--m-pixel);
+  text-transform: uppercase;
+  color: var(--m-text);
+  background: var(--m-panel2);
+  border: var(--u) solid var(--m-ink);
+  padding: calc(var(--u) * 2) calc(var(--u) * 4);
+  box-shadow: inset 0 var(--u) 0 var(--m-panel-hi);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.out:hover {
+  color: var(--m-taxi-hi);
+}
+
+.out:focus-visible,
+nav.sr:focus-within a:focus-visible {
+  outline: var(--u) solid var(--m-taxi-hi);
+  outline-offset: var(--u);
+  color: var(--m-taxi-hi);
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+nav.sr:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 4);
+  padding: calc(var(--u) * 3) max(16px, calc(var(--u) * 8));
+  background: var(--m-road);
+}
+
+nav.sr:focus-within a {
+  color: var(--m-text);
+  text-transform: uppercase;
+  text-decoration: none;
+}
