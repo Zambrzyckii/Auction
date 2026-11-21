@@ -43,6 +43,22 @@ const easeOut = (k: number) => 1 - (1 - k) * (1 - k);
 const easeInOut = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
+function doorTarget(phase: WarYardState['phase']): number {
+  if (phase === 'open') return DOOR_CLOSED;
+  if (phase === 'bidding') return DOOR_PEEK;
+  return DOOR_OPEN;
+}
+
+function bobOffset(reduced: boolean | undefined, cycles: number): number {
+  if (reduced) return 0;
+  return Math.floor(cycles) % 2 === 0 ? 0 : -1;
+}
+
+function paddlePop(popAt: number, now: number, isLeader: boolean): number {
+  if (popAt >= 0 && now - popAt < 600) return easeOut(Math.min(1, (now - popAt) / 600));
+  return isLeader ? 1 : 0;
+}
+
 interface Tween {
   t0: number;
   dur: number;
@@ -323,8 +339,7 @@ export class WarYard {
     this.parts = [];
     this.tweens = [];
     this.raysA = 0;
-    const target =
-      state.phase === 'open' ? DOOR_CLOSED : state.phase === 'bidding' ? DOOR_PEEK : DOOR_OPEN;
+    const target = doorTarget(state.phase);
     if (!this.opts.reduced && this.bg && Math.abs(target - this.doorBottom) > 2) {
       const from = this.doorBottom;
       this.tweens.push({
@@ -656,11 +671,11 @@ export class WarYard {
     const rivals = Math.max(0, Math.min(4, this.state.players - 1));
     const xs = [108, 170, 196, 218];
     for (let i = 0; i < rivals; i++) {
-      const bob = this.opts.reduced ? 0 : Math.floor(this.now / 900 + i * 2.3) % 2 === 0 ? 0 : -1;
+      const bob = bobOffset(this.opts.reduced, this.now / 900 + i * 2.3);
       this.b.drawImage(this.figures[i % this.figures.length], g + xs[i], 94 + bob);
       if (i === 0) this.drawPaddle(g + xs[i] + 8, 94 + bob, 'rival');
     }
-    const youBob = this.opts.reduced ? 0 : Math.floor(this.now / 1100) % 2 === 0 ? 0 : -1;
+    const youBob = bobOffset(this.opts.reduced, this.now / 1100);
     this.b.drawImage(this.youFigure, g + 148, 96 + youBob);
     this.px(g + 148, 110, 9, 1, R.black[0]);
     this.drawPaddle(g + 157, 96 + youBob, 'you');
@@ -668,13 +683,7 @@ export class WarYard {
 
   private drawPaddle(x: number, figureY: number, who: 'you' | 'rival'): void {
     const isLeader = this.state.leader === who;
-    const popAt = this.paddleAt[who];
-    const pop =
-      popAt >= 0 && this.now - popAt < 600
-        ? easeOut(Math.min(1, (this.now - popAt) / 600))
-        : isLeader
-          ? 1
-          : 0;
+    const pop = paddlePop(this.paddleAt[who], this.now, isLeader);
     if (pop <= 0) return;
     const lift = Math.round(lerp(2, 12, pop));
     this.b.drawImage(this.paddle, x, figureY + 2 - lift);
