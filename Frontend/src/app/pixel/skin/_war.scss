@@ -1,0 +1,285 @@
+@use 'tools';
+
+@include tools.inside {
+  app-war-scene {
+    display: block;
+    min-width: 0;
+  }
+
+  app-war-scene .yard {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    overflow: hidden;
+    background: var(--m-ink);
+    border: var(--u) solid var(--m-ink);
+    box-shadow: inset 0 calc(var(--u) * -1) 0 var(--m-panel2);
+  }
+
+  app-war-scene canvas.scene {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  app-war-scene .call {
+    position: absolute;
+    z-index: 2;
+    translate: -50% -100%;
+    padding: var(--u) calc(var(--u) * 2);
+    font: 16px/16px var(--m-pixel);
+    color: var(--m-ink);
+    background: var(--m-taxi-hi);
+    border: var(--u) solid var(--m-ink);
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  app-war-scene .verdict {
+    position: absolute;
+    z-index: 2;
+    padding: calc(var(--u) * 2) calc(var(--u) * 4);
+    font: 40px/36px var(--m-head);
+    letter-spacing: 2px;
+    color: var(--m-taxi-hi);
+    background: var(--m-ink);
+    border: var(--u) solid var(--m-taxi);
+    box-shadow: 0 var(--u) 0 var(--m-ink);
+    rotate: -4deg;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  app-war-scene .verdict.on {
+    opacity: 1;
+  }
+
+  app-warehouse-detail:has(> app-war-scene[data-wide='true']) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 54%);
+    column-gap: calc(var(--u) * 8);
+    row-gap: 0;
+    align-items: start;
+
+    > :not(app-war-scene) {
+      grid-column: 1;
+    }
+
+    > app-war-scene {
+      grid-column: 2;
+      grid-row: 1 / span 24;
+      position: sticky;
+      top: calc(var(--u) * 4);
+    }
+
+    > :not(app-war-scene) ~ :not(app-war-scene) {
+      margin-top: calc(var(--u) * 4);
+    }
+  }
+
+  app-warehouse-detail p.stake {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: calc(var(--u) * 2);
+    font: 16px/24px var(--m-pixel);
+    color: var(--m-mute);
+    text-transform: uppercase;
+  }
+
+  app-warehouse-detail p.stake .current-price {
+    font: 48px/40px var(--m-head);
+    color: var(--m-taxi-hi);
+    font-variant-numeric: tabular-nums;
+  }
+
+  app-warehouse-detail .budget {
+    box-sizing: border-box;
+    max-width: calc(var(--u) * 140);
+    height: calc(var(--u) * 5);
+    border: var(--u) solid var(--m-ink);
+    background: var(--m-panel);
+    box-shadow: inset 0 var(--u) 0 var(--m-panel2);
+  }
+
+  app-warehouse-detail .budget span {
+    display: block;
+    height: 100%;
+    background: repeating-linear-gradient(90deg, var(--m-taxi) 0 9px, var(--m-taxi-hi) 9px 12px);
+  }
+
+  app-warehouse-detail p:is(.starts-in, .closes-in) {
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-mute);
+  }
+
+  app-warehouse-detail p.closes-in {
+    color: var(--m-taxi-hi);
+  }
+
+  app-warehouse-detail p.raises {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--u) * 3);
+  }
+
+  app-warehouse-detail p.raises button.raise {
+    min-width: calc(var(--u) * 32);
+    padding: calc(var(--u) * 3) calc(var(--u) * 4) calc(var(--u) * 4);
+    font: 27px/24px var(--m-head);
+    color: var(--m-ink);
+    background: var(--m-taxi);
+    border: var(--u) solid var(--m-ink);
+    box-shadow:
+      inset 0 var(--u) 0 var(--m-taxi-hi),
+      inset 0 calc(var(--u) * -2) 0 var(--m-taxi-lo);
+  }
+
+  app-warehouse-detail p.raises button.raise:is(:hover, :active) {
+    transform: none;
+  }
+
+  app-warehouse-detail p.raises button.raise:disabled {
+    color: var(--m-mute);
+    background: var(--m-panel2);
+    box-shadow: inset 0 var(--u) 0 var(--m-panel-hi);
+  }
+
+  app-warehouse-detail
+    p:is(
+      .leading,
+      .someone-leads,
+      .won,
+      .refund,
+      .pending-lock,
+      .raise-problem,
+      .war-notice,
+      .entry-rejected,
+      .join-problem,
+      .cancellation
+    ) {
+    justify-self: start;
+    padding: var(--u) calc(var(--u) * 2);
+    font: 16px/20px var(--m-pixel);
+    text-transform: uppercase;
+    border: var(--u) solid var(--m-ink);
+  }
+
+  app-warehouse-detail p:is(.leading, .won) {
+    color: var(--m-ink);
+    background: var(--m-taxi-hi);
+  }
+
+  app-warehouse-detail p:is(.someone-leads, .pending-lock, .war-notice, .refund) {
+    color: var(--m-text);
+    background: var(--m-panel2);
+  }
+
+  app-warehouse-detail p:is(.raise-problem, .entry-rejected, .join-problem, .cancellation) {
+    color: var(--m-text);
+    background: var(--m-ink);
+  }
+
+  app-warehouse-detail p:is(.entry-rejected, .cancellation) {
+    color: var(--m-red-hi);
+  }
+
+  app-warehouse-detail p.war-status {
+    font: 16px/16px var(--m-pixel);
+    text-transform: uppercase;
+    color: var(--m-mute);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    app-war-scene .call.on {
+      animation: war-call 1.1s steps(2, end) forwards;
+    }
+
+    app-war-scene .verdict.on {
+      animation: war-stamp 0.4s steps(3, end) backwards;
+    }
+
+    app-warehouse-detail .budget span {
+      transition: width 0.3s var(--m-ease);
+    }
+
+    app-warehouse-detail p.raises button.raise {
+      transition: translate 0.14s var(--m-ease);
+    }
+
+    app-warehouse-detail p.raises button.raise:not(:disabled):hover {
+      translate: 0 calc(var(--u) * -1);
+    }
+
+    app-warehouse-detail p.raises button.raise:not(:disabled):active {
+      translate: 0 var(--u);
+      box-shadow: inset 0 var(--u) 0 var(--m-taxi-lo);
+    }
+
+    app-warehouse-detail p:is(.won, .refund, .leading) {
+      animation: war-stamp 0.34s steps(3, end) backwards;
+    }
+
+    app-warehouse-detail > app-war-scene:not(.lit) ~ table.manifest tr:has(> td) {
+      visibility: hidden;
+    }
+
+    app-warehouse-detail > app-war-scene.lit ~ table.manifest tr:has(> td) {
+      animation: war-land 0.3s var(--m-ease) backwards;
+
+      @for $row from 2 through 13 {
+        &:nth-child(#{$row}) {
+          animation-delay: ($row - 2) * 170ms;
+        }
+      }
+
+      &:nth-child(n + 14) {
+        animation-delay: 11 * 170ms;
+      }
+    }
+
+    @keyframes war-call {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1.4);
+      }
+      30% {
+        transform: translateY(calc(var(--u) * -2)) scale(1);
+      }
+      80% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(calc(var(--u) * -4));
+      }
+    }
+
+    @keyframes war-stamp {
+      0% {
+        opacity: 0;
+        transform: scale(2);
+      }
+      60% {
+        opacity: 1;
+        transform: scale(0.95);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    @keyframes war-land {
+      from {
+        opacity: 0;
+        transform: translateY(calc(var(--u) * -4));
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
+}
