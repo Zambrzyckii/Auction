@@ -8,6 +8,8 @@ import { compose, CORE, CORE_X } from './city';
 import type { PersonSpec, CarKind } from './actors';
 import * as A from './actors';
 import { deviceScale, streetFit, widthScale } from './street-fit';
+import type { HudState } from './hud';
+import { hudKey, hudPaper } from './hud';
 
 type Mode = 'smooth' | 'snap';
 type PartKind = 'coin' | 'spark';
@@ -299,6 +301,7 @@ function talkPhase(since: number): { side: number; dots?: boolean; show?: boolea
   if (since < second + say) return { side: 1, show: true };
   return { side: -1 };
 }
+const HUD_COUNT_MS = 900;
 const LINE_H: Record<string, number> = { tiny: 7, micro: 7, jersey: 17 };
 
 class Scene {
@@ -341,6 +344,11 @@ class Scene {
   s!: number;
   ds!: number;
   skip = 0;
+  private hud: HudState | null = null;
+  private hudShown = { cash: 0, share: 0 };
+  private hudAnim: { t0: number; c0: number; c1: number; p0: number; p1: number } | null = null;
+  private hudCacheKey = '';
+  private hudImg: HTMLCanvasElement | null = null;
   private readonly observer: IntersectionObserver;
   private readonly abort = new AbortController();
   private destroyed = false;
@@ -442,6 +450,53 @@ class Scene {
     if (v < PAWN_AT) this.pawnOpenAt = -1;
     this.kick();
     this.draw();
+  }
+  setHud(hud: HudState | null) {
+    const prev = this.hud,
+      from = this.hudShown;
+    this.hud = hud;
+    this.hudAnim = null;
+    this.hudCacheKey = '';
+    this.hudImg = null;
+    if (hud) {
+      const p0 = prev && prev.level === hud.level ? from.share : 0;
+      if (prev && !this.reduced && (from.cash !== hud.cash || p0 !== hud.share))
+        this.hudAnim = {
+          t0: performance.now(),
+          c0: from.cash,
+          c1: hud.cash,
+          p0,
+          p1: hud.share,
+        };
+      else this.hudShown = { cash: hud.cash, share: hud.share };
+    }
+    this.kick();
+    this.draw();
+  }
+  hudState() {
+    return { ...this.hudShown, animating: this.hudAnim !== null };
+  }
+  drawHud() {
+    const hud = this.hud;
+    if (!hud) return;
+    const anim = this.hudAnim;
+    if (anim) {
+      const k = Math.min(1, (performance.now() - anim.t0) / HUD_COUNT_MS),
+        e = 1 - Math.pow(1 - k, 3);
+      this.hudShown = {
+        cash: Math.round(anim.c0 + (anim.c1 - anim.c0) * e),
+        share: anim.p0 + (anim.p1 - anim.p0) * e,
+      };
+      if (k >= 1) this.hudAnim = null;
+    }
+    const { cash, share } = this.hudShown,
+      bill = this.city.billboard,
+      key = hudKey(hud, cash, share);
+    if (key !== this.hudCacheKey || !this.hudImg) {
+      this.hudCacheKey = key;
+      this.hudImg = hudPaper(hud, cash, share, bill.w - 4).canvas();
+    }
+    this.blit(this.hudImg, bill.x + 3, bill.y + 6);
   }
 
   // ----- crowd: extra people and cars walk in from the edge and walk out again -----
@@ -1063,6 +1118,7 @@ class Scene {
       }
     }
     if (this.hover) this.blit(w.outline[this.hover.id], this.hover.x - 2, this.hover.y - 2);
+    this.drawHud();
     this.drawSpot();
     this.drawParts();
     this.drawPopups();

@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import type { Building, BuildingId } from './city';
+import type { HudState } from './hud';
 import type { SceneOptions } from './scene';
 import { bootStreet, browserDeps, SceneHandle } from './street-boot';
 
@@ -24,6 +25,7 @@ const RESIZE_DEBOUNCE_MS = 150;
 export class StreetScene {
   readonly picked = output<BuildingId>();
   readonly reserve = input(0);
+  readonly hud = input<HudState | null>(null);
 
   private readonly wrap = viewChild.required<ElementRef<HTMLElement>>('wrap');
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -43,6 +45,10 @@ export class StreetScene {
     effect(() => {
       this.reserve();
       untracked(() => this.relayout?.());
+    });
+    effect(() => {
+      const hud = this.hud();
+      untracked(() => this.handle?.setHud?.(hud));
     });
     inject(DestroyRef).onDestroy(() => this.stop());
   }
@@ -66,6 +72,7 @@ export class StreetScene {
       return;
     }
     this.handle = handle;
+    handle.setHud?.(untracked(this.hud));
     const center = () => {
       wrap.scrollLeft = Math.max(0, (canvas.offsetWidth - wrap.clientWidth) / 2);
     };

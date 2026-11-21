@@ -48,4 +48,19 @@ describe('StreetScene', () => {
 
     expect(fixture.componentInstance.reserve()).toBe(237);
   });
+
+  it('accepts a hud input without a scene', async () => {
+    vi.stubGlobal('matchMedia', vi.fn());
+    fixture.componentRef.setInput('hud', {
+      name: 'bob',
+      cash: 500,
+      level: 3,
+      share: 0.4,
+      nextAt: 16000,
+    });
+    expect(() => fixture.detectChanges()).not.toThrow();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.hud()?.cash).toBe(500);
+  });
 });

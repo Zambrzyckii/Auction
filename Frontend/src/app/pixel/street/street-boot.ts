@@ -1,9 +1,11 @@
 import type { SceneOptions } from './scene';
 import { fontsReady } from './fonts';
+import type { HudState } from './hud';
 
 export interface SceneHandle {
   resize(): void;
   destroy(): void;
+  setHud?(hud: HudState | null): void;
 }
 
 export type SceneFactory<O = SceneOptions, H extends SceneHandle = SceneHandle> = (
