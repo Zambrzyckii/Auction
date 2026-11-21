@@ -77,6 +77,10 @@
     }
   }
 
+  main:has(app-warehouse-detail > app-war-scene[data-wide='true']) {
+    overflow-x: clip;
+  }
+
   app-warehouse-detail p.stake {
     display: flex;
     flex-wrap: wrap;
