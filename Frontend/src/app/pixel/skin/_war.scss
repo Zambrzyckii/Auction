@@ -144,6 +144,10 @@
     transform: none;
   }
 
+  app-warehouse-detail p.raises button.raise:not(:disabled):active {
+    box-shadow: inset 0 var(--u) 0 var(--m-taxi-lo);
+  }
+
   app-warehouse-detail p.raises button.raise:disabled {
     color: var(--m-mute);
     background: var(--m-panel2);
@@ -189,6 +193,10 @@
     color: var(--m-red-hi);
   }
 
+  app-warehouse-detail p:is(.won, .refund) {
+    transform-origin: left center;
+  }
+
   app-warehouse-detail p.war-status {
     font: 16px/16px var(--m-pixel);
     text-transform: uppercase;
@@ -218,7 +226,6 @@
 
     app-warehouse-detail p.raises button.raise:not(:disabled):active {
       translate: 0 var(--u);
-      box-shadow: inset 0 var(--u) 0 var(--m-taxi-lo);
     }
 
     app-warehouse-detail p:is(.won, .refund, .leading) {
