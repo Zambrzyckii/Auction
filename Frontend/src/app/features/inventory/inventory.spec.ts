@@ -208,6 +208,30 @@ describe('Inventory', () => {
       expect(card('Odd One').classList.contains('picked')).toBe(false);
     });
 
+    it('keeps a checked card togglable even with a fit reason', () => {
+      flushItems(trio);
+      selectAll(['a', 'b', 'c', 'd']);
+      fixture.componentInstance.poller.refresh();
+      http
+        .expectOne('/api/inventory')
+        .flush([...trio, item({ publicItemId: 'd', name: 'Late Arrival' })]);
+      el().querySelector<HTMLButtonElement>('button.door')!.click();
+      fixture.detectChanges();
+      const card = [...el().querySelectorAll<HTMLElement>('li.card')].find((c) =>
+        c.textContent!.includes('Late Arrival'),
+      )!;
+      expect(card.querySelector('.fit')?.textContent).toContain('Belt is full');
+      expect(card.querySelector<HTMLInputElement>('input[type="checkbox"]')!.disabled).toBe(false);
+    });
+
+    it('posts nothing while the belt is not ready', () => {
+      flushItems(trio);
+      selectAll(['a', 'b']);
+      fixture.componentInstance.craft();
+      http.expectNone('/api/inventory/craft');
+      expect(fixture.componentInstance.crafting.pending()).toBe(false);
+    });
+
     it('disables the checkboxes of cards that do not fit the belt', () => {
       flushItems([
         trio[0],

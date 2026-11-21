@@ -45,6 +45,7 @@ export class Inventory {
   }
 
   craft(): void {
+    if (!this.canCraft()) return;
     this.crafting.run(
       this.http.post<{ publicItemId: string }>('/api/inventory/craft', {
         ingredientsIds: this.selectedItems().map((i) => i.publicItemId),
