@@ -14,6 +14,7 @@ describe('stripWhere', () => {
   it('groups the personal pages under the room', () => {
     expect(stripWhere('/inventory')).toBe('Your room');
     expect(stripWhere('/wallet')).toBe('Your room');
+    expect(stripWhere('/profile')).toBe('Your room');
     expect(stripWhere('/profiles/abc')).toBe('Your room');
   });
 

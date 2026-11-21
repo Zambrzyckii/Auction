@@ -9,6 +9,7 @@ const SEGMENT_BUILDINGS: ReadonlyMap<string, BuildingId> = new Map([
   ['warehouses', 'storage'],
   ['inventory', 'room'],
   ['wallet', 'room'],
+  ['profile', 'room'],
   ['profiles', 'room'],
   ['transfers', 'bank'],
   ['bank', 'bank'],
