@@ -12,6 +12,10 @@ services:
     environment:
       Observability__Enabled: "false"
 
+  pgbackup:
+    healthcheck:
+      interval: 15s
+
   otel-collector:
     profiles: [observability]
 
