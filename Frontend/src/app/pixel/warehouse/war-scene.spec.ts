@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { WarScene } from './war-scene';
+import { WarScene, warYardDeps } from './war-scene';
 import type { WarLot } from './war-yard';
 
 @Component({
@@ -130,5 +130,12 @@ describe('WarScene', () => {
       host.manifest.set([{ name: 'Old Radio', rarity: 'Common' }]);
       fixture.detectChanges();
     }).not.toThrow();
+  });
+
+  it('warYardDeps refuses to run without ResizeObserver', () => {
+    vi.stubGlobal('ResizeObserver', undefined);
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    vi.stubGlobal('IntersectionObserver', class {});
+    expect(warYardDeps().canRun(document.createElement('canvas'))).toBe(false);
   });
 });

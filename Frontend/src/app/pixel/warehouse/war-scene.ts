@@ -87,6 +87,7 @@ export class WarScene {
   private snap: WarSnap | null = null;
   private applied = '';
   private visible = true;
+  private settlePending = false;
   private alive = true;
   private watchdog: ReturnType<typeof setTimeout> | undefined;
   private resizeObserver: ResizeObserver | null = null;
@@ -139,7 +140,9 @@ export class WarScene {
     }
     if (move?.kind === 'settle') {
       scene.settle(move.won, state.items ?? []);
-      this.watchdog = setTimeout(() => this.lit.set(true), LIT_WATCHDOG_MS);
+      this.settlePending = true;
+      if (this.visible) this.watchdog = setTimeout(() => this.open(), LIT_WATCHDOG_MS);
+      else this.open();
       return;
     }
     scene.set(state);
@@ -188,6 +191,7 @@ export class WarScene {
       const entry = entries[entries.length - 1];
       if (!entry) return;
       this.visible = entry.isIntersecting;
+      if (!this.visible && this.settlePending) this.open();
       this.syncLoop(handle);
     });
     this.intersectionObserver.observe(this.canvas().nativeElement);
@@ -198,6 +202,7 @@ export class WarScene {
 
   private open(): void {
     clearTimeout(this.watchdog);
+    this.settlePending = false;
     this.lit.set(true);
   }
 
