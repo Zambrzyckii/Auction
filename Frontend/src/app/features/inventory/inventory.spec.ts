@@ -193,6 +193,28 @@ describe('Inventory', () => {
       req.flush({ publicItemId: 'new' }, { status: 201, statusText: 'Created' });
     });
 
+    it('disables the checkboxes of cards that do not fit the belt', () => {
+      flushItems([
+        trio[0],
+        trio[1],
+        item({ publicItemId: 'r', rarity: 'Rare', name: 'Odd One' }),
+        item({ publicItemId: 'k', status: 'LockedForAuction', name: 'Locked One' }),
+      ]);
+      el().querySelector<HTMLButtonElement>('button.door')!.click();
+      fixture.detectChanges();
+      const box = (name: string) =>
+        [...el().querySelectorAll<HTMLElement>('li.card')]
+          .find((c) => c.textContent!.includes(name))!
+          .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+      expect(box('Locked One').disabled).toBe(true);
+      expect(box('Odd One').disabled).toBe(false);
+
+      fixture.componentInstance.toggle('a');
+      fixture.detectChanges();
+      expect(box('Odd One').disabled).toBe(true);
+      expect(box('Rusty Sword').disabled).toBe(false);
+    });
+
     it('drops a sold item from the selection', () => {
       flushItems(trio);
       selectAll(['a', 'b', 'c']);
