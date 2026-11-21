@@ -282,7 +282,7 @@ export class WarYard {
     this.figures = JACKETS.map((j) => figure(j, false).canvas());
   }
 
-  resize(cssWidth: number, maxHeight = Infinity): void {
+  resize(cssWidth = this.cw * this.scale, maxHeight = Infinity): void {
     // Close framing: the camera needs only the easel-to-crowd span (182 art px),
     // so the scale climbs much earlier than the full 240 px composition would allow.
     let scale = Math.max(1, Math.min(5, Math.floor(cssWidth / 182), Math.floor(maxHeight / H)));

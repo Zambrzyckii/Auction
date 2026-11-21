@@ -1,0 +1,11 @@
+<div class="yard" #yard>
+  <canvas class="scene" #canvas aria-hidden="true"></canvas>
+  <span class="call" #call aria-hidden="true">
+    @if (shout(); as delta) {
+      +{{ delta | number }}!
+    }
+  </span>
+  <span class="verdict" #verdict aria-hidden="true" [class.on]="verdictText() !== ''">{{
+    verdictText()
+  }}</span>
+</div>
