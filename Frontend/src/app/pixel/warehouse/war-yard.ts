@@ -4,14 +4,20 @@ import { INK, R, Sprite, box, text } from '../street/pix';
 import { iconFor } from '../items/item-icon';
 import { rarityOf } from '../items/rarity';
 
-export interface WarLot { name: string; rarity: string }
+export interface WarLot {
+  name: string;
+  rarity: string;
+}
 export interface WarYardState {
   phase: 'open' | 'bidding' | 'won' | 'lost';
   players: number;
   leader: 'you' | 'rival' | null;
   items?: readonly WarLot[];
 }
-export interface WarYardOpts { reduced?: boolean; onDoorOpen?: () => void }
+export interface WarYardOpts {
+  reduced?: boolean;
+  onDoorOpen?: () => void;
+}
 
 const G = 240;
 const H = 112;
@@ -24,14 +30,36 @@ const DOOR_CLOSED = OB;
 const DOOR_PEEK = 58;
 const DOOR_OPEN = OY + 4;
 const JACKETS = [R.mauve, R.rust, R.olive, R.plum];
-const GLINTS: readonly [number, number][] = [[101, 74], [116, 70], [131, 76], [147, 72], [122, 64], [139, 79]];
+const GLINTS: readonly [number, number][] = [
+  [101, 74],
+  [116, 70],
+  [131, 76],
+  [147, 72],
+  [122, 64],
+  [139, 79],
+];
 
 const easeOut = (k: number) => 1 - (1 - k) * (1 - k);
 const easeInOut = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
 
-interface Tween { t0: number; dur: number; fn: (k: number) => void; done?: () => void }
-interface Part { x: number; y: number; vx: number; vy: number; g: number; life: number; age: number; col: string; kind: 'dust' | 'confetti' }
+interface Tween {
+  t0: number;
+  dur: number;
+  fn: (k: number) => void;
+  done?: () => void;
+}
+interface Part {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  g: number;
+  life: number;
+  age: number;
+  col: string;
+  kind: 'dust' | 'confetti';
+}
 
 const art = new Map<string, HTMLCanvasElement>();
 function spriteOf(name: string, rarity: string): HTMLCanvasElement {
@@ -93,7 +121,9 @@ function signSprite(lines: readonly string[]): Sprite {
   p.vline(4, h - 6, 6, R.wood[1]);
   p.vline(w - 7, h - 8, 8, R.wood[0]);
   lines.forEach((line, i) => {
-    text(p, line, 5 + (i === 0 ? 4 : 0), 5 + i * 8, i === 0 ? R.red[2] : R.black[1], 'tiny', { alignTop: true });
+    text(p, line, 5 + (i === 0 ? 4 : 0), 5 + i * 8, i === 0 ? R.red[2] : R.black[1], 'tiny', {
+      alignTop: true,
+    });
   });
   p.outline();
   return p;
@@ -242,7 +272,10 @@ export class WarYard {
   private litT0 = 0;
   private sway = 0;
 
-  constructor(private readonly cv: HTMLCanvasElement, private readonly opts: WarYardOpts = {}) {
+  constructor(
+    private readonly cv: HTMLCanvasElement,
+    private readonly opts: WarYardOpts = {},
+  ) {
     this.ctx = cv.getContext('2d')!;
     this.b = this.buf.getContext('2d')!;
     this.doorCv = this.door.canvas();
@@ -270,7 +303,9 @@ export class WarYard {
     this.draw();
   }
 
-  get size() { return { scale: this.scale, width: this.cw * this.scale, height: H * this.scale }; }
+  get size() {
+    return { scale: this.scale, width: this.cw * this.scale, height: H * this.scale };
+  }
 
   anchor(what: 'door' | 'barker' | 'crowd') {
     const s = this.scale;
@@ -288,13 +323,16 @@ export class WarYard {
     this.parts = [];
     this.tweens = [];
     this.raysA = 0;
-    const target = state.phase === 'open' ? DOOR_CLOSED : state.phase === 'bidding' ? DOOR_PEEK : DOOR_OPEN;
+    const target =
+      state.phase === 'open' ? DOOR_CLOSED : state.phase === 'bidding' ? DOOR_PEEK : DOOR_OPEN;
     if (!this.opts.reduced && this.bg && Math.abs(target - this.doorBottom) > 2) {
       const from = this.doorBottom;
       this.tweens.push({
         t0: this.now,
         dur: 320,
-        fn: (k) => { this.doorBottom = Math.round(lerp(from, target, easeOut(k))); },
+        fn: (k) => {
+          this.doorBottom = Math.round(lerp(from, target, easeOut(k)));
+        },
       });
       this.resume();
       return;
@@ -306,7 +344,10 @@ export class WarYard {
   raise(who: 'you' | 'rival'): void {
     this.state.leader = who;
     this.shoutUntil = this.now + 700;
-    if (this.opts.reduced) { this.draw(); return; }
+    if (this.opts.reduced) {
+      this.draw();
+      return;
+    }
     this.paddleAt[who] = this.now;
     this.resume();
   }
@@ -331,7 +372,9 @@ export class WarYard {
     this.tweens.push({
       t0: this.now,
       dur: 1100,
-      fn: (k) => { this.doorBottom = Math.round(lerp(from, DOOR_OPEN, easeInOut(k))); },
+      fn: (k) => {
+        this.doorBottom = Math.round(lerp(from, DOOR_OPEN, easeInOut(k)));
+      },
       done: () => {
         if (won) this.flickerT0 = this.now;
         this.tweens.push({
@@ -374,7 +417,10 @@ export class WarYard {
   }
 
   resume(): void {
-    if (!this.live || this.running || this.opts.reduced) { this.draw(); return; }
+    if (!this.live || this.running || this.opts.reduced) {
+      this.draw();
+      return;
+    }
     this.running = true;
     let last = performance.now();
     const step = (t: number) => {
@@ -419,7 +465,13 @@ export class WarYard {
   private paintBg(): HTMLCanvasElement {
     const s = new Sprite(this.cw, H);
     for (let y = 0; y < 10; y++) s.hline(0, y, this.cw, R.black[0]);
-    for (const [sx, sy] of [[18, 2], [55, 5], [205, 3], [231, 6], [148, 1]] as const)
+    for (const [sx, sy] of [
+      [18, 2],
+      [55, 5],
+      [205, 3],
+      [231, 6],
+      [148, 1],
+    ] as const)
       if (sx < this.cw) s.set(sx, sy, R.white[2]);
     s.hline(0, 10, this.cw, R.black[3]);
     s.hline(0, 11, this.cw, R.concrete[2]);
@@ -440,11 +492,17 @@ export class WarYard {
       unitFrame(s, x, 54);
       s.stamp(side, x, OY);
       // A stencil sliced by the camera edge reads as a glitch, so clipped ones stay off.
-      if (n >= 0 && x + 2 >= 0 && x + 22 <= this.cw) stencil(s, 'U-' + String(n).padStart(2, '0'), x + 2, 17);
+      if (n >= 0 && x + 2 >= 0 && x + 22 <= this.cw)
+        stencil(s, 'U-' + String(n).padStart(2, '0'), x + 2, 17);
     };
     for (let k = 0; g + 66 - k * 86 >= 0; k++) unit(g + 12 - k * 86, 6 - k);
     for (let k = 0; g + 182 + k * 86 <= this.cw; k++) unit(g + 182 + k * 86, 8 + k);
-    for (const [rx, rh] of [[190, 8], [203, 5], [226, 11]] as const) s.vline(g + rx, OY + 1, rh, R.rust[1]);
+    for (const [rx, rh] of [
+      [190, 8],
+      [203, 5],
+      [226, 11],
+    ] as const)
+      s.vline(g + rx, OY + 1, rh, R.rust[1]);
     unitFrame(s, g + OX, OW);
     stencil(s, 'U-07', g + OX + 3, 17);
     box(s, g + OX + OW - 13, 17, 10, 6, R.taxi);
@@ -475,11 +533,14 @@ export class WarYard {
     this.px(g + OX, this.doorBottom, OW, OB - this.doorBottom, lit ? R.tan[0] : R.black[0]);
     if (lit)
       for (let j = this.doorBottom + (3 - (this.doorBottom % 3)); j < OB; j += 3)
-        for (let i = (j % 2 === 0 ? 1 : 3); i < OW; i += 4)
-          this.px(g + OX + i, j, 1, 1, R.tan[1]);
+        for (let i = j % 2 === 0 ? 1 : 3; i < OW; i += 4) this.px(g + OX + i, j, 1, 1, R.tan[1]);
     this.px(g + OX + 6, OB - 3, OW - 12, 1, lit ? R.wood[1] : R.black[2]);
     const items = (this.state.items ?? []).slice(0, 3);
-    const spots = [[3, OB - 14], [23, OB - 14], [43, OB - 14]] as const;
+    const spots = [
+      [3, OB - 14],
+      [23, OB - 14],
+      [43, OB - 14],
+    ] as const;
     spots.forEach(([cx, cy], i) => {
       this.b.drawImage(lit ? this.crate : this.crateShadow, g + OX + cx, cy);
       const it = items[i];
@@ -546,7 +607,8 @@ export class WarYard {
       for (let d = 12; d < len; d += 2) {
         const x = Math.round(cx + Math.cos(a) * d);
         const y = Math.round(cy + Math.sin(a) * d * 0.55);
-        if (y > 8 && y < OB + 6 && (x + y + r) % 2 === 0) this.px(x, y, 1, 1, r % 2 ? R.lit[2] : R.taxi[3]);
+        if (y > 8 && y < OB + 6 && (x + y + r) % 2 === 0)
+          this.px(x, y, 1, 1, r % 2 ? R.lit[2] : R.taxi[3]);
       }
     }
   }
@@ -569,7 +631,8 @@ export class WarYard {
     }
     for (let j = 0; j < 8; j++) {
       const w = 26 - Math.abs(j - 4) * 4;
-      for (let i = -w; i <= w; i += 2) this.px(lx + i + (j % 2), 88 + j, 1, 1, j < 6 ? R.lit[1] : R.lit[0]);
+      for (let i = -w; i <= w; i += 2)
+        this.px(lx + i + (j % 2), 88 + j, 1, 1, j < 6 ? R.lit[1] : R.lit[0]);
     }
     this.px(lx - 2, 14, 4, 3, R.black[1]);
     this.px(lx - 5, 17, 10, 2, R.steel[1]);
@@ -606,7 +669,12 @@ export class WarYard {
   private drawPaddle(x: number, figureY: number, who: 'you' | 'rival'): void {
     const isLeader = this.state.leader === who;
     const popAt = this.paddleAt[who];
-    const pop = popAt >= 0 && this.now - popAt < 600 ? easeOut(Math.min(1, (this.now - popAt) / 600)) : isLeader ? 1 : 0;
+    const pop =
+      popAt >= 0 && this.now - popAt < 600
+        ? easeOut(Math.min(1, (this.now - popAt) / 600))
+        : isLeader
+          ? 1
+          : 0;
     if (pop <= 0) return;
     const lift = Math.round(lerp(2, 12, pop));
     this.b.drawImage(this.paddle, x, figureY + 2 - lift);

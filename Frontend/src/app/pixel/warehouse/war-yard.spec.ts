@@ -157,6 +157,7 @@ describe('WarYard', () => {
         yard.resume();
         step(200);
       }).not.toThrow();
+      expect(doorRow()).toBe(4);
     });
 
     it('stops drawing after destroy', () => {
