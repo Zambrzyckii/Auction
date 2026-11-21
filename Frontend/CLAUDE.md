@@ -95,9 +95,10 @@ rules bind every change it makes.
     template with the leading row.
   - `warehouse-detail.html` (the manifest) and `stock-section.html` have `td.lot`, `span.lot-row`
     and `.rarity`.
-  - `warehouse-detail.html` also has four war scene additions, styled by `_war.scss`: the
-    `<app-war-scene>` element, `p.stake` on the current price paragraph, `div.budget` (a progress bar
-    with one inner `span`) and `p.heads` on the players paragraph. The skin keys on the component's
+  - `warehouse-detail.html` also has four war scene additions: the `<app-war-scene>` element,
+    `p.stake` on the current price paragraph, `div.budget` (a progress bar with one inner `span`)
+    and `p.heads` on the players paragraph. `_war.scss` styles the scene, `p.stake` and
+    `div.budget`, and `p.heads` is an unstyled hook. The skin keys on the component's
     host. It gets the class `lit` when the door reveal of a settlement fires, which is at once under
     reduced motion. It gets it at once too when the page loads on a settled war or when no scene runs,
     and at the latest 4000 ms after a settlement the scene plays. A war that is not settled stays unlit.
