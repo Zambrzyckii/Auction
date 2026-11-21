@@ -10,6 +10,8 @@ import type { WarLot } from './war-yard';
     [players]="players()"
     [isLeader]="isLeader()"
     [currentPrice]="currentPrice()"
+    [estimateMin]="estimateMin()"
+    [estimateMax]="estimateMax()"
     [manifest]="manifest()"
   />`,
 })
@@ -18,6 +20,8 @@ class Host {
   readonly players = signal(1);
   readonly isLeader = signal(false);
   readonly currentPrice = signal(0);
+  readonly estimateMin = signal(150);
+  readonly estimateMax = signal(220);
   readonly manifest = signal<readonly WarLot[] | null>(null);
 }
 

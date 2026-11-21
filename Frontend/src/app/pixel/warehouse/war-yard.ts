@@ -16,6 +16,8 @@ export interface WarYardState {
 }
 export interface WarYardOpts {
   reduced?: boolean;
+  estimateMin?: number;
+  estimateMax?: number;
   onDoorOpen?: () => void;
 }
 
@@ -124,6 +126,13 @@ function unitFrame(s: Sprite, x: number, w: number) {
   s.hline(x, 23, w, R.steel[0]);
   s.vline(x - 1, 16, OB - 16, INK);
   s.vline(x + w, 16, OB - 16, INK);
+}
+
+export function easelLines(min?: number, max?: number): readonly string[] {
+  if (min === undefined || max === undefined) {
+    return ['EST', '4200', '-9800'];
+  }
+  return ['EST', String(min), `-${max}`];
 }
 
 function signSprite(lines: readonly string[]): Sprite {
@@ -265,7 +274,7 @@ export class WarYard {
   private readonly barkerUp = barkerSprite(true).canvas();
   private readonly barkerDown = barkerSprite(false).canvas();
   private readonly paddle = paddleSprite().canvas();
-  private readonly easel = signSprite(['EST', '4200', '-9800']).canvas();
+  private readonly easel: HTMLCanvasElement;
   private figures: HTMLCanvasElement[] = [];
   private youFigure = figure(R.denim, true).canvas();
   private scale = 1;
@@ -295,6 +304,7 @@ export class WarYard {
     this.ctx = cv.getContext('2d')!;
     this.b = this.buf.getContext('2d')!;
     this.doorCv = this.door.canvas();
+    this.easel = signSprite(easelLines(opts.estimateMin, opts.estimateMax)).canvas();
     this.figures = JACKETS.map((j) => figure(j, false).canvas());
   }
 

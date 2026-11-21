@@ -178,4 +178,10 @@ describe('WarYard', () => {
     expect(doorRow()).toBe(4);
     expect(queued).toHaveLength(0);
   });
+
+  it('builds the easel lines from the real estimates', async () => {
+    const { easelLines } = await import('./war-yard');
+    expect(easelLines(150, 220)).toEqual(['EST', '150', '-220']);
+    expect(easelLines()).toEqual(['EST', '4200', '-9800']);
+  });
 });

@@ -68,6 +68,8 @@ export class WarScene {
   readonly players = input.required<number>();
   readonly isLeader = input.required<boolean>();
   readonly currentPrice = input.required<number>();
+  readonly estimateMin = input.required<number>();
+  readonly estimateMax = input.required<number>();
   readonly manifest = input<readonly WarLot[] | null>(null);
 
   protected readonly lit = signal(false);
@@ -172,6 +174,8 @@ export class WarScene {
     this.wide.set(isWide());
     const opts: WarYardOpts = {
       reduced: prefersReducedMotion(),
+      estimateMin: this.estimateMin(),
+      estimateMax: this.estimateMax(),
       onDoorOpen: () => this.open(),
     };
     const handle = await bootStreet(
