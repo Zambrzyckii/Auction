@@ -37,6 +37,7 @@
           @let fit = bench.open() ? (item | benchFit: bench.belt()) : null;
           <li
             class="card"
+            appDropOnce
             [class.fresh]="bench.fresh() === item.publicItemId"
             [attr.data-rarity]="item.rarity"
             [attr.data-status]="item.status"

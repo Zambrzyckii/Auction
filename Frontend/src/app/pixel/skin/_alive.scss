@@ -32,7 +32,7 @@
       animation: x-neon 7s steps(1, end) infinite;
     }
 
-    :is(ul.shelf > li, main table tr:has(> td), app-wallet tr) {
+    :is(ul.shelf > li:not(.dropped), main table tr:has(> td), app-wallet tr) {
       animation: x-drop 0.28s var(--m-ease) backwards;
     }
 
