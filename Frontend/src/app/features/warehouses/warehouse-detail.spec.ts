@@ -409,4 +409,16 @@ describe('WarehouseDetail', () => {
     fixture.detectChanges();
     expect((el().querySelector('button.join') as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('renders the war scene once the war loads', () => {
+    expect(el().querySelector('app-war-scene')).toBeNull();
+    flushAll(war({}));
+    expect(el().querySelectorAll('app-war-scene').length).toBe(1);
+  });
+
+  it('grows the budget bar with the current price', () => {
+    flushAll(war({ currentPrice: 125, entryFee: 500 }));
+    const bar = el().querySelector('div.budget span') as HTMLElement;
+    expect(bar.getAttribute('style')).toContain('width: 25%');
+  });
 });

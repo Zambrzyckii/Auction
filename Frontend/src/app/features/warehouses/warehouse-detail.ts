@@ -17,6 +17,7 @@ import { startPolling } from '../../core/polling/poll';
 import { idMatches, refreshOn } from '../../core/push/refresh-on';
 import { clock } from '../../core/time/clock';
 import { ItemTile } from '../../pixel/items/item-tile';
+import { WarScene } from '../../pixel/warehouse/war-scene';
 import {
   canLeave,
   entryRejected,
@@ -29,7 +30,7 @@ const WALLET_POLL_MS = 5000;
 
 @Component({
   selector: 'app-warehouse-detail',
-  imports: [DecimalPipe, FormField, ItemTile, RouterLink],
+  imports: [DecimalPipe, FormField, ItemTile, RouterLink, WarScene],
   templateUrl: './warehouse-detail.html',
 })
 export class WarehouseDetail {

@@ -1,16 +1,30 @@
 <p><a routerLink="/warehouses">Back to the wars</a></p>
 @if (warPoller.value(); as war) {
+  <app-war-scene
+    [status]="war.status"
+    [players]="war.players"
+    [isLeader]="war.isLeader"
+    [currentPrice]="war.currentPrice"
+    [manifest]="war.manifest"
+  />
   <h2>{{ war.tier }} warehouse war</h2>
   <p class="war-status">Status: {{ war.status }}</p>
   <p>
     Estimated value: {{ war.estimateMin | number }}–{{ war.estimateMax | number }} across
     {{ war.itemCount }} items
   </p>
-  <p>
+  <p class="stake">
     Current price: <span class="current-price">{{ war.currentPrice | number }}</span
     >, budget: {{ war.entryFee | number }}
   </p>
-  <p>{{ war.players }}/{{ war.maxPlayers }} players including unconfirmed</p>
+  <div
+    class="budget"
+    role="img"
+    aria-label="Budget used {{ war.currentPrice | number }} of {{ war.entryFee | number }}"
+  >
+    <span [style.width.%]="(100 * war.currentPrice) / war.entryFee"></span>
+  </div>
+  <p class="heads">{{ war.players }}/{{ war.maxPlayers }} players including unconfirmed</p>
 
   @if (war.status === 'Open' && war.biddingStartsOn !== null) {
     <p class="starts-in">Bidding starts in {{ timeLeft(war.biddingStartsOn, now()) }}</p>
