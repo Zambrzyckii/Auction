@@ -44,3 +44,4 @@ Bilingual EN/PL, 1:1 structure: [docs/en](docs/en) / [docs/pl](docs/pl). Start w
 - [Decisions](docs/en/DECISIONS.md) and [ADRs](docs/en/adr) - why it is built this way
 - [State](docs/en/STATE.md) and [Changelog](docs/en/CHANGELOG.md) - where the project stands and how it got here
 - [Frontend](docs/en/frontend.md), [Bots](docs/en/bots.md), [Infrastructure](docs/en/infrastructure.md) - the frontend client, the bot fleet and the platform
+- [Deployment](docs/en/deployment.md) - continuous deployment of every green `main` to the production host

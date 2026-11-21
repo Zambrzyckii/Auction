@@ -51,3 +51,10 @@ Load scenarios for the `k6` service behind the `loadtest` Compose profile. `brow
 `bid-storm.js` and `mixed.js` target the api directly, `gateway-limits.js` targets the gateway
 (`docker compose run --rm -e BASE_URL=http://gateway k6 run gateway-limits.js`). Raw results go to
 the ignored `results/`, the recorded numbers to `docs/en/performance.md`.
+
+## deploy/
+
+The forced command of the production host. `deploy` is installed as `/usr/local/bin/deploy`, owned by
+root, and runs whenever the CI deploy key connects. It accepts only `<app> <sha>`, checks out that
+commit in `/srv/<app>/repo`, starts the stack with `compose.production.yaml` and rolls back to the
+previous commit on failure. The whole flow is described in `docs/en/deployment.md`.

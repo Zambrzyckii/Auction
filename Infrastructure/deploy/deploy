@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+read -r app sha extra <<<"${SSH_ORIGINAL_COMMAND:-}"
+[[ -z $extra && $app =~ ^[a-z][a-z0-9-]*$ && $sha =~ ^[0-9a-f]{40}$ && -d /srv/$app/repo ]] || {
+  echo "usage: <app> <40-char commit sha>" >&2
+  exit 2
+}
+
+exec 9>"/srv/$app/.lock"
+flock -n 9 || { echo "another deployment of $app is running" >&2; exit 3; }
+
+compose() { IMAGE_TAG=$1 docker compose -p "$app" -f compose.yaml -f compose.production.yaml "${@:2}"; }
+
+cd "/srv/$app/repo"
+previous=$(git rev-parse HEAD)
+git fetch --prune origin
+git checkout --detach "$sha"
+
+if ! compose "$sha" pull || ! compose "$sha" up -d --wait --wait-timeout 300 --remove-orphans; then
+  echo "deployment of $sha failed, rolling back to $previous" >&2
+  git checkout --detach "$previous"
+  compose "$previous" up -d --wait --wait-timeout 300 --remove-orphans
+  exit 1
+fi
+echo "deployed $app $sha"

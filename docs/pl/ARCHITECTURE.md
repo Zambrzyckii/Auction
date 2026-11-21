@@ -296,7 +296,7 @@ Diagram pokazuje workflow GitHub Actions zdefiniowany w [`.github/workflows/ci.y
 - `build` uruchamia `dotnet build Backend/AuctionServer.slnx`; `unit-tests`, `integration-tests` i `image` zależą od niego przez `needs`.
 - `unit-tests` uruchamia `AuctionServer.Modules.Auctions.Tests` z `--filter "FullyQualifiedName!~IntegrationTests"`, a `integration-tests` uruchamia testy integracyjne Auctions, a potem całe projekty testowe Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure i Api.
 - `gateway-config` uruchamia `nginx -t` na `Infrastructure/gateway/nginx.conf` w przypiętym obrazie `nginx:1.28.3-alpine`, a `compose-config` generuje pliki sekretów i waliduje `compose.yaml` z korzenia przez `docker compose config -q`; oba działają niezależnie od `build`.
-- `image` buduje [`Backend/Dockerfile`](../../Backend/Dockerfile) przez buildx na cache warstw `gha` i tylko przy pushu do `main` publikuje `ghcr.io/zambrzyckii/auction` z tagami `latest` i sha commita; pull request buduje obraz bez publikacji. Nie ma stage'u deploy.
+- `image` buduje [`Backend/Dockerfile`](../../Backend/Dockerfile) przez buildx na cache warstw `gha` i tylko przy pushu do `main` publikuje `ghcr.io/zambrzyckii/auction` z tagami `latest` i sha commita; pull request buduje obraz bez publikacji. `deploy` wdraża potem commit na host produkcyjny przez SSH, opis w [deployment.md](deployment.md).
 
 ## Stosowane wzorce projektowe
 

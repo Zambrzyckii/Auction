@@ -2,7 +2,7 @@
 
 > English version. Polish 1:1 counterpart: [../pl/STATE.md](../pl/STATE.md)
 >
-> Last updated: 2026-11-20
+> Last updated: 2026-11-21
 
 ## Phase
 
@@ -12,7 +12,7 @@
 
 - `Backend/`: the host `AuctionServer.Api`, the modules Identity, Wallets, Auctions, Inventory, Warehouses, Banking, Pawnshop, Casino and Profiles (consume-only, no outbox) the contracts project `Shared.Integration` and the shared outbox, inbox and delivery implementation `Shared.Infrastructure`; 59 endpoints (`GET /api/push` included), 38 integration events, 40 tables, eight `OutboxProcessor<TContext>` instances, one `DeliveryProcessor`, `AuctionCloser`, `WarehouseKeeper`, `BankKeeper`, `PawnshopKeeper` and `CasinoKeeper`.
 - Tests: eleven xUnit projects (one per module, the host project `AuctionServer.Api.Tests` and `AuctionServer.Shared.Infrastructure.Tests`), 1059 test methods, with the saga tests in `Api.Tests` the only ones crossing a module boundary.
-- CI: the GitHub Actions workflow `.github/workflows/ci.yml` with `build`, `unit-tests`, `integration-tests`, `gateway-config` (`nginx -t` on the gateway configuration), `compose-config` (`docker compose config -q` on generated secrets), `frontend` (`npm ci`, `ng build` and Vitest on `Frontend/`), `bots` (`ruff` and `pytest` on Python 3.14 in `Bots/`) and `image` (buildx to GHCR, pushed only from `main`).
+- CI: the GitHub Actions workflow `.github/workflows/ci.yml` with `build`, `unit-tests`, `integration-tests`, `gateway-config` (`nginx -t` on the gateway configuration), `compose-config` (`docker compose config -q` on generated secrets), `frontend` (`npm ci`, `ng build` and Vitest on `Frontend/`), `bots` (`ruff` and `pytest` on Python 3.14 in `Bots/`), `image` (buildx to GHCR, pushed only from `main`) and `deploy` (since 2026-11-21 every green `main` to the production host, see [deployment.md](deployment.md)).
 - Documentation: `docs/en` and `docs/pl` with this set of pages and 20 rendered diagrams; root `README.md` and `README.pl.md`.
 - `Backend/Dockerfile` and a root `compose.yaml` (the nginx gateway in front of the API + PostgreSQL behind PgBouncer + Redis for the read cache + RabbitMQ as the event transport + SeaweedFS for avatars + OpenBao with its one-shot `vault-init` seeder for the secrets, plus `pgbackup` dumping the database daily and the telemetry stack of OTel Collector, Prometheus (with the outbox alert rules), Tempo and Grafana, split into `edge` and `data` networks with frozen resource limits, migrations applied at startup behind `Database:MigrateOnStartup`, the api non-root on a read-only filesystem); k6 load scenarios behind the `loadtest` profile, configuration under `Infrastructure/`, secret files generated once by `Infrastructure/secrets/gen-secrets.sh`. `compose.debug.yaml` additionally publishes the API on `127.0.0.1:8081` and the vault on `127.0.0.1:8200`, `compose.vault-persistent.yaml` switches the vault to raft storage with a manual unseal, and `compose.loki.yaml` adds Loki with the collector re-pointed at it. The `bots` service behind the `bots` profile runs the market bot fleet next to the stack ([bots.md](bots.md)).
 - CORS for the configured frontend origins (`Cors:AllowedOrigins`), the OpenAPI document at `/openapi/v1.json` (private networks only through the gateway) and `/health`, `/health/live` and `/health/ready`.
