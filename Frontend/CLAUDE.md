@@ -139,7 +139,9 @@ rules bind every change it makes.
   pure helpers `warPhase`, `warLeader` and `warMove`, which turn two polls into the phase, the
   leader and the move (raise or settle) the scene plays. The `app-war-scene` component takes
   `status`, `players`, `isLeader`, `currentPrice` and `manifest` as inputs, and carries no
-  stylesheet, because `_war.scss` dresses it.
+  stylesheet, because `_war.scss` dresses it. At 1200 px and up the scene is sticky and
+  `_war.scss` sets `overflow-x: clip` on `main`, so a wide table is clipped there instead of
+  scrolling, because any scrolling ancestor of a sticky element disables the stickiness.
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
   `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
   `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
@@ -152,7 +154,7 @@ rules bind every change it makes.
   animation values outrank normal declarations. A shelf card drops once. `appDropOnce` marks it
   `.dropped` on the drop's `animationend` and the entrance selector skips `.dropped`, because a sort
   press moves the `@for` nodes and a moved node restarts its CSS animation. Every animation and transition in `_alive.scss`,
-  `_inventory.scss`, `_workshop.scss` and `item-tile.scss` sits inside
+  `_inventory.scss`, `_workshop.scss`, `_war.scss` and `item-tile.scss` sits inside
   `prefers-reduced-motion: no-preference`, so the hover lift itself stays and only its transition
   goes. The button and games link transition in `_controls.scss` sits outside it, and a
   `prefers-reduced-motion: reduce` block there switches it off.
