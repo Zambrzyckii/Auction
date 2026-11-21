@@ -11,7 +11,7 @@ Gamified auction system. `Backend/` is a .NET 10 modular monolith backed by Post
 Backend/          the backend codebase (solution: AuctionServer.slnx)
 Frontend/         Angular 22 client (module views and push client shipped), commands in Frontend/CLAUDE.md
 Bots/             Python market bot fleet, commands in Bots/CLAUDE.md
-Infrastructure/   nginx gateway, telemetry configuration, k6 scenarios, PgBouncer configuration, the OpenBao bootstrap (vault/) and the gitignored secret files with their generator (secrets/); Redis and RabbitMQ are defined in the root compose.yaml
+Infrastructure/   nginx gateway, telemetry configuration, k6 scenarios, PgBouncer configuration, the OpenBao bootstrap (vault/), the gitignored secret files with their generator (secrets/) and the forced command of the production host (deploy/); Redis and RabbitMQ are defined in the root compose.yaml
 ```
 
 `Bots/` exists since 2026-11-18 and is described in `docs/en/bots.md` and `Bots/CLAUDE.md`.

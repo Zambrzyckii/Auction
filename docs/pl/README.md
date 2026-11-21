@@ -14,6 +14,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) i [adr/](adr) - reguły i powody.
 7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - klient frontendu, flota botów i platforma wokół backendu.
 8. [operations.md](operations.md) - praktyczny runbook: pliki sekretów, cykl życia vaulta i ćwiczenie unseal.
+9. [deployment.md](deployment.md) - jak zielony commit na `main` trafia na host produkcyjny.
 
 ## Mapa
 
@@ -39,6 +40,7 @@ AuctionServer to zgamifikowany dom aukcyjny zbudowany jako modular monolith w .N
 | [CHANGELOG.md](CHANGELOG.md) | Jak projekt tu doszedł, kamień milowy po kamieniu milowym? |
 | [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | Co robi klient frontendu, jak flota botów handluje z graczami, co backend jej oferuje i jaka platforma istnieje dziś. |
 | [operations.md](operations.md) | Jak generuje się i rotuje sekrety oraz jak vault zachowuje się w trybie dev i trwałym? |
+| [deployment.md](deployment.md) | Jak commit trafia na host produkcyjny i co sprawia, że klucz wdrożeniowy nie zrobi nic innego? |
 | [performance.md](performance.md) | Jak mierzona jest wydajność i co pokazał każdy przebieg k6? |
 | [../diagrams/README.md](../diagrams/README.md) | Jak diagramy są tworzone i przerenderowywane? |
 

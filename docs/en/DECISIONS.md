@@ -139,6 +139,7 @@ Append-only log of decisions, oldest first, dated by the day the decision was ta
 | 2026-11-18 | The broker test on Testcontainers runs in CI, the live probe does not | owner | the runner has Docker but no Compose stack |
 | 2026-11-20 | The fleet mints from 160 item names, 20 of them locked to one rarity with a fixed share of that rarity's mints (Legendary and Epic one half, Common one tenth) | owner | a gold tile should sometimes show a name never seen on a grey one, and the lock lives in the bots because the API takes any name at any rarity |
 | 2026-11-20 | A permanent test account comes from a host background seeder behind the optional `TestAccount` section, enabled only by `compose.tester.yaml`, with 10,000,000 in turnover-counting funds and one copy of each of the 171 catalog items by default | owner | a real player with a refresh token whose money, level and items go through the domain's own commands, where SQL inserts would bypass the domain and a `Bot`-role account never refreshes its session |
+| 2026-11-21 | Every green `main` is deployed to the production host by a CI job that sends `<app> <sha>` over SSH to a root-owned forced command, which checks out the commit, starts the stack with `compose.production.yaml` and rolls back to the previous commit on failure | owner | a push deployment needs no agent on the host and no inbound port besides SSH, the forced command limits a leaked CI key to deploying known commits, and binding every port to loopback keeps the stack private until TLS lands |
 
 ## Related documents
 

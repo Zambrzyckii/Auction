@@ -14,6 +14,7 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 6. [CONVENTIONS.md](CONVENTIONS.md), [DECISIONS.md](DECISIONS.md) and [adr/](adr) - the rules and the reasons.
 7. [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) - the frontend client, the bot fleet and the platform around the backend.
 8. [operations.md](operations.md) - the hands-on runbook: secret files, the vault lifecycle and the unseal drill.
+9. [deployment.md](deployment.md) - how a green commit on `main` reaches the production host.
 
 ## Map
 
@@ -39,6 +40,7 @@ AuctionServer is a gamified auction house built as a .NET 10 modular monolith on
 | [CHANGELOG.md](CHANGELOG.md) | How did the project get here, milestone by milestone? |
 | [frontend.md](frontend.md), [bots.md](bots.md), [infrastructure.md](infrastructure.md) | What the frontend client does, how the bot fleet trades with players, what the backend offers it and the platform that exists today. |
 | [operations.md](operations.md) | How are the secrets generated and rotated, and how does the vault behave in dev and persistent mode? |
+| [deployment.md](deployment.md) | How does a commit reach the production host, and what keeps the deploy key from doing anything else? |
 | [performance.md](performance.md) | How is performance measured, and what did each k6 run show? |
 | [../diagrams/README.md](../diagrams/README.md) | How are the diagrams authored and re-rendered? |
 

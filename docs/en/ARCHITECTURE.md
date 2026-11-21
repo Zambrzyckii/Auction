@@ -296,7 +296,7 @@ The diagram shows the GitHub Actions workflow defined in [`.github/workflows/ci.
 - `build` runs `dotnet build Backend/AuctionServer.slnx`; `unit-tests`, `integration-tests` and `image` depend on it through `needs`.
 - `unit-tests` runs `AuctionServer.Modules.Auctions.Tests` with `--filter "FullyQualifiedName!~IntegrationTests"`, and `integration-tests` runs the Auctions integration tests followed by the whole Wallets, Identity, Inventory, Warehouses, Banking, Pawnshop, Casino, Profiles, Shared.Infrastructure and Api test projects.
 - `gateway-config` runs `nginx -t` on `Infrastructure/gateway/nginx.conf` in the pinned `nginx:1.28.3-alpine` image, and `compose-config` generates the secret files and validates the root `compose.yaml` with `docker compose config -q`; both run independently of `build`.
-- `image` builds [`Backend/Dockerfile`](../../Backend/Dockerfile) with buildx on the `gha` layer cache and, only on a push to `main`, pushes `ghcr.io/zambrzyckii/auction` tagged `latest` and with the commit sha; a pull request builds the image without pushing. There is no deploy stage.
+- `image` builds [`Backend/Dockerfile`](../../Backend/Dockerfile) with buildx on the `gha` layer cache and, only on a push to `main`, pushes `ghcr.io/zambrzyckii/auction` tagged `latest` and with the commit sha; a pull request builds the image without pushing. `deploy` then ships the commit to the production host over SSH, described in [deployment.md](deployment.md).
 
 ## Design patterns in use
 

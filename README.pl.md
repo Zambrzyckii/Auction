@@ -44,3 +44,4 @@ Dwujęzyczna EN/PL, struktura 1:1: [docs/en](docs/en) / [docs/pl](docs/pl). Zacz
 - [Decyzje](docs/pl/DECISIONS.md) i [ADR-y](docs/pl/adr) - dlaczego jest zbudowany w ten sposób
 - [Stan](docs/pl/STATE.md) i [Historia zmian](docs/pl/CHANGELOG.md) - gdzie projekt stoi i jak tu doszedł
 - [Frontend](docs/pl/frontend.md), [Boty](docs/pl/bots.md), [Infrastruktura](docs/pl/infrastructure.md) - klient frontendu, flota botów i platforma
+- [Wdrożenie](docs/pl/deployment.md) - ciągłe wdrażanie każdego zielonego `main` na host produkcyjny
