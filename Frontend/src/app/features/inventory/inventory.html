@@ -39,6 +39,8 @@
             class="card"
             appDropOnce
             [class.fresh]="bench.fresh() === item.publicItemId"
+            [class.picked]="selection().includes(item.publicItemId)"
+            [class.unfit]="fit !== null"
             [attr.data-rarity]="item.rarity"
             [attr.data-status]="item.status"
           >

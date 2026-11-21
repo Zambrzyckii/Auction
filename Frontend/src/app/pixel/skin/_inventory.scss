@@ -86,6 +86,8 @@
   ul.shelf > li.card {
     position: relative;
     min-width: 0;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 260px;
     display: flex;
     flex-wrap: wrap;
     align-content: flex-start;
@@ -237,12 +239,12 @@
     outline-offset: var(--u);
   }
 
-  ul.shelf.picking > li.card:not(:has(.fit)):not(:has(input:checked)):hover {
+  ul.shelf.picking > li.card:not(.unfit):not(.picked):hover {
     background: var(--m-panel2);
   }
 
-  ul.shelf.picking > li.card:not(:has(.fit)):not(:has(input:checked)):hover::before,
-  ul.shelf.picking > li.card:has(input:checked)::before {
+  ul.shelf.picking > li.card:not(.unfit):not(.picked):hover::before,
+  ul.shelf.picking > li.card.picked::before {
     position: absolute;
     left: calc(var(--u) * 2);
     right: calc(var(--u) * 2);
@@ -256,34 +258,34 @@
     border: var(--u) solid var(--m-ink);
   }
 
-  ul.shelf.picking > li.card:not(:has(.fit)):not(:has(input:checked)):hover::before {
+  ul.shelf.picking > li.card:not(.unfit):not(.picked):hover::before {
     content: 'Put on the belt';
     color: var(--m-ink);
     background: var(--m-taxi-hi);
   }
 
-  ul.shelf.picking > li.card:has(input:checked) {
+  ul.shelf.picking > li.card.picked {
     border-color: var(--m-taxi);
     background: var(--m-picked);
     translate: 0 calc(var(--u) * -1);
   }
 
-  ul.shelf.picking > li.card:has(input:checked)::before {
+  ul.shelf.picking > li.card.picked::before {
     content: 'On the belt';
     color: var(--m-taxi-hi);
     background: var(--m-ink);
   }
 
-  ul.shelf.picking > li.card:has(input:checked) app-item-tile {
+  ul.shelf.picking > li.card.picked app-item-tile {
     opacity: 0.35;
   }
 
-  ul.shelf.picking > li.card:has(.fit) {
+  ul.shelf.picking > li.card.unfit {
     opacity: 0.5;
     cursor: default;
   }
 
-  ul.shelf.picking > li.card:has(.fit) app-item-tile {
+  ul.shelf.picking > li.card.unfit app-item-tile {
     filter: grayscale(0.85);
   }
 
