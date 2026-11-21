@@ -86,15 +86,23 @@ rules bind every change it makes.
   by specificity, not by order. A later rule overrides the skin only when it reaches that
   specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
   elements and classes the templates already have, so a new page gets the look without a template
-  change and the three frame pages stay untouched. The exception is the item templates, which
-  gained these hooks for the item tiles and the shelf, styled by `_hall.scss`, `_forms.scss`,
-  `_inventory.scss` and `_workshop.scss`.
+  change and the three frame pages stay untouched. The exception is the item templates and the war
+  page, which gained these hooks for the item tiles, the shelf and the war scene, styled by
+  `_hall.scss`, `_forms.scss`, `_inventory.scss`, `_workshop.scss` and `_war.scss`.
   - `auction-list.html` has `td.lot`, `span.lot-row` and `.rarity`.
   - `my-auctions.html` has `td.lot` and `span.lot-row` in both tables, and no `.rarity`.
   - `auction-detail.html` has `td.lot`, `span.lot-row`, `.rarity` and `tr.leading`, the only auction
     template with the leading row.
   - `warehouse-detail.html` (the manifest) and `stock-section.html` have `td.lot`, `span.lot-row`
     and `.rarity`.
+  - `warehouse-detail.html` also has four war scene additions, styled by `_war.scss`: the
+    `<app-war-scene>` element, `p.stake` on the current price paragraph, `div.budget` (a progress bar
+    with one inner `span`) and `p.heads` on the players paragraph. The skin keys on the component's
+    host. It gets the class `lit` when the door reveal of a settlement fires, which is at once under
+    reduced motion. It gets it at once too when the page loads on a settled war or when no scene runs,
+    and at the latest 4000 ms after a settlement the scene plays. A war that is not settled stays unlit.
+    The host gets the attribute `data-wide="true"` when `window.innerWidth` is at least 1200. The
+    attribute stands in for a width media query, which the global stylesheet may not hold.
   - `pawnshop.html` (the tier table) has `.rarity`.
   - `create-auction.html` has `app-item-preview` in the listing form.
   - `inventory.html` has `app-workshop`, `app-shelf-sort` and `ul.shelf` (with `.picking` while the
@@ -125,6 +133,12 @@ rules bind every change it makes.
   when the press loop pauses off screen, and in any case 4000 ms after the craft succeeds. A pick
   after the craft clears the result, so the crafted card shows at once. The card's pick banner
   (`li.card::before`) passes clicks through to the label.
+- `pixel/warehouse/` is the war page frame. `war-yard.ts` is the canvas scene, which `war-scene.ts`
+  loads lazily through `bootStreet` behind the same guard as the item art. `war-watch.ts` holds the
+  pure helpers `warPhase`, `warLeader` and `warMove`, which turn two polls into the phase, the
+  leader and the move (raise or settle) the scene plays. The `app-war-scene` component takes
+  `status`, `players`, `isLeader`, `currentPrice` and `manifest` as inputs, and carries no
+  stylesheet, because `_war.scss` dresses it.
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
   `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
   `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
