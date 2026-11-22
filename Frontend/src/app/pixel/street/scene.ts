@@ -593,7 +593,11 @@ class Scene {
       this.draw();
     }, PLATE_CLEAR_MS);
   }
+  private get paused() {
+    return !this.reduced && !this.running;
+  }
   play(fx: StreetEventFx) {
+    if (this.paused) return;
     this.popup(fx.at, plateLines(fx.word, fx.amount), 2.4);
     if (this.reduced) {
       this.sweepLater();
@@ -605,9 +609,21 @@ class Scene {
     if (fx.spotlight) this.spotlight(fx.at);
   }
   // Phase one tops the bar out on the old level. Phase two, after the gold frame and the rain,
-  // counts the new level in from an empty bar. The scene sets both huds itself, so a setHud of
-  // the new state before or after this call changes nothing.
+  // counts the new level in from an empty bar. A setHud of the new state during the sequence is
+  // absorbed. One that ran before this call already switched the labels and emptied the bar, so
+  // phase one then restarts from the share of fx.from.
   playLevelUp(fx: LevelUpFx) {
+    if (this.paused) {
+      this.levelUp = null;
+      this.hudAnim = null;
+      this.hud = fx.hud;
+      this.hudShown = { cash: fx.hud.cash, share: fx.hud.share };
+      this.hudCacheKey = '';
+      this.hudImg = null;
+      this.setCrowd(fx.crowdStop);
+      this.draw();
+      return;
+    }
     if (this.reduced) {
       this.levelUp = null;
       this.hudAnim = null;
@@ -615,6 +631,7 @@ class Scene {
       this.celebrate(fx);
       return;
     }
+    const p0 = this.hud?.level === fx.from.level ? this.hudShown.share : fx.from.share;
     this.levelUp = fx;
     this.hud = fx.from;
     this.hudCacheKey = '';
@@ -622,7 +639,7 @@ class Scene {
       t0: performance.now(),
       c0: this.hudShown.cash,
       c1: fx.hud.cash - fx.pending,
-      p0: this.hudShown.share,
+      p0,
       p1: 1,
       ms: LEVEL_UP_FILL_MS,
       then: () => {

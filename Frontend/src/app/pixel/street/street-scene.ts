@@ -49,10 +49,7 @@ export class StreetScene {
       this.reserve();
       untracked(() => this.relayout?.());
     });
-    effect(() => {
-      const hud = this.hud();
-      untracked(() => this.handle?.setHud?.(hud));
-    });
+    // The fx effect runs before the hud effect, so a level up starts before the scene sees its hud.
     effect(() => {
       const fx = this.fx();
       if (fx === null) return;
@@ -60,6 +57,10 @@ export class StreetScene {
         if (fx.kind === 'event') this.handle?.play?.(fx);
         else this.handle?.playLevelUp?.(fx);
       });
+    });
+    effect(() => {
+      const hud = this.hud();
+      untracked(() => this.handle?.setHud?.(hud));
     });
     inject(DestroyRef).onDestroy(() => this.stop());
   }

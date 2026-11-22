@@ -70,12 +70,16 @@ describe('street hud', () => {
   describe('count-up', () => {
     let made: SceneType;
     let queued: FrameRequestCallback[];
+    let observed: IntersectionObserverCallback;
 
     const makeScene = (reduced: boolean): SceneType => {
       vi.stubGlobal('matchMedia', () => ({ matches: reduced }));
       vi.stubGlobal(
         'IntersectionObserver',
         class {
+          constructor(cb: IntersectionObserverCallback) {
+            observed = cb;
+          }
           observe() {}
           disconnect() {}
         },
@@ -131,6 +135,12 @@ describe('street hud', () => {
         crowdStop: 4,
       };
       const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+      const labels = (scene: SceneType) => (scene as unknown as { hud: HudState | null }).hud;
+      const hide = () =>
+        observed(
+          [{ isIntersecting: false } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
 
       it('ends phase one before the pending reward and counts only that part in', async () => {
         let now = 1000;
@@ -164,6 +174,92 @@ describe('street hud', () => {
         now += 900;
         made.draw();
         expect(made.hudState()).toEqual({ cash: 2000, share: 0.1, animating: false });
+      });
+
+      it('plays phase one on the old labels even after setHud of the new state', async () => {
+        let now = 1000;
+        vi.stubGlobal('performance', { now: () => now });
+        made = makeScene(false);
+        made.setHud(FROM);
+        made.setHud(FX.hud);
+        made.playLevelUp(FX);
+
+        expect(labels(made)).toBe(FX.from);
+        made.draw();
+        expect(made.hudState().share).toBeCloseTo(FROM.share, 5);
+        now += 420;
+        made.draw();
+        expect(labels(made)).toBe(FX.from);
+        expect(made.hudState()).toMatchObject({ cash: 2900, share: 1 });
+        await settle();
+
+        now += 900;
+        made.draw();
+        expect(labels(made)).toBe(FX.hud);
+        expect(made.hudState()).toEqual({ cash: 3000, share: 0.1, animating: false });
+      });
+
+      it('absorbs setHud of the new state while the sequence is pending', async () => {
+        let now = 1000;
+        vi.stubGlobal('performance', { now: () => now });
+        made = makeScene(false);
+        made.setHud(FROM);
+        made.playLevelUp(FX);
+
+        made.setHud(FX.hud);
+
+        expect(labels(made)).toBe(FX.from);
+        expect(made.hudState().animating).toBe(true);
+        now += 420;
+        made.draw();
+        await settle();
+        expect(labels(made)).toBe(FX.hud);
+        made.setHud(FX.hud);
+        now += 900;
+        made.draw();
+        expect(labels(made)).toBe(FX.hud);
+        expect(made.hudState()).toEqual({ cash: 3000, share: 0.1, animating: false });
+      });
+
+      describe('while the scene is paused', () => {
+        const EVENT = {
+          at: 'auction',
+          word: 'SOLD',
+          amount: 4250,
+          part: 'coin',
+          coins: 20,
+          bills: 5,
+          spotlight: true,
+        } as const;
+
+        it('ignores play', () => {
+          made = makeScene(false);
+          hide();
+          made.play(EVENT);
+
+          expect(made.popups).toHaveLength(0);
+          expect(made.parts).toHaveLength(0);
+          expect(made.bills).toHaveLength(0);
+        });
+
+        it('snaps playLevelUp to the end state', () => {
+          made = makeScene(false);
+          made.setHud(FROM);
+          hide();
+          made.playLevelUp(FX);
+
+          expect(labels(made)).toBe(FX.hud);
+          expect(made.hudState()).toEqual({ cash: 3000, share: 0.1, animating: false });
+          expect(made.popups).toHaveLength(0);
+          expect(made.parts).toHaveLength(0);
+        });
+
+        it('still shows the plate under reduced motion', () => {
+          made = makeScene(true);
+          made.play(EVENT);
+
+          expect(made.popups).toHaveLength(1);
+        });
       });
     });
   });

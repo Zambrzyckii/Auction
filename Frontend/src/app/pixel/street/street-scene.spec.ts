@@ -98,6 +98,24 @@ describe('StreetScene', () => {
       return { play, playLevelUp };
     }
 
+    it('starts a level up before it hands the new hud to the scene', () => {
+      attach();
+      const calls: string[] = [];
+      const handle: SceneHandle = {
+        resize: vi.fn(),
+        destroy: vi.fn(),
+        setHud: () => calls.push('setHud'),
+        playLevelUp: () => calls.push('playLevelUp'),
+      };
+      (fixture.componentInstance as unknown as { handle: SceneHandle }).handle = handle;
+
+      fixture.componentRef.setInput('hud', levelup.hud);
+      fixture.componentRef.setInput('fx', levelup);
+      fixture.detectChanges();
+
+      expect(calls).toEqual(['playLevelUp', 'setHud']);
+    });
+
     it('forwards fx to the handle', () => {
       const { play, playLevelUp } = attach();
 
