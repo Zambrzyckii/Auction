@@ -115,6 +115,8 @@ interface StreetEventFx {
   spotlight: boolean;
 }
 interface LevelUpFx {
+  from: HudState;
+  hud: HudState;
   reward: number;
   rain: number;
   crowdStop: number;
@@ -416,6 +418,7 @@ class Scene {
   private hudShown = { cash: 0, share: 0 };
   private hudAnim: HudAnim | null = null;
   private goldUntil = 0;
+  private levelUp: LevelUpFx | null = null;
   private sweepTimer: ReturnType<typeof setTimeout> | null = null;
   private hudCacheKey = '';
   private hudImg: HTMLCanvasElement | null = null;
@@ -528,6 +531,8 @@ class Scene {
     const prev = this.hud,
       from = this.hudShown;
     if (prev && hud && sameHud(prev, hud)) return;
+    if (hud && this.levelUp && sameHud(this.levelUp.hud, hud)) return;
+    this.levelUp = null;
     this.hud = hud;
     this.hudAnim = null;
     this.hudCacheKey = '';
@@ -598,33 +603,40 @@ class Scene {
     if (fx.bills > 0) this.billBurst(fx.at, fx.bills);
     if (fx.spotlight) this.spotlight(fx.at);
   }
-  // Phase one tops the bar out. Phase two, after the gold frame and the rain, counts the new
-  // level in from an empty bar.
+  // Phase one tops the bar out on the old level. Phase two, after the gold frame and the rain,
+  // counts the new level in from an empty bar. The scene sets both huds itself, so a setHud of
+  // the new state before or after this call changes nothing.
   playLevelUp(fx: LevelUpFx) {
-    const hud = this.hud;
-    if (!hud) return;
     if (this.reduced) {
+      this.levelUp = null;
       this.hudAnim = null;
-      this.hudShown = { cash: hud.cash, share: hud.share };
+      this.hudShown = { cash: fx.hud.cash, share: fx.hud.share };
       this.celebrate(fx);
       return;
     }
+    this.levelUp = fx;
+    this.hud = fx.from;
+    this.hudCacheKey = '';
     this.hudAnim = {
       t0: performance.now(),
       c0: this.hudShown.cash,
-      c1: hud.cash - fx.reward,
+      c1: fx.hud.cash - fx.reward,
       p0: this.hudShown.share,
       p1: 1,
       ms: LEVEL_UP_FILL_MS,
-      then: () => this.celebrate(fx),
+      then: () => {
+        if (this.levelUp === fx) this.celebrate(fx);
+      },
     };
     this.kick();
   }
   private celebrate(fx: LevelUpFx) {
-    const hud = this.hud;
-    if (!hud || this.destroyed) return;
+    if (this.destroyed) return;
+    this.levelUp = null;
+    this.hud = fx.hud;
+    this.hudCacheKey = '';
     this.goldUntil = performance.now() + GOLD_MS;
-    this.popup('room', levelLines(hud.level, fx.reward), 2.6);
+    this.popup('room', levelLines(fx.hud.level, fx.reward), 2.6);
     this.setCrowd(fx.crowdStop);
     if (this.reduced) this.sweepLater();
     else {
@@ -633,10 +645,10 @@ class Scene {
       this.shake(0.3);
       this.hudAnim = {
         t0: performance.now(),
-        c0: hud.cash - fx.reward,
-        c1: hud.cash,
+        c0: fx.hud.cash - fx.reward,
+        c1: fx.hud.cash,
         p0: 0,
-        p1: hud.share,
+        p1: fx.hud.share,
       };
     }
     this.kick();
