@@ -39,7 +39,15 @@ describe('buildFx', () => {
       at: 'bank',
       word: 'LOAN',
     });
+    expect(buildFx(at(2840, 3), at(2640, 3), 'LoanChanged')).toMatchObject({
+      at: 'bank',
+      word: 'PAID BACK',
+    });
     expect(buildFx(at(2840, 3), at(2640, 3), 'PawnshopChanged')).toMatchObject({
+      at: 'pawn',
+      word: 'PAWNSHOP',
+    });
+    expect(buildFx(at(2840, 3), at(3040, 3), 'PawnshopChanged')).toMatchObject({
       at: 'pawn',
       word: 'PAWNSHOP',
     });
@@ -79,6 +87,7 @@ describe('buildFx', () => {
       crowdStop: 4,
     });
     expect((fx as { hud: HudState }).hud).toBe(next.hud);
+    expect((fx as { from: HudState }).from).toBe(prev.hud);
   });
 
   it('counts no pending reward when the level jumps with an unchanged total', () => {
@@ -128,8 +137,10 @@ describe('buildFx', () => {
     });
   });
 
-  it('plays nothing on an unchanged wallet', () => {
-    expect(buildFx(at(2840, 3), at(2840, 3), 'AuctionChanged')).toBeNull();
+  it('plays nothing on a turnover-only tick', () => {
+    const prev = at(2840, 3);
+    const next = { ...prev, hud: { ...prev.hud, share: 0.35, nextAt: 17000 } };
+    expect(buildFx(prev, next, 'AuctionChanged')).toBeNull();
   });
 });
 

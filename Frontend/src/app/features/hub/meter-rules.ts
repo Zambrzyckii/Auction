@@ -1,6 +1,6 @@
 import type { BuildingId } from '../../pixel/street/city';
 import type { HudState } from '../../pixel/street/hud';
-import type { LevelUpFx, StreetEventFx } from '../../pixel/street/scene';
+import type { StreetFx } from '../../pixel/street/street-scene';
 
 interface TopicRule {
   readonly at: BuildingId;
@@ -27,7 +27,7 @@ const SPOTLIGHT_FROM = 2000;
 
 export const METER_TOPICS: readonly string[] = Object.keys(TOPIC_RULES);
 
-export type HubFx = ({ kind: 'event' } & StreetEventFx) | ({ kind: 'levelup' } & LevelUpFx);
+export type HubFx = StreetFx;
 
 export function newestTopic(
   seen: ReadonlyMap<string, number>,

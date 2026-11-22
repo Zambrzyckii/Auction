@@ -184,6 +184,7 @@ describe('Hub', () => {
 
   it('plays a level up with the summed reward', () => {
     setPlayer(2840, 3);
+    const before = page().hud();
 
     setPlayer(7090, 5);
 
@@ -191,6 +192,8 @@ describe('Hub', () => {
     expect(fx?.kind).toBe('levelup');
     expect(fx).toMatchObject({ reward: 410 });
     expect(fx).toMatchObject({ from: { level: 3 }, hud: { level: 5 } });
+    expect((fx as { from: unknown }).from).toBe(before);
+    expect((fx as { hud: unknown }).hud).toBe(page().hud());
   });
 
   it('stops listening on destroy', () => {

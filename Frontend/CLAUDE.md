@@ -68,10 +68,11 @@ rules bind every change it makes.
   the wallet and the profile every 5 s while logged in and refreshes the wallet on the
   `WalletChanged` push) and the strip wrapper (`hub-strip.ts`, mounted once in `app.html`). The
   billboard HUD is drawn by `pixel/street/hud.ts` behind `Scene.setHud`. The street reacts to
-  money events through `meter-rules.ts` and the `fx` input: `Hub` listens to the topics in
-  `METER_TOPICS`, diffs each new HUD state against the previous one with `buildFx`, and passes the
-  result down `HubPage` and `StreetScene` to `Scene.play` or `Scene.playLevelUp`. The scaling of
-  the effects (coin and bill counts, spotlight threshold, level-up reward) lives in the constants
+  money events through `meter-rules.ts` and the `fx` input. `Hub` listens to the topics in
+  `METER_TOPICS` and diffs each new HUD state and the total funds (available plus locked) against
+  the previous ones with `buildFx`, so a lock move plays nothing. It passes the result down
+  `HubPage` and `StreetScene` to `Scene.play` or `Scene.playLevelUp`. The scaling of the effects
+  (coin and bill counts, spotlight threshold, level-up reward) lives in the constants and formulas
   of `meter-rules.ts`, while `scene.ts` owns the drawing and its timings. `/` redirects a logged-in
   player to `/hub` and everyone else to `/welcome` (`redirectTo` function in `app.routes.ts`), and
   `/hub` sits behind `authGuard`. Login and register land on `/hub` too, through the
