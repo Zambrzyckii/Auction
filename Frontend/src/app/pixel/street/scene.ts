@@ -9,7 +9,7 @@ import type { PersonSpec, CarKind } from './actors';
 import * as A from './actors';
 import { deviceScale, streetFit, widthScale } from './street-fit';
 import type { HudState } from './hud';
-import { hudKey, hudPaper } from './hud';
+import { hudKey, hudPaper, money } from './hud';
 
 type Mode = 'smooth' | 'snap';
 type PartKind = 'coin' | 'spark';
@@ -87,6 +87,46 @@ interface Popup {
   y: number;
   at: number;
   life: number;
+}
+interface Flash {
+  id: BuildingId;
+  at: number;
+  life: number;
+}
+interface Bill {
+  x: number;
+  y: number;
+  phase: number;
+  age: number;
+  life: number;
+}
+interface Cheer {
+  w: Walker;
+  at: number;
+  until: number;
+}
+interface StreetEventFx {
+  at: BuildingId;
+  word: string;
+  amount: number;
+  part: PartKind;
+  coins: number;
+  bills: number;
+  spotlight: boolean;
+}
+interface LevelUpFx {
+  reward: number;
+  rain: number;
+  crowdStop: number;
+}
+interface HudAnim {
+  t0: number;
+  c0: number;
+  c1: number;
+  p0: number;
+  p1: number;
+  ms?: number;
+  then?: () => void;
 }
 interface Spot {
   b: Building;
@@ -302,6 +342,31 @@ function talkPhase(since: number): { side: number; dots?: boolean; show?: boolea
   return { side: -1 };
 }
 const HUD_COUNT_MS = 900;
+const LEVEL_UP_FILL_MS = 420;
+const GOLD_MS = 1600;
+const PLATE_CLEAR_MS = 2800;
+const PAPER = '#f4ecdc',
+  GOLD = '#ffd75e',
+  GREEN = '#9be86a',
+  REDL = '#ff8a6a';
+const BILL_BODY = '#8cc063',
+  BILL_EDGE = '#4f7a3a';
+const signedMoney = (n: number): string => `${n >= 0 ? '+' : '-'}$${money(Math.abs(n))}`;
+const plateLines = (word: string, amount: number): Line[] => [
+  [word, 'tiny', PAPER],
+  [signedMoney(amount), 'jersey', amount >= 0 ? GREEN : REDL],
+];
+const levelLines = (level: number, reward: number): Line[] => [
+  ['LEVEL UP', 'tiny', PAPER],
+  [`LV ${level}`, 'jersey', GOLD],
+  [`+$${money(reward)}`, 'tiny', GREEN],
+];
+const sameHud = (a: HudState, b: HudState): boolean =>
+  a.name === b.name &&
+  a.cash === b.cash &&
+  a.level === b.level &&
+  a.share === b.share &&
+  a.nextAt === b.nextAt;
 const LINE_H: Record<string, number> = { tiny: 7, micro: 7, jersey: 17 };
 
 class Scene {
@@ -329,6 +394,9 @@ class Scene {
   flick: Record<string, { off: number }>;
   popups: Popup[];
   parts: Part[];
+  flashes: Flash[];
+  bills: Bill[];
+  cheers: Cheer[];
   spot: Spot | null;
   shakeUntil: number;
   walkers!: Walker[];
@@ -346,7 +414,9 @@ class Scene {
   skip = 0;
   private hud: HudState | null = null;
   private hudShown = { cash: 0, share: 0 };
-  private hudAnim: { t0: number; c0: number; c1: number; p0: number; p1: number } | null = null;
+  private hudAnim: HudAnim | null = null;
+  private goldUntil = 0;
+  private sweepTimer: ReturnType<typeof setTimeout> | null = null;
   private hudCacheKey = '';
   private hudImg: HTMLCanvasElement | null = null;
   private readonly observer: IntersectionObserver;
@@ -379,6 +449,9 @@ class Scene {
     this.flick = {};
     this.popups = [];
     this.parts = [];
+    this.flashes = [];
+    this.bills = [];
+    this.cheers = [];
     this.spot = null;
     this.shakeUntil = 0;
     this.initActors();
@@ -454,6 +527,7 @@ class Scene {
   setHud(hud: HudState | null) {
     const prev = this.hud,
       from = this.hudShown;
+    if (prev && hud && sameHud(prev, hud)) return;
     this.hud = hud;
     this.hudAnim = null;
     this.hudCacheKey = '';
@@ -469,6 +543,7 @@ class Scene {
           p1: hud.share,
         };
       else this.hudShown = { cash: hud.cash, share: hud.share };
+      this.setCrowd(Math.min(4, hud.level));
     }
     this.kick();
     this.draw();
@@ -481,22 +556,90 @@ class Scene {
     if (!hud) return;
     const anim = this.hudAnim;
     if (anim) {
-      const k = Math.min(1, (performance.now() - anim.t0) / HUD_COUNT_MS),
+      const k = Math.min(1, (performance.now() - anim.t0) / (anim.ms ?? HUD_COUNT_MS)),
         e = 1 - Math.pow(1 - k, 3);
       this.hudShown = {
         cash: Math.round(anim.c0 + (anim.c1 - anim.c0) * e),
         share: anim.p0 + (anim.p1 - anim.p0) * e,
       };
-      if (k >= 1) this.hudAnim = null;
+      if (k >= 1) {
+        this.hudAnim = null;
+        if (anim.then) setTimeout(anim.then, 0);
+      }
     }
     const { cash, share } = this.hudShown,
       bill = this.city.billboard,
-      key = hudKey(hud, cash, share);
+      gold = performance.now() < this.goldUntil,
+      key = hudKey(hud, cash, share, gold);
     if (key !== this.hudCacheKey || !this.hudImg) {
       this.hudCacheKey = key;
-      this.hudImg = hudPaper(hud, cash, share, bill.w - 4).canvas();
+      this.hudImg = hudPaper(hud, cash, share, bill.w - 4, gold).canvas();
     }
     this.blit(this.hudImg, bill.x + 3, bill.y + 6);
+  }
+  // Under reduced motion the loop never runs, so plates would freeze on screen. A timer clears
+  // them and repaints the still frame instead.
+  private sweepLater() {
+    if (this.sweepTimer) clearTimeout(this.sweepTimer);
+    this.sweepTimer = setTimeout(() => {
+      this.sweepTimer = null;
+      this.popups = [];
+      this.draw();
+    }, PLATE_CLEAR_MS);
+  }
+  play(fx: StreetEventFx) {
+    this.popup(fx.at, plateLines(fx.word, fx.amount), 2.4);
+    if (this.reduced) {
+      this.sweepLater();
+      return;
+    }
+    this.flash(fx.at);
+    this.burst(fx.at, fx.part, fx.coins);
+    if (fx.bills > 0) this.billBurst(fx.at, fx.bills);
+    if (fx.spotlight) this.spotlight(fx.at);
+  }
+  // Phase one tops the bar out. Phase two, after the gold frame and the rain, counts the new
+  // level in from an empty bar.
+  playLevelUp(fx: LevelUpFx) {
+    const hud = this.hud;
+    if (!hud) return;
+    if (this.reduced) {
+      this.hudAnim = null;
+      this.hudShown = { cash: hud.cash, share: hud.share };
+      this.celebrate(fx);
+      return;
+    }
+    this.hudAnim = {
+      t0: performance.now(),
+      c0: this.hudShown.cash,
+      c1: hud.cash - fx.reward,
+      p0: this.hudShown.share,
+      p1: 1,
+      ms: LEVEL_UP_FILL_MS,
+      then: () => this.celebrate(fx),
+    };
+    this.kick();
+  }
+  private celebrate(fx: LevelUpFx) {
+    const hud = this.hud;
+    if (!hud || this.destroyed) return;
+    this.goldUntil = performance.now() + GOLD_MS;
+    this.popup('room', levelLines(hud.level, fx.reward), 2.6);
+    this.setCrowd(fx.crowdStop);
+    if (this.reduced) this.sweepLater();
+    else {
+      this.coinRain(fx.rain);
+      this.cheer(3);
+      this.shake(0.3);
+      this.hudAnim = {
+        t0: performance.now(),
+        c0: hud.cash - fx.reward,
+        c1: hud.cash,
+        p0: 0,
+        p1: hud.share,
+      };
+    }
+    this.kick();
   }
 
   // ----- crowd: extra people and cars walk in from the edge and walk out again -----
@@ -645,6 +788,53 @@ class Scene {
     }
     this.kick();
   }
+  flash(id: BuildingId, life = 1.2) {
+    if (this.reduced || !this.building(id)) return;
+    this.flashes = this.flashes.filter((f) => f.id !== id);
+    this.flashes.push({ id, at: this.t, life });
+    this.kick();
+  }
+  billBurst(id: BuildingId, n: number) {
+    const b = this.building(id);
+    if (!b || this.reduced) return;
+    const o = this.origin(b),
+      rnd = (a: number, z: number) => a + Math.random() * (z - a);
+    for (let k = 0; k < n; k++)
+      this.bills.push({
+        x: o.x + rnd(-10, 10),
+        y: o.y + rnd(-4, 4),
+        phase: rnd(0, 6),
+        age: 0,
+        life: rnd(1.5, 2.3),
+      });
+    this.kick();
+  }
+  coinRain(n: number) {
+    if (this.reduced) return;
+    const bill = this.city.billboard,
+      G = this.city.GROUND,
+      rnd = (a: number, z: number) => a + Math.random() * (z - a);
+    for (let k = 0; k < n; k++)
+      this.parts.push({
+        kind: 'coin',
+        x: bill.x + 4 + rnd(0, bill.w - 8),
+        y: bill.y + 44,
+        vx: rnd(-10, 10),
+        vy: rnd(5, 45),
+        floor: G + rnd(4, 12),
+        age: 0,
+        life: rnd(1.9, 2.7),
+      });
+    this.kick();
+  }
+  cheer(n: number) {
+    if (this.reduced) return;
+    const seen = this.walkers
+      .filter((w) => w.x > this.vx + 8 && w.x < this.vx + this.vw - 8)
+      .slice(0, n);
+    for (const w of seen) this.cheers.push({ w, at: this.t, until: this.t + 1.5 });
+    this.kick();
+  }
   shakeOffset() {
     if (this.t >= this.shakeUntil) return 0;
     return Math.random() < 0.5 ? -1 : 1;
@@ -761,6 +951,7 @@ class Scene {
     if (this.destroyed) return;
     this.destroyed = true;
     this.running = false;
+    if (this.sweepTimer) clearTimeout(this.sweepTimer);
     cancelAnimationFrame(this.frame);
     this.observer.disconnect();
     this.abort.abort();
@@ -872,6 +1063,14 @@ class Scene {
     }
     this.parts = this.parts.filter((p) => p.age < p.life);
     this.popups = this.popups.filter((p) => this.t - p.at < p.life);
+    for (const b of this.bills) {
+      b.age += rawDt;
+      b.y += 15 * rawDt;
+      b.x += Math.sin(b.age * 5 + b.phase) * 16 * rawDt;
+    }
+    this.bills = this.bills.filter((b) => b.age < b.life);
+    this.flashes = this.flashes.filter((f) => this.t - f.at < f.life);
+    this.cheers = this.cheers.filter((c) => this.t < c.until);
   }
 
   // drawing helpers: X and Y are world art coordinates, possibly fractional
@@ -983,6 +1182,37 @@ class Scene {
     pass(R.gold[3], isCoin, one, 1);
     pass('#fffbe8', (p) => p.kind === 'spark' && p.age < 0.2, one, 1);
     pass('#ffd36a', (p) => p.kind === 'spark' && p.age >= 0.2, one, 1);
+  }
+  drawFlashes() {
+    for (const f of this.flashes) {
+      const age = this.t - f.at,
+        b = this.building(f.id);
+      if (!b || Math.floor(age * 9) % 2 === 1) continue;
+      this.blit(this.w.outline[f.id], b.x - 2, b.y - 2, Math.max(0.25, 1 - age / f.life));
+    }
+  }
+  drawBills() {
+    if (!this.bills.length) return;
+    const c = this.target(),
+      k = this.mode === 'snap' ? 1 : this.ds,
+      ox = this.vx,
+      oy = this.vy;
+    const flutter = (b: Bill) => Math.floor(b.age * 10) % 2;
+    const rect = (b: Bill, dy: number, w: number, h: number) =>
+      c.fillRect(Math.round((b.x - ox) * k), Math.round((b.y + dy - oy) * k), w * k, h * k);
+    c.fillStyle = BILL_BODY;
+    for (const b of this.bills) rect(b, 0, flutter(b) ? 2 : 3, 2);
+    c.fillStyle = BILL_EDGE;
+    for (const b of this.bills) rect(b, 1, flutter(b) ? 2 : 3, 1);
+  }
+  drawCheers() {
+    for (const ch of this.cheers) {
+      const hop = Math.round(Math.abs(Math.sin((this.t - ch.at) * 9)) * 2),
+        x = ch.w.x,
+        y = ch.w.y - 33 - hop;
+      this.px(x, y, 1, 4, GOLD);
+      this.px(x, y + 5, 1, 1, GOLD);
+    }
   }
   drawPopups() {
     for (const p of this.popups) {
@@ -1119,6 +1349,9 @@ class Scene {
     }
     if (this.hover) this.blit(w.outline[this.hover.id], this.hover.x - 2, this.hover.y - 2);
     this.drawHud();
+    this.drawFlashes();
+    this.drawBills();
+    this.drawCheers();
     this.drawSpot();
     this.drawParts();
     this.drawPopups();
@@ -1126,5 +1359,5 @@ class Scene {
   }
 }
 
-export type { SceneOptions };
+export type { SceneOptions, StreetEventFx, LevelUpFx };
 export { Scene, build, LOANS, PAWN_AT };

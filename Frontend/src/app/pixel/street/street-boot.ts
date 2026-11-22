@@ -1,4 +1,4 @@
-import type { SceneOptions } from './scene';
+import type { LevelUpFx, SceneOptions, StreetEventFx } from './scene';
 import { fontsReady } from './fonts';
 import type { HudState } from './hud';
 
@@ -6,6 +6,8 @@ export interface SceneHandle {
   resize(): void;
   destroy(): void;
   setHud?(hud: HudState | null): void;
+  play?(fx: StreetEventFx): void;
+  playLevelUp?(fx: LevelUpFx): void;
 }
 
 export type SceneFactory<O = SceneOptions, H extends SceneHandle = SceneHandle> = (

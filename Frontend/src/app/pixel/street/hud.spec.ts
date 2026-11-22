@@ -28,6 +28,7 @@ const STATE: HudState = { name: 'bob', cash: 500, level: 3, share: 0.4, nextAt: 
 
 describe('street hud', () => {
   let hud: typeof import('./hud');
+  let pix: typeof import('./pix');
   let scene: typeof import('./scene');
 
   beforeAll(async () => {
@@ -35,6 +36,7 @@ describe('street hud', () => {
       () => looseContext() as never,
     );
     hud = await import('./hud');
+    pix = await import('./pix');
     scene = await import('./scene');
   });
 
@@ -54,6 +56,15 @@ describe('street hud', () => {
     const paper = hud.hudPaper(STATE, 500, 0.4, 120);
     expect(paper.w).toBe(120);
     expect(paper.h).toBe(40);
+  });
+
+  it('turns the frame and the kick line gold in the gold state', () => {
+    const { R } = pix;
+    const paper = hud.hudPaper(STATE, 2840, 0.31, 120, true);
+    expect(paper.get(0, 0)).toBe(R.gold[3]);
+    expect(paper.get(119, 39)).toBe(R.gold[3]);
+    expect(hud.hudPaper(STATE, 2840, 0.31, 120).get(0, 0)).toBe(R.paper[3]);
+    expect(hud.hudKey(STATE, 2840, 0.31, true)).not.toBe(hud.hudKey(STATE, 2840, 0.31));
   });
 
   describe('count-up', () => {

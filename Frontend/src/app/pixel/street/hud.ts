@@ -14,7 +14,7 @@ const BAR_H = 9;
 const KICK_Y = 3;
 const CASH_Y = 11;
 
-const money = (n: number): string => Math.round(n).toLocaleString('en-US');
+export const money = (n: number): string => Math.round(n).toLocaleString('en-US');
 
 const kickLine = (name: string, level: number): string => `${name} - LV ${level}`;
 
@@ -36,12 +36,14 @@ export function hudPaper(
   shownCash: number,
   shownShare: number,
   width: number,
+  gold = false,
 ): Sprite {
   const paper = new Sprite(width, PAPER_H);
   paper.rect(0, 0, width, PAPER_H, R.paper[3]);
 
   const kick = kickLine(fitName(state.name, state.level, width - 2), state.level);
-  text(paper, kick, centered(width, kick), KICK_Y, R.black[3], 'tiny', { alignTop: true });
+  const kickInk = gold ? R.gold[2] : R.black[3];
+  text(paper, kick, centered(width, kick), KICK_Y, kickInk, 'tiny', { alignTop: true });
 
   const cash = '$' + money(shownCash);
   text(paper, cash, centered(width, cash, 'jersey'), CASH_Y, cashInk, 'jersey', {
@@ -58,15 +60,27 @@ export function hudPaper(
   }
   const tag = `LV ${state.level + 1} AT $${money(state.nextAt)}`;
   text(paper, tag, centered(width, tag), barY + 1, R.paper[3], 'tiny', { alignTop: true });
+  if (gold) {
+    paper.hline(0, 0, width, R.gold[3]);
+    paper.hline(0, PAPER_H - 1, width, R.gold[3]);
+    paper.vline(0, 1, PAPER_H - 2, R.gold[3]);
+    paper.vline(width - 1, 1, PAPER_H - 2, R.gold[3]);
+  }
   return paper;
 }
 
-export function hudKey(state: HudState, shownCash: number, shownShare: number): string {
+export function hudKey(
+  state: HudState,
+  shownCash: number,
+  shownShare: number,
+  gold = false,
+): string {
   return [
     state.name,
     Math.round(shownCash),
     state.level,
     Math.round(shownShare * 200),
     state.nextAt,
+    gold ? 1 : 0,
   ].join('|');
 }
