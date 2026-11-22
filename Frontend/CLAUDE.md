@@ -67,7 +67,12 @@ rules bind every change it makes.
   holds the page (`hub.ts`), `hub-rules.ts`, the `HudData` read-only adapter (`hud-data.ts`, polls
   the wallet and the profile every 5 s while logged in and refreshes the wallet on the
   `WalletChanged` push) and the strip wrapper (`hub-strip.ts`, mounted once in `app.html`). The
-  billboard HUD is drawn by `pixel/street/hud.ts` behind `Scene.setHud`. `/` redirects a logged-in
+  billboard HUD is drawn by `pixel/street/hud.ts` behind `Scene.setHud`. The street reacts to
+  money events through `meter-rules.ts` and the `fx` input: `Hub` listens to the topics in
+  `METER_TOPICS`, diffs each new HUD state against the previous one with `buildFx`, and passes the
+  result down `HubPage` and `StreetScene` to `Scene.play` or `Scene.playLevelUp`. The scaling of
+  the effects (coin and bill counts, spotlight threshold, level-up reward) lives in the constants
+  of `meter-rules.ts`, while `scene.ts` owns the drawing and its timings. `/` redirects a logged-in
   player to `/hub` and everyone else to `/welcome` (`redirectTo` function in `app.routes.ts`), and
   `/hub` sits behind `authGuard`. Login and register land on `/hub` too, through the
   `sanitizeReturnUrl` fallback in `features/auth/login.ts` and the register navigation (owner
