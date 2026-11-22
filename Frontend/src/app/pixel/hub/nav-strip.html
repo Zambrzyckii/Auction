@@ -1,0 +1,12 @@
+<div class="strip">
+  <a class="back" routerLink="/hub">&lt; Street</a>
+  <span class="where">{{ where() }}</span>
+  <span class="gap"></span>
+  @if (cash() !== null) {
+    <span class="cash">${{ cash() | number }}</span>
+  }
+  @if (level() !== null) {
+    <span class="lv">LV {{ level() }}</span>
+  }
+  <button type="button" class="out" (click)="loggedOut.emit()">Log out</button>
+</div>

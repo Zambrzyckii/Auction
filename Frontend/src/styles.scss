@@ -42,6 +42,10 @@ body:has(app-welcome, app-door-page, app-hub) .topbar {
   display: none;
 }
 
+body:has(app-hub-strip .strip) .topbar {
+  display: none;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
