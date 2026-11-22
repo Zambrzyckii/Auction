@@ -54,10 +54,22 @@ rules bind every change it makes.
   (`docs/en/DECISIONS.md:107` and `:132`).
 - Fonts and other new third-party assets are CC0, CC-BY or OFL only, self-hosted under `public/`
   and listed with source and licence in `CREDITS.md`.
-- `/welcome`, `/login` and `/register` show no top bar. The street's buildings are the navigation
-  and the door pages lead back to the street. `styles.scss` hides the bar with
-  `body:has(app-welcome, app-door-page) .topbar`, so renaming those selectors or that class
-  brings the bar back.
+- `/welcome`, `/login`, `/register` and `/hub` show no top bar. The street's buildings are the
+  navigation and the door pages lead back to the street. `styles.scss` hides the bar with
+  `body:has(app-welcome, app-door-page, app-hub) .topbar`, so renaming those selectors or that class
+  brings the bar back. A signed-in player on a page that belongs to a building gets the nav strip
+  instead, and `body:has(app-hub-strip .strip) .topbar { display: none; }` swaps the bar for it.
+  Three `:has` rules decide what a full-frame pixel page shows, the bar hide list and the strip
+  swap rule in `styles.scss` and the skin exclusions in `pixel/skin/_base.scss` and in the `inside`
+  mixin of `pixel/skin/_tools.scss`. A new full-frame page joins the hide list and the skin
+  exclusions, and the strip swap rule must still match only where the strip renders.
+- `pixel/hub/` holds the hub frame (`hub-page.*`) and the nav strip (`nav-strip.*`). `features/hub/`
+  holds the page (`hub.ts`), `hub-rules.ts`, the `HudData` read-only adapter (`hud-data.ts`, polls
+  the wallet and the profile every 5 s while logged in and refreshes the wallet on the
+  `WalletChanged` push) and the strip wrapper (`hub-strip.ts`, mounted once in `app.html`). The
+  billboard HUD is drawn by `pixel/street/hud.ts` behind `Scene.setHud`. `/` redirects a logged-in
+  player to `/hub` and everyone else to `/welcome` (`redirectTo` function in `app.routes.ts`), and
+  `/hub` sits behind `authGuard`.
 - The pixel fonts, the `--m-*` tokens and the default `--u: 3px` live in
   `src/app/pixel/street/_street-theme.scss`, which `styles.scss` loads once. Components use the
   tokens and declare no `@font-face`.
@@ -77,10 +89,10 @@ rules bind every change it makes.
 - Firefox keeps a text field at least as tall as the normal line height of its font and ignores a
   smaller `line-height`, so the door sheet inputs set `height: calc(27px + var(--u) * 6)`. Without
   it every field grows by about 5 px in Firefox and /register scrolls at 1906x917.
-- The inner pages, everything but `/welcome`, `/login` and `/register`, get their look from the
-  global skin in `src/app/pixel/skin/` (`_skin.scss` uses one partial per concern), which
+- The inner pages, everything but `/welcome`, `/login`, `/register` and `/hub`, get their look from
+  the global skin in `src/app/pixel/skin/` (`_skin.scss` uses one partial per concern), which
   `styles.scss` loads as its last line through `meta.load-css`. Every skin rule sits under
-  `body:not(:has(app-welcome, app-door-page))` through the `tools.inside` mixin, except the
+  `body:not(:has(app-welcome, app-door-page, app-hub))` through the `tools.inside` mixin, except the
   `color-scheme` rule, which sits on `:root` because the viewport scrollbar reads the root element.
   The wrapper adds two type selectors, so the skin beats the old base rules at `styles.scss:5-75`
   by specificity, not by order. A later rule overrides the skin only when it reaches that
