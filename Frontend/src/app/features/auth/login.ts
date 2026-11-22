@@ -9,11 +9,11 @@ import { RevealPassword } from './reveal-password';
 
 export function sanitizeReturnUrl(raw: string | null): string {
   if (raw === null || !raw.startsWith('/') || raw[1] === '/') {
-    return '/auctions';
+    return '/hub';
   }
   for (const ch of raw) {
     if (ch === '\\' || ch < ' ') {
-      return '/auctions';
+      return '/hub';
     }
   }
   return raw;

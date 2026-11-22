@@ -69,7 +69,9 @@ rules bind every change it makes.
   `WalletChanged` push) and the strip wrapper (`hub-strip.ts`, mounted once in `app.html`). The
   billboard HUD is drawn by `pixel/street/hud.ts` behind `Scene.setHud`. `/` redirects a logged-in
   player to `/hub` and everyone else to `/welcome` (`redirectTo` function in `app.routes.ts`), and
-  `/hub` sits behind `authGuard`.
+  `/hub` sits behind `authGuard`. Login and register land on `/hub` too, through the
+  `sanitizeReturnUrl` fallback in `features/auth/login.ts` and the register navigation (owner
+  decision of 2026-11-22).
 - The pixel fonts, the `--m-*` tokens and the default `--u: 3px` live in
   `src/app/pixel/street/_street-theme.scss`, which `styles.scss` loads once. Components use the
   tokens and declare no `@font-face`.

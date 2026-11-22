@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { installStorageStub } from '../../../testing/storage-stub';
-import { REAL_TOKEN } from '../../../testing/token-fixture';
+import { tokenWithClaims } from '../../../testing/token-fixture';
 import { routes } from '../../app.routes';
 import { TokenStorage } from '../../core/auth/token-storage';
 import { Login, sanitizeReturnUrl } from './login';
@@ -13,25 +13,25 @@ describe('sanitizeReturnUrl', () => {
     expect(sanitizeReturnUrl('/wallet')).toBe('/wallet');
   });
 
-  it('falls back to the auction list for a missing value', () => {
-    expect(sanitizeReturnUrl(null)).toBe('/auctions');
+  it('falls back to the hub for a missing value', () => {
+    expect(sanitizeReturnUrl(null)).toBe('/hub');
   });
 
   it('rejects an absolute url', () => {
-    expect(sanitizeReturnUrl('https://evil.example/phish')).toBe('/auctions');
+    expect(sanitizeReturnUrl('https://evil.example/phish')).toBe('/hub');
   });
 
   it('rejects a protocol-relative url', () => {
-    expect(sanitizeReturnUrl('//evil.example')).toBe('/auctions');
+    expect(sanitizeReturnUrl('//evil.example')).toBe('/hub');
   });
 
   it('rejects a backslash that browsers treat as a slash', () => {
-    expect(sanitizeReturnUrl('/\\evil.example')).toBe('/auctions');
+    expect(sanitizeReturnUrl('/\\evil.example')).toBe('/hub');
   });
 
   it('rejects control characters', () => {
-    expect(sanitizeReturnUrl('/wal\tlet')).toBe('/auctions');
-    expect(sanitizeReturnUrl('/wallet\u0000')).toBe('/auctions');
+    expect(sanitizeReturnUrl('/wal\tlet')).toBe('/hub');
+    expect(sanitizeReturnUrl('/wallet\u0000')).toBe('/hub');
   });
 });
 
@@ -64,10 +64,12 @@ describe('Login', () => {
 
     const req = TestBed.inject(HttpTestingController).expectOne('/api/users/login');
     expect(req.request.body).toEqual({ email: 'probe1@test.local', password: 'Zaq1@wsxCde3' });
-    req.flush({ token: REAL_TOKEN });
+    // the token must be alive, or authGuard bounces the /hub navigation back to login
+    const liveToken = tokenWithClaims({ nameid: 'x', exp: Math.floor(Date.now() / 1000) + 600 });
+    req.flush({ token: liveToken });
 
-    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/auctions'));
-    expect(new TokenStorage().get()).toBe(REAL_TOKEN);
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/hub'));
+    expect(new TokenStorage().get()).toBe(liveToken);
   });
 
   it('shows neutral invalid credentials on a 400', async () => {

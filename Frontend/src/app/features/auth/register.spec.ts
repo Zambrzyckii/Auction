@@ -74,7 +74,7 @@ describe('Register', () => {
     el.querySelector('form')!.dispatchEvent(new Event('submit'));
   }
 
-  it('registers, auto-logs-in and navigates to the wallet', async () => {
+  it('registers, auto-logs-in and navigates to the hub', async () => {
     const fixture = TestBed.createComponent(Register);
     await fillAndSubmit(fixture);
 
@@ -91,11 +91,11 @@ describe('Register', () => {
     registerReq.flush(null, { status: 201, statusText: 'Created' });
 
     await vi.waitFor(() => {
-      // the token must be alive, or authGuard bounces the /wallet navigation back to login
+      // the token must be alive, or authGuard bounces the /hub navigation back to login
       const liveToken = tokenWithClaims({ nameid: 'x', exp: Math.floor(Date.now() / 1000) + 600 });
       http.expectOne('/api/users/login').flush({ token: liveToken });
     });
-    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/wallet'));
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/hub'));
   });
 
   it('shows the taken-email message on a 409', async () => {

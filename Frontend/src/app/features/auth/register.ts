@@ -75,7 +75,7 @@ export class Register {
       try {
         await firstValueFrom(this.session.register(this.model()));
         await firstValueFrom(this.session.login(this.model().email, this.model().password));
-        await this.router.navigateByUrl('/wallet');
+        await this.router.navigateByUrl('/hub');
       } catch (err) {
         const apiError = toApiError(err);
         this.error.set(apiError.status === 409 ? 'This email is already taken.' : apiError.message);
