@@ -59,10 +59,10 @@ rules bind every change it makes.
   `body:has(app-welcome, app-door-page, app-hub) .topbar`, so renaming those selectors or that class
   brings the bar back. A signed-in player on a page that belongs to a building gets the nav strip
   instead, and `body:has(app-hub-strip .strip) .topbar { display: none; }` swaps the bar for it.
-  Three `:has` rules decide what a full-frame pixel page shows, the bar hide list and the strip
-  swap rule in `styles.scss` and the skin exclusions in `pixel/skin/_base.scss` and in the `inside`
-  mixin of `pixel/skin/_tools.scss`. A new full-frame page joins the hide list and the skin
-  exclusions, and the strip swap rule must still match only where the strip renders.
+  Four `:has` selectors in three groups decide what a full-frame pixel page shows. `styles.scss`
+  holds the bar hide list and the strip swap rule. The skin exclusions sit in `pixel/skin/_base.scss`
+  and in the `inside` mixin of `pixel/skin/_tools.scss`. A new full-frame page joins the hide list
+  and the skin exclusions, and the strip swap rule must still match only where the strip renders.
 - `pixel/hub/` holds the hub frame (`hub-page.*`) and the nav strip (`nav-strip.*`). `features/hub/`
   holds the page (`hub.ts`), `hub-rules.ts`, the `HudData` read-only adapter (`hud-data.ts`, polls
   the wallet and the profile every 5 s while logged in and refreshes the wallet on the
