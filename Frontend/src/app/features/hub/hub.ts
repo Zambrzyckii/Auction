@@ -8,7 +8,7 @@ import type { HudState } from '../../pixel/street/hud';
 import { BUILDING_LINKS, BUILDING_PATHS } from '../welcome/welcome-rules';
 import { playerXp } from './hub-rules';
 import { HudData } from './hud-data';
-import { buildFx, HubFx, METER_TOPICS, newestTopic } from './meter-rules';
+import { buildFx, HubFx, METER_TOPICS, MeterReading, newestTopic } from './meter-rules';
 
 function sameHud(a: HudState | null, b: HudState | null): boolean {
   if (a === null || b === null) return a === b;
@@ -49,10 +49,15 @@ export class Hub {
     { equal: sameHud },
   );
 
+  private readonly total = computed(() => {
+    const wallet = this.data.wallet();
+    return wallet === null ? null : wallet.availableFunds + wallet.lockedFunds;
+  });
+
   readonly fx = signal<HubFx | null>(null);
 
   private readonly seen = new Map<string, number>();
-  private previousHud: HudState | null = null;
+  private previous: MeterReading | null = null;
 
   constructor() {
     const offs = METER_TOPICS.map((topic) =>
@@ -61,10 +66,12 @@ export class Hub {
     inject(DestroyRef).onDestroy(() => offs.forEach((off) => off()));
 
     effect(() => {
-      const next = this.hud();
-      if (next === null) return;
-      const prev = this.previousHud;
-      this.previousHud = next;
+      const hud = this.hud();
+      const total = this.total();
+      if (hud === null || total === null) return;
+      const next = { hud, total };
+      const prev = this.previous;
+      this.previous = next;
       if (prev === null) return;
       const fx = buildFx(prev, next, newestTopic(this.seen, Date.now()));
       if (fx !== null) this.fx.set(fx);

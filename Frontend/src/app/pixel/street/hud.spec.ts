@@ -1,5 +1,5 @@
 import type { HudState } from './hud';
-import type { Scene as SceneType } from './scene';
+import type { LevelUpFx, Scene as SceneType } from './scene';
 
 const stubContext = () => ({
   measureText: (str: string) => ({ width: str.length * 5 }),
@@ -118,6 +118,53 @@ describe('street hud', () => {
       now += 450;
       made.draw();
       expect(made.hudState()).toEqual({ cash: 900, share: 0.7, animating: false });
+    });
+
+    describe('level up', () => {
+      const FROM: HudState = { name: 'bob', cash: 2000, level: 3, share: 0.4, nextAt: 16000 };
+      const FX: LevelUpFx = {
+        from: FROM,
+        hud: { ...FROM, cash: 3000, level: 4, share: 0.1, nextAt: 30000 },
+        reward: 160,
+        pending: 100,
+        rain: 24,
+        crowdStop: 4,
+      };
+      const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      it('ends phase one before the pending reward and counts only that part in', async () => {
+        let now = 1000;
+        vi.stubGlobal('performance', { now: () => now });
+        made = makeScene(false);
+        made.setHud(FROM);
+        made.playLevelUp(FX);
+
+        now += 420;
+        made.draw();
+        expect(made.hudState()).toMatchObject({ cash: 2900, share: 1 });
+        await settle();
+
+        now += 900;
+        made.draw();
+        expect(made.hudState()).toEqual({ cash: 3000, share: 0.1, animating: false });
+      });
+
+      it('keeps the cash flat when nothing is pending', async () => {
+        let now = 1000;
+        vi.stubGlobal('performance', { now: () => now });
+        made = makeScene(false);
+        made.setHud(FROM);
+        made.playLevelUp({ ...FX, hud: { ...FX.hud, cash: 2000 }, pending: 0 });
+
+        now += 420;
+        made.draw();
+        expect(made.hudState().cash).toBe(2000);
+        await settle();
+
+        now += 900;
+        made.draw();
+        expect(made.hudState()).toEqual({ cash: 2000, share: 0.1, animating: false });
+      });
     });
   });
 });

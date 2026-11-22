@@ -83,6 +83,7 @@ describe('StreetScene', () => {
       from: hudState,
       hud: { ...hudState, level: 4 },
       reward: 160,
+      pending: 160,
       rain: 24,
       crowdStop: 4,
     } as const;

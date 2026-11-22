@@ -45,18 +45,25 @@ export function newestTopic(
   return newest;
 }
 
+export interface MeterReading {
+  readonly hud: HudState;
+  readonly total: number;
+}
+
 export function rewardBetween(before: number, after: number): number {
   let reward = 0;
   for (let level = before + 1; level <= after; level++) reward += 10 * level * level;
   return reward;
 }
 
-function levelUpFx(prev: HudState, next: HudState): HubFx {
+function levelUpFx(prev: HudState, next: HudState, delta: number): HubFx {
+  const reward = rewardBetween(prev.level, next.level);
   return {
     kind: 'levelup',
     from: prev,
     hud: next,
-    reward: rewardBetween(prev.level, next.level),
+    reward,
+    pending: Math.max(0, Math.min(reward, delta)),
     rain: 16 + 2 * next.level,
     crowdStop: Math.min(4, next.level),
   };
@@ -78,8 +85,13 @@ function eventFx(delta: number, topic: string | null): HubFx {
   };
 }
 
-export function buildFx(prev: HudState, next: HudState, topic: string | null): HubFx | null {
-  if (next.level > prev.level) return levelUpFx(prev, next);
-  if (next.cash !== prev.cash) return eventFx(next.cash - prev.cash, topic);
+export function buildFx(
+  prev: MeterReading,
+  next: MeterReading,
+  topic: string | null,
+): HubFx | null {
+  const delta = next.total - prev.total;
+  if (next.hud.level > prev.hud.level) return levelUpFx(prev.hud, next.hud, delta);
+  if (delta !== 0) return eventFx(delta, topic);
   return null;
 }

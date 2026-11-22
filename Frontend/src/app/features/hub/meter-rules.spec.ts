@@ -1,12 +1,9 @@
 import type { HudState } from '../../pixel/street/hud';
-import { buildFx, newestTopic, rewardBetween } from './meter-rules';
+import { buildFx, MeterReading, newestTopic, rewardBetween } from './meter-rules';
 
-const at = (cash: number, level: number): HudState => ({
-  name: 'Bob',
-  cash,
-  level,
-  share: 0.31,
-  nextAt: 16000,
+const at = (cash: number, level: number, total = cash): MeterReading => ({
+  hud: { name: 'Bob', cash, level, share: 0.31, nextAt: 16000 },
+  total,
 });
 
 describe('buildFx', () => {
@@ -74,13 +71,52 @@ describe('buildFx', () => {
     const fx = buildFx(prev, next, 'AuctionChanged');
     expect(fx).toEqual({
       kind: 'levelup',
-      from: prev,
-      hud: next,
+      from: prev.hud,
+      hud: next.hud,
       reward: 410,
+      pending: 410,
       rain: 26,
       crowdStop: 4,
     });
-    expect((fx as { hud: HudState }).hud).toBe(next);
+    expect((fx as { hud: HudState }).hud).toBe(next.hud);
+  });
+
+  it('counts no pending reward when the level jumps with an unchanged total', () => {
+    expect(buildFx(at(2840, 3, 3000), at(2840, 4, 3000), 'AuctionChanged')).toMatchObject({
+      kind: 'levelup',
+      reward: 160,
+      pending: 0,
+    });
+  });
+
+  it('caps the pending reward at the total delta', () => {
+    expect(buildFx(at(2840, 3, 3000), at(3040, 4, 3200), null)).toMatchObject({
+      kind: 'levelup',
+      reward: 160,
+      pending: 160,
+    });
+    expect(buildFx(at(2840, 3, 3000), at(2940, 4, 3100), null)).toMatchObject({
+      reward: 160,
+      pending: 100,
+    });
+    expect(buildFx(at(2840, 3, 3000), at(2440, 4, 2600), null)).toMatchObject({ pending: 0 });
+  });
+
+  it('diffs the total funds, so a lock move plays nothing', () => {
+    expect(buildFx(at(2840, 3, 3000), at(2530, 3, 3000), 'AuctionListChanged')).toBeNull();
+    expect(buildFx(at(2530, 3, 3000), at(2840, 3, 3000), 'AuctionChanged')).toBeNull();
+  });
+
+  it('takes the amount from the total delta', () => {
+    expect(buildFx(at(2840, 3, 3000), at(2840, 3, 3500), 'AuctionChanged')).toMatchObject({
+      kind: 'event',
+      word: 'SOLD',
+      amount: 500,
+    });
+    expect(buildFx(at(2840, 3, 3000), at(3140, 3, 2800), 'CasinoChanged')).toMatchObject({
+      word: 'CHIPS',
+      amount: -200,
+    });
   });
 
   it('plays a single level with its own reward', () => {

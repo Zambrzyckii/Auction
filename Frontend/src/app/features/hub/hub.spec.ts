@@ -162,6 +162,26 @@ describe('Hub', () => {
     expect(page().fx()).toBe(fixture.componentInstance.fx());
   });
 
+  it('plays nothing when only the locked part moves', () => {
+    setPlayer(2840, 3);
+    push.emit('AuctionChanged');
+
+    data.wallet.set({ availableFunds: 2530, lockedFunds: 310, lifetimeTurnover: 11200 });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.fx()).toBeNull();
+  });
+
+  it('plays an event when the total moves through the locked part', () => {
+    setPlayer(2840, 3);
+    push.emit('AuctionChanged');
+
+    data.wallet.set({ availableFunds: 2840, lockedFunds: 500, lifetimeTurnover: 11200 });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.fx()).toMatchObject({ kind: 'event', amount: 500 });
+  });
+
   it('plays a level up with the summed reward', () => {
     setPlayer(2840, 3);
 

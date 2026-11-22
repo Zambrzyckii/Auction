@@ -118,6 +118,7 @@ interface LevelUpFx {
   from: HudState;
   hud: HudState;
   reward: number;
+  pending: number;
   rain: number;
   crowdStop: number;
 }
@@ -620,7 +621,7 @@ class Scene {
     this.hudAnim = {
       t0: performance.now(),
       c0: this.hudShown.cash,
-      c1: fx.hud.cash - fx.reward,
+      c1: fx.hud.cash - fx.pending,
       p0: this.hudShown.share,
       p1: 1,
       ms: LEVEL_UP_FILL_MS,
@@ -645,7 +646,7 @@ class Scene {
       this.shake(0.3);
       this.hudAnim = {
         t0: performance.now(),
-        c0: fx.hud.cash - fx.reward,
+        c0: fx.hud.cash - fx.pending,
         c1: fx.hud.cash,
         p0: 0,
         p1: fx.hud.share,
