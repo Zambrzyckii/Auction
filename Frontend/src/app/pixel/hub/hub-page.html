@@ -5,6 +5,11 @@
     <button type="button" class="out" (click)="loggedOut.emit()">Log out</button>
   </header>
   <app-street-scene (picked)="picked.emit($event)" [hud]="hud()" />
+  @if (hud(); as h) {
+    <p class="sr">
+      {{ h.name }} has ${{ h.cash }}. Level {{ h.level }}. Next level at ${{ h.nextAt }}.
+    </p>
+  }
   <nav class="sr" aria-label="Street buildings">
     @for (link of links(); track link.id) {
       <a [routerLink]="paths()[link.id]">{{ link.name }}</a>
