@@ -1,7 +1,4 @@
-import { TestBed } from '@angular/core/testing';
-import { Route, UrlSegment } from '@angular/router';
-import { Session } from '../../core/auth/session';
-import { loggedInMatch, playerXp, stripWhere } from './hub-rules';
+import { playerXp, stripWhere } from './hub-rules';
 
 describe('stripWhere', () => {
   it('names the building for a path under it', () => {
@@ -44,24 +41,5 @@ describe('playerXp', () => {
   it('clamps the share to the range 0 to 1', () => {
     expect(playerXp(3, 8000).share).toBe(0);
     expect(playerXp(3, 17000).share).toBe(1);
-  });
-});
-
-describe('loggedInMatch', () => {
-  function runMatch(isLoggedIn: boolean): unknown {
-    TestBed.configureTestingModule({
-      providers: [{ provide: Session, useValue: { isLoggedIn: () => isLoggedIn } }],
-    });
-    return TestBed.runInInjectionContext(() =>
-      loggedInMatch({} as Route, [] as UrlSegment[], null as never),
-    );
-  }
-
-  it('matches when the session is logged in', () => {
-    expect(runMatch(true)).toBe(true);
-  });
-
-  it('does not match for a guest', () => {
-    expect(runMatch(false)).toBe(false);
   });
 });

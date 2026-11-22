@@ -16,7 +16,7 @@
 }
 
 @mixin inside {
-  body:not(:has(app-welcome, app-door-page)) {
+  body:not(:has(app-welcome, app-door-page, app-hub)) {
     @content;
   }
 }

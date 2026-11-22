@@ -1,6 +1,6 @@
 @use 'tools';
 
-:root:not(:has(app-welcome, app-door-page)) {
+:root:not(:has(app-welcome, app-door-page, app-hub)) {
   color-scheme: dark;
 }
 

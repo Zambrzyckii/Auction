@@ -1,6 +1,3 @@
-import { inject } from '@angular/core';
-import { CanMatchFn } from '@angular/router';
-import { Session } from '../../core/auth/session';
 import type { BuildingId } from '../../pixel/street/city';
 import { BUILDING_LINKS } from '../welcome/welcome-rules';
 
@@ -16,8 +13,6 @@ const SEGMENT_BUILDINGS: ReadonlyMap<string, BuildingId> = new Map([
   ['pawnshop', 'pawn'],
   ['casino', 'casino'],
 ]);
-
-export const loggedInMatch: CanMatchFn = () => inject(Session).isLoggedIn();
 
 export function stripWhere(url: string): string | null {
   const path = url.split(/[?#]/)[0];
