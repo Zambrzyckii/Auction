@@ -4,7 +4,7 @@
     <span class="who">{{ email() }}</span>
     <button type="button" class="out" (click)="loggedOut.emit()">Log out</button>
   </header>
-  <app-street-scene (picked)="picked.emit($event)" [hud]="hud()" />
+  <app-street-scene (picked)="picked.emit($event)" [hud]="hud()" [fx]="fx()" />
   @if (hud(); as h) {
     <p class="sr">
       {{ h.name }} has ${{ h.cash }}. Level {{ h.level }}. Next level at ${{ h.nextAt }}.

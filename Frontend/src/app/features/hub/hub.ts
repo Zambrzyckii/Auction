@@ -1,12 +1,14 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Session } from '../../core/auth/session';
+import { PushClient } from '../../core/push/push-client';
 import { HubPage } from '../../pixel/hub/hub-page';
 import type { BuildingId } from '../../pixel/street/city';
 import type { HudState } from '../../pixel/street/hud';
 import { BUILDING_LINKS, BUILDING_PATHS } from '../welcome/welcome-rules';
 import { playerXp } from './hub-rules';
 import { HudData } from './hud-data';
+import { buildFx, HubFx, METER_TOPICS, newestTopic } from './meter-rules';
 
 function sameHud(a: HudState | null, b: HudState | null): boolean {
   if (a === null || b === null) return a === b;
@@ -28,6 +30,7 @@ export class Hub {
   private readonly router = inject(Router);
   private readonly session = inject(Session);
   private readonly data = inject(HudData);
+  private readonly push = inject(PushClient);
 
   readonly links = BUILDING_LINKS;
   readonly paths = BUILDING_PATHS;
@@ -45,6 +48,28 @@ export class Hub {
     },
     { equal: sameHud },
   );
+
+  readonly fx = signal<HubFx | null>(null);
+
+  private readonly seen = new Map<string, number>();
+  private previousHud: HudState | null = null;
+
+  constructor() {
+    const offs = METER_TOPICS.map((topic) =>
+      this.push.on(topic, () => this.seen.set(topic, Date.now())),
+    );
+    inject(DestroyRef).onDestroy(() => offs.forEach((off) => off()));
+
+    effect(() => {
+      const next = this.hud();
+      if (next === null) return;
+      const prev = this.previousHud;
+      this.previousHud = next;
+      if (prev === null) return;
+      const fx = buildFx(prev, next, newestTopic(this.seen, Date.now()));
+      if (fx !== null) this.fx.set(fx);
+    });
+  }
 
   open(id: BuildingId): void {
     void this.router.navigateByUrl(BUILDING_PATHS[id]);

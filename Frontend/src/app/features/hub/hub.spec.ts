@@ -4,7 +4,7 @@ import { signal, WritableSignal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { pushStub } from '../../../testing/push-stub';
+import { pushStub, PushStub } from '../../../testing/push-stub';
 import { routes } from '../../app.routes';
 import { Wallet } from '../../core/api/models';
 import { Session } from '../../core/auth/session';
@@ -14,6 +14,7 @@ import { HubPage } from '../../pixel/hub/hub-page';
 import { StreetScene } from '../../pixel/street/street-scene';
 import { Hub } from './hub';
 import { HudData } from './hud-data';
+import { METER_TOPICS } from './meter-rules';
 
 interface HudStub {
   wallet: WritableSignal<Wallet | null>;
@@ -52,16 +53,19 @@ describe('Hub', () => {
   let fixture: ComponentFixture<Hub>;
   let data: HudStub;
   let session: ReturnType<typeof sessionStub>;
+  let push: PushStub;
 
   beforeEach(async () => {
     data = hudStub();
     session = sessionStub(true);
+    push = pushStub();
     await TestBed.configureTestingModule({
       imports: [Hub],
       providers: [
         provideRouter([]),
         { provide: HudData, useValue: data },
         { provide: Session, useValue: session },
+        { provide: PushClient, useValue: push },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(Hub);
@@ -123,6 +127,59 @@ describe('Hub', () => {
     fixture.detectChanges();
 
     expect(page().hud()).toBe(first);
+  });
+
+  function setPlayer(cash: number, level: number): void {
+    data.username.set('bob');
+    data.level.set(level);
+    data.wallet.set({ availableFunds: cash, lockedFunds: 0, lifetimeTurnover: 11200 });
+    fixture.detectChanges();
+  }
+
+  it('plays nothing before the first wallet value', () => {
+    push.emit('AuctionChanged');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.fx()).toBeNull();
+
+    setPlayer(2840, 3);
+
+    expect(fixture.componentInstance.fx()).toBeNull();
+  });
+
+  it('plays a sold event when the wallet grows after an auction topic', () => {
+    setPlayer(2840, 3);
+    push.emit('AuctionChanged');
+
+    setPlayer(7090, 3);
+
+    expect(fixture.componentInstance.fx()).toMatchObject({
+      kind: 'event',
+      at: 'auction',
+      word: 'SOLD',
+      amount: 4250,
+      spotlight: true,
+    });
+    expect(page().fx()).toBe(fixture.componentInstance.fx());
+  });
+
+  it('plays a level up with the summed reward', () => {
+    setPlayer(2840, 3);
+
+    setPlayer(7090, 5);
+
+    const fx = fixture.componentInstance.fx();
+    expect(fx?.kind).toBe('levelup');
+    expect(fx).toMatchObject({ reward: 410 });
+    expect(fx).toMatchObject({ from: { level: 3 }, hud: { level: 5 } });
+  });
+
+  it('stops listening on destroy', () => {
+    const topics = METER_TOPICS;
+    expect(topics.every((topic) => push.handlerCount(topic) === 1)).toBe(true);
+
+    fixture.destroy();
+
+    expect(topics.every((topic) => push.handlerCount(topic) === 0)).toBe(true);
   });
 
   it('navigates on picked', () => {

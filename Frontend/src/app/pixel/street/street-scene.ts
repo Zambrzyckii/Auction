@@ -12,10 +12,12 @@ import {
 } from '@angular/core';
 import type { Building, BuildingId } from './city';
 import type { HudState } from './hud';
-import type { SceneOptions } from './scene';
+import type { LevelUpFx, SceneOptions, StreetEventFx } from './scene';
 import { bootStreet, browserDeps, SceneHandle } from './street-boot';
 
 const RESIZE_DEBOUNCE_MS = 150;
+
+export type StreetFx = ({ kind: 'event' } & StreetEventFx) | ({ kind: 'levelup' } & LevelUpFx);
 
 @Component({
   selector: 'app-street-scene',
@@ -26,6 +28,7 @@ export class StreetScene {
   readonly picked = output<BuildingId>();
   readonly reserve = input(0);
   readonly hud = input<HudState | null>(null);
+  readonly fx = input<StreetFx | null>(null);
 
   private readonly wrap = viewChild.required<ElementRef<HTMLElement>>('wrap');
   private readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
@@ -49,6 +52,14 @@ export class StreetScene {
     effect(() => {
       const hud = this.hud();
       untracked(() => this.handle?.setHud?.(hud));
+    });
+    effect(() => {
+      const fx = this.fx();
+      if (fx === null) return;
+      untracked(() => {
+        if (fx.kind === 'event') this.handle?.play?.(fx);
+        else this.handle?.playLevelUp?.(fx);
+      });
     });
     inject(DestroyRef).onDestroy(() => this.stop());
   }
