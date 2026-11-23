@@ -247,6 +247,17 @@ describe('RouletteRoom', () => {
       expect(r.rail).toBe(1000);
     });
 
+    it('holds the same way when roll comes before setChips', () => {
+      const { r } = make();
+      r.roll(spinOf(17));
+      r.setChips(1000);
+      expect(r.rail).toBe(550);
+      step(5800);
+      expect(r.rail).toBe(550);
+      step(1000);
+      expect(r.rail).toBe(1000);
+    });
+
     it('follows chips at once with no winner', () => {
       const { r } = make();
       r.setChips(1000);
