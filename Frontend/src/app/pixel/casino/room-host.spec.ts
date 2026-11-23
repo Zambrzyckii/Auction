@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest';
-import { prefersReducedMotion, RoomDeps, RoomHandle, RoomHost, roomDeps } from './room-host';
+import type { StreetBootDeps } from '../street/street-boot';
+import { prefersReducedMotion, RoomHandle, RoomHost, roomDeps } from './room-host';
 
 class FakeHandle implements RoomHandle {
   focusX = 240;
@@ -36,7 +37,7 @@ describe('RoomHost', () => {
   let onVisible: Mock<(visible: boolean) => void>;
   let host: RoomHost<{ reduced: boolean }, FakeHandle>;
 
-  const deps = (): RoomDeps<{ reduced: boolean }, FakeHandle> => ({
+  const deps = (): StreetBootDeps<{ reduced: boolean }, FakeHandle> => ({
     canRun: () => canRun,
     fontsReady: () => Promise.resolve(),
     loadScene: () => Promise.resolve(() => handle),

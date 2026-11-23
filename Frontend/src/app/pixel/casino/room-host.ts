@@ -1,5 +1,5 @@
 import { fontsReady } from '../street/fonts';
-import { bootStreet, canRunScene, SceneHandle, StreetBootDeps } from '../street/street-boot';
+import { bootStreet, canRunScene, StreetBootDeps } from '../street/street-boot';
 
 const HEIGHT_SHARE = 0.5;
 
@@ -12,15 +12,13 @@ export interface RoomHandle {
   destroy(): void;
 }
 
-export type RoomDeps<O, H extends RoomHandle> = StreetBootDeps<O, H & SceneHandle>;
-
 export function roomDeps<O, H extends RoomHandle>(
   load: () => Promise<(canvas: HTMLCanvasElement, opts: O) => H>,
-): RoomDeps<O, H> {
+): StreetBootDeps<O, H> {
   return {
     canRun: (canvas) => typeof ResizeObserver === 'function' && canRunScene(window, canvas),
     fontsReady: () => fontsReady(document.fonts),
-    loadScene: load as RoomDeps<O, H>['loadScene'],
+    loadScene: load,
   };
 }
 
@@ -42,7 +40,7 @@ export class RoomHost<O, H extends RoomHandle> {
     private readonly parts: {
       frame: () => HTMLElement;
       canvas: () => HTMLCanvasElement;
-      deps: RoomDeps<O, H>;
+      deps: StreetBootDeps<O, H>;
       onVisible?: (visible: boolean) => void;
     },
   ) {}

@@ -130,7 +130,7 @@ describe('CageRoom', () => {
     const r = room();
     r.set({ chips: 1250, cash: 2840, pending: false });
     step(100);
-    r.play({ kind: 'bought', amount: 500 });
+    r.playMove({ kind: 'bought', amount: 500 });
     r.set({ chips: 1750, cash: 2340, pending: false });
     step(600);
     expect(r.chips).toBe('CHIPS 1,250');
@@ -143,10 +143,10 @@ describe('CageRoom', () => {
   it('keeps the hold while a second purchase is still flying', () => {
     const r = room();
     r.set({ chips: 1250, cash: 2840, pending: false });
-    r.play({ kind: 'bought', amount: 500 });
+    r.playMove({ kind: 'bought', amount: 500 });
     r.set({ chips: 1750, cash: 2340, pending: false });
     step(300);
-    r.play({ kind: 'bought', amount: 500 });
+    r.playMove({ kind: 'bought', amount: 500 });
     r.set({ chips: 2250, cash: 1840, pending: false });
     step(600);
     expect(r.chips).toBe('CHIPS 1,250');
@@ -159,7 +159,7 @@ describe('CageRoom', () => {
   it('lands the flights and the numbers on pause', () => {
     const r = room();
     r.set({ chips: 1250, cash: 2840, pending: false });
-    r.play({ kind: 'bought', amount: 500 });
+    r.playMove({ kind: 'bought', amount: 500 });
     r.set({ chips: 1750, cash: 2340, pending: false });
     expect(r.chips).toBe('CHIPS 1,250');
     r.pause();
@@ -173,12 +173,12 @@ describe('CageRoom', () => {
     { kind: 'rejected', amount: 500 },
     { kind: 'expired', amount: 500 },
     { kind: 'cashout', amount: 350.5 },
-  ] as const)('plays $kind to its end', (move) => {
+  ] as const)('playMove runs $kind to its end', (move) => {
     const r = room();
     r.resize(960, 400);
     r.set({ chips: 1250, cash: 2840, pending: move.kind === 'pending' });
     expect(() => {
-      r.play(move);
+      r.playMove(move);
       step(4000);
     }).not.toThrow();
   });
@@ -189,7 +189,7 @@ describe('CageRoom', () => {
     r.set({ chips: 1250, cash: 2840, pending: true });
     expect(drawn).toBeGreaterThan(before);
     const afterSet = drawn;
-    r.play({ kind: 'bought', amount: 500 });
+    r.playMove({ kind: 'bought', amount: 500 });
     r.set({ chips: 1750, cash: 2340, pending: false });
     expect(drawn).toBeGreaterThan(afterSet);
     expect(r.chips).toBe('CHIPS 1,750');
@@ -200,7 +200,7 @@ describe('CageRoom', () => {
     vi.useFakeTimers();
     try {
       const r = room({ reduced: true });
-      r.play({ kind: 'rejected', amount: 500 });
+      r.playMove({ kind: 'rejected', amount: 500 });
       expect(vi.getTimerCount()).toBeGreaterThan(0);
       r.destroy();
       expect(vi.getTimerCount()).toBe(0);

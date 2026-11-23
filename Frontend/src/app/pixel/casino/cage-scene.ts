@@ -12,10 +12,11 @@ import {
 } from '@angular/core';
 import type { CageRoom, CageState } from './cage-room';
 import { CageCasino, CageSnap, cageMove, cageSnap } from './cage-watch';
-import { prefersReducedMotion, RoomDeps, RoomHost, roomDeps } from './room-host';
+import { prefersReducedMotion, RoomHost, roomDeps } from './room-host';
+import type { StreetBootDeps } from '../street/street-boot';
 import type { RoomOpts } from './room';
 
-export function cageRoomDeps(): RoomDeps<RoomOpts, CageRoom> {
+export function cageRoomDeps(): StreetBootDeps<RoomOpts, CageRoom> {
   return roomDeps<RoomOpts, CageRoom>(() =>
     import('./cage-room').then((m) => (canvas, opts) => new m.CageRoom(canvas, opts)),
   );
@@ -75,7 +76,7 @@ export class CageScene {
     if (!room) return;
     const move = room === this.fed && now ? cageMove(before, now) : null;
     this.fed = room;
-    if (move) room.play(move);
+    if (move) room.playMove(move);
     room.set(cageState(casino, cash));
   }
 }

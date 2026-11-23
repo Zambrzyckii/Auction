@@ -1,5 +1,5 @@
 // The cashier's cage: the teller who counts chips, the bartender, the two players at the
-// slots and the regular with his beer. The numbers come only from set(), the moves from play().
+// slots and the regular with his beer. The numbers come only from set(), the moves from playMove().
 import type { Ramp } from '../street/pix';
 import { R } from '../street/pix';
 import type { CageMove } from './cage-watch';
@@ -186,7 +186,7 @@ export class CageRoom extends Room {
     this.kickDraw();
   }
 
-  play(move: Exclude<CageMove, null>): void {
+  playMove(move: Exclude<CageMove, null>): void {
     if (move.kind === 'pending') this.pending(move.amount);
     else if (move.kind === 'bought') this.bought();
     else if (move.kind === 'rejected') this.refused('REJECTED', REJECTED, move.amount);
