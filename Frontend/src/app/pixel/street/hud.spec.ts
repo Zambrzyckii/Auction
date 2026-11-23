@@ -35,6 +35,7 @@ describe('street hud', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
       () => looseContext() as never,
     );
+    vi.resetModules();
     hud = await import('./hud');
     pix = await import('./pix');
     scene = await import('./scene');
