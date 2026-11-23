@@ -118,6 +118,11 @@ describe('Casino', () => {
     );
   });
 
+  it('renders the cage scene on the page', () => {
+    flushAll(casino({}));
+    expect(el().querySelector('app-cage-scene div.room canvas.scene')).not.toBeNull();
+  });
+
   it('buys chips and shows the pending purchase after the refresh', () => {
     flushAll(casino({}));
     typeAmount('100');

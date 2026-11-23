@@ -1,4 +1,8 @@
 <h2>Casino</h2>
+<app-cage-scene
+  [casino]="casinoPoller.value()"
+  [cash]="walletPoller.value()?.availableFunds ?? null"
+/>
 @if (casinoPoller.value(); as casino) {
   <p>Chip balance: {{ casino.balance | number }}</p>
   <p>

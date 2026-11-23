@@ -1,6 +1,32 @@
 @use 'tools';
 
 @include tools.inside {
+  app-cage-scene,
+  app-roulette-scene,
+  app-blackjack-scene {
+    display: block;
+    min-width: 0;
+  }
+
+  app-cage-scene .room,
+  app-roulette-scene .room,
+  app-blackjack-scene .room {
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: var(--m-field-lo);
+    border: var(--u) solid var(--m-ink);
+    scrollbar-width: thin;
+    scrollbar-color: var(--m-line) var(--m-ink);
+  }
+
+  app-cage-scene canvas.scene,
+  app-roulette-scene canvas.scene,
+  app-blackjack-scene canvas.scene {
+    display: block;
+    margin-inline: auto;
+    image-rendering: pixelated;
+  }
+
   section.table {
     display: flex;
     flex-wrap: wrap;

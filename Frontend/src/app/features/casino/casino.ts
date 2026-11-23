@@ -8,13 +8,14 @@ import { Casino as CasinoDto, Wallet as WalletDto } from '../../core/api/models'
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
 import { refreshOn } from '../../core/push/refresh-on';
+import { CageScene } from '../../pixel/casino/cage-scene';
 import { casinoPollMs, cashOutProblem, purchaseNotice, purchaseProblem } from './casino-rules';
 
 const WALLET_POLL_MS = 5000;
 
 @Component({
   selector: 'app-casino',
-  imports: [DecimalPipe, FormField, RouterLink],
+  imports: [CageScene, DecimalPipe, FormField, RouterLink],
   templateUrl: './casino.html',
 })
 export class Casino {
