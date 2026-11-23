@@ -24,6 +24,15 @@ class Host {
   readonly me = signal<string | null>(null);
 }
 
+@Component({
+  imports: [BankScene],
+  template: `<app-bank-scene focus="wires" [wires]="wires()" [me]="me()" />`,
+})
+class WiresHost {
+  readonly wires = signal<readonly WireRow[] | null>(null);
+  readonly me = signal<string | null>(null);
+}
+
 const loan = (over: Partial<BankLoan> = {}): BankLoan => ({
   publicLoanId: 'l1',
   principal: 200,
@@ -110,6 +119,39 @@ describe('BankScene', () => {
       host.loans.set(null);
       host.wires.set(null);
       fixture.detectChanges();
+    }).not.toThrow();
+  });
+
+  it('never throws on wire changes without a scene', async () => {
+    const wiresFixture: ComponentFixture<WiresHost> = TestBed.createComponent(WiresHost);
+    const wiresHost = wiresFixture.componentInstance;
+    wiresFixture.detectChanges();
+    await wiresFixture.whenStable();
+    wiresFixture.detectChanges();
+    const out: WireRow = {
+      senderUserId: 'me',
+      recipientUserId: 'other',
+      amount: 50,
+      sentOn: '2026-11-23T11:00:00Z',
+    };
+    const incoming: WireRow = {
+      senderUserId: 'other',
+      recipientUserId: 'me',
+      amount: 70,
+      sentOn: '2026-11-23T11:05:00Z',
+    };
+    expect(() => {
+      wiresHost.me.set('me');
+      wiresHost.wires.set([]);
+      wiresFixture.detectChanges();
+      wiresHost.wires.set([out]);
+      wiresFixture.detectChanges();
+      wiresHost.wires.set([incoming, out]);
+      wiresFixture.detectChanges();
+      wiresHost.me.set(null);
+      wiresFixture.detectChanges();
+      wiresHost.wires.set(null);
+      wiresFixture.detectChanges();
     }).not.toThrow();
   });
 });

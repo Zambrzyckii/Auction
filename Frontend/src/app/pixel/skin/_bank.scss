@@ -25,5 +25,9 @@
     app-bank:has(> app-bank-scene.staging) :is(table.loans, p.loan-notice) {
       visibility: hidden;
     }
+
+    app-transfers:has(> app-bank-scene.staging) table.history {
+      visibility: hidden;
+    }
   }
 }

@@ -16,6 +16,7 @@ import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
 import { ProfileDirectory } from '../../core/profiles/profile-directory';
 import { refreshOn } from '../../core/push/refresh-on';
+import { BankScene } from '../../pixel/bank/bank-scene';
 import { ProfilePicker } from '../profiles/profile-picker';
 import { transferProblem } from './transfers-rules';
 
@@ -25,7 +26,7 @@ const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 @Component({
   selector: 'app-transfers',
-  imports: [DatePipe, DecimalPipe, FormField, ProfilePicker],
+  imports: [BankScene, DatePipe, DecimalPipe, FormField, ProfilePicker],
   templateUrl: './transfers.html',
 })
 export class Transfers {

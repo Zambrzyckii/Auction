@@ -112,6 +112,24 @@ describe('Transfers', () => {
     fixture.detectChanges();
   }
 
+  it('renders the bank scene right under the heading', () => {
+    flushAll([]);
+    const next = el().querySelector(':scope > h2')?.nextElementSibling;
+    expect(next?.localName).toBe('app-bank-scene');
+  });
+
+  it('marks the history table as the only table.history', () => {
+    flushAll([transfer({})]);
+    const history = el().querySelectorAll('table.history');
+    expect(history).toHaveLength(1);
+    expect(el().querySelectorAll('table')).toHaveLength(1);
+    const text = history[0].textContent ?? '';
+    expect(text).toContain('Direction');
+    expect(text).toContain('Sent to');
+    expect(text).toContain('deadbeef');
+    expect(text).toContain('25.5');
+  });
+
   it('shows the available funds', () => {
     flushAll([]);
     expect(el().textContent).toContain('300');

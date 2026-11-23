@@ -1,4 +1,5 @@
 <h2>Transfers</h2>
+<app-bank-scene focus="wires" [wires]="historyPoller.value()" [me]="session.userId()" />
 @if (walletPoller.value(); as wallet) {
   <p>Available funds: {{ wallet.availableFunds | number }}</p>
 } @else if (walletPoller.error(); as error) {
@@ -43,7 +44,7 @@
   @if (rows.length === 0) {
     <p>No transfers yet.</p>
   } @else {
-    <table>
+    <table class="history">
       <tr>
         <th>Direction</th>
         <th>Player</th>
