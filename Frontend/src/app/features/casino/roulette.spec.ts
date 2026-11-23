@@ -208,7 +208,11 @@ describe('Roulette', () => {
 
   it('renders the roulette scene above the forms', () => {
     flushAll(casino({}));
-    expect(el().querySelector('app-roulette-scene')).not.toBeNull();
+    const scene = el().querySelector(':scope > app-roulette-scene');
+    const form = el().querySelector('form.bet-form');
+    expect(scene).not.toBeNull();
+    expect(form).not.toBeNull();
+    expect(scene!.compareDocumentPosition(form!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('marks the balance paragraph as chip-balance and keeps its text', () => {

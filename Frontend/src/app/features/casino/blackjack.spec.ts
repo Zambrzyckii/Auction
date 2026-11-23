@@ -344,7 +344,7 @@ describe('Blackjack', () => {
 
   it('renders the blackjack scene under the back link', () => {
     flushAll(casino({}));
-    expect(el().querySelector('app-blackjack-scene')).not.toBeNull();
+    expect(el().querySelector(':scope > app-blackjack-scene')).not.toBeNull();
   });
 
   it('marks the balance paragraph as chip-balance and keeps its text', () => {

@@ -157,9 +157,9 @@ rules bind every change it makes.
     motion, while the scene is off screen or the tab is hidden, or when no scene booted, and a spin or hand that is
     already there on load plays nothing. Inside `prefers-reduced-motion: no-preference`,
     `_casino.scss` hides the page's result text with `visibility: hidden` while a class is set.
-    That is `p.chip-balance`, `section.last-spin` and `table.history` on the roulette page, and
-    `p.chip-balance`, `p.dealer`, `p.player`, `p.outcome`, `p.auto-stood` and `table.history` on the
-    blackjack page.
+    That is `p.chip-balance`, `section.last-spin`, `table.history`, `p.spin-problem` and
+    `p.buy-first` on the roulette page, and `p.chip-balance`, `p.dealer`, `p.player`, `p.outcome`,
+    `p.auto-stood`, `table.history` and `button.new-hand` on the blackjack page.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside

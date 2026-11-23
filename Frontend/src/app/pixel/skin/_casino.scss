@@ -42,12 +42,20 @@
 
   @media (prefers-reduced-motion: no-preference) {
     app-roulette:has(> app-roulette-scene.rolling)
-      :is(p.chip-balance, section.last-spin, table.history) {
+      :is(p.chip-balance, section.last-spin, table.history, p.spin-problem, p.buy-first) {
       visibility: hidden;
     }
 
     app-blackjack:has(> app-blackjack-scene.dealing)
-      :is(p.chip-balance, p.dealer, p.player, p.outcome, p.auto-stood, table.history) {
+      :is(
+        p.chip-balance,
+        p.dealer,
+        p.player,
+        p.outcome,
+        p.auto-stood,
+        table.history,
+        button.new-hand
+      ) {
       visibility: hidden;
     }
   }
