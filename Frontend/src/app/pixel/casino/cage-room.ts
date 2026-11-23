@@ -5,14 +5,11 @@ import { R } from '../street/pix';
 import type { CageMove } from './cage-watch';
 import * as FL from './floor';
 import type { Slot } from './floor';
-import { Room, clamp, faceOf, fmt } from './room';
+import { GOLD, GREEN, PAPER, Room, clamp, faceOf, fmt } from './room';
 import type { RoomOpts } from './room';
 import { cage } from './rooms';
 import * as SP from './sprites';
 
-const PAPER = '#f4ecdc',
-  GOLD = '#ffd75e',
-  GREEN = '#9be86a';
 const PLATE_AT = [196, 108] as const;
 const COMPLETED: Ramp = ['#173328', '#2a5a3c', '#4a8a4a', '#8cc063'];
 const REJECTED: Ramp = ['#43142a', '#7a2034', '#b0383a', '#ff8a6a'];

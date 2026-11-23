@@ -12,6 +12,10 @@ import type { PlateLine } from './sprites';
 
 export const ART_W = 480;
 export const ART_H = 200;
+export const PAPER = '#f4ecdc';
+export const GOLD = '#ffd75e';
+export const GREEN = '#9be86a';
+export const REDL = '#ff8a6a';
 const MAX_SCALE = 4;
 const PLATE_CLEAR_MS = 2800;
 
