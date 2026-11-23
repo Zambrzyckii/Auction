@@ -1,4 +1,5 @@
 import type * as Rooms from './rooms';
+import type * as Sprites from './sprites';
 
 const looseContext = () => {
   const target: Record<string | symbol, unknown> = {
@@ -22,6 +23,9 @@ const looseContext = () => {
     },
   }) as unknown as CanvasRenderingContext2D;
 };
+
+const PIN_W = 11;
+const PIN_H = 48;
 
 describe('casino rooms', () => {
   let rooms: typeof Rooms;
@@ -82,6 +86,31 @@ describe('casino rooms', () => {
         expect(centre).toBeGreaterThanOrEqual(dozen.x);
         expect(centre).toBeLessThanOrEqual(dozen.x + dozen.w);
       }
+    });
+  });
+
+  describe('neon', () => {
+    let sprites: typeof Sprites;
+
+    beforeAll(async () => {
+      vi.resetModules();
+      sprites = await import('./sprites');
+    });
+
+    it('sizes a single string as before', () => {
+      const { w, h } = sprites.neon('CASHIER', 'jersey', sprites.AMBER, '#fff3c4');
+      expect([w, h]).toEqual([PIN_W, PIN_H]);
+    });
+
+    it('sizes a one-line list like a single string', () => {
+      const { w, h } = sprites.neon(['CASHIER'], 'jersey', sprites.AMBER, '#fff3c4');
+      expect([w, h]).toEqual([PIN_W, PIN_H]);
+    });
+
+    it('stacks a second line one pitch lower', () => {
+      const one = sprites.neon('A', 'tiny', sprites.NEON);
+      const two = sprites.neon(['A', 'B'], 'tiny', sprites.NEON, undefined, 8);
+      expect(two.h).toBe(one.h + 8);
     });
   });
 });

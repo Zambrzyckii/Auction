@@ -417,8 +417,32 @@ export const cardShadow = (() => {
 })();
 
 // ----- neon: bright tube, coloured rim, dithered spill; "off" keeps the dark tube -----
-export function neon(str: string, font: FontKey, ramp: Ramp, core?: string) {
-  const m = glyphMask(str, font);
+function linesMask(lines: readonly string[], font: FontKey, pitch: number) {
+  const masks = lines.map((l) => glyphMask(l, font)),
+    w = Math.max(...masks.map((m) => m.w)),
+    pts: [number, number][] = [];
+  let top = 99,
+    bottom = -1;
+  masks.forEach((m, i) => {
+    const dx = Math.floor((w - m.w) / 2),
+      dy = i * pitch - m.top + masks[0].top;
+    for (const [x, y] of m.pts) {
+      pts.push([x + dx, y + dy]);
+      top = Math.min(top, y + dy);
+      bottom = Math.max(bottom, y + dy);
+    }
+  });
+  return { pts, w, top, bottom };
+}
+
+export function neon(
+  str: string | readonly string[],
+  font: FontKey,
+  ramp: Ramp,
+  core?: string,
+  pitch = 8,
+) {
+  const m = typeof str === 'string' ? glyphMask(str, font) : linesMask(str, font, pitch);
   const pad = 4,
     gw = m.w + 3,
     gh = m.bottom - m.top + 1;

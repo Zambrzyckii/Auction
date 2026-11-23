@@ -252,7 +252,7 @@ export abstract class Room implements Painter {
     this.ctx.drawImage(c, Math.round(x * S), Math.round(y * S), c.width * S, c.height * S);
   }
 
-  text(str: string, x: number, y: number, col: string, font: FontKey = 'tiny'): void {
+  protected textImg(str: string, col: string, font: FontKey = 'tiny'): HTMLCanvasElement {
     const key = font + '|' + col + '|' + str;
     let cached = texts.get(key);
     if (!cached) {
@@ -264,7 +264,11 @@ export abstract class Room implements Painter {
       cached = sp.canvas();
       texts.set(key, cached);
     }
-    this.img(cached, x, y);
+    return cached;
+  }
+
+  text(str: string, x: number, y: number, col: string, font: FontKey = 'tiny'): void {
+    this.img(this.textImg(str, col, font), x, y);
   }
 
   setPlate(lines: readonly PlateLine[], x: number, y: number, life = 2.2): void {

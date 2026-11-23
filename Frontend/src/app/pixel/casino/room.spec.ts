@@ -1,3 +1,4 @@
+import type { FontKey } from '../street/pix';
 import type * as RoomModule from './room';
 
 const looseContext = () => {
@@ -28,7 +29,10 @@ describe('Room', () => {
   let TestRoom: new (
     cv: HTMLCanvasElement,
     opts?: RoomModule.RoomOpts,
-  ) => RoomModule.Room & { clear(): void };
+  ) => RoomModule.Room & {
+    clear(): void;
+    textImg(str: string, col: string, font?: FontKey): HTMLCanvasElement;
+  };
   let queued: FrameRequestCallback[] = [];
   let clock = 0;
   let requests = 0;
@@ -44,6 +48,9 @@ describe('Room', () => {
       protected draw(): void {}
       clear(): void {
         this.clearPlate();
+      }
+      override textImg(str: string, col: string, font?: FontKey): HTMLCanvasElement {
+        return super.textImg(str, col, font);
       }
     };
   });
@@ -266,6 +273,20 @@ describe('Room', () => {
       const r = room();
       r.clear();
       expect(requests).toBe(0);
+    });
+  });
+
+  describe('text', () => {
+    it('returns the same canvas for the same text, colour and font', () => {
+      const r = room();
+      expect(r.textImg('AB', '#ffffff', 'tiny')).toBe(r.textImg('AB', '#ffffff', 'tiny'));
+    });
+
+    it('draws the cached canvas at the given art position', () => {
+      const r = room();
+      const img = vi.spyOn(r, 'img');
+      r.text('A', 3, 4, '#ffffff');
+      expect(img).toHaveBeenCalledWith(r.textImg('A', '#ffffff'), 3, 4);
     });
   });
 });
