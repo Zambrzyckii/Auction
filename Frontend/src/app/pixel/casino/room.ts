@@ -116,7 +116,7 @@ export abstract class Room implements Painter {
   private after: Later[] = [];
   private neon: (NeonDef & { off: number })[] = [];
   private rings: RingDef[] = [];
-  private slots: Slot[] = [];
+  protected slots: Slot[] = [];
   private sparkPts: [number, number][] = [];
   private spark: Spark | null = null;
   private nextSpark = 0;
