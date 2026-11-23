@@ -737,7 +737,7 @@ export class BankRoom extends Room {
     if ('slips' in step) {
       this.shown = { ...this.shown, slips: step.slips };
     } else {
-      this.shown = { ...this.shown, loan: step.loan };
+      this.shown = { ...this.shown, loan: step.loan, known: true };
     }
     this.kickDraw();
     this.onReveal?.();

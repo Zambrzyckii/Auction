@@ -585,6 +585,14 @@ describe('BankRoom', () => {
       expect(room.painted.slips).toEqual(['-9']);
     });
 
+    it('marks the loans known when a loan step reveals before the first poll', () => {
+      const { room } = stepLog({ reduced: true });
+      room.place({ loan: null, known: false, slips: [] });
+      expect(room.painted.led).toEqual(['', 'NEXT!', '']);
+      room.run([{ kind: 'snapLoan', loan: overdue() }]);
+      expect(room.painted.led).toEqual(['OVERDUE', 'FEE $44', 'OWED $264']);
+    });
+
     it('queues a second run behind the first and fires idle once', () => {
       const { room, log, seen } = stepLog();
       room.place(shown(null));
