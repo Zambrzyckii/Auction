@@ -144,6 +144,7 @@ export class BlackjackRoom extends Room {
   private timers = 0;
   private flights = 0;
   private flightWaiter: (() => void) | null = null;
+  private restWaiter: (() => void) | null = null;
   private gen = 0;
   private pendingRun = false;
   private dead = false;
@@ -238,6 +239,7 @@ export class BlackjackRoom extends Room {
     this.timers = 0;
     this.flights = 0;
     this.flightWaiter = null;
+    this.restWaiter = null;
     this.pendingRun = false;
     this.cards = [];
     this.reach = null;
@@ -311,8 +313,8 @@ export class BlackjackRoom extends Room {
     if (step.kind === 'stake') return this.stake(step.amount);
     if (step.kind === 'card') return this.dealCard(step.row, step.code, false);
     if (step.kind === 'hole') return this.dealCard('dealer', -1, true);
-    if (step.kind === 'reveal') return this.reveal(step.code);
-    return this.settle(step);
+    if (step.kind === 'reveal') return this.whenResting(() => this.reveal(step.code));
+    return this.whenResting(() => this.settle(step));
   }
 
   private stake(amount: number): void {
@@ -451,6 +453,18 @@ export class BlackjackRoom extends Room {
       onEnd?.();
       if (this.flights === 0) this.releaseWaiter();
     });
+  }
+
+  private whenResting(fn: () => void): void {
+    if (this.cards.some(isMoving)) this.restWaiter = fn;
+    else fn();
+  }
+
+  private releaseRest(): void {
+    const fn = this.restWaiter;
+    if (!fn || this.cards.some(isMoving)) return;
+    this.restWaiter = null;
+    fn();
   }
 
   private whenFlightsDone(fn: () => void): void {
@@ -716,21 +730,23 @@ export class BlackjackRoom extends Room {
   }
 
   // ----- labels and LEDs -----
-  private rowCards(row: Row, count: number): BjCard[] | null {
+  private rowCards(row: Row, codes: readonly number[]): BjCard[] | null {
     const list = this.cards.filter((c) => c.row === row && c.phase !== 'sweep');
-    if (count === 0 || list.length !== count || list.some(isMoving)) return null;
+    if (codes.length === 0 || list.length !== codes.length || list.some(isMoving)) return null;
+    if (list.some((c, i) => c.code !== codes[i])) return null;
     return list;
   }
 
   private playerLabel(h: TableHand): string | null {
-    if (!this.rowCards('player', h.playerCards.length)) return null;
+    if (!this.rowCards('player', h.playerCards)) return null;
     const soft = h.playerIsSoft && h.status === 'InProgress';
     return String(h.playerTotal) + (soft ? ' soft' : '');
   }
 
   private dealerLabel(h: TableHand): string | null {
-    const list = this.rowCards('dealer', h.dealerHidden ? 2 : h.dealerCards.length);
-    if (!list || list.some((c) => c.hidden) || h.dealerTotal === null) return null;
+    if (h.dealerHidden || h.dealerTotal === null) return null;
+    const list = this.rowCards('dealer', h.dealerCards);
+    if (!list || list.some((c) => c.hidden)) return null;
     return String(h.dealerTotal);
   }
 
@@ -742,6 +758,7 @@ export class BlackjackRoom extends Room {
   protected override stepRoom(dt: number): void {
     for (const c of this.cards) this.stepCard(c, dt);
     if (this.cards.some((c) => c.gone)) this.cards = this.cards.filter((c) => !c.gone);
+    this.releaseRest();
     this.dealerHands();
     this.followChips();
     this.checkIdle();
@@ -752,6 +769,7 @@ export class BlackjackRoom extends Room {
     this.cards = this.cards.filter((c) => !c.gone);
     this.relayout();
     this.snapAll();
+    this.releaseRest();
     this.reach = null;
     this.handR = { x: 257, y: 103 };
     this.handL = { x: 223, y: 103 };

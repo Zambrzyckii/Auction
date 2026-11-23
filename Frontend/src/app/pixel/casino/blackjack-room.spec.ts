@@ -271,7 +271,7 @@ describe('BlackjackRoom', () => {
     const { r, onIdle } = make();
     r.place(hand());
     r.run(bjSteps(shownOf(hand()), stood()));
-    step(1700);
+    step(2000);
     expect(r.felt.circle).toBe(20);
     step(500);
     expect(r.idle).toBe(false);
@@ -362,6 +362,66 @@ describe('BlackjackRoom', () => {
     expect(plate).toHaveBeenCalledWith(lines, 392, 174, 2.6);
   });
 
+  describe('settling after the last card lands', () => {
+    type Inner = { cards: { phase: string }[]; dealerOpen: boolean };
+    const moving = (r: object) => (r as Inner).cards.some((c) => c.phase !== 'rest');
+
+    it('shows no outcome plate while the last dealer card moves', () => {
+      const { r } = make();
+      r.place(hand());
+      const seen: boolean[] = [];
+      vi.spyOn(r, 'setPlate').mockImplementation(() => {
+        seen.push(moving(r));
+      });
+      r.run(bjSteps(shownOf(hand()), stood()));
+      step(5000);
+      expect(seen).toEqual([false]);
+    });
+
+    it('starts the reveal only after the player card has rested', () => {
+      const { r } = make();
+      r.place(hand());
+      const bust = hand({
+        playerCards: [9, 20, 11],
+        playerTotal: 27,
+        status: 'Completed',
+        outcome: 'Lose',
+        payout: 0,
+        dealerHidden: false,
+        dealerCards: [5, 30],
+      });
+      r.run(bjSteps(shownOf(hand()), bust));
+      let movingAtReveal: boolean | null = null;
+      for (let i = 0; i < 200 && movingAtReveal === null; i++) {
+        step(16);
+        if ((r as unknown as Inner).dealerOpen) movingAtReveal = moving(r);
+      }
+      expect(movingAtReveal).toBe(false);
+    });
+
+    it('fires onIdle within 6 s for a sweep, a natural deal and its settle', () => {
+      const { r, onIdle } = make();
+      r.place(stood());
+      const natural = stood({
+        publicHandId: 'h2',
+        playerCards: [0, 12],
+        playerTotal: 21,
+        dealerCards: [5, 30],
+        dealerTotal: 15,
+        outcome: 'Blackjack',
+        payout: 25,
+      });
+      r.run(bjSteps(shownOf(stood()), natural));
+      let elapsed = 0;
+      while (!onIdle.mock.calls.length && elapsed < 8000) {
+        step(16);
+        elapsed += 16;
+      }
+      expect(onIdle).toHaveBeenCalledTimes(1);
+      expect(elapsed).toBeLessThan(6000);
+    });
+  });
+
   describe('plate on a new deal', () => {
     const plateUp = (r: object) => (r as { plateNow: unknown }).plateNow !== null;
 
@@ -403,6 +463,19 @@ describe('BlackjackRoom', () => {
     expect(r.totals.player).toBeNull();
     step(1500);
     expect(r.totals.player).toBe('19');
+  });
+
+  it('shows no total for a new hand beside the old resting cards', () => {
+    const { r } = make();
+    r.place(stood());
+    const next = hand({ publicHandId: 'h2', playerCards: [3, 4], playerTotal: 7 });
+    r.setHand(next);
+    expect(r.totals.player).toBeNull();
+    r.run(bjSteps(shownOf(stood()), next));
+    step(1000);
+    expect(r.totals.player).toBeNull();
+    step(3000);
+    expect(r.totals.player).toBe('7');
   });
 
   it('shows the dealer total once the hole is up and drops soft after the hand ends', () => {
