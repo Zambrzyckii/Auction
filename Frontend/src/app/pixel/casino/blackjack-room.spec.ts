@@ -505,6 +505,80 @@ describe('BlackjackRoom', () => {
     expect(r.autoStandLed).toBeNull();
   });
 
+  describe('clock redraw under reduced', () => {
+    const until = Date.parse('2026-11-23T12:05:00Z');
+
+    beforeEach(() => {
+      vi.useFakeTimers({
+        toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'],
+      });
+      vi.setSystemTime(until - 90_000);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('redraws once a second while the clock shows', () => {
+      const { r } = make({ reduced: true });
+      r.place(hand());
+      r.setHand(hand());
+      const img = vi.spyOn(r, 'img');
+      expect(r.autoStandLed).toBe('AUTO-STAND 1:30');
+      vi.advanceTimersByTime(1000);
+      expect(img).toHaveBeenCalled();
+      expect(r.autoStandLed).toBe('AUTO-STAND 1:29');
+      img.mockClear();
+      vi.advanceTimersByTime(1000);
+      expect(img).toHaveBeenCalled();
+      expect(r.autoStandLed).toBe('AUTO-STAND 1:28');
+    });
+
+    it('keeps a single timer however often the hand is set', () => {
+      const { r } = make({ reduced: true });
+      r.setHand(hand());
+      r.setHand(hand());
+      r.setChips(5);
+      expect(vi.getTimerCount()).toBe(1);
+    });
+
+    it('stops when the hand leaves the in-progress state', () => {
+      const { r } = make({ reduced: true });
+      r.setHand(hand());
+      expect(vi.getTimerCount()).toBe(1);
+      r.setHand(stood());
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('stops when the hand is cleared', () => {
+      const { r } = make({ reduced: true });
+      r.setHand(hand());
+      r.setHand(null);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('starts no timer for a hand without a deadline', () => {
+      const { r } = make({ reduced: true });
+      r.setHand(hand({ autoStandOn: null }));
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('stops on destroy and stays stopped', () => {
+      const { r } = make({ reduced: true });
+      r.setHand(hand());
+      r.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+      r.setHand(hand());
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('starts no timer outside reduced motion', () => {
+      const { r } = make();
+      r.setHand(hand());
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   it('holds the CHIPS LED while the queue plays and follows the chips when idle', () => {
     const { r } = make();
     expect(r.chipsLed).toBe('CHIPS -');

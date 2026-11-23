@@ -148,6 +148,7 @@ export class BlackjackRoom extends Room {
   private gen = 0;
   private pendingRun = false;
   private dead = false;
+  private clockTimer: ReturnType<typeof setInterval> | undefined;
   private circle = 0;
   private circleClosed = false;
   private dealerOpen = false;
@@ -264,8 +265,26 @@ export class BlackjackRoom extends Room {
     this.kickDraw();
   }
 
+  protected override kickDraw(): void {
+    super.kickDraw();
+    this.syncClock();
+  }
+
+  private syncClock(): void {
+    if (!this.reduced || this.dead || this.autoStandLed === null) {
+      clearInterval(this.clockTimer);
+      this.clockTimer = undefined;
+      return;
+    }
+    this.clockTimer ??= setInterval(() => {
+      if (!this.paused) this.draw();
+    }, 1000);
+  }
+
   override destroy(): void {
     this.dead = true;
+    clearInterval(this.clockTimer);
+    this.clockTimer = undefined;
     this.cv.removeEventListener('mousemove', this.onMove);
     this.cv.removeEventListener('mouseleave', this.onLeave);
     super.destroy();
