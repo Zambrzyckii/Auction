@@ -40,6 +40,13 @@
     }
   }
 
+  @media (prefers-reduced-motion: no-preference) {
+    app-roulette:has(> app-roulette-scene.rolling)
+      :is(p.chip-balance, section.last-spin, table.history) {
+      visibility: hidden;
+    }
+  }
+
   p.dealer,
   p.player {
     display: flex;

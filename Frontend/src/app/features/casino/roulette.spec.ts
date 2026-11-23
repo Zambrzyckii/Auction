@@ -205,4 +205,15 @@ describe('Roulette', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('Chip balance: 555');
   });
+
+  it('renders the roulette scene above the forms', () => {
+    flushAll(casino({}));
+    expect(el().querySelector('app-roulette-scene')).not.toBeNull();
+  });
+
+  it('marks the balance paragraph as chip-balance and keeps its text', () => {
+    flushAll(casino({ balance: 1234 }));
+    const balance = el().querySelector('p.chip-balance');
+    expect(balance?.textContent?.trim()).toBe('Chip balance: 1,234');
+  });
 });

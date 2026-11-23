@@ -13,6 +13,7 @@ import {
 } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { refreshOn } from '../../core/push/refresh-on';
+import { RouletteScene } from '../../pixel/casino/roulette-scene';
 import { casinoPollMs } from './casino-rules';
 import { ROULETTE_BET_TYPES, betProblem, spinProblem } from './roulette-rules';
 
@@ -22,7 +23,7 @@ const SELECTION_TYPES: readonly RouletteBetType[] = ['Straight', 'Dozen', 'Colum
 
 @Component({
   selector: 'app-roulette',
-  imports: [DatePipe, DecimalPipe, FormField, RouterLink],
+  imports: [DatePipe, DecimalPipe, FormField, RouletteScene, RouterLink],
   templateUrl: './roulette.html',
 })
 export class Roulette {
