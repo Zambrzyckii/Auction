@@ -146,6 +146,22 @@ describe('RouletteRoom', () => {
     expect(onSettled).toHaveBeenCalledTimes(1);
   });
 
+  it('stops the guests cheering when the next throw starts', async () => {
+    const { martini } = await import('./floor');
+    const { r } = make();
+    const img = vi.spyOn(r, 'img');
+    const sipping = () => img.mock.calls.some(([c]) => c === martini);
+    r.roll(spinOf(17));
+    step(5800);
+    img.mockClear();
+    step(32);
+    expect(sipping()).toBe(false);
+    r.roll(spinOf(0));
+    img.mockClear();
+    step(32);
+    expect(sipping()).toBe(true);
+  });
+
   it('cancels the first settle when a roll arrives after the ball landed', () => {
     const { r, onSettled } = make();
     r.roll(spinOf(17));

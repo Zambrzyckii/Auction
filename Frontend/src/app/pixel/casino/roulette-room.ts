@@ -206,6 +206,7 @@ export class RouletteRoom extends Room {
     this.payoutHold = spin.totalPayout;
     this.rake = null;
     this.dolly = null;
+    this.react = null;
     this.flying.clear();
     this.shown = new Map(feltStacks(spin.bets).map((st) => [st.zone, st]));
     if (this.reduced || this.paused) {
