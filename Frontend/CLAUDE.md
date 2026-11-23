@@ -112,9 +112,10 @@ rules bind every change it makes.
   specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
   elements and classes the templates already have, so a new page gets the look without a template
   change and the three frame pages stay untouched. The exception is the item templates, the war
-  page and the three casino pages, which gained these hooks for the item tiles, the shelf, the war
-  scene and the casino scenes, styled by `_hall.scss`, `_forms.scss`, `_inventory.scss`,
-  `_workshop.scss`, `_war.scss` and `_casino.scss`.
+  page, the three casino pages and the bank and transfers pages, which gained these hooks for the
+  item tiles, the shelf, the war scene, the casino scenes and the bank scene, styled by
+  `_hall.scss`, `_forms.scss`, `_inventory.scss`, `_workshop.scss`, `_war.scss`, `_casino.scss` and
+  `_bank.scss`.
   - `auction-list.html` has `td.lot`, `span.lot-row` and `.rarity`.
   - `my-auctions.html` has `td.lot` and `span.lot-row` in both tables, and no `.rarity`.
   - `auction-detail.html` has `td.lot`, `span.lot-row`, `.rarity` and `tr.leading`, the only auction
@@ -165,6 +166,26 @@ rules bind every change it makes.
     That is `p.chip-balance`, `section.last-spin`, `table.history`, `p.spin-problem` and
     `p.buy-first` on the roulette page, and `p.chip-balance`, `p.dealer`, `p.player`, `p.outcome`,
     `p.auto-stood`, `table.history` and `button.new-hand` on the blackjack page.
+  - `bank.html` and `transfers.html` have four additions between them. Both have `<app-bank-scene>`
+    right after the `h2`, with `focus="loans"` and the loans, wallet, offers, `asked` and `format`
+    inputs on `/bank` and `focus="wires"` with `wires` and `me` on `/transfers`. `bank.html` has
+    `table.loans` on the loans table, and the offers table stays unmarked. `transfers.html` has
+    `table.history` on the history table. `_bank.scss` frames the scene host like the casino scenes,
+    a bordered `.room` that scrolls sideways inside itself around a pixelated `canvas.scene`.
+  - `app-bank-scene` gets the host class `staging` while its stage holds a staged step. `BankStage`
+    (`bank-stage.ts`) imports nothing from Angular. A run is staged when the scene is visible and
+    not reduced, and a step in it is staged when its kind is in `STAGED_KINDS` (`approved`,
+    `rejected`, `partial`, `repaid`, `overdue`, `wireOut` and `wireIn`, `bank-watch.ts`). The class
+    is set before the room runs the steps. It clears at the reveal of the last staged step and when
+    the room goes idle. It also clears at once when the scene leaves the screen or the tab hides,
+    and after 12000 ms (`STAGE_WATCHDOG_MS`), restarted by each staged run. Staging never starts
+    under reduced motion or for a run the scene was not visible for, and the first loans and the
+    first history after load are baselines that play and stage nothing, whether they arrive before
+    or after the room boots. Inside `prefers-reduced-motion: no-preference`, `_bank.scss` hides
+    `table.loans` and `p.loan-notice` on `/bank` and `table.history` on `/transfers` with
+    `visibility: hidden` while the class is set, so the layout holds. The funds lines are not
+    hidden, because they come from the wallet poller and not from the poller that triggers the
+    step.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
@@ -222,6 +243,35 @@ rules bind every change it makes.
   `blackjack-room.ts:403`), the rail count while a payout is held (`roulette-room.ts:177`), the
   chip that flies for a stake change (`roulette-room.ts:328`) and the amount of a cash-out
   (`cage-watch.ts:57`).
+- `pixel/bank/` holds the bank scene, `app-bank-scene`, on `/bank` and `/transfers`. The art modules
+  are `sprites.ts` (stamp, LED panel, walls, linoleum, brick and light cones, with the casino plates
+  and neon re-exported), `people.ts` (the shark, the enforcer, you, the queue and the props) and
+  `rooms.ts` (the baked 480x200 storefront). They come from the approved mockup. Three toolkit files
+  outside `pixel/bank/` changed for it and casino output did not. `pix.ts` gained nine ramps in `R`
+  (`sodium`, `teal`, `bile`, `cream`, `leather`, `gum`, `coat`, `hoodie` and `moss`), `neon()` in
+  `casino/sprites.ts` takes a list of lines and a pitch besides one string, and `Room.textImg` in
+  `casino/room.ts` is the cached text canvas that `Room.text` draws. `bank-room.ts` is `BankRoom`,
+  one class on the casino `Room` loop, loaded lazily through `bankRoomDeps()` in `bank-scene.ts` and
+  `bootStreet` behind the same guard as the other scenes. Only that loader reaches `sprites.ts`,
+  `people.ts`, `rooms.ts`, `bank-labels.ts` and `bank-room.ts`, and `bank-scene.ts` and
+  `bank-stage.ts` import them with `import type` at most. `bank-watch.ts` is pure and imports
+  nothing. It holds the input types, `loanSteps` and `wireSteps`, which turn two polls into the
+  steps the room plays, and `STAGED_KINDS`. `bank-labels.ts` holds the LED, board, neon, term and
+  slip texts. `bank-stage.ts` holds `BankStage` and its two timings, `STAGE_WATCHDOG_MS` (12000) and
+  `ASK_WINDOW_MS` (10000). The `focus` input picks the window the frame centres, `loans` at x 244
+  and `wires` at x 372 (`FOCUS_X`, `bank-room.ts:28`). The scene follows only the newest loan,
+  because the API returns loans newest first (`BankingRepository.cs:47`). It plays at most
+  `MAX_WIRES` (2, `bank-watch.ts:68`) new history rows per poll, oldest first. The API does not say
+  who collects, so `asked`, bound to `collection.pending()`, marks a collection seen within
+  `ASK_WINDOW_MS` as yours. A collection of an Active loan before its `dueOn` is yours too, and the
+  rest is the bank's. The room reads every number from the server and computes no bank rule. The
+  display calculations are the growth of `amountRepaid` between two polls for PAID BACK
+  (`bank-watch.ts:114`, `:138`), the MEMBERS ONLY rope that compares `lifetimeTurnover` with
+  `requiredTurnover` (`bank-labels.ts:54`) and the term read as `10 MIN` (`bank-labels.ts:42`). The
+  sign LATE FEE 20% is a mirror of the backend's `PenaltyRate` (`BOARD_FEE`, `bank-labels.ts:4`,
+  `appsettings.json:133` in the Api project). `/transfers` loads no loans and no offers, so the loan
+  side idles there. The LED shows only NEXT!, the board shows only its header and the facade neon is
+  not drawn.
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
   `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
   `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
