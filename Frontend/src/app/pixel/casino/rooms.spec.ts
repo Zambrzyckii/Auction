@@ -30,11 +30,13 @@ describe('casino rooms', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
       () => looseContext() as never,
     );
+    vi.resetModules();
     rooms = await import('./rooms');
   });
 
   afterAll(() => {
     vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   it('exports the 480x200 art size', () => {

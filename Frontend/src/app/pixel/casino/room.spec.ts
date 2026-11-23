@@ -133,6 +133,17 @@ describe('Room', () => {
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
+    it('keeps a flier started from a landing', () => {
+      const r = room();
+      const spy = vi.fn();
+      r.fly('p', 0, 0, 10, 10, 0.5, () => r.fly('p', 10, 10, 20, 20, 0.5, spy));
+      step(520);
+      expect(spy).not.toHaveBeenCalled();
+      expect(queued).toHaveLength(1);
+      step(560);
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
     it('runs pending work on pause and lands later work at once', () => {
       const r = room();
       const pending = vi.fn();

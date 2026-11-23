@@ -343,11 +343,11 @@ export abstract class Room implements Painter {
       return true;
     }))
       this.after.push(a);
-    this.anims = this.anims.filter((a) => {
-      if (this.t - a.t0 < a.dur) return true;
-      if (a.onEnd) a.onEnd();
-      return false;
-    });
+    const alive: Flier[] = [],
+      ended: Flier[] = [];
+    for (const a of this.anims) (this.t - a.t0 < a.dur ? alive : ended).push(a);
+    this.anims = alive;
+    for (const a of ended) if (a.onEnd) a.onEnd();
     this.bursts = this.bursts.filter((b) => this.t - b.t0 < 0.5);
   }
 
