@@ -213,7 +213,9 @@ describe('BankRoom', () => {
   it('clears the calculator when a new state is placed', () => {
     const r = make({ reduced: true });
     r.place(shown(loan()));
-    r.run([{ kind: 'collecting', by: 'keeper', loan: loan({ status: 'CollectionPending' }) }]);
+    r.run([
+      { kind: 'collecting', by: 'keeper', paid: null, loan: loan({ status: 'CollectionPending' }) },
+    ]);
     expect(r.painted.calc).toBe('220');
     r.place(shown(loan({ status: 'PendingApproval' })));
     expect(r.painted.calc).toBe('');
@@ -471,16 +473,76 @@ describe('BankRoom', () => {
       const { room, seen } = stepLog({ reduced: true });
       room.setWallet({ availableFunds: 0, lifetimeTurnover: 0 });
       room.place(shown(loan()));
-      room.run([{ kind: 'collecting', by: 'player', loan: loan({ status: 'CollectionPending' }) }]);
+      room.run([
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: null,
+          loan: loan({ status: 'CollectionPending' }),
+        },
+      ]);
       expect(seen[0].plate).toEqual(['EMPTY POCKETS']);
       expect(seen[0].shark).toBe('count');
+    });
+
+    it('pushes the bundle when the paid flag is true even with no funds left', () => {
+      const { room, seen } = stepLog({ reduced: true });
+      room.setWallet({ availableFunds: 0, lifetimeTurnover: 0 });
+      room.place(shown(loan()));
+      room.run([
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: true,
+          loan: loan({ status: 'CollectionPending' }),
+        },
+      ]);
+      expect(seen[0].plate).toBeNull();
+      expect(seen[0].shark).toBe('count');
+    });
+
+    it('shows empty pockets when the paid flag is false whatever the funds', () => {
+      const { room, seen } = stepLog({ reduced: true });
+      room.setWallet({ availableFunds: 90, lifetimeTurnover: 0 });
+      room.place(shown(loan()));
+      room.run([
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: false,
+          loan: loan({ status: 'CollectionPending' }),
+        },
+      ]);
+      expect(seen[0].plate).toEqual(['EMPTY POCKETS']);
+    });
+
+    it('reads the wallet only when the paid flag is null', () => {
+      const { room, seen } = stepLog({ reduced: true });
+      room.setWallet({ availableFunds: 0, lifetimeTurnover: 0 });
+      room.place(shown(loan()));
+      room.run([
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: null,
+          loan: loan({ status: 'CollectionPending' }),
+        },
+      ]);
+      expect(seen[0].plate).toEqual(['EMPTY POCKETS']);
     });
 
     it('pushes a bundle and shows no plate when the player has funds', () => {
       const { room, seen } = stepLog({ reduced: true });
       room.setWallet({ availableFunds: 90, lifetimeTurnover: 0 });
       room.place(shown(loan()));
-      room.run([{ kind: 'collecting', by: 'player', loan: loan({ status: 'CollectionPending' }) }]);
+      room.run([
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: null,
+          loan: loan({ status: 'CollectionPending' }),
+        },
+      ]);
       expect(seen[0].plate).toBeNull();
       expect(seen[0].shark).toBe('count');
     });
@@ -489,7 +551,12 @@ describe('BankRoom', () => {
       const { room, log } = stepLog();
       room.place(shown(overdue()));
       room.run([
-        { kind: 'collecting', by: 'retry', loan: overdue({ status: 'CollectionPending' }) },
+        {
+          kind: 'collecting',
+          by: 'retry',
+          paid: null,
+          loan: overdue({ status: 'CollectionPending' }),
+        },
       ]);
       step(500);
       expect(room.painted.brute.pose).toBe('knock');
@@ -501,7 +568,14 @@ describe('BankRoom', () => {
     it('punches the outstanding into the calculator for the keeper', () => {
       const { room } = stepLog({ reduced: true });
       room.place(shown(loan()));
-      room.run([{ kind: 'collecting', by: 'keeper', loan: loan({ status: 'CollectionPending' }) }]);
+      room.run([
+        {
+          kind: 'collecting',
+          by: 'keeper',
+          paid: null,
+          loan: loan({ status: 'CollectionPending' }),
+        },
+      ]);
       expect(room.painted.calc).toBe('220');
     });
 

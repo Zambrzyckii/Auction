@@ -93,26 +93,32 @@ describe('loanSteps', () => {
 
     it('gives the player a collection of an unmatured Active loan', () => {
       const after = collecting();
-      expect(steps(loan(), after)).toEqual([{ kind: 'collecting', by: 'player', loan: after }]);
+      expect(steps(loan(), after)).toEqual([
+        { kind: 'collecting', by: 'player', paid: null, loan: after },
+      ]);
     });
 
     it('gives the keeper a collection of a matured Active loan', () => {
       const after = collecting({ dueOn: '2026-11-23T11:59:00Z' });
-      expect(steps(matured(), after)).toEqual([{ kind: 'collecting', by: 'keeper', loan: after }]);
+      expect(steps(matured(), after)).toEqual([
+        { kind: 'collecting', by: 'keeper', paid: null, loan: after },
+      ]);
     });
 
     it('gives the player a matured collection that was asked for', () => {
       const after = collecting({ dueOn: '2026-11-23T11:59:00Z' });
       expect(steps(matured(), after, true)).toEqual([
-        { kind: 'collecting', by: 'player', loan: after },
+        { kind: 'collecting', by: 'player', paid: null, loan: after },
       ]);
     });
 
     it('gives the retry an Overdue collection, and the player when asked', () => {
       const after = collecting({ dueOn: '2026-11-23T11:59:00Z' });
-      expect(steps(overdue(), after)).toEqual([{ kind: 'collecting', by: 'retry', loan: after }]);
+      expect(steps(overdue(), after)).toEqual([
+        { kind: 'collecting', by: 'retry', paid: null, loan: after },
+      ]);
       expect(steps(overdue(), after, true)).toEqual([
-        { kind: 'collecting', by: 'player', loan: after },
+        { kind: 'collecting', by: 'player', paid: null, loan: after },
       ]);
     });
 
@@ -143,6 +149,7 @@ describe('loanSteps', () => {
         {
           kind: 'collecting',
           by: 'keeper',
+          paid: false,
           loan: { ...matured(), status: 'CollectionPending' },
         },
         { kind: 'overdue', first: true, loan: after },
@@ -152,7 +159,12 @@ describe('loanSteps', () => {
     it('plays the collection before an Active loan turns Repaid', () => {
       const after = repaid();
       expect(steps(loan(), after)).toEqual([
-        { kind: 'collecting', by: 'player', loan: { ...loan(), status: 'CollectionPending' } },
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: true,
+          loan: { ...loan(), status: 'CollectionPending' },
+        },
         { kind: 'repaid', collected: 220, loan: after },
       ]);
     });
@@ -160,7 +172,12 @@ describe('loanSteps', () => {
     it('plays the retry before an Overdue loan turns Repaid', () => {
       const after = repaid({ amountRepaid: 264 });
       expect(steps(overdue(), after)).toEqual([
-        { kind: 'collecting', by: 'retry', loan: { ...overdue(), status: 'CollectionPending' } },
+        {
+          kind: 'collecting',
+          by: 'retry',
+          paid: true,
+          loan: { ...overdue(), status: 'CollectionPending' },
+        },
         { kind: 'repaid', collected: 264, loan: after },
       ]);
     });
@@ -168,7 +185,12 @@ describe('loanSteps', () => {
     it('plays a collection then a partial for Active to Active with growth', () => {
       const after = loan({ amountRepaid: 120, outstanding: 100 });
       expect(steps(loan(), after)).toEqual([
-        { kind: 'collecting', by: 'player', loan: { ...loan(), status: 'CollectionPending' } },
+        {
+          kind: 'collecting',
+          by: 'player',
+          paid: true,
+          loan: { ...loan(), status: 'CollectionPending' },
+        },
         { kind: 'partial', collected: 120, loan: after },
       ]);
     });
@@ -176,7 +198,12 @@ describe('loanSteps', () => {
     it('plays a collection then a repeat overdue for Overdue to Overdue with growth', () => {
       const after = overdue({ amountRepaid: 100, outstanding: 164 });
       expect(steps(overdue(), after)).toEqual([
-        { kind: 'collecting', by: 'retry', loan: { ...overdue(), status: 'CollectionPending' } },
+        {
+          kind: 'collecting',
+          by: 'retry',
+          paid: true,
+          loan: { ...overdue(), status: 'CollectionPending' },
+        },
         { kind: 'overdue', first: false, loan: after },
       ]);
     });

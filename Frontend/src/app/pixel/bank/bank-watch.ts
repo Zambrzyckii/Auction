@@ -42,7 +42,12 @@ export type BankStep =
   | { readonly kind: 'snapLoan'; readonly loan: BankLoan | null }
   | { readonly kind: 'snapSlips'; readonly slips: readonly WireSlip[] }
   | { readonly kind: 'requested' | 'approved' | 'rejected'; readonly loan: BankLoan }
-  | { readonly kind: 'collecting'; readonly by: Collector; readonly loan: BankLoan }
+  | {
+      readonly kind: 'collecting';
+      readonly by: Collector;
+      readonly paid: boolean | null;
+      readonly loan: BankLoan;
+    }
   | { readonly kind: 'partial' | 'repaid'; readonly collected: number; readonly loan: BankLoan }
   | { readonly kind: 'overdue'; readonly first: boolean; readonly loan: BankLoan }
   | {
@@ -127,10 +132,12 @@ function openLoanSteps(
   now: number,
 ): readonly BankStep[] {
   const by = collectorOf(before, asked, now);
-  if (after.status === 'CollectionPending') return [{ kind: 'collecting', by, loan: after }];
+  if (after.status === 'CollectionPending') {
+    return [{ kind: 'collecting', by, paid: null, loan: after }];
+  }
   const collected = after.amountRepaid - before.amountRepaid;
   const col = { ...before, status: 'CollectionPending' };
-  const collecting: BankStep = { kind: 'collecting', by, loan: col };
+  const collecting: BankStep = { kind: 'collecting', by, paid: collected > 0, loan: col };
   if (after.status === 'Repaid') return [collecting, { kind: 'repaid', collected, loan: after }];
   if (before.status === 'Active' && after.status === 'Overdue') {
     const first = before.overdueSince === null && after.overdueSince !== null;

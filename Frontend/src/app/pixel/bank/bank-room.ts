@@ -771,7 +771,7 @@ export class BankRoom extends Room {
       case 'rejected':
         return this.rejectedBeats(step.loan, reveal);
       case 'collecting':
-        return this.collectingBeats(step.by, step.loan, reveal);
+        return this.collectingBeats(step.by, step.paid, step.loan, reveal);
       case 'partial':
         return this.partialBeats(step.collected, reveal);
       case 'repaid':
@@ -1110,7 +1110,12 @@ export class BankRoom extends Room {
     return [head, [reason, 'micro', PAPER]];
   }
 
-  private collectingBeats(by: Collector, loan: BankLoan, reveal: () => void): readonly Beat[] {
+  private collectingBeats(
+    by: Collector,
+    paid: boolean | null,
+    loan: BankLoan,
+    reveal: () => void,
+  ): readonly Beat[] {
     const sh = this.shark,
       b = this.brute;
     const count = this.act(() => {
@@ -1119,7 +1124,7 @@ export class BankRoom extends Room {
       this.lackeyFastUntil = this.t + 2;
       reveal();
     });
-    if (by === 'player') return [this.goTo('loan'), this.playerPush(), count];
+    if (by === 'player') return [this.goTo('loan'), this.playerPush(paid), count];
     if (by === 'retry' && !b.inside) {
       return [
         this.hold(1.0, () => {
@@ -1138,7 +1143,7 @@ export class BankRoom extends Room {
     ];
   }
 
-  private playerPush(): Beat {
+  private playerPush(paid: boolean | null): Beat {
     const you = this.you;
     return (done) => {
       you.arm = 'reach';
@@ -1146,7 +1151,7 @@ export class BankRoom extends Room {
         you.arm = null;
         done();
       };
-      if (this.wallet?.availableFunds === 0) {
+      if (this.pocketsEmpty(paid)) {
         this.showPlate([['EMPTY POCKETS', 'tiny', PAPER]], 240, 50, 1.6);
         finish();
         return;
@@ -1162,6 +1167,11 @@ export class BankRoom extends Room {
         finish,
       );
     };
+  }
+
+  private pocketsEmpty(paid: boolean | null): boolean {
+    if (paid !== null) return !paid;
+    return this.wallet?.availableFunds === 0;
   }
 
   private paidBackLines(collected: number): readonly PlateLine[] {
