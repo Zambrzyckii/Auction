@@ -25,7 +25,10 @@ const looseContext = () => {
 
 describe('Room', () => {
   let mod: typeof RoomModule;
-  let TestRoom: new (cv: HTMLCanvasElement, opts?: RoomModule.RoomOpts) => RoomModule.Room;
+  let TestRoom: new (
+    cv: HTMLCanvasElement,
+    opts?: RoomModule.RoomOpts,
+  ) => RoomModule.Room & { clear(): void };
   let queued: FrameRequestCallback[] = [];
   let clock = 0;
   let requests = 0;
@@ -39,6 +42,9 @@ describe('Room', () => {
     TestRoom = class extends mod.Room {
       readonly focusX = 240;
       protected draw(): void {}
+      clear(): void {
+        this.clearPlate();
+      }
     };
   });
 
@@ -194,6 +200,39 @@ describe('Room', () => {
       r.schedule(1, spy);
       r.resume();
       expect(requests).toBe(before);
+    });
+  });
+
+  describe('clearPlate', () => {
+    const plateUp = (r: object) => (r as { plateNow: unknown }).plateNow !== null;
+    const lines = [['HI', 'tiny', '#ffffff']] as const;
+
+    it('drops the current plate', () => {
+      const r = room();
+      r.setPlate(lines, 100, 100);
+      expect(plateUp(r)).toBe(true);
+      r.clear();
+      expect(plateUp(r)).toBe(false);
+    });
+
+    it('cancels the reduced-motion clear timer', () => {
+      vi.useFakeTimers();
+      try {
+        const r = room({ reduced: true });
+        r.setPlate(lines, 100, 100);
+        expect(vi.getTimerCount()).toBe(1);
+        r.clear();
+        expect(plateUp(r)).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does nothing when no plate is up', () => {
+      const r = room();
+      r.clear();
+      expect(requests).toBe(0);
     });
   });
 });

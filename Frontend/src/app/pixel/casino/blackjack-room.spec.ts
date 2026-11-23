@@ -80,6 +80,7 @@ describe('BlackjackRoom', () => {
   let clock = 0;
   let requests = 0;
   let made: RoomModule.BlackjackRoom[] = [];
+  let nowSpy: { mockRestore(): void } | undefined;
 
   beforeAll(async () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
@@ -128,6 +129,8 @@ describe('BlackjackRoom', () => {
 
   afterEach(() => {
     for (const r of made) r.destroy();
+    nowSpy?.mockRestore();
+    nowSpy = undefined;
     vi.unstubAllGlobals();
   });
 
@@ -359,6 +362,33 @@ describe('BlackjackRoom', () => {
     expect(plate).toHaveBeenCalledWith(lines, 392, 174, 2.6);
   });
 
+  describe('plate on a new deal', () => {
+    const plateUp = (r: object) => (r as { plateNow: unknown }).plateNow !== null;
+
+    it('keeps the outcome plate up until a sweep starts', () => {
+      const { r } = make({ reduced: true });
+      r.place(hand());
+      r.run([settleStep()]);
+      expect(plateUp(r)).toBe(true);
+      r.run([{ kind: 'sweep' }]);
+      expect(plateUp(r)).toBe(false);
+    });
+
+    it('removes the plate when a stake step starts', () => {
+      const { r } = make({ reduced: true });
+      r.run([settleStep()]);
+      expect(plateUp(r)).toBe(true);
+      r.run([{ kind: 'stake', amount: 10 }]);
+      expect(plateUp(r)).toBe(false);
+    });
+
+    it('keeps the plate while a settle plays after its own steps', () => {
+      const { r } = make({ reduced: true });
+      r.run([{ kind: 'stake', amount: 10 }, settleStep()]);
+      expect(plateUp(r)).toBe(true);
+    });
+  });
+
   it('shows the totals only for a row that holds all its cards at rest', () => {
     const { r } = make();
     r.place(hand());
@@ -389,6 +419,7 @@ describe('BlackjackRoom', () => {
     const { r } = make();
     const until = Date.parse('2026-11-23T12:05:00Z');
     const now = vi.spyOn(Date, 'now').mockReturnValue(until - 90_000);
+    nowSpy = now;
     r.place(hand());
     r.setHand(hand());
     expect(r.autoStandLed).toBe('AUTO-STAND 1:30');
@@ -399,7 +430,6 @@ describe('BlackjackRoom', () => {
     step(3000);
     r.setHand(stood());
     expect(r.autoStandLed).toBeNull();
-    now.mockRestore();
   });
 
   it('holds the CHIPS LED while the queue plays and follows the chips when idle', () => {

@@ -162,6 +162,7 @@ export class BlackjackRoom extends Room {
     super(cv, opts);
     this.onIdle = opts.onIdle;
     this.useRoom(this.layer);
+    if (!this.reduced) for (let d = -18; d <= 18; d += 1) SP.card(-1, d);
     if (!this.reduced) {
       cv.addEventListener('mousemove', this.onMove);
       cv.addEventListener('mouseleave', this.onLeave);
@@ -315,6 +316,7 @@ export class BlackjackRoom extends Room {
   }
 
   private stake(amount: number): void {
+    this.clearPlate();
     this.circle = amount;
     this.next(0);
   }
@@ -325,6 +327,7 @@ export class BlackjackRoom extends Room {
   }
 
   private sweep(): void {
+    this.clearPlate();
     this.dealerOpen = false;
     const list = this.cards.filter((c) => c.phase !== 'sweep');
     if (this.instant || list.length === 0) {

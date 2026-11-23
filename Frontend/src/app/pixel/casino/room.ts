@@ -273,6 +273,13 @@ export abstract class Room implements Painter {
     this.kickDraw();
   }
 
+  protected clearPlate(): void {
+    clearTimeout(this.plateTimer);
+    if (!this.plateNow) return;
+    this.plateNow = null;
+    this.kickDraw();
+  }
+
   protected drawPlate(): void {
     if (!this.plateNow) return;
     const S = this.scale;
