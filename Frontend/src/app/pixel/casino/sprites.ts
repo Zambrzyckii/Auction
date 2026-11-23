@@ -140,6 +140,7 @@ export function plate(lines: readonly PlateLine[]): HTMLCanvasElement {
     y += LINE_H[f];
   });
   const img = cv(s);
+  if (plates.size > 160) plates.clear();
   plates.set(key, img);
   return img;
 }

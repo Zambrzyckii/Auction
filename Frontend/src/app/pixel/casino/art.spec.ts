@@ -93,6 +93,21 @@ describe('casino art', () => {
     });
   });
 
+  describe('plate', () => {
+    const line = (word: string): Sprites.PlateLine[] => [[word, 'tiny', '#f4ecdc']];
+
+    it('returns the cached canvas for the same lines', () => {
+      const first = sprites.plate(line('SAME'));
+      expect(sprites.plate(line('SAME'))).toBe(first);
+    });
+
+    it('drops its cache once many distinct plates were built', () => {
+      const first = sprites.plate(line('FIRST'));
+      for (let i = 0; i < 200; i++) sprites.plate(line('N' + i));
+      expect(sprites.plate(line('FIRST'))).not.toBe(first);
+    });
+  });
+
   describe('Slot', () => {
     it('runs ten seconds of steps and draws through the painter', () => {
       const slot = new Slot(2, 82, R.red, '777', 3, {});

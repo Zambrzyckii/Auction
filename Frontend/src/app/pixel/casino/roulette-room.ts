@@ -60,6 +60,7 @@ function tag(str: string): HTMLCanvasElement {
   s.rect(0, 1, w, 7, INK);
   text(s, str, Math.floor((w - measure(str, 'tiny')) / 2), 1, PAPER, 'tiny', { alignTop: true });
   const c = s.canvas();
+  if (tags.size > 160) tags.clear();
   tags.set(str, c);
   return c;
 }

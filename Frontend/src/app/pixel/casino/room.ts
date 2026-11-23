@@ -68,7 +68,8 @@ interface Spark {
   t0: number;
 }
 
-export const fmt = (n: number): string => n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+const numberFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
+export const fmt = (n: number): string => numberFormat.format(n);
 export const clamp = (v: number, a: number, z: number) => Math.max(a, Math.min(z, v));
 export const easeOut = (k: number) => 1 - Math.pow(1 - k, 3);
 
