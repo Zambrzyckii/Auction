@@ -103,6 +103,35 @@ describe('Room', () => {
     });
   });
 
+  describe('resize with an unchanged size', () => {
+    it('leaves the canvas width alone on a second identical resize', () => {
+      const r = room();
+      r.resize(1906, 458);
+      const width = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
+      r.resize(1906, 458);
+      r.resize(1950, 458);
+      expect(width).not.toHaveBeenCalled();
+      width.mockRestore();
+    });
+
+    it('still resizes when the scale changes', () => {
+      const r = room();
+      r.resize(1906, 458);
+      const width = vi.spyOn(HTMLCanvasElement.prototype, 'width', 'set');
+      r.resize(2900, 800);
+      expect(width).toHaveBeenCalledWith(480 * 4);
+      width.mockRestore();
+    });
+
+    it('sizes the first call even when the scale stays at one', () => {
+      const cv = document.createElement('canvas');
+      const r = new TestRoom(cv);
+      r.resize(480, 200);
+      expect(cv.style.width).toBe('480px');
+      expect(cv.style.height).toBe('200px');
+    });
+  });
+
   describe('fmt', () => {
     it.each([
       [1262.5, '1,262.5'],

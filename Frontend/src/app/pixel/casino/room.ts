@@ -156,15 +156,21 @@ export abstract class Room implements Painter {
   }
 
   resize(cssWidth = ART_W * this.scale, maxHeight = Infinity): void {
-    this.scale = clamp(
+    const scale = clamp(
       Math.min(Math.floor(cssWidth / ART_W), Math.floor(maxHeight / ART_H)),
       1,
       MAX_SCALE,
     );
-    this.cv.width = ART_W * this.scale;
-    this.cv.height = ART_H * this.scale;
-    this.cv.style.width = ART_W * this.scale + 'px';
-    this.cv.style.height = ART_H * this.scale + 'px';
+    const cssW = ART_W * scale + 'px',
+      cssH = ART_H * scale + 'px';
+    if (scale === this.scale && this.cv.style.width === cssW && this.cv.style.height === cssH) {
+      return;
+    }
+    this.scale = scale;
+    this.cv.width = ART_W * scale;
+    this.cv.height = ART_H * scale;
+    this.cv.style.width = cssW;
+    this.cv.style.height = cssH;
     this.ctx.imageSmoothingEnabled = false;
     this.draw();
   }
