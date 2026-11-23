@@ -341,4 +341,15 @@ describe('Blackjack', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('Chip balance: 555');
   });
+
+  it('renders the blackjack scene under the back link', () => {
+    flushAll(casino({}));
+    expect(el().querySelector('app-blackjack-scene')).not.toBeNull();
+  });
+
+  it('marks the balance paragraph as chip-balance and keeps its text', () => {
+    flushAll(casino({ balance: 1234 }));
+    const balance = el().querySelector('p.chip-balance');
+    expect(balance?.textContent?.trim()).toBe('Chip balance: 1,234');
+  });
 });

@@ -1,7 +1,8 @@
 <h2>Blackjack</h2>
 <p><a routerLink="/casino">Back to the casino</a></p>
+<app-blackjack-scene [hand]="hand()" [chips]="balance()" />
 @if (casinoPoller.value(); as casino) {
-  <p>Chip balance: {{ balance() | number }}</p>
+  <p class="chip-balance">Chip balance: {{ balance() | number }}</p>
   @if (hand(); as current) {
     <section class="table">
       <p class="dealer">

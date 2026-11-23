@@ -10,6 +10,7 @@ import { clock } from '../../core/time/clock';
 import { BlackjackHand, BlackjackHandHistory, Casino as CasinoDto } from '../../core/api/models';
 import { startPolling } from '../../core/polling/poll';
 import { refreshOn } from '../../core/push/refresh-on';
+import { BlackjackScene } from '../../pixel/casino/blackjack-scene';
 import { canDouble, cardLabel, dealProblem, reconcileHand } from './blackjack-rules';
 import { casinoPollMs } from './casino-rules';
 import { HandView, fromHand, fromHistory } from './hand-view';
@@ -20,7 +21,7 @@ type BlackjackAction = 'Hit' | 'Stand' | 'Double';
 
 @Component({
   selector: 'app-blackjack',
-  imports: [DatePipe, DecimalPipe, FormField, RouterLink],
+  imports: [BlackjackScene, DatePipe, DecimalPipe, FormField, RouterLink],
   templateUrl: './blackjack.html',
 })
 export class Blackjack {

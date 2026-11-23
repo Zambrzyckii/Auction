@@ -45,6 +45,11 @@
       :is(p.chip-balance, section.last-spin, table.history) {
       visibility: hidden;
     }
+
+    app-blackjack:has(> app-blackjack-scene.dealing)
+      :is(p.chip-balance, p.dealer, p.player, p.outcome, p.auto-stood, table.history) {
+      visibility: hidden;
+    }
   }
 
   p.dealer,
