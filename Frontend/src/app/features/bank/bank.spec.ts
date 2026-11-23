@@ -233,4 +233,18 @@ describe('Bank', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('Available funds: 777');
   });
+
+  it('renders the bank scene right under the heading', () => {
+    flushAll([]);
+    const next = el().querySelector(':scope > h2')?.nextElementSibling;
+    expect(next?.localName).toBe('app-bank-scene');
+  });
+
+  it('marks only the loans table as table.loans', () => {
+    flushAll([loan({})]);
+    const loans = el().querySelectorAll('table.loans');
+    expect(loans).toHaveLength(1);
+    expect(loans[0].textContent).toContain('Active');
+    expect(el().querySelector('table')?.className).toBe('');
+  });
 });

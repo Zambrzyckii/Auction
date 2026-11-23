@@ -1,4 +1,12 @@
 <h2>Bank</h2>
+<app-bank-scene
+  focus="loans"
+  [loans]="loansPoller.value()"
+  [wallet]="walletPoller.value()"
+  [offers]="offers()"
+  [asked]="collection.pending()"
+  [format]="timeLeft"
+/>
 @if (walletPoller.value(); as wallet) {
   <p>
     Available funds: {{ wallet.availableFunds | number }}, lifetime turnover:
@@ -56,7 +64,7 @@
   @if (loans.length === 0) {
     <p>No loans yet.</p>
   } @else {
-    <table>
+    <table class="loans">
       <tr>
         <th>Offer</th>
         <th>Status</th>

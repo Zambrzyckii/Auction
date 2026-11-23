@@ -1,0 +1,29 @@
+@use 'tools';
+
+@include tools.inside {
+  app-bank-scene {
+    display: block;
+    min-width: 0;
+  }
+
+  app-bank-scene .room {
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: var(--m-field-lo);
+    border: var(--u) solid var(--m-ink);
+    scrollbar-width: thin;
+    scrollbar-color: var(--m-line) var(--m-ink);
+  }
+
+  app-bank-scene canvas.scene {
+    display: block;
+    margin-inline: auto;
+    image-rendering: pixelated;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    app-bank:has(> app-bank-scene.staging) :is(table.loans, p.loan-notice) {
+      visibility: hidden;
+    }
+  }
+}
