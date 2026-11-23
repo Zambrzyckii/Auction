@@ -2,13 +2,25 @@
 // enforcer, the LED under the window and the letter board. The room draws what it is told to
 // show and never computes a loan, a fee or a payout. Its ambient life (queue, door, smoke, steam,
 // sparks, rat and flickering lights) steps on the room clock and keeps no timer of its own.
+// `run` plays the steps of a loan or a wire as beats on the same clock. Only the reduced-motion
+// sweep of the stamp and the plates and the LED clock use a real timer.
 import { Sprite, bayer, box, cylV, disc, measure, rand, R, srand, text } from '../street/pix';
 import * as FL from '../casino/floor';
-import { GOLD, GREEN, Room, clamp, easeOut, flipX } from '../casino/room';
+import { GOLD, GREEN, PAPER, REDL, Room, clamp, easeOut, flipX, fmt } from '../casino/room';
 import type { RoomOpts } from '../casino/room';
+import type { PlateLine } from '../casino/sprites';
 import { BOARD_FEE, boardLine, boardRows, ledRows, neonLines, slipLabel } from './bank-labels';
 import type { BoardRow } from './bank-labels';
-import type { BankLoan, BankOffer, BankShown, BankWallet, DueFormat, WireSlip } from './bank-watch';
+import type {
+  BankLoan,
+  BankOffer,
+  BankShown,
+  BankStep,
+  BankWallet,
+  Collector,
+  DueFormat,
+  WireSlip,
+} from './bank-watch';
 import * as PP from './people';
 import { L, W, H, anchors as A, bank } from './rooms';
 import * as SP from './sprites';
@@ -40,6 +52,8 @@ export interface BankPainted {
 }
 
 type Pt = readonly [number, number];
+type Beat = (done: () => void) => void;
+type Stop = Exclude<Spot, 'moving'>;
 type Neon = ReturnType<typeof SP.neon>;
 type Spot = 'queue' | 'loan' | 'wires' | 'curb' | 'moving';
 type Face = 'front' | 'back' | 'left' | 'right' | 'sit';
@@ -57,6 +71,9 @@ interface Actor {
   x: number;
   walking: boolean;
   dist: number;
+  tx: number;
+  speed: number;
+  arrive: (() => void) | null;
 }
 interface You extends Actor {
   feet: number;
@@ -106,6 +123,29 @@ interface Part {
   life: number;
   ph?: number;
 }
+interface Flier {
+  img: HTMLCanvasElement;
+  pts: readonly Pt[];
+  dur: number;
+  t0: number;
+  arc: number;
+  done: () => void;
+}
+interface Slammed {
+  img: HTMLCanvasElement;
+  x: number;
+  y: number;
+  at: number;
+  word: string;
+}
+interface Plate {
+  img: HTMLCanvasElement;
+  x: number;
+  y: number;
+  at: number;
+  life: number;
+  lines: readonly string[];
+}
 interface Rat {
   x: number;
   dir: number;
@@ -127,7 +167,13 @@ const BOARD_X = [3, 45, 71, 97];
 const NEON_RATES = [0.08, 0.12, 0.06, 0.3, 0.1];
 const AT_WINDOW = ['PendingApproval', 'Active', 'CollectionPending', 'Overdue'];
 const BRUTE_INSIDE_FEET = 166;
+const SWEEP_MS = 2800;
+const STAMP_LIFE = 2.2;
+const GATE_SECONDS = 0.4;
+const YOU_SPEED = 46;
 
+const easeInOut = (k: number): number =>
+  k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
 const besideX = (x: number): number => x - 33;
 const atWindow = (loan: BankLoan | null): boolean =>
   loan !== null && AT_WINDOW.includes(loan.status);
@@ -294,7 +340,16 @@ export class BankRoom extends Room {
   private readonly spr = buildSprites();
   private readonly fx = buildFx();
   private readonly format: DueFormat | null;
+  private readonly onReveal: (() => void) | undefined;
+  private readonly onIdle: (() => void) | undefined;
   private dead = false;
+  private gen = 0;
+  private queue: BankStep[] = [];
+  private busy = false;
+  private pendingRun = false;
+  private held: { wallet: BankWallet | null } | null = null;
+  private stampSweep: ReturnType<typeof setTimeout> | undefined;
+  private plateSweep: ReturnType<typeof setTimeout> | undefined;
   private clockTimer: ReturnType<typeof setInterval> | undefined;
   private shown: BankShown = { loan: null, known: false, slips: [] };
   private offers: readonly BankOffer[] | null = null;
@@ -312,6 +367,9 @@ export class BankRoom extends Room {
     face: 'front',
     walking: false,
     dist: 0,
+    tx: A.youQueue,
+    speed: 0,
+    arrive: null,
     arm: null,
     sitT: -9,
   };
@@ -337,10 +395,17 @@ export class BankRoom extends Room {
     t0: 0,
     walking: false,
     dist: 0,
+    tx: A.brute.x,
+    speed: 0,
+    arrive: null,
     lean: 0,
     stepDown: null,
     stepUp: null,
   };
+  private fliers: Flier[] = [];
+  private slammed: Slammed | null = null;
+  private plates: Plate[] = [];
+  private flashAt = -9;
   private clerkAwakeUntil = -9;
   private lackeyFastUntil = -9;
   private gateOpen = 0;
@@ -363,6 +428,8 @@ export class BankRoom extends Room {
     super(cv, opts);
     this.focusX = FOCUS_X[opts.focus ?? 'loans'];
     this.format = opts.format ?? null;
+    this.onReveal = opts.onReveal;
+    this.onIdle = opts.onIdle;
   }
 
   get painted(): BankPainted {
@@ -371,8 +438,8 @@ export class BankRoom extends Room {
       board: this.rows.map(boardLine),
       neon: this.offers === null ? [] : neonLines(this.offers),
       slips: this.spikeSlips.map(slipLabel),
-      stamp: null,
-      plate: null,
+      stamp: this.slammed?.word ?? null,
+      plate: this.plates[0]?.lines ?? null,
       calc: this.calcText,
       you: { x: this.you.x, spot: this.you.spot },
       brute: { x: this.brute.x, inside: this.brute.inside, pose: this.brute.pose },
@@ -397,6 +464,7 @@ export class BankRoom extends Room {
 
   place(shown: BankShown): void {
     if (this.dead) return;
+    this.cancelRun();
     this.shown = shown;
     this.seat(shown.loan);
     this.kickDraw();
@@ -411,9 +479,20 @@ export class BankRoom extends Room {
 
   setWallet(wallet: BankWallet | null): void {
     if (this.dead) return;
+    if (this.busy) {
+      this.held = { wallet };
+      return;
+    }
     this.wallet = wallet;
     this.applyWallet();
     this.kickDraw();
+  }
+
+  private releaseWallet(): void {
+    if (this.held === null) return;
+    this.wallet = this.held.wallet;
+    this.held = null;
+    this.applyWallet();
   }
 
   private applyWallet(): void {
@@ -447,9 +526,11 @@ export class BankRoom extends Room {
     you.feet = L.floorY;
     you.walking = false;
     you.dist = 0;
+    you.arrive = null;
     you.arm = null;
     b.walking = false;
     b.dist = 0;
+    b.arrive = null;
     b.lean = 0;
     b.stepDown = null;
     b.stepUp = null;
@@ -494,19 +575,751 @@ export class BankRoom extends Room {
 
   override destroy(): void {
     this.dead = true;
+    this.gen++;
+    this.queue = [];
+    this.busy = false;
+    this.fliers = [];
+    clearTimeout(this.stampSweep);
+    clearTimeout(this.plateSweep);
     clearInterval(this.clockTimer);
     this.clockTimer = undefined;
     super.destroy();
   }
 
   protected override finishAll(): void {
+    for (const a of [this.you, this.brute]) if (a.walking) this.land(a);
+    for (const f of this.fliers.splice(0)) f.done();
+    this.landGate('stepDown');
+    this.landGate('stepUp');
     this.queueShift = this.queueTarget;
+    this.canister = null;
+    this.clearStamp();
+    this.clearPlates();
   }
 
   protected rect(x: number, y: number, w: number, h: number, col: string): void {
     const S = this.s;
     this.ctx.fillStyle = col;
     this.ctx.fillRect(Math.round(x) * S, Math.round(y) * S, w * S, h * S);
+  }
+
+  // ----- stepping -----
+  private get instant(): boolean {
+    return this.reduced || this.paused;
+  }
+
+  private land(a: Actor): void {
+    a.x = a.tx;
+    a.walking = false;
+    const arrive = a.arrive;
+    a.arrive = null;
+    arrive?.();
+  }
+
+  private stepWalker(a: Actor, dt: number): void {
+    if (!a.walking) return;
+    const d = a.tx - a.x,
+      move = Math.sign(d) * Math.min(Math.abs(d), a.speed * dt);
+    a.x += move;
+    a.dist += Math.abs(move);
+    if (Math.abs(a.tx - a.x) < 0.01) this.land(a);
+  }
+
+  private gateFeet(kind: 'stepDown' | 'stepUp'): number {
+    return kind === 'stepDown' ? L.floorY : BRUTE_INSIDE_FEET;
+  }
+
+  private stepGate(kind: 'stepDown' | 'stepUp', dt: number): void {
+    const b = this.brute,
+      g = b[kind];
+    if (!g) return;
+    const k = clamp((this.t - g.t0) / GATE_SECONDS, 0, 1);
+    b.feet = g.f0 + (this.gateFeet(kind) - g.f0) * easeInOut(k);
+    b.x += kind === 'stepDown' ? dt * 8 : -dt * 8;
+    if (k < 1) return;
+    b[kind] = null;
+    g.done();
+  }
+
+  private landGate(kind: 'stepDown' | 'stepUp'): void {
+    const b = this.brute,
+      g = b[kind];
+    if (!g) return;
+    b.feet = this.gateFeet(kind);
+    b[kind] = null;
+    g.done();
+  }
+
+  private stepFx(T: number): void {
+    const ended = this.fliers.filter((f) => T - f.t0 >= f.dur);
+    this.fliers = this.fliers.filter((f) => T - f.t0 < f.dur);
+    for (const f of ended) f.done();
+    if (this.slammed && T - this.slammed.at > STAMP_LIFE) this.slammed = null;
+    this.plates = this.plates.filter((p) => T - p.at < p.life);
+  }
+
+  private stepCanister(T: number): void {
+    const c = this.canister;
+    if (!c) return;
+    const k = clamp((T - c.t0) / 0.6, 0, 1);
+    if (c.dir < 0) c.y = L.tube.bottom - 12 - (L.tube.bottom + 4) * easeInOut(k);
+    else c.y = -14 + (L.tube.bottom - 2) * easeOut(k);
+  }
+
+  // ----- run queue -----
+  get idle(): boolean {
+    return !this.busy && this.queue.length === 0;
+  }
+
+  run(steps: readonly BankStep[]): void {
+    if (this.dead || steps.length === 0) return;
+    this.pendingRun = true;
+    this.queue.push(...steps);
+    this.pump();
+    this.kickDraw();
+  }
+
+  private cancelRun(): void {
+    this.gen++;
+    this.queue = [];
+    this.busy = false;
+    this.pendingRun = false;
+    this.fliers = [];
+    this.flashAt = -9;
+    this.teletypeUntil = -9;
+    this.clearStamp();
+    this.clearPlates();
+    this.releaseWallet();
+  }
+
+  private pump(): void {
+    if (this.busy) return;
+    const step = this.queue.shift();
+    if (step === undefined) return;
+    this.busy = true;
+    this.exec(step);
+  }
+
+  private next(): void {
+    this.busy = false;
+    if (this.queue.length > 0) this.pump();
+    else this.checkIdle();
+  }
+
+  private checkIdle(): void {
+    if (!this.pendingRun || !this.idle) return;
+    this.pendingRun = false;
+    this.releaseWallet();
+    if (this.paused) {
+      this.clearStamp();
+      this.clearPlates();
+    }
+    this.kickDraw();
+    this.onIdle?.();
+  }
+
+  private exec(step: BankStep): void {
+    const gen = this.gen;
+    let revealed = false;
+    const reveal = () => {
+      if (revealed || gen !== this.gen) return;
+      revealed = true;
+      this.reveal(step);
+    };
+    this.clearPlates();
+    this.runBeats(this.beatsOf(step, reveal), gen, () => {
+      reveal();
+      this.next();
+    });
+  }
+
+  private reveal(step: BankStep): void {
+    if ('slips' in step) {
+      this.shown = { ...this.shown, slips: step.slips };
+    } else {
+      this.shown = { ...this.shown, loan: step.loan };
+    }
+    this.kickDraw();
+    this.onReveal?.();
+  }
+
+  private runBeats(beats: readonly Beat[], gen: number, end: () => void, i = 0): void {
+    if (i >= beats.length) {
+      end();
+      return;
+    }
+    beats[i](() => {
+      if (gen === this.gen) this.runBeats(beats, gen, end, i + 1);
+    });
+  }
+
+  private beatsOf(step: BankStep, reveal: () => void): readonly Beat[] {
+    switch (step.kind) {
+      case 'snapLoan':
+        return [
+          this.act(() => {
+            this.seat(step.loan);
+            reveal();
+          }),
+        ];
+      case 'snapSlips':
+        return [this.act(reveal)];
+      case 'requested':
+        return this.requestedBeats(step.loan, reveal);
+      case 'approved':
+        return this.approvedBeats(step.loan, reveal);
+      case 'rejected':
+        return this.rejectedBeats(step.loan, reveal);
+      case 'collecting':
+        return this.collectingBeats(step.by, step.loan, reveal);
+      case 'partial':
+        return this.partialBeats(step.collected, reveal);
+      case 'repaid':
+        return this.repaidBeats(step.collected, reveal);
+      case 'overdue':
+        return this.overdueBeats(step.first, step.loan, reveal);
+      case 'wireOut':
+        return this.wireOutBeats(step.amount, reveal);
+      case 'wireIn':
+        return this.wireInBeats(step.amount, reveal);
+    }
+  }
+
+  // ----- beats -----
+  private later(delay: number, fn: () => void): void {
+    const gen = this.gen;
+    this.schedule(delay, () => {
+      if (gen === this.gen) fn();
+    });
+  }
+
+  private act(fn: () => void): Beat {
+    return (done) => {
+      fn();
+      done();
+    };
+  }
+
+  private hold(seconds: number, fn?: () => void): Beat {
+    return (done) => {
+      fn?.();
+      this.later(seconds, done);
+    };
+  }
+
+  private when(cond: () => boolean, beats: readonly Beat[]): Beat {
+    return (done) => {
+      if (cond()) this.runBeats(beats, this.gen, done);
+      else done();
+    };
+  }
+
+  private flyImage(
+    img: HTMLCanvasElement,
+    pts: readonly Pt[],
+    dur: number,
+    done: () => void,
+    arc = 8,
+  ): void {
+    if (this.instant) {
+      done();
+      this.kickDraw();
+      return;
+    }
+    this.fliers.push({ img, pts, dur, t0: this.t, arc, done });
+    this.kick();
+  }
+
+  private walk(a: Actor, x: number, speed: number, done: () => void): void {
+    if (this.instant) {
+      a.x = x;
+      a.walking = false;
+      done();
+      return;
+    }
+    a.walking = true;
+    a.tx = x;
+    a.speed = speed;
+    a.arrive = done;
+    this.kick();
+  }
+
+  private goTo(spot: Stop): Beat {
+    return (done) => {
+      const you = this.you;
+      if (you.spot === spot && !you.walking) {
+        done();
+        return;
+      }
+      if (you.spot === 'queue') this.queueTarget = 9;
+      if (you.face !== 'sit') {
+        this.walkYou(spot, done);
+        return;
+      }
+      you.face = 'front';
+      you.feet = L.floorY;
+      this.later(0.25, () => this.walkYou(spot, done));
+    };
+  }
+
+  private walkYou(spot: Stop, done: () => void): void {
+    const you = this.you,
+      sp = SPOTS[spot];
+    you.face = sp.x >= you.x ? 'right' : 'left';
+    you.spot = 'moving';
+    let waiting = this.brute.inside ? 1 : 2;
+    const join = () => {
+      waiting--;
+      if (waiting === 0) done();
+    };
+    if (!this.brute.inside) this.follow(sp.x, join);
+    this.walk(you, sp.x, YOU_SPEED, () => {
+      if (spot === 'curb') {
+        you.feet = 199;
+        you.face = 'sit';
+        you.sitT = this.t;
+      } else you.face = sp.face;
+      you.spot = spot;
+      if (spot === 'queue') this.queueTarget = 0;
+      if (this.instant) this.queueShift = this.queueTarget;
+      join();
+    });
+  }
+
+  private follow(x: number, done: () => void): void {
+    const b = this.brute;
+    b.pose = 'walk';
+    this.walk(b, besideX(x) - 32, 40, () => {
+      b.pose = 'stand';
+      done();
+    });
+  }
+
+  private gateStep(kind: 'stepDown' | 'stepUp', done: () => void): void {
+    const b = this.brute;
+    if (this.instant) {
+      b.feet = this.gateFeet(kind);
+      done();
+      return;
+    }
+    b[kind] = { f0: b.feet, t0: this.t, done };
+    this.kick();
+  }
+
+  private bruteOut(): Beat {
+    const b = this.brute;
+    return this.when(
+      () => b.inside,
+      [
+        (done) => {
+          b.pose = 'walk';
+          this.walk(b, 135, 38, done);
+        },
+        this.hold(0.2, () => (this.gateOpen = 1)),
+        (done) => {
+          b.inside = false;
+          this.gateStep('stepDown', done);
+        },
+        (done) => {
+          this.gateOpen = 0;
+          const x = this.you.spot === 'wires' ? A.youWires : A.youLoan;
+          this.walk(b, besideX(x) - 32, 40, done);
+        },
+        this.act(() => (b.pose = 'stand')),
+      ],
+    );
+  }
+
+  private bruteIn(): Beat {
+    const b = this.brute;
+    return this.when(
+      () => !b.inside,
+      [
+        (done) => {
+          b.pose = 'walk';
+          this.walk(b, 135, 40, done);
+        },
+        (done) => {
+          this.gateOpen = 1;
+          this.gateStep('stepUp', done);
+        },
+        (done) => {
+          b.inside = true;
+          this.gateOpen = 0;
+          this.walk(b, A.brute.x, 38, done);
+        },
+        this.act(() => (b.pose = 'idle')),
+      ],
+    );
+  }
+
+  // ----- stamp and plates -----
+  private slam(word: string, ramp: readonly string[], x = 240, y = 96): void {
+    this.slammed = { img: SP.stamp(word, ramp), x, y, at: this.t, word };
+    if (!this.reduced) return;
+    clearTimeout(this.stampSweep);
+    this.stampSweep = setTimeout(() => {
+      this.slammed = null;
+      this.draw();
+    }, SWEEP_MS);
+  }
+
+  private showPlate(lines: readonly PlateLine[], x: number, y: number, life = 2.4): void {
+    this.plates = [{ img: SP.plate(lines), x, y, at: this.t, life, lines: lines.map((l) => l[0]) }];
+    if (!this.reduced) return;
+    clearTimeout(this.plateSweep);
+    this.plateSweep = setTimeout(() => {
+      this.plates = [];
+      this.draw();
+    }, SWEEP_MS);
+  }
+
+  private clearStamp(): void {
+    clearTimeout(this.stampSweep);
+    this.slammed = null;
+  }
+
+  private clearPlates(): void {
+    clearTimeout(this.plateSweep);
+    this.plates = [];
+  }
+
+  // ----- steps -----
+  private requestedBeats(loan: BankLoan, reveal: () => void): readonly Beat[] {
+    const you = this.you,
+      sh = this.shark;
+    return [
+      this.goTo('loan'),
+      (done) => {
+        you.arm = 'reach';
+        this.flyImage(
+          PP.paper,
+          [
+            [you.x + 14, 132],
+            [241, 117],
+            [230, 104],
+          ],
+          0.8,
+          done,
+        );
+      },
+      this.hold(1.4, () => {
+        you.arm = null;
+        sh.pose = 'inspect';
+        sh.t0 = this.t;
+        this.brute.lean = 1;
+      }),
+      this.hold(0.7, () => {
+        sh.pose = 'calc';
+        sh.calc = fmt(loan.principal);
+      }),
+      this.hold(0.9, () => (sh.calc = fmt(loan.totalDue))),
+      this.act(() => {
+        sh.pose = 'inspect';
+        reveal();
+      }),
+    ];
+  }
+
+  private approvedBeats(loan: BankLoan, reveal: () => void): readonly Beat[] {
+    const sh = this.shark,
+      b = this.brute,
+      label = '$' + fmt(loan.principal);
+    return [
+      this.goTo('loan'),
+      this.hold(0.35, () => {
+        sh.pose = 'stampUp';
+        sh.stamp = 'ok';
+        sh.t0 = this.t;
+      }),
+      this.hold(0.45, () => {
+        sh.pose = 'stampDown';
+        sh.t0 = this.t;
+        this.slam('APPROVED', STAMP_OK);
+        reveal();
+        b.lean = 0;
+      }),
+      (done) => {
+        sh.pose = 'pay';
+        this.flyImage(
+          PP.bundle(label),
+          [
+            [248, 110],
+            [241, 119],
+            [this.you.x + 12, 140],
+          ],
+          0.9,
+          done,
+        );
+      },
+      this.hold(2.6, () => {
+        this.showPlate(
+          [
+            ['LOAN', 'jersey', GREEN],
+            ['+' + label, 'tiny', PAPER],
+          ],
+          240,
+          44,
+        );
+        sh.pose = 'idle';
+        sh.grinUntil = this.t + 2.6;
+        b.pose = 'tap';
+        b.t0 = this.t;
+      }),
+      this.act(() => {
+        if (b.pose === 'tap') b.pose = 'idle';
+      }),
+    ];
+  }
+
+  private rejectedBeats(loan: BankLoan, reveal: () => void): readonly Beat[] {
+    const sh = this.shark,
+      b = this.brute;
+    return [
+      this.goTo('loan'),
+      this.hold(0.35, () => {
+        sh.pose = 'stampUp';
+        sh.stamp = 'no';
+        sh.t0 = this.t;
+      }),
+      this.hold(0.4, () => {
+        sh.pose = 'stampDown';
+        sh.t0 = this.t;
+        this.slam('DENIED', STAMP_NO);
+        reveal();
+        this.showPlate(this.deniedLines(loan.rejectionReason), 240, 44, 3);
+        b.lean = 0;
+      }),
+      this.hold(1.3, () => {
+        sh.pose = 'laugh';
+        sh.laughUntil = this.t + 2.6;
+        b.pose = 'point';
+        b.t0 = this.t;
+      }),
+      this.goTo('curb'),
+      this.act(() => {
+        sh.pose = 'idle';
+        b.pose = 'idle';
+      }),
+    ];
+  }
+
+  private deniedLines(reason: string | null): readonly PlateLine[] {
+    const head: PlateLine = ['DENIED', 'jersey', REDL];
+    if (reason === null) return [head];
+    return [head, [reason, 'micro', PAPER]];
+  }
+
+  private collectingBeats(by: Collector, loan: BankLoan, reveal: () => void): readonly Beat[] {
+    const sh = this.shark,
+      b = this.brute;
+    const count = this.act(() => {
+      if (b.pose === 'knock') b.pose = 'stand';
+      sh.pose = 'count';
+      this.lackeyFastUntil = this.t + 2;
+      reveal();
+    });
+    if (by === 'player') return [this.goTo('loan'), this.playerPush(), count];
+    if (by === 'retry' && !b.inside) {
+      return [
+        this.hold(1.0, () => {
+          b.pose = 'knock';
+          b.t0 = this.t;
+        }),
+        count,
+      ];
+    }
+    return [
+      this.hold(0.6, () => {
+        sh.pose = 'calc';
+        sh.calc = fmt(loan.outstanding);
+      }),
+      count,
+    ];
+  }
+
+  private playerPush(): Beat {
+    const you = this.you;
+    return (done) => {
+      you.arm = 'reach';
+      const finish = () => {
+        you.arm = null;
+        done();
+      };
+      if (this.wallet?.availableFunds === 0) {
+        this.showPlate([['EMPTY POCKETS', 'tiny', PAPER]], 240, 50, 1.6);
+        finish();
+        return;
+      }
+      this.flyImage(
+        PP.bundle(''),
+        [
+          [you.x + 12, 140],
+          [241, 119],
+          [236, 108],
+        ],
+        0.8,
+        finish,
+      );
+    };
+  }
+
+  private paidBackLines(collected: number): readonly PlateLine[] {
+    return [
+      ['PAID BACK', 'jersey', GREEN],
+      ['$' + fmt(collected), 'tiny', PAPER],
+    ];
+  }
+
+  private partialBeats(collected: number, reveal: () => void): readonly Beat[] {
+    return [
+      this.hold(1.2, () => {
+        reveal();
+        this.shark.pose = 'idle';
+        this.showPlate(this.paidBackLines(collected), 240, 44);
+      }),
+    ];
+  }
+
+  private repaidBeats(collected: number, reveal: () => void): readonly Beat[] {
+    const sh = this.shark;
+    return [
+      this.hold(0.3, () => {
+        sh.pose = 'stampUp';
+        sh.stamp = 'paid';
+        sh.t0 = this.t;
+      }),
+      this.hold(0.8, () => {
+        sh.pose = 'stampDown';
+        sh.t0 = this.t;
+        this.slam('PAID', STAMP_PAID);
+        reveal();
+        this.redLight = false;
+        this.showPlate(this.paidBackLines(collected), 240, 44);
+        sh.pose = 'idle';
+        sh.sadUntil = this.t + 4;
+      }),
+      this.bruteIn(),
+    ];
+  }
+
+  private overdueBeats(first: boolean, loan: BankLoan, reveal: () => void): readonly Beat[] {
+    const sh = this.shark;
+    const start = this.act(() => {
+      reveal();
+      this.redLight = true;
+      sh.pose = 'idle';
+      this.showPlate(this.overdueLines(first, loan), 240, 44, first ? 2.8 : 2.4);
+    });
+    if (!first) return [start, this.bruteOut(), this.hold(1)];
+    return [
+      start,
+      this.bruteOut(),
+      this.hold(0.5, () => {
+        sh.pose = 'camera';
+        sh.t0 = this.t;
+      }),
+      this.hold(0.25, () => (this.flashAt = this.t)),
+      (done) =>
+        this.flyImage(
+          PP.polaroid,
+          [
+            [236, 80],
+            [212, 60],
+            [L.shame.slot[0] + 6, L.shame.slot[1] + 7],
+          ],
+          0.9,
+          done,
+          10,
+        ),
+      this.act(() => {
+        this.polaroid = true;
+        sh.pose = 'idle';
+        sh.grinUntil = this.t + 1.6;
+      }),
+    ];
+  }
+
+  private overdueLines(first: boolean, loan: BankLoan): readonly PlateLine[] {
+    const head: PlateLine = ['OVERDUE', 'jersey', REDL];
+    if (first) return [head, ['LATE FEE $' + fmt(loan.penalty), 'tiny', PAPER]];
+    return [head, ['OWED $' + fmt(loan.outstanding), 'tiny', PAPER]];
+  }
+
+  private wireOutBeats(amount: number, reveal: () => void): readonly Beat[] {
+    const you = this.you,
+      label = '$' + fmt(amount);
+    return [
+      this.goTo('wires'),
+      (done) => {
+        this.clerkAwakeUntil = this.t + 6;
+        you.arm = 'reach';
+        this.flyImage(
+          PP.bundle(label),
+          [
+            [you.x + 12, 140],
+            [352, 119],
+            [340, 106],
+          ],
+          0.8,
+          done,
+        );
+      },
+      this.hold(0.9, () => {
+        you.arm = null;
+        this.canister = { y: L.tube.bottom - 12, dir: -1, t0: this.t };
+      }),
+      this.hold(1.2, () => {
+        this.canister = null;
+        this.teletypeUntil = this.t + 1.2;
+      }),
+      this.hold(0.6, () => {
+        reveal();
+        this.showPlate(
+          [
+            ['WIRE OUT', 'jersey', REDL],
+            ['-' + label, 'tiny', PAPER],
+          ],
+          372,
+          44,
+        );
+      }),
+    ];
+  }
+
+  private wireInBeats(amount: number, reveal: () => void): readonly Beat[] {
+    const label = '$' + fmt(amount);
+    return [
+      this.act(() => (this.canister = { y: -14, dir: 1, t0: this.t })),
+      this.goTo('wires'),
+      this.hold(0.4),
+      (done) => {
+        this.canister = null;
+        this.clerkAwakeUntil = this.t + 6;
+        this.flyImage(
+          PP.envelope(label),
+          [
+            [332, 104],
+            [352, 119],
+            [this.you.x + 12, 140],
+          ],
+          0.8,
+          done,
+        );
+      },
+      this.hold(1.2, () => {
+        this.teletypeUntil = this.t + 1.2;
+        reveal();
+        this.showPlate(
+          [
+            ['WIRE IN', 'jersey', GREEN],
+            ['+' + label, 'tiny', PAPER],
+          ],
+          372,
+          44,
+        );
+      }),
+    ];
   }
 
   // ----- ambient life -----
@@ -530,9 +1343,14 @@ export class BankRoom extends Room {
     const T = this.t,
       you = this.you,
       b = this.brute;
+    this.stepWalker(you, dt);
+    this.stepWalker(b, dt);
+    this.stepGate('stepDown', dt);
+    this.stepGate('stepUp', dt);
     this.queueShift += clamp(this.queueTarget - this.queueShift, -dt * 10, dt * 10);
     const nearDoor = Math.abs(you.x - 150) < 16 || (!b.inside && Math.abs(b.x + 32 - 150) < 20);
     this.door += clamp((nearDoor ? 1 : 0) - this.door, -dt * 4, dt * 4);
+    this.stepFx(T);
     const sh = this.shark;
     if (sh.pose === 'idle' && T > sh.nextIdle) {
       sh.idle = you.spot === 'loan' ? 'coin' : 'beckon';
@@ -557,6 +1375,7 @@ export class BankRoom extends Room {
     this.flickerStep(this.lamp, dt, 0.35);
     this.flickerStep(this.tube, dt, 0.25);
     this.flickerStep(this.box, dt, 0.18);
+    this.stepCanister(T);
   }
 
   private stepParticles(dt: number, T: number): void {
@@ -641,6 +1460,7 @@ export class BankRoom extends Room {
     if (!this.brute.inside) actors.push({ y: this.brute.feet + 0.5, f: () => this.drawBrute(T) });
     actors.sort((a, b) => a.y - b.y).forEach((a) => a.f());
     this.drawParticles(T);
+    this.drawFx(T);
     if (this.redLit(T) && !this.reduced) {
       this.ctx.fillStyle = 'rgba(255,40,48,0.07)';
       this.ctx.fillRect(L.cutEnd * S, 10 * S, (W - L.cutEnd) * S, (H - 10) * S);
@@ -1126,6 +1946,52 @@ export class BankRoom extends Room {
     this.drawTv(T);
     const wn = this.flicks[4];
     this.img(reduced || wn.off <= 0 ? this.spr.wires.on : this.spr.wires.off, 330, 16);
+  }
+
+  private drawFx(T: number): void {
+    const S = this.s,
+      ctx = this.ctx,
+      reduced = this.reduced;
+    for (const f of this.fliers) {
+      const k = clamp((T - f.t0) / f.dur, 0, 1),
+        n = f.pts.length - 1;
+      const seg = Math.min(n - 1, Math.floor(k * n)),
+        u = easeInOut(k * n - seg);
+      const [x0, y0] = f.pts[seg],
+        [x1, y1] = f.pts[seg + 1];
+      const x = x0 + (x1 - x0) * u,
+        y = y0 + (y1 - y0) * u - Math.sin(u * Math.PI) * f.arc;
+      this.imgF(f.img, x - f.img.width / 2, y - f.img.height / 2);
+    }
+    if (this.slammed) {
+      const st = this.slammed,
+        k = reduced ? 1 : clamp((T - st.at) / 0.14, 0, 1);
+      const sc = 1.6 - 0.6 * k,
+        w = st.img.width * sc,
+        h = st.img.height * sc;
+      ctx.drawImage(
+        st.img,
+        Math.round(st.x - w / 2) * S,
+        Math.round(st.y - h / 2) * S,
+        Math.round(w) * S,
+        Math.round(h) * S,
+      );
+    }
+    for (const p of this.plates) {
+      const k = reduced ? 1 : clamp((T - p.at) / 0.12, 0, 1);
+      const w = p.img.width * (0.6 + 0.4 * k),
+        h = p.img.height * (0.6 + 0.4 * k);
+      const x = clamp(p.x - w / 2, 2, W - w - 2),
+        y = clamp(p.y - h / 2, 2, H - h - 2);
+      ctx.drawImage(
+        p.img,
+        Math.round(x * S),
+        Math.round(y * S),
+        Math.round(w * S),
+        Math.round(h * S),
+      );
+    }
+    if (!reduced && T - this.flashAt < 0.12) this.img(this.art.flash, 222, 64);
   }
 
   private drawParticles(T: number): void {
