@@ -152,8 +152,8 @@ rules bind every change it makes.
     the new hand needs at least one `card`, `hole`, `reveal` or `settle` step. The room clears the
     class from its `onSettled` callback (roulette) or its `onIdle` callback (blackjack). A watchdog
     clears it too, after 8000 ms (`ROLL_WATCHDOG_MS` in `roulette-stage.ts`) or 6000 ms
-    (`DEAL_WATCHDOG_MS` in `blackjack-stage.ts`), restarted by each roll or run. It also clears at
-    once when the scene leaves the screen or the tab hides. Neither class is ever set under reduced
+    (`DEAL_WATCHDOG_MS` in `blackjack-stage.ts`), restarted each time the class is set again. It
+    also clears at once when the scene leaves the screen or the tab hides. Neither class is ever set under reduced
     motion, while the scene is off screen or the tab is hidden, or when no scene booted, and a spin or hand that is
     already there on load plays nothing. Inside `prefers-reduced-motion: no-preference`,
     `_casino.scss` hides the page's result text with `visibility: hidden` while a class is set.
@@ -210,9 +210,11 @@ rules bind every change it makes.
   the 480 px canvas scrolls inside itself and `RoomHost` centres the scene's `focusX`. The rooms read every number
   from the server. The roulette room stages `pocket`, `totalStake`, `totalPayout` and each bet's
   `payout`, and the blackjack room stages the totals, outcome and payout of the hand. Neither
-  computes a rule or a payout. The only subtractions are `totalPayout - totalStake` in
-  `roulette-room.ts` and `payout - stake` in `blackjack-room.ts`, which pick the reaction and the
-  net plate.
+  computes a rule or a payout. The arithmetic on those numbers, in the rooms and the watch helpers,
+  is for display only. Examples are the net of a settled spin or hand (`roulette-room.ts:275`,
+  `blackjack-room.ts:384`), the rail count while a payout is held (`roulette-room.ts:176`), the
+  chip that flies for a stake change (`roulette-room.ts:326`) and the amount of a cash-out
+  (`cage-watch.ts:57`).
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
   `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
   `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
