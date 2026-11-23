@@ -754,6 +754,29 @@ describe('BankRoom', () => {
         expect(room.painted.plate).toBeNull();
       });
 
+      it('settles the shark to its idle face 2800 ms after a rejection', () => {
+        const { room } = stepLog({ reduced: true });
+        room.place(shown(pending()));
+        room.run([{ kind: 'rejected', loan: loan({ status: 'Rejected' }) }]);
+        expect(['laugh', 'grin']).toContain(room.painted.sharkFace);
+        vi.advanceTimersByTime(2799);
+        expect(['laugh', 'grin']).toContain(room.painted.sharkFace);
+        vi.advanceTimersByTime(1);
+        expect(room.painted.shark).toBe('idle');
+        expect(room.painted.sharkFace).toBe('smirk');
+      });
+
+      it('lets the clerk sleep again 2800 ms after a wire', () => {
+        const { room } = stepLog({ reduced: true });
+        room.place(shown(loan()));
+        room.run([{ kind: 'wireIn', amount: 5, slips: [{ out: false, amount: 5 }] }]);
+        expect(room.painted.clerkAwake).toBe(true);
+        vi.advanceTimersByTime(2799);
+        expect(room.painted.clerkAwake).toBe(true);
+        vi.advanceTimersByTime(1);
+        expect(room.painted.clerkAwake).toBe(false);
+      });
+
       it('leaves no sweep timer after destroy', () => {
         const { room } = stepLog({ reduced: true });
         room.place(shown(pending()));
@@ -771,6 +794,18 @@ describe('BankRoom', () => {
         expect(vi.getTimerCount()).toBe(0);
         expect(room.painted.stamp).toBeNull();
       });
+    });
+
+    it('keeps the clerk awake for his own timing in a room that is not reduced', () => {
+      const { room, log } = stepLog();
+      room.place(shown(loan()));
+      room.run([{ kind: 'wireIn', amount: 5, slips: [{ out: false, amount: 5 }] }]);
+      while (!log.includes('idle')) step(16);
+      expect(room.painted.clerkAwake).toBe(true);
+      step(2800);
+      expect(room.painted.clerkAwake).toBe(true);
+      step(6000);
+      expect(room.painted.clerkAwake).toBe(false);
     });
 
     it('stops a run on place with no further reveal or idle', () => {

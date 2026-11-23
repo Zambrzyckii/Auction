@@ -47,6 +47,8 @@ export interface BankPainted {
   readonly you: { readonly x: number; readonly spot: string };
   readonly brute: { readonly x: number; readonly inside: boolean; readonly pose: string };
   readonly shark: string;
+  readonly sharkFace: string;
+  readonly clerkAwake: boolean;
   readonly redLight: boolean;
   readonly polaroid: boolean;
 }
@@ -444,6 +446,8 @@ export class BankRoom extends Room {
       you: { x: this.you.x, spot: this.you.spot },
       brute: { x: this.brute.x, inside: this.brute.inside, pose: this.brute.pose },
       shark: this.shark.pose,
+      sharkFace: this.sharkFace(this.t),
+      clerkAwake: this.t < this.clerkAwakeUntil,
       redLight: this.redLight,
       polaroid: this.polaroid,
     };
@@ -960,6 +964,7 @@ export class BankRoom extends Room {
     clearTimeout(this.stampSweep);
     this.stampSweep = setTimeout(() => {
       this.slammed = null;
+      this.clearReactions();
       this.draw();
     }, SWEEP_MS);
   }
@@ -970,8 +975,19 @@ export class BankRoom extends Room {
     clearTimeout(this.plateSweep);
     this.plateSweep = setTimeout(() => {
       this.plates = [];
+      this.clearReactions();
       this.draw();
     }, SWEEP_MS);
+  }
+
+  private clearReactions(): void {
+    const sh = this.shark;
+    sh.grinUntil = -9;
+    sh.laughUntil = -9;
+    sh.sadUntil = -9;
+    this.clerkAwakeUntil = -9;
+    this.lackeyFastUntil = -9;
+    this.teletypeUntil = -9;
   }
 
   private clearStamp(): void {
