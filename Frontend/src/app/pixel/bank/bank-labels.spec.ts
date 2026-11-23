@@ -59,6 +59,7 @@ describe('bank labels', () => {
 
   afterAll(() => {
     vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   describe('ledRows', () => {

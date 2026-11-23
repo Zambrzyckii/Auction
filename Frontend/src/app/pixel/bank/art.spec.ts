@@ -46,6 +46,7 @@ describe('bank art', () => {
 
   afterAll(() => {
     vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   describe('sprites', () => {
