@@ -49,6 +49,11 @@ rules bind every change it makes.
   pauses off screen.
 - The specs run on jsdom, which has no canvas, `matchMedia` or `IntersectionObserver`. Code that needs
   them checks for them first and loads its art with a dynamic import behind that check.
+- The Angular unit-test builder runs Vitest with `isolate: false`, so the spec files of one worker
+  share modules (`node_modules/@angular/build/src/builders/unit-test/runners/vitest/plugins.js:195`),
+  and `pixel/street/pix.ts` binds its measuring 2d context once at module load (`pix.ts:340-343`). A
+  spec that stubs the canvas therefore calls `vi.resetModules()` before its dynamic imports, as
+  `pixel/street/hud.spec.ts` and the casino room specs do.
 - Packages that give a better pixel-art result are allowed for this pass, each named with its reason.
   The pass is not bound by the plain-SCSS rule or the per-package consent of 2026-11-08
   (`docs/en/DECISIONS.md:107` and `:132`).
@@ -106,9 +111,10 @@ rules bind every change it makes.
   by specificity, not by order. A later rule overrides the skin only when it reaches that
   specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
   elements and classes the templates already have, so a new page gets the look without a template
-  change and the three frame pages stay untouched. The exception is the item templates and the war
-  page, which gained these hooks for the item tiles, the shelf and the war scene, styled by
-  `_hall.scss`, `_forms.scss`, `_inventory.scss`, `_workshop.scss` and `_war.scss`.
+  change and the three frame pages stay untouched. The exception is the item templates, the war
+  page and the three casino pages, which gained these hooks for the item tiles, the shelf, the war
+  scene and the casino scenes, styled by `_hall.scss`, `_forms.scss`, `_inventory.scss`,
+  `_workshop.scss`, `_war.scss` and `_casino.scss`.
   - `auction-list.html` has `td.lot`, `span.lot-row` and `.rarity`.
   - `my-auctions.html` has `td.lot` and `span.lot-row` in both tables, and no `.rarity`.
   - `auction-detail.html` has `td.lot`, `span.lot-row`, `.rarity` and `tr.leading`, the only auction
@@ -134,6 +140,26 @@ rules bind every change it makes.
     `.dropped`. `_inventory.scss` styles the picked and unfit states through those classes instead of
     per-card `:has()`, and gives `li.card` `content-visibility: auto` with
     `contain-intrinsic-size: auto 260px`, which keeps Firefox style time flat at 174 cards.
+  - `casino.html`, `roulette.html` and `blackjack.html` have five additions between them. `casino.html`
+    has `<app-cage-scene>` under the heading. `roulette.html` and `blackjack.html` have
+    `<app-roulette-scene>` and `<app-blackjack-scene>` after the back link, and `p.chip-balance` on
+    their chip balance paragraph, which keeps its text. The balance paragraph of `casino.html` gets
+    no hook. `_casino.scss` styles the three scene hosts as a bordered `.room` frame that scrolls
+    sideways inside itself around a pixelated `canvas.scene`.
+  - The skin keys on two host classes. `app-roulette-scene` gets `rolling` while its room stages a
+    spin and `app-blackjack-scene` gets `dealing` while its room plays the steps of a deal. Roulette
+    sets `rolling` when a spin with a new `publicSpinId` arrives, and blackjack sets `dealing` when
+    the new hand needs at least one `card`, `hole`, `reveal` or `settle` step. The room clears the
+    class from its `onSettled` callback (roulette) or its `onIdle` callback (blackjack). A watchdog
+    clears it too, after 8000 ms (`ROLL_WATCHDOG_MS` in `roulette-stage.ts`) or 6000 ms
+    (`DEAL_WATCHDOG_MS` in `blackjack-stage.ts`), restarted by each roll or run. It also clears at
+    once when the scene leaves the screen or the tab hides. Neither class is ever set under reduced
+    motion, while the scene is off screen or the tab is hidden, or when no scene booted, and a spin or hand that is
+    already there on load plays nothing. Inside `prefers-reduced-motion: no-preference`,
+    `_casino.scss` hides the page's result text with `visibility: hidden` while a class is set.
+    That is `p.chip-balance`, `section.last-spin` and `table.history` on the roulette page, and
+    `p.chip-balance`, `p.dealer`, `p.player`, `p.outcome`, `p.auto-stood` and `table.history` on the
+    blackjack page.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
@@ -162,6 +188,31 @@ rules bind every change it makes.
   stylesheet, because `_war.scss` dresses it. At 1200 px and up the scene is sticky and
   `_war.scss` sets `overflow-x: clip` on `main`, so a wide table is clipped there instead of
   scrolling, because any scrolling ancestor of a sticky element disables the stickiness.
+- `pixel/casino/` holds the three casino scenes, the cage on `/casino`, the roulette table and the
+  blackjack table. The art modules are `sprites.ts` (chips, cards, plates, neon and the carpet and
+  wallpaper builders), `floor.ts` (people, props and the slot machine), `rooms.ts` (the three baked
+  rooms) and `wheel.ts` (the wheel painter). `wheel-math.ts` is the pure roulette model, with the
+  pocket order, the ball's throw and its landing. Its `pocketAngle` places the ball, and the painter
+  derives each pocket from the same `ORDER` and `STEP`, so a resting ball sits in the pocket drawn
+  for its number. `room.ts` is the base class `Room`, a 480x200 art canvas with the loop, the chip
+  fliers, the plates and the ambient neon, rings and slots. The three rooms (`cage-room.ts`,
+  `roulette-room.ts`, `blackjack-room.ts`) extend it and load lazily through `bootStreet`, behind
+  the same guard as the other scenes, which `roomDeps` in `room-host.ts` builds. `RoomHost` boots a room, fits it with a `ResizeObserver` on the frame and on window
+  resize, and pauses it when it is off screen or the tab is hidden. The watch helpers are pure.
+  `cage-watch.ts` turns two polls of the casino account into one move or none, `roulette-watch.ts`
+  turns bets into felt zones and stacks, and `blackjack-watch.ts` turns the shown hand and the new
+  hand into steps. `SpinStage` (`roulette-stage.ts`) and `DealStage` (`blackjack-stage.ts`) hold
+  the rules for `rolling` and `dealing` and import nothing from Angular. The components
+  `app-cage-scene`, `app-roulette-scene` and `app-blackjack-scene` take their data as inputs and
+  carry no stylesheet, because `_casino.scss` dresses them. Their canvas is `aria-hidden`.
+  `Room.resize` picks the largest whole scale, at most 4 and at least 1, that fits both the frame
+  width and half the window height (`HEIGHT_SHARE` in `room-host.ts`). A frame narrower than
+  the 480 px canvas scrolls inside itself and `RoomHost` centres the scene's `focusX`. The rooms read every number
+  from the server. The roulette room stages `pocket`, `totalStake`, `totalPayout` and each bet's
+  `payout`, and the blackjack room stages the totals, outcome and payout of the hand. Neither
+  computes a rule or a payout. The only subtractions are `totalPayout - totalStake` in
+  `roulette-room.ts` and `payout - stake` in `blackjack-room.ts`, which pick the reaction and the
+  net plate.
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
   `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
   `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
