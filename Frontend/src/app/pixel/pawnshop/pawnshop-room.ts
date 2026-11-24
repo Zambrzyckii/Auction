@@ -16,8 +16,17 @@ import type { CrewKey, Face, Walker } from './gait';
 import * as WK from './gait';
 import { CLUMP_ALPHA, clumpFrames, stepParts } from './dust';
 import type { Part } from './dust';
-import { beatAge, bulbLevel, facadeState, youPose } from './pawnshop-opening';
-import type { BeatId, FacadeState, Stamps, YouAction } from './pawnshop-opening';
+import {
+  OPEN_BEATS,
+  PULL_BACK,
+  beatAge,
+  bulbLevel,
+  facadeState,
+  plankFall,
+  runBeats,
+  youPose,
+} from './pawnshop-opening';
+import type { BeatHost, BeatId, FacadeState, Stamps, YouAction } from './pawnshop-opening';
 import { boardRows, dustLevel, ledRows, tierRarity } from './pawnshop-watch';
 import type {
   BoardRow,
@@ -25,6 +34,7 @@ import type {
   PawnOffers,
   PawnShop,
   PawnState,
+  PawnStep,
   PawnTier,
 } from './pawnshop-watch';
 import { placePose } from './player-actions';
@@ -79,6 +89,7 @@ export interface PawnPainted {
 
 type Pt = readonly [number, number];
 type Img = HTMLCanvasElement;
+type Beat = (done: () => void) => void;
 type SpiderPhase = 'up' | 'down' | 'hang' | 'climb';
 interface You extends Walker {
   feet: number;
@@ -287,6 +298,12 @@ export class PawnshopRoom extends Room {
   };
   private dead = false;
   private busy = false;
+  private gen = 0;
+  private queue: PawnStep[] = [];
+  private pendingRun = false;
+  private footWas: boolean[] | null = null;
+  private readonly onReveal: (() => void) | undefined;
+  private readonly onIdle: (() => void) | undefined;
   private clockTimer: ReturnType<typeof setInterval> | undefined;
   private shown: PawnState | null = null;
   private offers: PawnOffers | null = null;
@@ -325,7 +342,7 @@ export class PawnshopRoom extends Room {
   private mouse: Mouse | null = null;
   private nextMouse = 5;
   private nextMote = 0;
-  private idle: { next: number; kind: string | null; t0: number } = { next: 3, kind: null, t0: 0 };
+  private habit: { next: number; kind: string | null; t0: number } = { next: 3, kind: null, t0: 0 };
   private blinkUntil = -9;
   private nextBlink = 2;
   private stillMotes: { cold: Mote[]; warm: Mote[] } | null = null;
@@ -333,6 +350,8 @@ export class PawnshopRoom extends Room {
 
   constructor(cv: HTMLCanvasElement, opts: PawnshopRoomOpts = {}) {
     super(cv, opts);
+    this.onReveal = opts.onReveal;
+    this.onIdle = opts.onIdle;
     if (!this.reduced) CR.prewarm();
   }
 
@@ -382,6 +401,12 @@ export class PawnshopRoom extends Room {
 
   place(shop: PawnState | null): void {
     if (this.dead) return;
+    this.cancelRun();
+    this.seat(shop);
+    this.kickDraw();
+  }
+
+  private seat(shop: PawnState | null): void {
     this.shown = shop;
     this.stamps = null;
     this.fliers = [];
@@ -393,10 +418,8 @@ export class PawnshopRoom extends Room {
     this.lockSnap = -9;
     this.shrugT = -9;
     this.noteT = -9;
-    this.busy = false;
     this.slotOfId.clear();
     this.rest();
-    this.kickDraw();
   }
 
   setOffers(offers: PawnOffers | null): void {
@@ -443,6 +466,9 @@ export class PawnshopRoom extends Room {
 
   override destroy(): void {
     this.dead = true;
+    this.gen++;
+    this.queue = [];
+    this.busy = false;
     clearInterval(this.clockTimer);
     this.clockTimer = undefined;
     this.fliers = [];
@@ -450,8 +476,351 @@ export class PawnshopRoom extends Room {
   }
 
   protected override finishAll(): void {
+    for (const a of this.walkers()) if (a.walking) this.land(a);
     for (const f of this.fliers.splice(0)) f.done();
+    this.flap.t = -9;
     this.plates = [];
+  }
+
+  private walkers(): Walker[] {
+    const all: (Walker | null)[] = [this.you, this.buddy, this.cand, this.old, this.cust];
+    return all.filter((a): a is Walker => a !== null);
+  }
+
+  private land(a: Walker): void {
+    if (a.tx !== undefined) a.x = a.tx;
+    a.walking = false;
+    a.g = null;
+    const arrive = a.arrive;
+    a.arrive = null;
+    arrive?.();
+  }
+
+  // ----- run queue -----
+  get idle(): boolean {
+    return !this.busy && this.queue.length === 0;
+  }
+
+  run(steps: readonly PawnStep[]): void {
+    if (this.dead || steps.length === 0) return;
+    this.pendingRun = true;
+    this.queue.push(...steps);
+    this.pump();
+    this.kickDraw();
+  }
+
+  private cancelRun(): void {
+    this.gen++;
+    this.queue = [];
+    this.busy = false;
+    this.pendingRun = false;
+  }
+
+  private pump(): void {
+    if (this.busy) return;
+    const step = this.queue.shift();
+    if (step === undefined) return;
+    this.busy = true;
+    this.exec(step);
+  }
+
+  private next(): void {
+    this.busy = false;
+    if (this.queue.length > 0) this.pump();
+    else this.checkIdle();
+  }
+
+  private checkIdle(): void {
+    if (!this.pendingRun || !this.idle) return;
+    this.pendingRun = false;
+    this.rest();
+    this.kickDraw();
+    this.onIdle?.();
+  }
+
+  private exec(step: PawnStep): void {
+    const gen = this.gen;
+    let revealed = false;
+    const reveal = () => {
+      if (revealed || gen !== this.gen) return;
+      revealed = true;
+      this.reveal(step);
+    };
+    this.playBeats(this.beatsOf(step, reveal), gen, () => {
+      reveal();
+      this.next();
+    });
+  }
+
+  private reveal(step: PawnStep): void {
+    this.shown = step.shop;
+    this.kickDraw();
+    this.onReveal?.();
+  }
+
+  private playBeats(beats: readonly Beat[], gen: number, end: () => void, i = 0): void {
+    if (i >= beats.length) {
+      end();
+      return;
+    }
+    beats[i](() => {
+      if (gen === this.gen) this.playBeats(beats, gen, end, i + 1);
+    });
+  }
+
+  private beatsOf(step: PawnStep, reveal: () => void): readonly Beat[] {
+    switch (step.kind) {
+      case 'snap':
+        return [
+          this.act(() => {
+            this.seat(step.shop);
+            reveal();
+          }),
+        ];
+      case 'paying':
+        return this.payingBeats(reveal);
+      case 'opened':
+        return this.openedBeats(reveal);
+      case 'rejected':
+        return this.rejectedBeats(step.shop.rejectionReason || null, reveal);
+      default:
+        return [this.act(reveal)];
+    }
+  }
+
+  // ----- beats -----
+  private later(delay: number, fn: () => void): void {
+    const gen = this.gen;
+    this.schedule(delay, () => {
+      if (gen === this.gen) fn();
+    });
+  }
+
+  private act(fn: () => void): Beat {
+    return (done) => {
+      fn();
+      done();
+    };
+  }
+
+  private hold(seconds: number, fn?: () => void): Beat {
+    return (done) => {
+      fn?.();
+      this.later(seconds, done);
+    };
+  }
+
+  private stampNow(): number {
+    return this.instant() ? -9 : this.t;
+  }
+
+  private walkTo(a: Walker, x: number, speed: number, done: () => void): void {
+    if (this.instant()) {
+      a.x = x;
+      a.walking = false;
+      a.g = null;
+      done();
+      return;
+    }
+    if (Math.abs(a.x - x) < 0.5) {
+      done();
+      return;
+    }
+    const gen = this.gen;
+    WK.beginWalk(a, WK.idOf(a), x, speed, null, () => {
+      if (gen === this.gen) done();
+    });
+  }
+
+  private payingBeats(reveal: () => void): readonly Beat[] {
+    const you = this.you;
+    return [
+      this.act(() => {
+        this.note = null;
+        you.carry = 'keys';
+        you.action = null;
+        reveal();
+      }),
+      (done) => this.walkTo(you, A.youDoor, 40, done),
+      this.act(() => {
+        you.face = 'right';
+        this.lockRattle = true;
+      }),
+    ];
+  }
+
+  private rejectedBeats(reason: string | null, reveal: () => void): readonly Beat[] {
+    const you = this.you;
+    return [
+      this.hold(0.5, () => {
+        this.lockRattle = false;
+        you.action = null;
+        this.lockSnap = this.stampNow();
+      }),
+      this.hold(0.6, () => {
+        this.note = reason;
+        this.noteT = this.stampNow();
+      }),
+      this.hold(0.7, () => {
+        you.carry = null;
+        you.face = 'front';
+        this.shrugT = this.stampNow();
+      }),
+      (done) => this.walkTo(you, 2, 30, done),
+      this.hold(0.4, () => {
+        you.face = 'front';
+        reveal();
+      }),
+    ];
+  }
+
+  private openedBeats(reveal: () => void): readonly Beat[] {
+    const you = this.you,
+      stamps: Stamps = { s: {}, e: {} };
+    return [
+      this.act(() => {
+        this.lockRattle = false;
+        this.note = null;
+        this.stamps = stamps;
+        you.walking = false;
+        you.x = A.youDoor;
+        you.carry = null;
+      }),
+      (done) =>
+        this.playOpening(stamps, () => {
+          this.openNow = true;
+          you.action = null;
+          reveal();
+          done();
+        }),
+      (done) =>
+        this.walkTo(you, A.youOwner, 40, () => {
+          you.face = 'front';
+          done();
+        }),
+      this.act(() => {
+        this.stamps = null;
+      }),
+    ];
+  }
+
+  private playOpening(stamps: Stamps, done: () => void): void {
+    const gen = this.gen;
+    const host: BeatHost = {
+      wait: (seconds, fn) => this.later(seconds, fn),
+      act: (id, dur, end) => this.openAct(id, dur, end),
+      stamp: () => (this.instant() ? -1e9 : this.t),
+      live: () => gen === this.gen,
+    };
+    runBeats(OPEN_BEATS, host, stamps, done);
+  }
+
+  private openAct(id: BeatId, dur: number, end: () => void): void {
+    const you = this.you;
+    if (id === 'walkIn') {
+      you.action = null;
+      this.walkTo(you, A.youBulb, 40, () => {
+        you.face = 'right';
+        you.action = 'stand';
+        end();
+      });
+      return;
+    }
+    this.openEffect(id);
+    this.later(dur, () => {
+      if (id === 'door') {
+        you.x += PULL_BACK;
+        you.action = 'stand';
+      }
+      end();
+    });
+  }
+
+  private openEffect(id: BeatId): void {
+    const you = this.you;
+    switch (id) {
+      case 'key':
+        you.action = 'key';
+        you.face = 'right';
+        you.carry = null;
+        if (this.spider.phase === 'up') this.spider.phase = 'down';
+        break;
+      case 'heap':
+        this.dust(L.heap.x, L.heap.y - 4, 0, 0, 5, -7, 0.5);
+        this.dust(L.heap.x - 6, L.heap.y - 3, 0, 0.06, -7, -5, 0.45);
+        break;
+      case 'door':
+        you.action = 'pull';
+        if (this.spider.y > L.tie + 8) {
+          this.spider.phase = 'climb';
+          this.spider.fast = true;
+        }
+        this.mouse = { x: 146, dir: 1, stop: 0, paused: 0, fast: true };
+        break;
+      case 'stale':
+        for (let k = 0; k < 5; k++) {
+          this.dust(
+            L.door.x + 34 - k * 4,
+            184 - (k % 2) * 5,
+            k < 2 ? 2 : 1,
+            k * 0.2,
+            -30 - k * 5,
+            -2.5,
+            1.0,
+          );
+        }
+        break;
+      case 'kick':
+        you.action = 'kick';
+        break;
+      case 'boards':
+        this.art.planks.forEach((_, i) => {
+          const f = plankFall(i, this.art.planks);
+          this.dust(f.x1 + 8 + (i % 3) * 14, f.y1 + 1, 1, f.delay + f.tl, i % 2 ? 6 : -6, -6, 0.5);
+        });
+        break;
+      case 'cord':
+        you.action = 'cord';
+        break;
+      case 'bulb':
+        this.openNow = true;
+        break;
+      case 'cloth':
+        you.action = 'cloth';
+        break;
+      case 'puff':
+        this.puffDust();
+        break;
+      case 'cheer':
+        you.action = 'cheer';
+        break;
+      default:
+        break;
+    }
+  }
+
+  private puffDust(): void {
+    for (let k = 0; k < 4; k++) {
+      this.dust(206 + k * 30, L.counterTop - 3, 1, k * 0.06, (k - 1.5) * 3, -9, 0.6);
+    }
+    for (let k = 0; k < 3; k++) {
+      this.dust(262 + k * 48, L.shelf.rows[1] + 20, 0, 0.1 + k * 0.07, 0, -6, 0.5);
+    }
+    this.dust(214, 186, 2, 0, -8, -3, 0.7);
+    this.dust(244, 188, 1, 0.05, 9, -3, 0.6);
+  }
+
+  private dust(
+    x: number,
+    y: number,
+    size: number,
+    delay: number,
+    vx: number,
+    vy: number,
+    life: number,
+  ): void {
+    if (this.instant()) return;
+    this.parts.push({ k: 'clump', x, y, r: size, vx, vy, t0: this.t + delay, life });
   }
 
   // ----- state -----
@@ -612,8 +981,10 @@ export class PawnshopRoom extends Room {
   // ----- stepping -----
   protected override stepRoom(dt: number): void {
     const T = this.t;
+    for (const a of this.walkers()) WK.step(a, dt, T);
     this.stepBlink(T);
     this.stepHabits(T, dt);
+    this.stepFootfalls(T);
     this.stepMotes(T);
     this.parts = stepParts(this.parts, dt, T);
     this.stepSpider(T, dt);
@@ -628,7 +999,7 @@ export class PawnshopRoom extends Room {
 
   private stepHabits(T: number, dt: number): void {
     const b = this.buddy,
-      id = this.idle;
+      id = this.habit;
     if (!b || this.busy || !b.behind || b.walking) {
       id.kind = null;
       return;
@@ -656,6 +1027,28 @@ export class PawnshopRoom extends Room {
         });
       }
     }
+  }
+
+  private stepFootfalls(T: number): void {
+    const you = this.you;
+    if (
+      this.stamps === null ||
+      this.age('walkIn') < 0 ||
+      this.age('cord') >= 0 ||
+      !you.walking ||
+      !you.g
+    ) {
+      this.footWas = null;
+      return;
+    }
+    const feet = WK.feetOf(you, T),
+      was = this.footWas ?? [];
+    feet.forEach((f, k) => {
+      if (!f.planted || was[k] !== false || f.x < L.inside) return;
+      this.dust(f.x - 3, f.y - 3, 1, 0, -7, -4, 0.6);
+      this.dust(f.x + 4, f.y - 2, 0, 0.04, 6, -3, 0.5);
+    });
+    this.footWas = feet.map((f) => f.planted);
   }
 
   private stepMotes(T: number): void {
@@ -830,9 +1223,9 @@ export class PawnshopRoom extends Room {
     let pose = a.pose || 'down',
       mood = a.mood || this.blinkMood() || 'smile',
       dy = 0;
-    const habit = this.idle.kind;
+    const habit = this.habit.kind;
     const f =
-      a === this.buddy && habit && !this.busy ? WK.habitFrame(habit, T - this.idle.t0) : null;
+      a === this.buddy && habit && !this.busy ? WK.habitFrame(habit, T - this.habit.t0) : null;
     if (f) {
       pose = f.pose;
       dy = f.dy;

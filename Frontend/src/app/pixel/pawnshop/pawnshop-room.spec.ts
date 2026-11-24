@@ -1,6 +1,6 @@
 import type * as RoomModule from './pawnshop-room';
 import type * as Rooms from './rooms';
-import type { PawnItem, PawnOffers, PawnShop, PawnTier } from './pawnshop-watch';
+import type { PawnItem, PawnOffers, PawnShop, PawnStep, PawnTier } from './pawnshop-watch';
 import { DONE, facadeState } from './pawnshop-opening';
 
 const looseContext = () => {
@@ -435,6 +435,243 @@ describe('PawnshopRoom', () => {
       const draws = r.draws;
       step(500);
       expect(r.draws).toBe(draws);
+    });
+  });
+
+  describe('premises steps', () => {
+    const pendingShop = () => shop({ status: 'PendingPayment' });
+    const paying: PawnStep = { kind: 'paying', shop: pendingShop() };
+    const opened: PawnStep = { kind: 'opened', shop: clerkShop() };
+    const rejectedShop = shop({
+      status: 'Rejected',
+      rejectionReason: 'Not enough funds on account',
+    });
+    const rig = (reducedMotion = false) => {
+      const rec = {
+        reveals: [] as number[],
+        idles: [] as { t: number; x: number }[],
+      };
+      const r: InstanceType<typeof Probe> = make({
+        reduced: reducedMotion,
+        onReveal: () => rec.reveals.push(r.t),
+        onIdle: () => rec.idles.push({ t: r.t, x: r.painted.you.x }),
+      });
+      return { r, rec };
+    };
+    const activeReference = () => {
+      const ref = reduced();
+      ref.place(clerkShop());
+      return ref.painted.facade;
+    };
+
+    it('snaps to the step shop at once, with one reveal and one idle', () => {
+      const { r, rec } = rig();
+      r.place('none');
+      r.run([{ kind: 'snap', shop: clerkShop() }]);
+      expect(rec.reveals).toHaveLength(1);
+      expect(rec.idles).toHaveLength(1);
+      expect(r.idle).toBe(true);
+      expect(r.painted.open).toBe(true);
+      expect(r.painted.you.x).toBe(366);
+      expect(r.painted.buddy?.key).toBe('clerk');
+    });
+
+    it('reveals paying inside run, then walks to the door with the keys', () => {
+      const { r, rec } = rig();
+      r.place('none');
+      r.run([paying]);
+      expect(rec.reveals).toEqual([0]);
+      expect(r.idle).toBe(false);
+      step(3000);
+      const p = r.painted;
+      expect(p.you.x).toBe(70);
+      expect(p.you.face).toBe('right');
+      expect(p.you.carry).toBe('keys');
+      expect(p.lockRattle).toBe(true);
+      expect(p.note).toBeNull();
+      expect(rec.idles).toHaveLength(1);
+    });
+
+    describe('opened', () => {
+      const start = () => {
+        const rig1 = rig();
+        rig1.r.place(pendingShop());
+        rig1.r.run([opened]);
+        return rig1;
+      };
+
+      it('reveals once, between 9.1 and 9.8 s, and not before 9.0 s', () => {
+        const { rec } = start();
+        step(9000);
+        expect(rec.reveals).toHaveLength(0);
+        step(1500);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0]).toBeGreaterThan(9.1);
+        expect(rec.reveals[0]).toBeLessThan(9.8);
+      });
+
+      it('opens the shop from the bulb stamp on', () => {
+        const { r } = start();
+        const st = r.painted.stamps!;
+        let early = false,
+          late = false;
+        for (let i = 0; i < 700; i++) {
+          step(16);
+          const open = r.painted.open;
+          if (open && st.s.bulb === undefined) early = true;
+          if (!open && st.s.bulb !== undefined) late = true;
+        }
+        expect(st.s.bulb).toBeDefined();
+        expect(early).toBe(false);
+        expect(late).toBe(false);
+      });
+
+      it('starts the beats in the table order, the door 0.4 s after the chain', () => {
+        const { r } = start();
+        const st = r.painted.stamps!;
+        step(10_000);
+        const order = [
+          'key',
+          'jiggle',
+          'click',
+          'chain',
+          'door',
+          'kick',
+          'walkIn',
+          'cord',
+          'bulb',
+          'cloth',
+          'cheer',
+        ] as const;
+        const seen = Object.entries(st.s)
+          .sort((a, b) => (a[1] as number) - (b[1] as number))
+          .map(([id]) => id)
+          .filter((id) => (order as readonly string[]).includes(id));
+        expect(seen).toEqual([...order]);
+        expect(Math.abs((st.s.door ?? 0) - (st.s.chain ?? 0) - 0.4)).toBeLessThan(0.05);
+      });
+
+      it('goes idle once, after you reach your corner, in the end-state facade', () => {
+        const { r, rec } = start();
+        step(20_000);
+        expect(rec.idles).toHaveLength(1);
+        expect(rec.idles[0].x).toBe(366);
+        expect(rec.idles[0].t).toBeGreaterThan(rec.reveals[0]);
+        expect(r.painted.stamps).toBeNull();
+        expect(r.painted.facade).toEqual(activeReference());
+      });
+
+      it('holds the end state from the frame before idle', () => {
+        const { r, rec } = start();
+        let before = r.painted.facade;
+        for (let i = 0; i < 1500 && rec.idles.length === 0; i++) {
+          before = r.painted.facade;
+          step(16);
+        }
+        expect(rec.idles).toHaveLength(1);
+        expect(before).toEqual(r.painted.facade);
+      });
+
+      it('leaves a shop placed afterwards closed', () => {
+        const { r } = start();
+        step(20_000);
+        expect(r.painted.open).toBe(true);
+        r.place(pendingShop());
+        expect(r.painted.open).toBe(false);
+      });
+    });
+
+    it('plays [paying, opened] as two reveals and one idle', () => {
+      const { r, rec } = rig();
+      r.place('none');
+      r.run([paying, opened]);
+      step(25_000);
+      expect(rec.reveals).toHaveLength(2);
+      expect(rec.reveals[0]).toBeLessThan(rec.reveals[1]);
+      expect(rec.idles).toHaveLength(1);
+      expect(r.painted.you.x).toBe(366);
+    });
+
+    it('reveals a rejection after the walk and leaves the note in the corner', () => {
+      const { r, rec } = rig();
+      r.place(pendingShop());
+      r.run([{ kind: 'rejected', shop: rejectedShop }]);
+      step(3900);
+      expect(rec.reveals).toHaveLength(0);
+      step(1100);
+      expect(rec.reveals).toHaveLength(1);
+      expect(rec.reveals[0]).toBeGreaterThan(4.0);
+      expect(rec.reveals[0]).toBeLessThan(5.0);
+      step(2000);
+      expect(rec.idles).toHaveLength(1);
+      const p = r.painted;
+      expect(p.note).toBe('Not enough funds on account');
+      expect(p.you.x).toBe(2);
+      expect(p.lockRattle).toBe(false);
+    });
+
+    it('drains a reduced room in one call without a frame', () => {
+      const { r, rec } = rig(true);
+      r.place('none');
+      r.run([paying, opened]);
+      expect(rec.reveals).toHaveLength(2);
+      expect(rec.idles).toHaveLength(1);
+      expect(requests).toBe(0);
+      expect(r.painted.you.x).toBe(366);
+      expect(r.painted.facade).toEqual(activeReference());
+    });
+
+    it('lands the run when paused four seconds in', () => {
+      const { r, rec } = rig();
+      r.place(pendingShop());
+      r.run([opened]);
+      step(4000);
+      expect(rec.reveals).toHaveLength(0);
+      const asked = requests;
+      r.pause();
+      expect(rec.reveals).toHaveLength(1);
+      expect(rec.idles).toHaveLength(1);
+      expect(r.painted.you.x).toBe(366);
+      expect(r.painted.facade).toEqual(activeReference());
+      expect(requests).toBe(asked);
+    });
+
+    it('lands a run started while paused at once', () => {
+      const { r, rec } = rig();
+      r.place('none');
+      r.pause();
+      r.run([paying, opened]);
+      expect(rec.reveals).toHaveLength(2);
+      expect(rec.idles).toHaveLength(1);
+      expect(r.painted.you.x).toBe(366);
+    });
+
+    it('stops a run that is replaced by place', () => {
+      const { r, rec } = rig();
+      r.place(pendingShop());
+      r.run([opened]);
+      step(3000);
+      r.place('none');
+      step(20_000);
+      expect(rec.reveals).toHaveLength(0);
+      expect(rec.idles).toHaveLength(0);
+      expect(r.painted.stamps).toBeNull();
+    });
+
+    it('leaves no timer and no callback after destroy', () => {
+      vi.useFakeTimers({
+        toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+      });
+      vi.setSystemTime(NOW);
+      const { r, rec } = rig();
+      r.place(pendingShop());
+      r.run([opened]);
+      step(2000);
+      r.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+      step(20_000);
+      expect(rec.reveals).toHaveLength(0);
+      expect(rec.idles).toHaveLength(0);
     });
   });
 });
