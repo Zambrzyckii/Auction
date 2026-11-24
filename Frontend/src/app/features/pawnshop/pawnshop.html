@@ -1,4 +1,10 @@
 <h2>Pawnshop</h2>
+<app-pawnshop-scene
+  [shop]="shopPoller.value()"
+  [offers]="offers()"
+  [upgrades]="upgrades()"
+  [canBuy]="buyProblem() === null"
+/>
 @if (offers(); as catalog) {
   <p>
     Premises price: {{ catalog.premisesPrice | number }}, required turnover:

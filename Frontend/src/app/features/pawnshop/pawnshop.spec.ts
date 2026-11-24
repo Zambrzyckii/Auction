@@ -336,4 +336,28 @@ describe('Pawnshop', () => {
     fixture.detectChanges();
     expect(el().textContent).toContain('Available funds: 777');
   });
+
+  it('puts the scene right after the heading', () => {
+    flushAll(shop({}));
+    expect(el().querySelector(':scope > h2')?.nextElementSibling?.localName).toBe(
+      'app-pawnshop-scene',
+    );
+  });
+
+  it('keeps the active shop sections as direct children of the page', () => {
+    flushAll(shop({}));
+    expect(el().querySelector(':scope > p.shop-active')).not.toBeNull();
+    expect(el().querySelector(':scope > app-bot-section')).not.toBeNull();
+    expect(el().querySelector(':scope > app-stock-section')).not.toBeNull();
+  });
+
+  it('keeps the rejection and purchase elements as direct children of the page', () => {
+    flushAll(
+      shop({ status: 'Rejected', rejectionReason: 'Payment timed out' }),
+      wallet({ availableFunds: 50 }),
+    );
+    expect(el().querySelector(':scope > p.shop-rejection')).not.toBeNull();
+    expect(el().querySelector(':scope > button.buy-premises')).not.toBeNull();
+    expect(el().querySelector(':scope > p.premises-problem')).not.toBeNull();
+  });
 });

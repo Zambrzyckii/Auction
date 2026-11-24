@@ -2,6 +2,40 @@
 @use 'panels';
 
 @include tools.inside {
+  app-pawnshop-scene {
+    display: block;
+    min-width: 0;
+  }
+
+  app-pawnshop-scene .room {
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: var(--m-field-lo);
+    border: var(--u) solid var(--m-ink);
+    scrollbar-width: thin;
+    scrollbar-color: var(--m-line) var(--m-ink);
+  }
+
+  app-pawnshop-scene canvas.scene {
+    display: block;
+    margin-inline: auto;
+    image-rendering: pixelated;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    app-pawnshop:has(> app-pawnshop-scene.staging)
+      > :is(
+        p.shop-active,
+        p.shop-rejection,
+        p.premises-problem,
+        button.buy-premises,
+        app-bot-section,
+        app-stock-section
+      ) {
+      visibility: hidden;
+    }
+  }
+
   app-bot-section,
   app-stock-section {
     @include panels.panel;

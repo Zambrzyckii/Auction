@@ -13,6 +13,7 @@ import {
 import { Session } from '../../core/auth/session';
 import { startPolling } from '../../core/polling/poll';
 import { refreshOn } from '../../core/push/refresh-on';
+import { PawnshopScene } from '../../pixel/pawnshop/pawnshop-scene';
 import { BotSection } from './bot-section';
 import { PawnshopState, pawnshopPollMs, premisesProblem, upgradeOptions } from './pawnshop-rules';
 import { StockSection } from './stock-section';
@@ -21,7 +22,7 @@ const WALLET_POLL_MS = 5000;
 
 @Component({
   selector: 'app-pawnshop',
-  imports: [BotSection, DecimalPipe, StockSection],
+  imports: [BotSection, DecimalPipe, PawnshopScene, StockSection],
   templateUrl: './pawnshop.html',
 })
 export class Pawnshop {
