@@ -5,8 +5,10 @@
 // a real interval.
 import { R, Sprite, box, measure, rand, srand, text, INK } from '../street/pix';
 import { sparkle } from '../casino/floor';
-import { PAPER, Room, clamp, flipX, fmt } from '../casino/room';
+import { GOLD, PAPER, REDL, Room, clamp, flipX, fmt } from '../casino/room';
 import type { RoomOpts } from '../casino/room';
+import { plate as plateSprite } from '../casino/sprites';
+import type { PlateLine } from '../casino/sprites';
 import { AMBER, bulbOff, ledPanel } from '../bank/sprites';
 import * as PP from '../bank/people';
 import { accentOf } from '../items/sprites/helpers';
@@ -153,6 +155,26 @@ const MOTE_COLD = ['#6e7488', '#a8b0c8', '#e4eaf6'];
 const MOTE_WARM = ['#8a7458', '#d8bc8c', '#fff0c8'];
 const STAIR_X = L.flap.x - 10;
 const RISE = (L.floorY - (A.buddy.y + CR.BH)) / 3;
+const CUST_X = L.flap.x - 18 - 20;
+const GIVE_X = L.flap.x + 6;
+const SWEEP_MS = 2800;
+
+function stairY(x: number): number {
+  if (x >= L.flap.x + L.flap.w) return A.buddy.y + CR.BH;
+  if (x >= L.flap.x) return L.floorY - 2 * RISE;
+  if (x >= STAIR_X) return L.floorY - RISE;
+  return L.floorY;
+}
+
+const STAIRS: WK.Stairs = {
+  plants: [
+    { x: STAIR_X - 5, y: L.floorY },
+    { x: STAIR_X + 5, y: L.floorY - RISE },
+    { x: L.flap.x + 5, y: L.floorY - 2 * RISE },
+    { x: L.flap.x + L.flap.w + 6, y: A.buddy.y + CR.BH },
+  ],
+  at: stairY,
+};
 
 const PRINTS: [number, number][] = [];
 for (let x = L.inside + 4, k = 0; x < A.youBulb + 16; x += 11, k++) {
@@ -195,6 +217,20 @@ function newBuddy(key: CrewKey): Crew {
     pose: 'down',
     mood: null,
     face: 'front',
+  };
+}
+
+function newCandidate(key: CrewKey, x: number): Crew {
+  return {
+    key,
+    x,
+    top: L.floorY - CR.BH,
+    behind: false,
+    walking: false,
+    pose: 'down',
+    mood: null,
+    face: 'front',
+    carry: true,
   };
 }
 
@@ -308,6 +344,7 @@ export class PawnshopRoom extends Room {
   private shown: PawnState | null = null;
   private offers: PawnOffers | null = null;
   private upgrades: readonly PawnTier[] = [];
+  private heldUpgrades: readonly PawnTier[] | null = null;
   private canBuy = false;
   private stamps: Stamps | null = null;
   private openNow = false;
@@ -335,6 +372,8 @@ export class PawnshopRoom extends Room {
   private slotOfId = new Map<string, number>();
   private fliers: Flier[] = [];
   private plates: Plate[] = [];
+  private plateSweep: ReturnType<typeof setTimeout> | undefined;
+  private custN = 0;
   private parts: Part[] = [];
   private register: { amount: number; at: number } | null = null;
   private onCounter: { img: Img; x: number; y: number } | null = null;
@@ -410,7 +449,7 @@ export class PawnshopRoom extends Room {
     this.shown = shop;
     this.stamps = null;
     this.fliers = [];
-    this.plates = [];
+    this.clearPlates();
     this.parts = this.parts.filter((p) => p.k === 'mote');
     this.register = null;
     this.onCounter = null;
@@ -431,8 +470,18 @@ export class PawnshopRoom extends Room {
 
   setUpgrades(tiers: readonly PawnTier[]): void {
     if (this.dead) return;
+    if (this.busy) {
+      this.heldUpgrades = tiers;
+      return;
+    }
     this.upgrades = tiers;
     this.kickDraw();
+  }
+
+  private releaseUpgrades(): void {
+    if (this.heldUpgrades === null) return;
+    this.upgrades = this.heldUpgrades;
+    this.heldUpgrades = null;
   }
 
   setCanBuy(can: boolean): void {
@@ -471,6 +520,7 @@ export class PawnshopRoom extends Room {
     this.busy = false;
     clearInterval(this.clockTimer);
     this.clockTimer = undefined;
+    clearTimeout(this.plateSweep);
     this.fliers = [];
     super.destroy();
   }
@@ -479,7 +529,7 @@ export class PawnshopRoom extends Room {
     for (const a of this.walkers()) if (a.walking) this.land(a);
     for (const f of this.fliers.splice(0)) f.done();
     this.flap.t = -9;
-    this.plates = [];
+    this.clearPlates();
   }
 
   private walkers(): Walker[] {
@@ -514,6 +564,7 @@ export class PawnshopRoom extends Room {
     this.queue = [];
     this.busy = false;
     this.pendingRun = false;
+    this.releaseUpgrades();
   }
 
   private pump(): void {
@@ -534,6 +585,8 @@ export class PawnshopRoom extends Room {
     if (!this.pendingRun || !this.idle) return;
     this.pendingRun = false;
     this.rest();
+    this.releaseUpgrades();
+    if (this.paused) this.clearPlates();
     this.kickDraw();
     this.onIdle?.();
   }
@@ -583,8 +636,18 @@ export class PawnshopRoom extends Room {
         return this.openedBeats(reveal);
       case 'rejected':
         return this.rejectedBeats(step.shop.rejectionReason || null, reveal);
-      default:
-        return [this.act(reveal)];
+      case 'hiring':
+        return this.hiringBeats(step.tier, reveal);
+      case 'workerHired':
+        return this.hiredBeats(step.from, step.to, reveal);
+      case 'workerRejected':
+        return this.refusedBeats(step.reason, reveal);
+      case 'itemDelivered':
+        return this.deliveredBeats(step.items, reveal);
+      case 'itemSold':
+        return this.soldBeats(step.items, step.payout, reveal);
+      case 'itemWithdrawn':
+        return this.withdrawnBeats(step.items, reveal);
     }
   }
 
@@ -627,7 +690,7 @@ export class PawnshopRoom extends Room {
       return;
     }
     const gen = this.gen;
-    WK.beginWalk(a, WK.idOf(a), x, speed, null, () => {
+    WK.beginWalk(a, WK.idOf(a), x, speed, STAIRS, () => {
       if (gen === this.gen) done();
     });
   }
@@ -700,6 +763,518 @@ export class PawnshopRoom extends Room {
         }),
       this.act(() => {
         this.stamps = null;
+      }),
+    ];
+  }
+
+  private join(n: number, done: () => void): () => void {
+    let left = n;
+    return () => {
+      left--;
+      if (left === 0) done();
+    };
+  }
+
+  private until(cond: () => boolean, fn: () => void): void {
+    if (cond() || this.instant()) {
+      fn();
+      return;
+    }
+    this.later(0.05, () => this.until(cond, fn));
+  }
+
+  private setFlap(open: boolean, done?: () => void): void {
+    if (this.flap.open === open) {
+      done?.();
+      return;
+    }
+    this.flap = { open, t: this.t };
+    if (done) this.later(0.15, done);
+  }
+
+  private flyImage(img: Img, pts: readonly Pt[], dur: number, arc: number, done: () => void): void {
+    if (this.instant()) {
+      done();
+      return;
+    }
+    const gen = this.gen;
+    this.fliers.push({
+      img,
+      pts,
+      dur,
+      t0: this.t,
+      arc,
+      done: () => {
+        if (gen === this.gen) done();
+      },
+    });
+    this.kickDraw();
+  }
+
+  private stepFliers(T: number): void {
+    const ended = this.fliers.filter((f) => T - f.t0 >= f.dur);
+    if (ended.length === 0) return;
+    this.fliers = this.fliers.filter((f) => T - f.t0 < f.dur);
+    for (const f of ended) f.done();
+  }
+
+  private showPlate(lines: readonly PlateLine[], x: number, y: number, life = 2.6): void {
+    this.plates = [
+      { img: plateSprite(lines), x, y, at: this.t, life, lines: lines.map((l) => l[0]) },
+    ];
+    if (!this.reduced) return;
+    clearTimeout(this.plateSweep);
+    this.plateSweep = setTimeout(() => {
+      this.plates = [];
+      this.register = null;
+      this.draw();
+    }, SWEEP_MS);
+  }
+
+  private clearPlates(): void {
+    clearTimeout(this.plateSweep);
+    this.plates = [];
+  }
+
+  private addSpark(x: number, y: number, life: number): void {
+    if (this.instant()) return;
+    this.parts.push({ k: 'spark', x, y, t0: this.t, life });
+  }
+
+  private hiringBeats(tier: string, reveal: () => void): readonly Beat[] {
+    const c = newCandidate(this.candKey(tier), -60);
+    return [
+      this.act(() => {
+        this.cand = c;
+        reveal();
+      }),
+      (done) => this.walkTo(c, A.doorX - 28, 40, done),
+      this.act(() => {
+        c.face = 'front';
+      }),
+    ];
+  }
+
+  private refusedBeats(reason: string | null, reveal: () => void): readonly Beat[] {
+    const c = this.cand,
+      lines: PlateLine[] = [['NOT THIS TIME', 'tiny', '#c9c2d0']];
+    if (reason) lines.push([reason, 'tiny', REDL]);
+    const beats: Beat[] = [this.act(() => this.showPlate(lines, A.doorX, 52, 3.4))];
+    if (c) {
+      beats.push(
+        this.hold(1.2, () => {
+          c.pose = 'shrug';
+        }),
+        this.act(() => {
+          c.pose = 'down';
+          reveal();
+        }),
+        (done) => this.walkTo(c, -70, 44, done),
+      );
+    }
+    beats.push(
+      this.act(() => {
+        this.cand = null;
+      }),
+    );
+    const b = this.buddy;
+    if (b) {
+      beats.push(
+        this.hold(0.6, () => {
+          b.mood = 'smile';
+          b.pose = 'wave';
+        }),
+        this.act(() => {
+          b.pose = 'down';
+        }),
+      );
+    }
+    return beats;
+  }
+
+  // ----- the crew -----
+  private climbIn(c: Crew, done: () => void): void {
+    c.behind = true;
+    c.track = 'stairs';
+    const landed = this.join(2, () => {
+      c.track = null;
+      c.top = A.buddy.y;
+      c.face = 'front';
+      this.buddy = c;
+      this.cand = null;
+      this.setFlap(false, done);
+    });
+    this.walkTo(c, A.buddy.x, 36, landed);
+    this.until(
+      () => !c.walking || c.x + CR.CX >= STAIR_X - 22,
+      () => this.setFlap(true, landed),
+    );
+  }
+
+  private highFiveBeats(p: Crew, q: Crew): readonly Beat[] {
+    const both = (name: keyof typeof WK.ARM, dur: number) => {
+      for (const a of [p, q]) {
+        a.armHold = true;
+        WK.arm(a, name, 'down', dur, this.t);
+      }
+    };
+    return [
+      this.hold(1 / 15, () => both('five1', 1 / 15)),
+      this.hold(1 / 15, () => both('five2', 1 / 15)),
+      this.hold(1 / 15, () => {
+        both('five3', 1 / 15);
+        p.dip = q.dip = 1;
+      }),
+      this.hold(0.1, () => both('fiveWind', 0.08)),
+      this.hold(1 / 30, () => {
+        both('fiveHit', 1 / 30);
+        p.dip = q.dip = 0;
+      }),
+      this.hold(1 / 15, () => {
+        p.shakeT = q.shakeT = this.t;
+        p.mood = q.mood = 'laugh';
+        this.addSpark((p.x + q.x) / 2 + CR.CX, L.floorY - CR.BH + 16, 0.4);
+      }),
+      this.hold(0.35, () => both('fiveFollow', 0.2)),
+      this.hold(0.3, () => both('down', 0.3)),
+    ];
+  }
+
+  private passKeyBeats(from: Crew, to: Crew): readonly Beat[] {
+    return [
+      this.hold(0.35, () => {
+        from.armHold = to.armHold = true;
+        from.hold = CR.keys;
+        WK.arm(from, 'give', 'down', 0.3, this.t);
+      }),
+      this.hold(0.3, () => WK.arm(to, 'take', 'down', 0.25, this.t)),
+      this.hold(0.15, () => {
+        from.hold = null;
+        to.hold = CR.keys;
+      }),
+      this.hold(0.35, () => {
+        WK.arm(from, 'down', 'down', 0.3, this.t);
+        WK.arm(to, 'down', 'down', 0.35, this.t);
+      }),
+      this.act(() => {
+        to.hold = null;
+        from.armHold = to.armHold = false;
+        from.mood = to.mood = null;
+      }),
+    ];
+  }
+
+  private hiredBeats(from: string | null, to: string | null, reveal: () => void): readonly Beat[] {
+    if (to === null) return [this.act(reveal)];
+    const c = this.cand ?? newCandidate(CR.crewKeyOf(to), A.doorX - 28),
+      old = this.buddy;
+    this.cand = c;
+    c.carry = false;
+    c.wk = c.key;
+    if (old && from !== null && from !== to) return this.handoverBeats(c, old, reveal);
+    return [
+      (done) => this.climbIn(c, done),
+      this.hold(0.9, () => {
+        c.pose = 'wave';
+        c.mood = 'laugh';
+        reveal();
+      }),
+      this.act(() => {
+        c.pose = 'down';
+        c.mood = null;
+      }),
+    ];
+  }
+
+  private handoverBeats(c: Crew, old: Crew, reveal: () => void): readonly Beat[] {
+    const meet = STAIR_X - 2;
+    const leave: Beat[] = [
+      this.act(() => {
+        old.face = 'front';
+        old.mood = 'laugh';
+      }),
+      ...['wave', 'wave2', 'wave', 'wave2', 'wave'].map((pose) =>
+        this.hold(0.22, () => {
+          old.pose = pose;
+        }),
+      ),
+      this.hold(0.25, () => {
+        old.pose = 'down';
+        old.mood = null;
+      }),
+      (done) => this.walkTo(old, -70, 40, done),
+      this.act(() => {
+        this.old = null;
+      }),
+    ];
+    return [
+      (done) => {
+        this.old = old;
+        this.buddy = null;
+        const met = this.join(2, done);
+        this.walkTo(c, meet - 32 - CR.CX, 40, met);
+        this.setFlap(true, () => {
+          old.behind = true;
+          old.track = 'stairs';
+          this.walkTo(old, meet - CR.CX, 36, () => {
+            old.track = null;
+            old.behind = false;
+            WK.setGround(old, L.floorY);
+            this.setFlap(false);
+            met();
+          });
+        });
+      },
+      this.hold(0.2, () => {
+        c.face = 'right';
+        old.face = 'left';
+      }),
+      ...this.highFiveBeats(c, old),
+      ...this.passKeyBeats(old, c),
+      this.act(reveal),
+      (done) => {
+        const both = this.join(2, done);
+        this.playBeats(leave, this.gen, both);
+        this.later(0.4, () => this.climbIn(c, both));
+      },
+    ];
+  }
+
+  // ----- the stock -----
+  private newCustomer(mood: string, carry: string | null): Cust {
+    const cust: Cust = {
+      i: this.custN++ % CR.CUSTOMERS.length,
+      x: -40,
+      feet: L.floorY,
+      walking: false,
+      mood,
+      carry,
+      face: 'right',
+    };
+    return cust;
+  }
+
+  private slotAt(id: string): Pt {
+    const [x, y] = slotXY(this.slotOfId.get(id) ?? 0);
+    return [x + 9, y + 9];
+  }
+
+  private deliveredBeats(items: readonly PawnItem[], reveal: () => void): readonly Beat[] {
+    const b = this.buddy,
+      first = items[0],
+      cust = this.newCustomer('worried', 'bundle');
+    const setB = (pose: string, mood?: string | null) => {
+      if (!b) return;
+      b.pose = pose;
+      if (mood !== undefined) b.mood = mood;
+    };
+    return [
+      this.act(() => {
+        for (const it of items) {
+          this.slotOf(it.publicStockItemId);
+          this.hidden.add(it.publicStockItemId);
+        }
+        this.cust = cust;
+        reveal();
+      }),
+      (done) => this.walkTo(cust, CUST_X, 42, done),
+      this.hold(0.4, () => {
+        cust.armHold = true;
+        WK.arm(cust, 'reachUp', 'reachUp', 0.35, this.t);
+      }),
+      this.hold(0.4, () => {
+        cust.carry = null;
+        this.onCounter = { img: CR.bundle, x: GIVE_X, y: 112 };
+        WK.arm(cust, 'down', 'down', 0.4, this.t);
+        setB('reach');
+      }),
+      this.act(() => {
+        this.onCounter = null;
+        cust.armHold = false;
+        setB('hold');
+      }),
+      (done) =>
+        this.flyImage(
+          CR.bundle,
+          [
+            [GIVE_X, 112],
+            [212, 112],
+          ],
+          0.25,
+          3,
+          done,
+        ),
+      this.hold(1.3, () => {
+        this.onCounter = { img: CR.bundle, x: 212, y: 112 };
+        if (b) {
+          b.mood = 'wow';
+          this.appraise = this.t;
+        }
+      }),
+      this.act(() => {
+        this.onCounter = null;
+        if (b) b.mood = 'laugh';
+      }),
+      (done) => {
+        const [sx, sy] = this.slotAt(first.publicStockItemId);
+        this.flyImage(
+          CR.mini(first.rarity, 0),
+          [
+            [212, 108],
+            [sx, sy],
+          ],
+          0.55,
+          14,
+          done,
+        );
+      },
+      this.hold(0.5, () => {
+        for (const it of items) this.hidden.delete(it.publicStockItemId);
+        for (const it of items.slice(1)) {
+          const [x, y] = slotXY(this.slotOf(it.publicStockItemId));
+          this.addSpark(x + 9, y + 6, 0.5);
+        }
+        if (b) {
+          b.pose = 'down';
+          b.mood = null;
+          this.appraise = -9;
+        }
+        cust.mood = 'happy';
+      }),
+      (done) => this.walkTo(cust, -50, 44, done),
+      this.act(() => {
+        this.cust = null;
+      }),
+    ];
+  }
+
+  private soldBeats(
+    items: readonly PawnItem[],
+    payout: number,
+    reveal: () => void,
+  ): readonly Beat[] {
+    const b = this.buddy,
+      first = items[0],
+      item = CR.mini(first.rarity, 4),
+      cust = this.newCustomer('happy', null);
+    let at: Pt = [0, 0];
+    return [
+      this.act(() => {
+        this.ghosts = items.slice();
+        this.cust = cust;
+        reveal();
+      }),
+      (done) => this.walkTo(cust, CUST_X, 42, done),
+      this.act(() => {
+        at = this.slotAt(first.publicStockItemId);
+        this.ghosts = items.slice(1);
+        if (b) b.pose = 'hold';
+      }),
+      (done) => this.flyImage(item, [at, [212, 108]], 0.6, 10, done),
+      this.act(() => {
+        if (b) b.pose = 'reach';
+        cust.armHold = true;
+        WK.arm(cust, 'reachUp', 'down', 0.35, this.t);
+      }),
+      (done) =>
+        this.flyImage(
+          item,
+          [
+            [212, 108],
+            [GIVE_X, 110],
+          ],
+          0.25,
+          2,
+          done,
+        ),
+      this.hold(0.15, () => {
+        this.onCounter = { img: item, x: GIVE_X, y: 110 };
+      }),
+      this.hold(1.0, () => {
+        this.onCounter = null;
+        cust.carry = first.rarity;
+        WK.arm(cust, 'carry', 'carry', 0.35, this.t);
+        if (b) {
+          b.pose = 'down';
+          b.mood = 'laugh';
+        }
+        this.ghosts = [];
+        for (const it of items) this.slotOfId.delete(it.publicStockItemId);
+        this.register = { amount: payout, at: this.t };
+        this.showPlate(
+          [
+            ['SOLD', 'tiny', '#c9c2d0'],
+            ['+' + fmt(payout), 'micro', GOLD],
+          ],
+          L.register.x + 15,
+          L.register.y - 16,
+          2.4,
+        );
+      }),
+      this.act(() => {
+        cust.armHold = false;
+        if (b) b.mood = null;
+      }),
+      (done) => this.walkTo(cust, -50, 44, done),
+      this.act(() => {
+        this.cust = null;
+      }),
+    ];
+  }
+
+  private withdrawnBeats(items: readonly PawnItem[], reveal: () => void): readonly Beat[] {
+    const b = this.buddy,
+      it = items[0],
+      mini = CR.mini(it.rarity, 2);
+    let at: Pt = [0, 0];
+    return [
+      this.act(() => {
+        this.ghosts = [];
+        at = this.slotAt(it.publicStockItemId);
+        for (const x of items) this.slotOfId.delete(x.publicStockItemId);
+        reveal();
+        if (b) b.pose = 'hold';
+      }),
+      (done) => this.flyImage(mini, [at, [212, 108]], 0.5, 8, done),
+      this.hold(0.5, () => {
+        this.onCounter = { img: mini, x: 212, y: 108 };
+      }),
+      this.hold(0.5, () => {
+        this.onCounter = { img: CR.parcel, x: 212, y: 110 };
+      }),
+      this.act(() => {
+        this.onCounter = null;
+        if (b) {
+          b.pose = 'wave';
+          b.mood = 'laugh';
+        }
+        this.showPlate(
+          [
+            ['OFF TO', 'tiny', '#c9c2d0'],
+            ['YOUR ROOM', 'micro', GOLD],
+          ],
+          150,
+          70,
+          2.2,
+        );
+      }),
+      (done) =>
+        this.flyImage(
+          CR.parcel,
+          [
+            [212, 110],
+            [L.door.x + 20, 120],
+            [-20, 110],
+          ],
+          1.1,
+          16,
+          done,
+        ),
+      this.act(() => {
+        if (b) {
+          b.pose = 'down';
+          b.mood = null;
+        }
       }),
     ];
   }
@@ -905,17 +1480,7 @@ export class PawnshopRoom extends Room {
 
   private restCandidate(shop: PawnShop | null): Crew | null {
     if (shop === null || shop.pendingBotTierName === null) return null;
-    return {
-      key: this.candKey(shop.pendingBotTierName),
-      x: A.doorX - 28,
-      top: L.floorY - CR.BH,
-      behind: false,
-      walking: false,
-      pose: 'down',
-      mood: null,
-      face: 'front',
-      carry: true,
-    };
+    return newCandidate(this.candKey(shop.pendingBotTierName), A.doorX - 28);
   }
 
   private settleWalker(a: Walker): void {
@@ -987,6 +1552,8 @@ export class PawnshopRoom extends Room {
     this.stepFootfalls(T);
     this.stepMotes(T);
     this.parts = stepParts(this.parts, dt, T);
+    this.stepFliers(T);
+    this.plates = this.plates.filter((p) => T - p.at < p.life);
     this.stepSpider(T, dt);
     this.stepMouse(T, dt);
   }

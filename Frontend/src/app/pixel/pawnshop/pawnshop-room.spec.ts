@@ -1,6 +1,8 @@
 import type * as RoomModule from './pawnshop-room';
 import type * as Rooms from './rooms';
 import type { PawnItem, PawnOffers, PawnShop, PawnStep, PawnTier } from './pawnshop-watch';
+import { feetOf } from './gait';
+import type { Walker } from './gait';
 import { DONE, facadeState } from './pawnshop-opening';
 
 const looseContext = () => {
@@ -672,6 +674,413 @@ describe('PawnshopRoom', () => {
       step(20_000);
       expect(rec.reveals).toHaveLength(0);
       expect(rec.idles).toHaveLength(0);
+    });
+  });
+  describe('crew and stock steps', () => {
+    const appraiserShop = (over: Partial<PawnShop> = {}) =>
+      clerkShop({ botTierName: 'Appraiser', botRarity: 'Rare', ...over });
+    const handover: PawnStep = {
+      kind: 'workerHired',
+      from: 'Common',
+      to: 'Rare',
+      shop: appraiserShop(),
+    };
+    const firstHire: PawnStep = {
+      kind: 'workerHired',
+      from: null,
+      to: 'Rare',
+      shop: appraiserShop(),
+    };
+    const delivered = (...ids: string[]): PawnStep => ({
+      kind: 'itemDelivered',
+      items: ids.map((id) => item(id)),
+      shop: clerkShop({ stock: ids.map((id) => item(id)) }),
+    });
+    const inner = (r: RoomModule.PawnshopRoom) =>
+      r as unknown as {
+        cand: (Walker & { key: string; hold?: unknown; armHold?: boolean }) | null;
+      };
+
+    const rig = (reducedMotion = false) => {
+      const rec = {
+        reveals: [] as { t: number; buddy: RoomModule.PawnPainted['buddy'] }[],
+        idles: [] as number[],
+      };
+      const r: InstanceType<typeof Probe> = make({
+        reduced: reducedMotion,
+        onReveal: () => rec.reveals.push({ t: r.t, buddy: r.painted.buddy }),
+        onIdle: () => rec.idles.push(r.t),
+      });
+      r.setOffers(offers);
+      return { r, rec };
+    };
+
+    const sample = (ms: number, each: () => void) => {
+      for (let i = 0; i < ms / 16; i++) {
+        step(16);
+        each();
+      }
+    };
+
+    it('walks a hired candidate in from the street at once, with one reveal', () => {
+      const { r, rec } = rig();
+      r.place(shop());
+      r.run([
+        {
+          kind: 'hiring',
+          tier: 'Appraiser',
+          shop: shop({ pendingBotTierName: 'Appraiser' }),
+        },
+      ]);
+      expect(rec.reveals).toHaveLength(1);
+      expect(rec.reveals[0].t).toBe(0);
+      expect(r.painted.cand).toEqual({ key: 'appraiser', x: -60 });
+      step(5000);
+      expect(r.painted.cand).toEqual({ key: 'appraiser', x: 60 });
+      expect(rec.reveals).toHaveLength(1);
+      expect(rec.idles).toHaveLength(1);
+    });
+
+    describe('workerHired', () => {
+      const start = () => {
+        const rig1 = rig();
+        rig1.r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+        rig1.r.run([handover]);
+        return rig1;
+      };
+
+      it('hands the shop over, then ends with the new buddy behind the counter', () => {
+        const { r, rec } = start();
+        let flapOpen = false,
+          oldSeen = false,
+          keyPassed = false;
+        sample(14_000, () => {
+          const p = r.painted;
+          if (p.flap) flapOpen = true;
+          if (p.old) oldSeen = true;
+          if (inner(r).cand?.hold && rec.reveals.length === 0) keyPassed = true;
+        });
+        expect(flapOpen).toBe(true);
+        expect(oldSeen).toBe(true);
+        expect(keyPassed).toBe(true);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0].t).toBeGreaterThan(3.5);
+        expect(rec.reveals[0].t).toBeLessThan(6.0);
+        expect(rec.idles).toHaveLength(1);
+        const p = r.painted;
+        expect(p.buddy).toEqual({ key: 'appraiser', x: 182, top: 60, behind: true });
+        expect(p.cand).toBeNull();
+        expect(p.old).toBe(false);
+        expect(p.flap).toBe(false);
+      });
+
+      it('reveals after the key has changed hands and the new buddy is still outside', () => {
+        const { r, rec } = start();
+        let late: { x: number; hold: unknown; armHold: boolean | undefined } | null = null;
+        sample(14_000, () => {
+          const c = inner(r).cand;
+          if (rec.reveals.length === 1 && late === null && c) {
+            late = { x: c.x, hold: c.hold ?? null, armHold: c.armHold };
+          }
+        });
+        expect(rec.reveals[0].buddy).toBeNull();
+        expect(late).toEqual({ x: expect.any(Number), hold: null, armHold: false });
+        expect(late!.x).toBeLessThan(182);
+      });
+
+      it('settles at once when paused in the middle', () => {
+        const { r, rec } = start();
+        step(2500);
+        expect(rec.idles).toHaveLength(0);
+        r.pause();
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.idles).toHaveLength(1);
+        const p = r.painted;
+        expect(p.buddy).toEqual({ key: 'appraiser', x: 182, top: 60, behind: true });
+        expect(p.flap).toBe(false);
+        expect(p.old).toBe(false);
+        expect(p.cand).toBeNull();
+      });
+
+      it('drains a reduced room in one call', () => {
+        const { r, rec } = rig(true);
+        r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+        r.run([handover]);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.idles).toHaveLength(1);
+        expect(r.painted.buddy?.key).toBe('appraiser');
+        expect(r.painted.flap).toBe(false);
+        expect(requests).toBe(0);
+      });
+    });
+
+    describe('the first hire', () => {
+      const start = () => {
+        const rig1 = rig();
+        rig1.r.place(shop({ pendingBotTierName: 'Appraiser' }));
+        rig1.r.run([firstHire]);
+        return rig1;
+      };
+
+      it('reveals after the climb with the new buddy already behind the counter', () => {
+        const { r, rec } = start();
+        step(8000);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0].t).toBeGreaterThan(3.0);
+        expect(rec.reveals[0].t).toBeLessThan(5.5);
+        expect(rec.reveals[0].buddy).toEqual({
+          key: 'appraiser',
+          x: 182,
+          top: 60,
+          behind: true,
+        });
+        expect(rec.idles).toHaveLength(1);
+        expect(r.painted.flap).toBe(false);
+        expect(r.painted.cand).toBeNull();
+      });
+
+      it('plants the climber on the lower and the upper tread', () => {
+        const { r } = start();
+        const ys = new Set<number>();
+        sample(6000, () => {
+          const c = inner(r).cand;
+          if (c?.walking) feetOf(c, r.t).forEach((f) => ys.add(f.y));
+        });
+        expect(ys.has(184)).toBe(true);
+        expect(ys.has(174)).toBe(true);
+      });
+    });
+
+    it('plays nothing for a hire with no worker, and reveals once', () => {
+      const { r, rec } = rig();
+      r.place(clerkShop());
+      r.run([{ kind: 'workerHired', from: 'Common', to: null, shop: clerkShop() }]);
+      expect(rec.reveals).toHaveLength(1);
+      expect(rec.idles).toHaveLength(1);
+      expect(r.painted.old).toBe(false);
+    });
+
+    describe('workerRejected', () => {
+      const reason = 'Not enough funds on account';
+      const refusal: PawnStep = {
+        kind: 'workerRejected',
+        tier: 'Appraiser',
+        reason,
+        shop: clerkShop({ rejectionReason: reason }),
+      };
+
+      it('plates the reason, reveals after the shrug and sends the candidate away', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+        r.run([refusal]);
+        expect(r.painted.plate).toEqual(['NOT THIS TIME', reason]);
+        step(1000);
+        expect(rec.reveals).toHaveLength(0);
+        step(500);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0].t).toBeGreaterThan(1.1);
+        expect(rec.reveals[0].t).toBeLessThan(1.5);
+        step(1800);
+        expect(r.painted.plate).toEqual(['NOT THIS TIME', reason]);
+        step(6000);
+        expect(r.painted.plate).toBeNull();
+        expect(rec.idles).toHaveLength(1);
+        expect(r.painted.cand).toBeNull();
+      });
+
+      it('shows the plate and reveals at the end when there is no candidate', () => {
+        const { r, rec } = rig();
+        r.place(shop());
+        r.run([{ ...refusal, shop: shop({ rejectionReason: reason }) }]);
+        expect(r.painted.plate).toEqual(['NOT THIS TIME', reason]);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.idles).toHaveLength(1);
+      });
+
+      it('waves the buddy goodbye before it reveals when there is no candidate', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop());
+        r.run([refusal]);
+        expect(rec.reveals).toHaveLength(0);
+        step(1000);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0].t).toBeGreaterThan(0.5);
+        expect(rec.reveals[0].t).toBeLessThan(0.8);
+      });
+    });
+
+    describe('itemDelivered', () => {
+      it('reveals at the first beat and brings in exactly one customer', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop());
+        r.run([delivered('a', 'b')]);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0].t).toBe(0);
+        expect(r.painted.shelf).toEqual([]);
+        const seen: boolean[] = [r.painted.cust];
+        sample(14_000, () => {
+          const now = r.painted.cust;
+          if (now !== seen[seen.length - 1]) seen.push(now);
+        });
+        expect(seen).toEqual([true, false]);
+        expect(rec.idles).toHaveLength(1);
+        const slots = r.painted.shelf.map((e) => e.slot);
+        expect(r.painted.shelf.map((e) => e.id)).toEqual(['a', 'b']);
+        expect(new Set(slots).size).toBe(2);
+      });
+
+      it('lands the items on the shelf at once when paused', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop());
+        r.pause();
+        r.run([delivered('a', 'b')]);
+        expect(rec.idles).toHaveLength(1);
+        expect(r.painted.cust).toBe(false);
+        expect(r.painted.shelf).toHaveLength(2);
+      });
+    });
+
+    describe('itemSold', () => {
+      const soldItems = [item('a'), item('b')];
+      const sold: PawnStep = {
+        kind: 'itemSold',
+        items: soldItems,
+        payout: 55.5,
+        shop: clerkShop({
+          stock: soldItems.map((i) => ({ ...i, status: 'Sold', payoutAmount: 27.75 })),
+        }),
+      };
+      const start = () => {
+        const rig1 = rig();
+        rig1.r.place(clerkShop({ stock: soldItems }));
+        rig1.r.run([sold]);
+        return rig1;
+      };
+
+      it('keeps the sold items on the shelf until each is handed over', () => {
+        const { r } = start();
+        const seen: string[] = [];
+        sample(14_000, () => {
+          const ids = r.painted.shelf.map((e) => e.id).join(',');
+          if (ids !== seen[seen.length - 1]) seen.push(ids);
+        });
+        expect(seen).toEqual(['a,b', 'b', '']);
+      });
+
+      it('plates SOLD with the payout and opens the drawer for 2.4 s', () => {
+        const { r, rec } = start();
+        let drawerFrames = 0,
+          plate: readonly string[] | null = null;
+        sample(14_000, () => {
+          if (r.painted.drawer) drawerFrames++;
+          plate ??= r.painted.plate;
+        });
+        expect(plate).toEqual(['SOLD', '+55.5']);
+        expect(drawerFrames * 0.016).toBeGreaterThan(2.3);
+        expect(drawerFrames * 0.016).toBeLessThan(2.5);
+        expect(rec.reveals).toHaveLength(1);
+        expect(rec.reveals[0].t).toBe(0);
+        expect(rec.idles).toHaveLength(1);
+        expect(r.painted.cust).toBe(false);
+      });
+
+      it('frees both slots, so the next delivery lands in slot 0', () => {
+        const { r } = start();
+        step(10_000);
+        expect(r.painted.shelf).toEqual([]);
+        r.run([delivered('c')]);
+        step(10_000);
+        expect(r.painted.shelf.map((e) => [e.id, e.slot])).toEqual([['c', 0]]);
+      });
+
+      it('clears the plate and the drawer 2800 ms after the sale in a reduced room', () => {
+        vi.useFakeTimers({
+          toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+        });
+        vi.setSystemTime(NOW);
+        const { r, rec } = rig(true);
+        r.place(clerkShop({ stock: soldItems }));
+        r.run([sold]);
+        expect(rec.idles).toHaveLength(1);
+        expect(r.painted.plate).toEqual(['SOLD', '+55.5']);
+        expect(r.painted.drawer).toBe(true);
+        vi.advanceTimersByTime(2799);
+        expect(r.painted.plate).not.toBeNull();
+        expect(r.painted.drawer).toBe(true);
+        vi.advanceTimersByTime(1);
+        expect(r.painted.plate).toBeNull();
+        expect(r.painted.drawer).toBe(false);
+      });
+
+      it('drops the sweep when the room is placed again', () => {
+        vi.useFakeTimers({
+          toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+        });
+        vi.setSystemTime(NOW);
+        const { r } = rig(true);
+        r.place(clerkShop({ stock: soldItems }));
+        r.run([sold]);
+        r.place(clerkShop());
+        vi.advanceTimersByTime(1);
+        expect(r.painted.plate).toBeNull();
+        r.destroy();
+        expect(vi.getTimerCount()).toBe(0);
+      });
+    });
+
+    describe('itemWithdrawn', () => {
+      const withdrawn: PawnStep = {
+        kind: 'itemWithdrawn',
+        items: [item('a')],
+        shop: clerkShop(),
+      };
+
+      it('plates OFF TO YOUR ROOM for 2.2 s and frees the slot', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop({ stock: [item('a')] }));
+        expect(r.painted.shelf).toHaveLength(1);
+        r.run([withdrawn]);
+        expect(r.painted.shelf).toEqual([]);
+        let frames = 0,
+          plate: readonly string[] | null = null;
+        sample(8000, () => {
+          if (r.painted.plate) frames++;
+          plate ??= r.painted.plate;
+        });
+        expect(plate).toEqual(['OFF TO', 'YOUR ROOM']);
+        expect(frames * 0.016).toBeGreaterThan(2.1);
+        expect(frames * 0.016).toBeLessThan(2.3);
+        expect(rec.idles).toHaveLength(1);
+        r.run([delivered('c')]);
+        step(10_000);
+        expect(r.painted.shelf.map((e) => e.slot)).toEqual([0]);
+      });
+    });
+
+    it('holds an upgrade change until the room is idle', () => {
+      const boards: string[][] = [];
+      const { r, rec } = rig();
+      const board = () => r.painted.board.map((row) => row.state);
+      r.setUpgrades([]);
+      r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+      r.run([
+        {
+          kind: 'workerRejected',
+          tier: 'Appraiser',
+          reason: 'No',
+          shop: clerkShop({ rejectionReason: 'No' }),
+        },
+      ]);
+      boards.push(board());
+      r.setUpgrades([APPRAISER]);
+      step(1000);
+      boards.push(board());
+      expect(rec.idles).toHaveLength(0);
+      expect(boards[1]).toEqual(boards[0]);
+      expect(boards[0][1]).toBe('locked');
+      step(8000);
+      expect(rec.idles).toHaveLength(1);
+      expect(board()[1]).toBe('live');
     });
   });
 });
