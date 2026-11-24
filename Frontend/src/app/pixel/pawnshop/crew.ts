@@ -1051,8 +1051,10 @@ function spec(id: WalkerId): Spec {
 function body(sp: Spec, mood: string, dir: number) {
   const k = mood + dir;
   if (!sp.bodies.has(k)) {
-    if (!sp.bodies.has(mood + 1)) sp.bodies.set(mood + 1, cv(sp.make(mood)));
-    if (dir < 0) sp.bodies.set(k, flipCanvas(sp.bodies.get(mood + 1)!));
+    const base = sp.bodies.get(mood + 1) ?? cv(sp.make(mood));
+    if (sp.bodies.size > 160) sp.bodies.clear();
+    sp.bodies.set(mood + 1, base);
+    if (dir < 0) sp.bodies.set(k, flipCanvas(base));
   }
   return sp.bodies.get(k)!;
 }
@@ -1125,6 +1127,7 @@ function shoe(size: string, ramp: Ramp, v: Foot['v'], dir: number) {
   const img = dir < 0 ? flipCanvas(cv(s)) : cv(s);
   const ank = rot([0, 0], piv, a);
   const out = { img, ax: ank[0], ay: ank[1] };
+  if (shoeCache.size > 160) shoeCache.clear();
   shoeCache.set(k, out);
   return out;
 }
@@ -1142,6 +1145,7 @@ function handImg(ramp: Ramp) {
   s.set(2, 4, ramp[1]);
   s.outline({ selective: false });
   const img = cv(s);
+  if (handCache.size > 160) handCache.clear();
   handCache.set(ramp, img);
   return img;
 }

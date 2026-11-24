@@ -169,6 +169,23 @@ describe('pawnshop walkers in side view', () => {
     });
   });
 
+  describe('cache cap', () => {
+    it('clears a body cache that grows past 160 entries', () => {
+      const a = standing('clerk');
+      const baked = () => {
+        const create = vi.spyOn(document, 'createElement');
+        crew.drawWalker(t, a, 5, { mood: 'cap0' });
+        const n = create.mock.calls.filter((c) => c[0] === 'canvas').length;
+        create.mockRestore();
+        return n;
+      };
+      expect(baked()).toBe(1);
+      expect(baked()).toBe(0);
+      for (let i = 1; i < 170; i++) crew.drawWalker(t, a, 5, { mood: `cap${i}` });
+      expect(baked()).toBe(1);
+    });
+  });
+
   describe('frontProps', () => {
     it('draws the duster in the clerk hand while dusting', () => {
       crew.frontProps(t, 'clerk', 'dustA', 0, 0, null);
