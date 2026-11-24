@@ -112,10 +112,10 @@ rules bind every change it makes.
   specificity, for example `body main button` against the skin's `button`. The skin hooks only onto
   elements and classes the templates already have, so a new page gets the look without a template
   change and the three frame pages stay untouched. The exception is the item templates, the war
-  page, the three casino pages and the bank and transfers pages, which gained these hooks for the
-  item tiles, the shelf, the war scene, the casino scenes and the bank scene, styled by
-  `_hall.scss`, `_forms.scss`, `_inventory.scss`, `_workshop.scss`, `_war.scss`, `_casino.scss` and
-  `_bank.scss`.
+  page, the three casino pages, the bank and transfers pages and the pawnshop page, which gained
+  these hooks for the item tiles, the shelf, the war scene, the casino scenes, the bank scene and
+  the pawnshop scene, styled by `_hall.scss`, `_forms.scss`, `_inventory.scss`, `_workshop.scss`,
+  `_war.scss`, `_casino.scss`, `_bank.scss` and `_pawnshop.scss`.
   - `auction-list.html` has `td.lot`, `span.lot-row` and `.rarity`.
   - `my-auctions.html` has `td.lot` and `span.lot-row` in both tables, and no `.rarity`.
   - `auction-detail.html` has `td.lot`, `span.lot-row`, `.rarity` and `tr.leading`, the only auction
@@ -131,7 +131,10 @@ rules bind every change it makes.
     and at the latest 4000 ms after a settlement the scene plays. A war that is not settled stays unlit.
     The host gets the attribute `data-wide="true"` when `window.innerWidth` is at least 1200. The
     attribute stands in for a width media query, which the global stylesheet may not hold.
-  - `pawnshop.html` (the tier table) has `.rarity`.
+  - `pawnshop.html` has `.rarity` on the tier table and `<app-pawnshop-scene>` right after the `h2`,
+    with the `shop`, `offers`, `upgrades` and `canBuy` inputs. `_pawnshop.scss` frames the scene
+    host like the bank scene, a bordered `.room` that scrolls sideways inside itself around a
+    pixelated `canvas.scene`.
   - `create-auction.html` has `app-item-preview` in the listing form.
   - `inventory.html` has `app-workshop`, `app-shelf-sort` and `ul.shelf` (with `.picking` while the
     workshop is open) of `li.card` (with `.fresh` on the crafted card). A card holds `.pick`, `.name`,
@@ -186,6 +189,20 @@ rules bind every change it makes.
     `visibility: hidden` while the class is set, so the layout holds. The funds lines are not
     hidden, because they come from the wallet poller and not from the poller that triggers the
     step.
+  - `app-pawnshop-scene` gets the host class `staging` while its stage holds a staged step.
+    `PawnshopStage` (`pawnshop-stage.ts`) imports nothing from Angular. A run is staged when the
+    scene is visible and not reduced, and a step in it is staged when its kind is in `STAGED_KINDS`
+    (`opened`, `rejected`, `workerHired` and `workerRejected`, `pawnshop-watch.ts:57`). The class is
+    set before the room runs the steps. It clears at the reveal of the last staged step and when the
+    room goes idle. It also clears at once when the scene leaves the screen or the tab hides, and
+    after 14000 ms (`STAGE_WATCHDOG_MS`), restarted by each staged run and disarmed at the last
+    staged reveal. Staging never starts under reduced motion or for a run the scene was not visible
+    for, and the first shop after load is a baseline that plays and stages nothing, whether it
+    arrives before or after the room boots. Inside `prefers-reduced-motion: no-preference`,
+    `_pawnshop.scss` hides `p.shop-active`, `p.shop-rejection`, `p.premises-problem`,
+    `button.buy-premises`, `app-bot-section` and `app-stock-section` with `visibility: hidden` while
+    the class is set, so the layout holds. Deliveries, sales and withdrawals are not staged, so
+    nothing is hidden for them.
 - The skin holds no viewport media query (the `@font-face` reason above), sets no `animation` on form
   fields, because signal forms watch validity through their `ng-valid` and `ng-invalid` animations,
   and keeps `--u` at 3px at every width. A table wider than the page scrolls inside `main` or inside
@@ -272,6 +289,35 @@ rules bind every change it makes.
   `appsettings.json:133` in the Api project). `/transfers` loads no loans and no offers, so the loan
   side idles there. The LED shows only NEXT!, the board shows only its header and the facade neon is
   not drawn.
+- `pixel/pawnshop/` holds the pawnshop scene, `app-pawnshop-scene`, on `/pawnshop`. The art modules
+  are `rooms.ts` (the baked 480x200 shop, `rooms.ts:27-28`), `crew.ts` (the four crew bodies and the
+  stock minis), `player-actions.ts` (your poses) and `dust.ts` (the dust clumps and motes).
+  `gait.ts` is the walk of the crew, the customers and you, `pawnshop-opening.ts` holds the beats
+  of the opening, and `pawnshop-room.ts` is `PawnshopRoom`, one class on the casino `Room` loop. Three files outside `pixel/pawnshop/` changed for it and bank, casino and item output did
+  not. `bank/people.ts` gained a `turn` option on `stander` and `youFront` and exports `prop`,
+  `items/sprites/families.ts` splits `pawnedCore` out of `pawnedGood`, and `bulbOff` in
+  `casino/sprites.ts` takes any target with a `set` method. The room loads lazily through
+  `pawnshopRoomDeps()` in `pawnshop-scene.ts`, and only that loader reaches `rooms.ts`, `crew.ts`,
+  `dust.ts`, `player-actions.ts` and `pawnshop-room.ts`, while `pawnshop-scene.ts` and
+  `pawnshop-stage.ts` import the room with `import type` at most. `gait.ts`, `pawnshop-watch.ts` and
+  `pawnshop-opening.ts` import nothing at runtime. The frame centres on a fixed x 238 (`FOCUS_X`,
+  `pawnshop-room.ts:45`), because the scene has no `focus` input. `pawnshop-watch.ts` holds the
+  input types, `shopSteps`, which turns two polls into the steps the room plays, and
+  `STAGED_KINDS`. The step kinds are `snap`, `paying`, `opened`, `rejected`, `hiring`,
+  `workerHired`, `workerRejected`, `itemDelivered`, `itemWithdrawn` and `itemSold`. The room reads
+  every number from the server and computes no pawnshop rule. The display calculations are the
+  dust level of a stock item, the share of its `spawnedOn` to `sellAfter` span that has passed, in
+  five levels (`pawnshop-watch.ts:244`), the payout shown for a sale, which is the sum of the
+  `payoutAmount` of the sold items (`pawnshop-watch.ts:178`), and the board rows, the first four
+  offer tiers (`pawnshop-watch.ts:204`). The LED copy is `NEXT DELIVERY` over a countdown to
+  `nextSpawnOn` (`pawnshop-watch.ts:218`), read as `N min S s`, as `H h M min` from 60 minutes on
+  and as `ending...` once it is due, or `NO DELIVERIES` over `NO CREW YET` with no crew and no
+  delivery pending (`pawnshop-watch.ts:234`). The crew body follows the rarity of the hired tier,
+  Common is the clerk, Rare the appraiser, Epic the dealer and Legendary the magnate, and any other
+  rarity falls back to Common (`crewKeyOf`, `crew.ts:37-43`). In `gait.ts` a foot that is planted
+  keeps one x for the whole plant, so a walker does not skate. `gait.spec.ts:79-93` checks it at
+  40 px/s over x 150 to 380 and back, with at least 5 frames per plant and 18 to 27 plants per
+  direction.
 - The skin sets the page density in `_base.scss` and `_panels.scss`. `main` has no max width, a
   `4u` top padding, each routed page is a grid with a `4u` gap between its blocks, and panels have a
   `4u` padding and a `3u` gap. `_base.scss` sets `max-width: none` on `main` because `src/styles.scss:18` still caps `main`
