@@ -322,13 +322,18 @@ function stanceFoot(p: Plant, u: number, roll: boolean): Foot {
   return { x: p.x, y: p.y, v: 'flat', planted: true };
 }
 
+export function stepSign(j: number): 1 | -1 {
+  if (j % 2) return 1;
+  return -1;
+}
+
 export function shakeOf(a: Walker, now: number): number {
   const q = now - (a.shakeT ?? -9);
   if (q >= 0.1) return 0;
   return Math.floor(q * 60) % 2 ? -1 : 1;
 }
 
-const idOf = (a: Walker): WalkerId =>
+export const idOf = (a: Walker): WalkerId =>
   a.wk ?? a.key ?? (a.i !== undefined ? `cust${a.i % 4}` : 'you');
 
 export function pose(a: Walker, now: number): Pose {

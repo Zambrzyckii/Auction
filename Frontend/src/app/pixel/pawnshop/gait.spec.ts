@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Stairs, Walker, WalkerId } from './gait';
-import { GAIT, beginWalk, feetOf, habitFrame, habitLen, pickHabit, step, turnSide } from './gait';
+import {
+  GAIT,
+  beginWalk,
+  feetOf,
+  habitFrame,
+  habitLen,
+  idOf,
+  pickHabit,
+  step,
+  stepSign,
+  turnSide,
+} from './gait';
 
 interface Frame {
   t: number;
@@ -118,5 +129,21 @@ describe('gait', () => {
     expect(habitFrame('dust', 0.1)?.pose).toBe('down>dustA:1');
     expect(pickHabit('magnate', () => 0.9)).toBe('lean');
     expect(pickHabit('clerk', () => 0.1)).toBe('sneeze');
+  });
+
+  it('names a walker by wk, then key, then customer index, else you', () => {
+    const base: Walker = { x: 0, face: 'front', walking: false };
+    expect(idOf({ ...base, key: 'clerk' })).toBe('clerk');
+    expect(idOf({ ...base, i: 0 })).toBe('cust0');
+    expect(idOf({ ...base, i: 5 })).toBe('cust1');
+    expect(idOf(base)).toBe('you');
+    expect(idOf({ ...base, wk: 'dealer', key: 'clerk', i: 2 })).toBe('dealer');
+    expect(idOf({ ...base, key: 'magnate', i: 2 })).toBe('magnate');
+  });
+
+  it('alternates the step sign from -1 at step 0', () => {
+    expect(stepSign(0)).toBe(-1);
+    expect(stepSign(1)).toBe(1);
+    expect(stepSign(2)).toBe(-1);
   });
 });
