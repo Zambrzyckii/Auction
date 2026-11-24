@@ -518,7 +518,11 @@ export const bulbOn = (() => {
   s.set(2, 2, '#ffffff');
   return cv(s);
 })();
-export function bulbOff(s: Sprite, x: number, y: number) {
+export function bulbOff(
+  s: { set(x: number, y: number, c: string): unknown },
+  x: number,
+  y: number,
+) {
   s.set(x, y, '#5a3a20');
   s.set(x + 1, y, '#3f2a1e');
   s.set(x, y + 1, '#3f2a1e');

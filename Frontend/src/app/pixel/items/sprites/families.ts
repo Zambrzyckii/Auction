@@ -111,7 +111,7 @@ export function warehouseFind(rarity: Rarity): Sprite {
   return s.outline();
 }
 
-export function pawnedGood(rarity: Rarity): Sprite {
+export function pawnedCore(rarity: Rarity): Sprite {
   const s = new Sprite(32, 32);
   const acc = accentOf(rarity);
   shape(s, ell(13, 19, 11, 9.5), R.tan, { band: 2 });
@@ -144,7 +144,11 @@ export function pawnedGood(rarity: Rarity): Sprite {
   s.hline(23, 23, 5, R.paper[0]);
   s.hline(23, 25, 4, R.paper[0]);
   s.set(25, 15, INK);
-  return s.outline();
+  return s;
+}
+
+export function pawnedGood(rarity: Rarity): Sprite {
+  return pawnedCore(rarity).outline();
 }
 
 const WRENCH_TONES = [0, 0, 2, 3] as const;

@@ -27,6 +27,18 @@ const looseContext = () => {
 
 const size = (c: HTMLCanvasElement) => [c.width, c.height];
 
+const YOU_DIGEST = '288a7678';
+const HOODED_DIGEST = '1d029d2d';
+
+const digest = (c: readonly (string | null | undefined)[]) => {
+  let h = 0x811c9dc5;
+  for (const ch of c.map((v) => v ?? '.').join(',')) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16);
+};
+
 describe('bank art', () => {
   let sprites: typeof Sprites;
   let people: typeof People;
@@ -196,6 +208,65 @@ describe('bank art', () => {
       expect(rooms.anchors.queue).toEqual([106, 84, 61, 38]);
       expect(rooms.anchors.shark).toEqual({ x: 208, y: 64 });
       expect(rooms.anchors.brute).toEqual({ x: 258, y: 60 });
+    });
+  });
+
+  describe('stander characterization', () => {
+    const youOpts = () => ({
+      h: 96,
+      w: 40,
+      skin: people.YOU.skin,
+      hair: 'short' as const,
+      hairRamp: R.hair,
+      top: people.YOU.tee,
+      coat: people.YOU.jacket,
+      coatLen: 58,
+      pants: people.YOU.jeans,
+      shoes: people.YOU.shoes,
+      look: 1,
+      blink: false,
+    });
+    const hoodedOpts = () => ({
+      h: 96,
+      w: 40,
+      look: 1,
+      arms: 'chest' as const,
+      mood: 'worried' as const,
+      skin: R.skinB,
+      hair: 'hood' as const,
+      hatRamp: R.hoodie,
+      hairRamp: R.hair,
+      top: R.hoodie,
+      pants: R.denim,
+      shoes: R.white,
+    });
+
+    it('keeps the digest of the player body', () => {
+      expect(digest(people.stander(youOpts()).s.c)).toBe(YOU_DIGEST);
+    });
+
+    it('keeps the digest of the hooded customer', () => {
+      expect(digest(people.stander(hoodedOpts()).s.c)).toBe(HOODED_DIGEST);
+    });
+
+    it('keeps both digests with turn 0', () => {
+      expect(digest(people.stander({ ...youOpts(), turn: 0 }).s.c)).toBe(YOU_DIGEST);
+      expect(digest(people.stander({ ...hoodedOpts(), turn: 0 }).s.c)).toBe(HOODED_DIGEST);
+    });
+
+    it('turns only the face, so the rows below the shoulder line stay the same', () => {
+      const flat = people.stander(youOpts()).s.c;
+      const turned = people.stander({ ...youOpts(), turn: 1 }).s.c;
+      expect(digest(turned)).not.toBe(YOU_DIGEST);
+      expect(turned.slice(24 * 40)).toEqual(flat.slice(24 * 40));
+    });
+
+    it('draws the turned player on a 40x96 canvas', () => {
+      expect(size(people.youFront(false, 1, 1))).toEqual([40, 96]);
+    });
+
+    it('exposes prop for the crew props', () => {
+      expect(size(people.prop(3, 4, (s) => s.set(0, 0, '#000000')))).toEqual([3, 4]);
     });
   });
 });

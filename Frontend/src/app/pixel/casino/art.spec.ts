@@ -108,6 +108,19 @@ describe('casino art', () => {
     });
   });
 
+  describe('bulbOff', () => {
+    it('sets four pixels through any painter with a set method', () => {
+      const spy = vi.fn();
+      sprites.bulbOff({ set: spy }, 3, 4);
+      expect(spy.mock.calls).toEqual([
+        [3, 4, '#5a3a20'],
+        [4, 4, '#3f2a1e'],
+        [3, 5, '#3f2a1e'],
+        [4, 5, '#2a1c16'],
+      ]);
+    });
+  });
+
   describe('Slot', () => {
     it('runs ten seconds of steps and draws through the painter', () => {
       const slot = new Slot(2, 82, R.red, '777', 3, {});

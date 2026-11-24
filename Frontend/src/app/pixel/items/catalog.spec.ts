@@ -1,6 +1,17 @@
 import type { Sprite } from '../street/pix';
 import { RARITIES } from './rarity';
 
+const digest = (c: readonly (string | null | undefined)[]) => {
+  let h = 0x811c9dc5;
+  for (const ch of c.map((v) => v ?? '.').join(',')) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16);
+};
+
+const PAWNED_DIGESTS = ['7e36560b', 'bdc7c300', 'b603f142', '279e62a5'];
+
 const stubContext = () => ({
   measureText: () => ({ width: 0 }),
   fillText: () => undefined,
@@ -147,5 +158,18 @@ describe('item catalog', () => {
   it('caches one sprite per name and rarity', () => {
     expect(icon.iconFor('Something New', 'Epic')).toBe(icon.iconFor('Something New', 'Epic'));
     expect(icon.iconFor('Something New', 'Epic')).not.toBe(icon.iconFor('Something New', 'Rare'));
+  });
+
+  it('keeps the pawned good digests', () => {
+    const got = RARITIES.map((r) => digest(cells(catalog.FAMILY_ART['Pawned Good'](r))));
+    expect(got).toEqual(PAWNED_DIGESTS);
+  });
+
+  it('splits the pawned good into an unoutlined core and the outlined good', async () => {
+    const families = await import('./sprites/families');
+    for (const r of RARITIES) {
+      expect(cells(families.pawnedCore(r).outline())).toEqual(cells(families.pawnedGood(r)));
+      expect(digest(cells(families.pawnedGood(r)))).toBe(PAWNED_DIGESTS[RARITIES.indexOf(r)]);
+    }
   });
 });

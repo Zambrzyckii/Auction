@@ -34,6 +34,7 @@ export interface StanderOpts {
   pants: Ramp;
   shoes?: Ramp;
   look?: number;
+  turn?: number;
   blink?: boolean;
   mood?: Mood;
   stubble?: boolean;
@@ -299,7 +300,7 @@ export function stander(o: StanderOpts) {
   shape(s, ell(cx + 0.5, hy, rx, ry), skin);
   const eyeY = hy - 1;
   face(s, {
-    cx,
+    cx: cx + 2 * (o.turn ?? 0),
     eyeY,
     skin,
     hair: o.hairRamp,
@@ -378,7 +379,7 @@ export const YOU = {
   jeans: ['#16182a', '#232842', '#33395c', '#4a5280'],
   shoes: R.white,
 };
-export function youFront(blink: boolean, look: number) {
+export function youFront(blink: boolean, look: number, turn = 0) {
   const b = stander({
     h: 96,
     w: 40,
@@ -392,6 +393,7 @@ export function youFront(blink: boolean, look: number) {
     shoes: YOU.shoes,
     look,
     blink,
+    turn,
   });
   const s = b.s,
     cx = b.cx;
@@ -1213,7 +1215,7 @@ export function queuePeople(): QueuePeople {
 }
 
 // ----- small things -----
-const prop = (w: number, h: number, fn: (s: Sprite) => void, outline = true) => {
+export const prop = (w: number, h: number, fn: (s: Sprite) => void, outline = true) => {
   const s = new Sprite(w, h);
   fn(s);
   if (outline) s.outline();
