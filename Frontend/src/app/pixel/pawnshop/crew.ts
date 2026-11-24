@@ -2,6 +2,7 @@
 // so the face reads at scale 2. Behind the counter the front layer hides him from the waist
 // down, on the floor he walks whole.
 import type { Ramp } from '../street/pix';
+import type { CrewKey } from './gait';
 import { INK, R, Sprite, bayer, box, disc, mix, shape, sphere, text } from '../street/pix';
 import type { Arms, StanderOpts } from '../bank/people';
 import { ell, fist, prop, stander, stroke } from '../bank/people';
@@ -10,7 +11,7 @@ import { pawnedCore } from '../items/sprites/families';
 import { rarityOf } from '../items/rarity';
 
 type Pt = [number, number];
-export type CrewKey = 'clerk' | 'appraiser' | 'dealer' | 'magnate';
+export type { CrewKey };
 const cv = (s: Sprite) => s.canvas();
 export const BW = 56,
   BH = 104,
