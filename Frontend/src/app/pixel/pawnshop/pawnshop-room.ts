@@ -788,7 +788,7 @@ export class PawnshopRoom extends Room {
       done?.();
       return;
     }
-    this.flap = { open, t: this.t };
+    this.flap = { open, t: this.stampNow() };
     if (done) this.later(0.15, done);
   }
 
@@ -834,6 +834,7 @@ export class PawnshopRoom extends Room {
   private clearPlates(): void {
     clearTimeout(this.plateSweep);
     this.plates = [];
+    this.register = null;
   }
 
   private addSpark(x: number, y: number, life: number): void {
@@ -886,6 +887,7 @@ export class PawnshopRoom extends Room {
         }),
         this.act(() => {
           b.pose = 'down';
+          b.mood = null;
         }),
       );
     }
@@ -931,7 +933,7 @@ export class PawnshopRoom extends Room {
         p.dip = q.dip = 0;
       }),
       this.hold(1 / 15, () => {
-        p.shakeT = q.shakeT = this.t;
+        p.shakeT = q.shakeT = this.stampNow();
         p.mood = q.mood = 'laugh';
         this.addSpark((p.x + q.x) / 2 + CR.CX, L.floorY - CR.BH + 16, 0.4);
       }),
@@ -1200,7 +1202,7 @@ export class PawnshopRoom extends Room {
         }
         this.ghosts = [];
         for (const it of items) this.slotOfId.delete(it.publicStockItemId);
-        this.register = { amount: payout, at: this.t };
+        this.register = { amount: payout, at: this.stampNow() };
         this.showPlate(
           [
             ['SOLD', 'tiny', '#c9c2d0'],

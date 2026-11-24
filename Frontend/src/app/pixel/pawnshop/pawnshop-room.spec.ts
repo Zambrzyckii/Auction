@@ -1,7 +1,7 @@
 import type * as RoomModule from './pawnshop-room';
 import type * as Rooms from './rooms';
 import type { PawnItem, PawnOffers, PawnShop, PawnStep, PawnTier } from './pawnshop-watch';
-import { feetOf } from './gait';
+import { feetOf, shakeOf } from './gait';
 import type { Walker } from './gait';
 import { DONE, facadeState } from './pawnshop-opening';
 
@@ -699,6 +699,8 @@ describe('PawnshopRoom', () => {
     const inner = (r: RoomModule.PawnshopRoom) =>
       r as unknown as {
         cand: (Walker & { key: string; hold?: unknown; armHold?: boolean }) | null;
+        buddy: (Walker & { mood: string | null }) | null;
+        flapFrame(t: number): number;
       };
 
     const rig = (reducedMotion = false) => {
@@ -1081,6 +1083,94 @@ describe('PawnshopRoom', () => {
       step(8000);
       expect(rec.idles).toHaveLength(1);
       expect(board()[1]).toBe('live');
+    });
+    describe('pause and resume', () => {
+      const soldItems = [item('a'), item('b')];
+      const sold: PawnStep = {
+        kind: 'itemSold',
+        items: soldItems,
+        payout: 55.5,
+        shop: clerkShop({
+          stock: soldItems.map((i) => ({ ...i, status: 'Sold', payoutAmount: 27.75 })),
+        }),
+      };
+      const fakeSweepTimers = () => {
+        vi.useFakeTimers({
+          toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],
+        });
+        vi.setSystemTime(NOW);
+      };
+
+      it('closes the drawer when a reduced room is paused within 2.8 s of a sale', () => {
+        fakeSweepTimers();
+        const { r } = rig(true);
+        r.place(clerkShop({ stock: soldItems }));
+        r.run([sold]);
+        expect(r.painted.drawer).toBe(true);
+        r.pause();
+        expect(r.painted.plate).toBeNull();
+        expect(r.painted.drawer).toBe(false);
+        vi.advanceTimersByTime(3000);
+        expect(r.painted.drawer).toBe(false);
+      });
+
+      it('keeps the drawer shut when a reduced room sells while paused', () => {
+        fakeSweepTimers();
+        const { r } = rig(true);
+        r.place(clerkShop({ stock: soldItems }));
+        r.pause();
+        r.run([sold]);
+        expect(r.painted.plate).toBeNull();
+        expect(r.painted.drawer).toBe(false);
+      });
+
+      it('does not replay the drawer after resume when a sale ran while paused', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop({ stock: soldItems }));
+        r.pause();
+        r.run([sold]);
+        expect(rec.idles).toHaveLength(1);
+        r.resume();
+        step(160);
+        expect(r.painted.drawer).toBe(false);
+      });
+
+      it('does not replay the flap after resume when a hire ran while paused', () => {
+        const { r, rec } = rig();
+        r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+        r.pause();
+        r.run([handover]);
+        expect(rec.idles).toHaveLength(1);
+        r.resume();
+        step(48);
+        expect(inner(r).flapFrame(r.t)).toBe(0);
+      });
+
+      it('does not replay the high-five shake on the new buddy after resume', () => {
+        const { r } = rig();
+        r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+        r.pause();
+        r.run([handover]);
+        r.resume();
+        step(16);
+        expect(shakeOf(inner(r).buddy!, r.t)).toBe(0);
+      });
+    });
+
+    it('lets the buddy blink again after refusing a candidate', () => {
+      const { r, rec } = rig();
+      r.place(clerkShop({ pendingBotTierName: 'Appraiser' }));
+      r.run([
+        {
+          kind: 'workerRejected',
+          tier: 'Appraiser',
+          reason: 'No',
+          shop: clerkShop({ rejectionReason: 'No' }),
+        },
+      ]);
+      step(9000);
+      expect(rec.idles).toHaveLength(1);
+      expect(inner(r).buddy?.mood).toBeNull();
     });
   });
 });
