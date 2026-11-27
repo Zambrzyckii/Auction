@@ -10,7 +10,11 @@ read -r app sha extra <<<"${SSH_ORIGINAL_COMMAND:-}"
 exec 9>"/srv/$app/.lock"
 flock -n 9 || { echo "another deployment of $app is running" >&2; exit 3; }
 
-compose() { IMAGE_TAG=$1 docker compose -p "$app" -f compose.yaml -f compose.production.yaml "${@:2}"; }
+compose() {
+  local dir=.
+  [[ -f compose.yaml ]] || dir=deploy
+  IMAGE_TAG=$1 docker compose -p "$app" -f "$dir/compose.yaml" -f "$dir/compose.production.yaml" "${@:2}"
+}
 
 cd "/srv/$app/repo"
 previous=$(git rev-parse HEAD)
