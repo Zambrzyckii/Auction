@@ -56,5 +56,5 @@ the ignored `results/`, the recorded numbers to `docs/en/performance.md`.
 
 The forced command of the production host. `deploy` is installed as `/usr/local/bin/deploy`, owned by
 root, and runs whenever the CI deploy key connects. It accepts only `<app> <sha>`, checks out that
-commit in `/srv/<app>/repo`, starts the stack with `compose.production.yaml` and rolls back to the
-previous commit on failure. The whole flow is described in `docs/en/deployment.md`.
+commit in `/srv/<app>/repo`, starts the stack with `compose.production.yaml` (from the root, or from
+`deploy/` when the root has no `compose.yaml`) and rolls back to the previous commit on failure. The whole flow is described in `docs/en/deployment.md`.

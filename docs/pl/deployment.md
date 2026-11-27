@@ -29,6 +29,8 @@ Komenda ma postać `<app> <sha>`. Nazwa aplikacji może zawierać tylko małe li
 | start | `docker compose -p <app> -f compose.yaml -f compose.production.yaml` z `IMAGE_TAG=<sha>`, najpierw `pull`, potem `up -d --wait --wait-timeout 300 --remove-orphans` |
 | rollback | przy każdej awarii checkout poprzedniego commita i to samo `up` z jego sha |
 
+Oba pliki Compose pochodzą z katalogu głównego repozytorium albo z `deploy/`, gdy w katalogu głównym nie ma `compose.yaml`. Skrypt sprawdza to po każdym checkoucie, więc rollback używa układu commita, do którego wraca.
+
 | Kod wyjścia | Znaczenie |
 |---|---|
 | 0 | wdrożone |

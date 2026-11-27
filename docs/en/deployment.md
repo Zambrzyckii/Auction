@@ -29,6 +29,8 @@ The command is `<app> <sha>`. The app name may hold only lowercase letters, digi
 | start | `docker compose -p <app> -f compose.yaml -f compose.production.yaml` with `IMAGE_TAG=<sha>`, first `pull`, then `up -d --wait --wait-timeout 300 --remove-orphans` |
 | rollback | on any failure, checkout of the previous commit and the same `up` with its sha |
 
+Both Compose files come from the repository root, or from `deploy/` when the root has no `compose.yaml`. The script looks again after every checkout, so a rollback uses the layout of the commit it returns to.
+
 | Exit code | Meaning |
 |---|---|
 | 0 | deployed |
